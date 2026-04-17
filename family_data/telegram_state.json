@@ -1,0 +1,18 @@
+{
+  "offset": 43244130,
+  "chat_person": {
+    "718588374": "nik"
+  },
+  "subscribers": [
+    718588374
+  ],
+  "chat_identity": {
+    "718588374": "nik"
+  },
+  "flow": {
+    "718588374": {
+      "name": "add_time",
+      "day": "пятница"
+    }
+  }
+}

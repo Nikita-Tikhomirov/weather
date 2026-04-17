@@ -1,0 +1,36 @@
+[
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        1
+      ]
+    },
+    "created_at": "2026-04-16T22:15:00"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 1,
+      "before": {
+        "id": 1,
+        "title": "тренировка",
+        "text": "тренировка",
+        "details": "",
+        "day": "пятница",
+        "time": "19:00",
+        "priority": "medium",
+        "tags": [],
+        "recurring": null,
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "done": false,
+        "created_at": "2026-04-16T22:15:00"
+      }
+    },
+    "created_at": "2026-04-16T22:16:17"
+  }
+]

@@ -1,0 +1,513 @@
+2026-04-14 19:33:51,021 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "daily", "time": "19:30", "day": ""}
+2026-04-14 19:33:51,033 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:30", "day": "вторник"}
+2026-04-14 19:33:51,036 INFO {"event": "todo_delete", "person": "nik", "day": "вторник", "mode": "query"}
+2026-04-14 19:33:51,037 INFO {"event": "todo_undo", "person": "nik", "action": "restore_items", "restored": 1}
+2026-04-14 19:33:51,038 INFO {"event": "todo_done", "person": "nik", "day": "вторник", "id": 1}
+2026-04-14 19:33:51,047 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:30", "day": "вторник"}
+2026-04-14 19:35:01,222 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "daily", "time": "19:30", "day": ""}
+2026-04-14 19:35:01,236 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:30", "day": "вторник"}
+2026-04-14 19:35:01,241 INFO {"event": "todo_delete", "person": "nik", "day": "вторник", "mode": "query"}
+2026-04-14 19:35:01,242 INFO {"event": "todo_undo", "person": "nik", "action": "restore_items", "restored": 1}
+2026-04-14 19:35:01,244 INFO {"event": "todo_done", "person": "nik", "day": "вторник", "id": 1}
+2026-04-14 19:35:01,253 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:30", "day": "вторник"}
+2026-04-14 19:37:30,115 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "daily", "time": "19:30", "day": ""}
+2026-04-14 19:37:30,126 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:30", "day": "вторник"}
+2026-04-14 19:37:30,130 INFO {"event": "todo_delete", "person": "nik", "day": "вторник", "mode": "query"}
+2026-04-14 19:37:30,131 INFO {"event": "todo_undo", "person": "nik", "action": "restore_items", "restored": 1}
+2026-04-14 19:37:30,133 INFO {"event": "todo_done", "person": "nik", "day": "вторник", "id": 1}
+2026-04-14 19:37:30,145 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:30", "day": "вторник"}
+2026-04-14 21:30:45,123 ERROR {"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-14T21:30:45"}
+2026-04-14 21:30:45,764 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:31:06,019 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:31:14,510 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:31:25,008 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:31:34,112 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "daily", "time": "19:30", "day": ""}
+2026-04-14 21:31:34,127 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:30", "day": "вторник"}
+2026-04-14 21:31:34,127 INFO {"event": "todo_delete", "person": "nik", "day": "вторник", "mode": "query"}
+2026-04-14 21:31:34,127 INFO {"event": "todo_undo", "person": "nik", "action": "restore_items", "restored": 1}
+2026-04-14 21:31:34,127 INFO {"event": "todo_done", "person": "nik", "day": "вторник", "id": 1}
+2026-04-14 21:31:34,143 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:30", "day": "вторник"}
+2026-04-14 21:31:36,255 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:31:45,357 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:32:24,134 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:32:24,142 INFO {"event": "todo_delete", "person": "nik", "day": "вторник", "mode": "query"}
+2026-04-14 21:32:37,061 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:32:48,835 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:32:48,847 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:00", "day": "среда"}
+2026-04-14 21:32:57,422 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:33:34,861 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:35:52,242 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:35:58,399 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:36:42,574 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:37:44,597 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:37:51,576 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:37:57,956 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:38:04,907 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:38:17,513 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:38:36,211 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:38:42,891 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:39:06,364 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:39:23,162 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:39:30,624 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:39:45,115 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:42:16,503 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:43:13,271 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:50:03,203 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:50:16,261 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:50:22,206 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:52:44,169 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:54:47,993 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:55:33,240 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:55:40,364 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:55:53,247 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:59:48,835 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 21:59:56,096 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:00:27,075 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:02:35,885 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:02:42,052 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:02:54,737 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:04:14,381 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:04:28,449 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:04:37,301 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:05:50,740 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:05:57,314 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:06:03,920 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:06:16,237 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:06:24,234 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:07:00,808 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:07:07,514 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:12:24,688 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:12:31,253 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:12:37,746 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:12:42,243 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:12:49,073 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:13:02,276 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:13:09,040 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:13:16,609 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:13:25,062 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:13:48,325 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:13:54,706 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:14:07,856 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:14:25,067 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:14:31,249 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:24:12,303 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:24:29,097 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:24:41,041 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:27:11,666 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:27:20,690 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:27:30,912 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:27:48,362 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:31:29,968 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:34:59,018 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:35:34,655 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:35:40,923 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:35:47,422 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 22:50:19,364 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:00:14,073 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:00:57,724 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:01:04,553 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:01:10,886 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:02:35,560 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:03:29,789 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:08:16,328 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:18:06,863 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:18:13,009 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:18:20,384 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:18:26,762 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:18:32,404 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:19:20,778 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:19:32,429 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:20:09,055 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:21:24,183 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:21:36,772 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:21:43,424 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:21:49,106 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:21:55,828 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:22:13,263 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:22:25,767 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:23:43,612 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:23:56,060 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:24:02,327 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:24:08,715 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:24:15,179 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:24:33,800 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:24:45,850 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:24:58,274 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:25:52,384 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:26:03,895 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:26:16,240 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:26:22,638 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:26:28,954 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:26:35,448 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:26:53,762 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:27:06,502 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:27:21,696 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:27:28,118 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:27:47,996 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:27:54,432 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:27:59,200 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:28:12,052 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:28:18,463 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:28:23,900 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:28:50,742 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:29:07,212 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:29:24,346 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:29:43,502 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:30:10,713 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:30:27,798 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:30:36,248 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:30:42,427 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:31:01,142 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:31:07,678 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:31:14,725 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:31:21,262 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:31:27,334 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:31:37,831 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:31:44,323 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:31:50,789 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:32:11,239 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:32:17,594 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-14 23:32:23,913 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 00:04:10,394 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 00:04:16,983 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 00:04:29,879 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 00:04:36,644 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 00:04:42,854 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 00:04:49,710 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 00:04:56,123 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 00:18:18,426 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "daily", "time": "19:30", "day": "", "title": "в кормить крыс"}
+2026-04-15 00:18:19,217 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:30", "day": "вторник", "title": "во в кормить крыс"}
+2026-04-15 00:18:19,914 INFO {"event": "todo_delete", "person": "nik", "day": "вторник", "mode": "query", "title": "во в кормить крыс"}
+2026-04-15 00:18:20,600 INFO {"event": "todo_undo", "person": "nik", "action": "restore_items", "restored": 1}
+2026-04-15 00:18:21,260 INFO {"event": "todo_done", "person": "nik", "day": "вторник", "id": 1, "title": "во в кормить крыс"}
+2026-04-15 00:18:21,891 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:30", "day": "вторник", "title": "во в кормить крыс"}
+2026-04-15 02:35:15,475 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "daily", "time": "19:30", "day": "", "title": "в кормить крыс"}
+2026-04-15 02:35:16,391 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:30", "day": "вторник", "title": "во в кормить крыс"}
+2026-04-15 02:35:17,206 INFO {"event": "todo_delete", "person": "nik", "day": "вторник", "mode": "query", "title": "во в кормить крыс"}
+2026-04-15 02:35:17,947 INFO {"event": "todo_undo", "person": "nik", "action": "restore_items", "restored": 1}
+2026-04-15 02:35:18,664 INFO {"event": "todo_done", "person": "nik", "day": "вторник", "id": 1, "title": "во в кормить крыс"}
+2026-04-15 02:35:19,400 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:30", "day": "вторник", "title": "во в кормить крыс"}
+2026-04-15 18:38:36,462 ERROR {"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-15T18:38:36"}
+2026-04-15 18:38:37,795 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 18:38:41,943 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 18:39:04,686 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 18:40:00,528 ERROR {"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-15T18:40:00"}
+2026-04-15 18:40:01,348 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 18:40:06,528 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 18:40:17,361 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 18:40:35,244 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 18:40:35,257 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:00", "day": "среда", "title": "тренировка"}
+2026-04-15 18:40:49,261 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 18:41:09,241 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:30", "day": "вторник", "title": "во в кормить крыс"}
+2026-04-15 18:41:42,775 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 19:34:01,809 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "daily", "time": "19:30", "day": "", "title": "в кормить крыс"}
+2026-04-15 19:34:02,708 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:30", "day": "вторник", "title": "во в кормить крыс"}
+2026-04-15 19:34:03,533 INFO {"event": "todo_delete", "person": "nik", "day": "вторник", "mode": "query", "title": "во в кормить крыс"}
+2026-04-15 19:34:04,273 INFO {"event": "todo_undo", "person": "nik", "action": "restore_items", "restored": 1}
+2026-04-15 19:34:05,041 INFO {"event": "todo_done", "person": "nik", "day": "вторник", "id": 1, "title": "во в кормить крыс"}
+2026-04-15 19:34:05,806 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:30", "day": "вторник", "title": "во в кормить крыс"}
+2026-04-15 21:42:43,744 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "17:00", "day": "пятница", "title": "в тренировка"}
+2026-04-15 21:43:41,331 ERROR {"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-15T21:43:41"}
+2026-04-15 21:43:43,048 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:43:47,838 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:44:07,588 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:44:16,131 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "20:00", "day": "пятница", "title": "в Тренировка спины"}
+2026-04-15 21:45:18,012 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:45:27,517 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:45:52,656 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:46:04,913 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:46:57,514 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:47:33,791 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:48:06,416 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:48:15,311 INFO {"event": "todo_done", "person": "nik", "day": "среда", "id": 13, "title": "тренировка"}
+2026-04-15 21:48:21,400 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:48:46,500 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:48:55,872 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:49:08,503 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:49:15,420 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:49:40,752 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:49:54,182 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:50:02,814 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:50:23,085 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:50:34,745 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:50:45,789 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:50:55,543 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:51:11,243 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:51:11,249 INFO {"event": "todo_clear_day", "person": "nik", "day": "среда", "removed": 2}
+2026-04-15 21:51:22,089 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:51:22,093 INFO {"event": "todo_clear_day", "person": "nik", "day": "вторник", "removed": 3}
+2026-04-15 21:51:35,502 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:51:46,159 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:51:46,166 INFO {"event": "todo_clear_day", "person": "nik", "day": "пятница", "removed": 2}
+2026-04-15 21:52:05,120 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:52:25,163 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:52:25,169 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:00", "day": "пятница", "title": "в тренировка"}
+2026-04-15 21:52:42,900 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:53:15,486 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:53:30,295 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:53:54,734 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:55:58,492 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:56:08,896 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:56:27,252 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:56:41,183 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:56:41,191 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "21:00", "day": "среда", "title": "почитать мише книгу"}
+2026-04-15 21:56:50,826 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:57:08,457 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:57:15,740 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:57:22,176 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 21:59:26,766 INFO {"event": "todo_add", "person": "nik", "actor": "nik", "day": "???????????", "title": "???? ?????????? ????"}
+2026-04-15 22:02:55,159 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:03:02,636 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:03:09,407 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:03:12,390 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:03:20,284 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:03:35,524 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:03:59,112 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:04:13,016 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:04:25,720 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:07:23,855 INFO {"event": "todo_add", "person": "nik", "day": "сегодня", "title": "Проверка через log_event", "notes": "цепочка"}
+2026-04-15 22:08:30,811 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:08:37,909 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:08:41,864 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:08:49,330 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:09:02,673 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:09:09,539 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:09:17,684 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:09:25,067 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:09:33,075 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:09:39,525 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:11:12,335 ERROR {"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-15T22:11:12"}
+2026-04-15 22:12:25,703 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "07:00", "day": "понедельник", "title": "в тренировка"}
+2026-04-15 22:12:50,449 INFO {"event": "todo_delete", "person": "nik", "day": "понедельник", "mode": "index", "title": "в тренировка"}
+2026-04-15 22:13:56,651 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:14:00,505 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:14:05,888 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:14:12,502 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:14:25,066 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:14:30,972 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:14:45,025 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:15:57,806 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:18:00,581 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:18:08,254 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:18:14,661 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:18:29,181 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:18:34,237 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:19:18,439 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:19:22,186 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:19:45,172 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:20:00,516 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:20:45,930 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:20:50,778 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:20:57,337 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:21:25,366 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:21:34,656 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:21:47,709 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:23:20,432 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:23:47,134 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "08:00", "day": "четверг", "title": "в ОТВЕСТИ МИШУ В САД"}
+2026-04-15 22:24:44,887 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:24:47,483 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:25:23,127 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:25:27,366 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:25:35,103 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:27:17,311 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "10:00", "day": "четверг", "title": "в Выступление Миши"}
+2026-04-15 22:27:58,837 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "11:00", "day": "четверг", "title": "в Гулять с ребенком"}
+2026-04-15 22:28:51,440 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:28:59,382 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:29:52,289 INFO {"event": "todo_add", "person": "nik", "actor": "nik", "day": "пятница", "time": "09:30", "title": "Встреча с врачом", "notes": "каб. 214, анализы с собой", "recurrence": "weekly", "count": 1}
+2026-04-15 22:48:50,943 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:49:18,170 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:56:11,858 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:56:22,252 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:56:29,147 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:56:43,300 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 22:56:50,276 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:46:54,901 ERROR {"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-15T23:46:54"}
+2026-04-15 23:47:21,312 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "22:00", "day": "пятница", "title": "в лечь спать"}
+2026-04-15 23:48:48,188 ERROR {"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-15T23:48:48"}
+2026-04-15 23:48:56,022 INFO {"event": "todo_delete", "person": "nik", "day": "пятница", "mode": "index", "title": "в лечь спать"}
+2026-04-15 23:49:57,439 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "16:00", "day": "пятница", "title": "в пупсик"}
+2026-04-15 23:51:39,096 INFO {"event": "todo_move", "person": "nik", "actor": "nik", "title": "Собрание по проекту", "time": "18:45", "day": "четверг", "source_day": "среда", "target_day": "четверг", "target_time": "18:45", "notes": "Полный тест уведомления с деталями"}
+2026-04-15 23:53:03,007 ERROR {"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-15T23:53:03"}
+2026-04-15 23:53:03,402 INFO {"event": "todo_delete", "person": "nik", "day": "пятница", "mode": "index", "title": "в пупсик"}
+2026-04-15 23:54:01,957 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "15:00", "day": "четверг", "title": "в Работа по stylish-house.net"}
+2026-04-15 23:55:01,539 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:55:08,230 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:55:51,276 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:55:57,698 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:56:31,891 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:56:51,167 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:56:58,414 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:57:08,435 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "11:00", "day": "четверг", "title": "в В сад"}
+2026-04-15 23:57:19,631 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:57:24,833 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:57:34,909 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:57:38,365 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:57:41,603 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:58:08,467 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:58:29,630 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:58:49,108 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:59:09,004 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:59:09,013 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "18:30", "day": "вторник", "title": "во шлёпнуть пупса"}
+2026-04-15 23:59:34,335 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-15 23:59:50,357 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:00:06,547 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:00:15,760 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:00:24,455 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:00:37,370 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:00:43,947 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:00:50,995 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:01:00,721 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:01:07,717 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:01:14,270 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:01:54,837 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:02:01,168 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:02:11,692 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:02:37,756 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:02:44,518 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:02:51,162 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:02:58,070 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:03:05,735 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:03:11,402 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:03:23,622 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:03:34,161 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:03:41,419 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:03:48,026 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:04:11,735 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:04:25,613 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:04:53,712 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:05:00,121 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:22:02,478 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:25:50,464 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:27:40,577 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:28:06,002 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 00:29:11,921 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:46:05,036 ERROR {"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-16T14:46:05"}
+2026-04-16 14:46:09,652 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:46:21,991 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:46:26,145 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:46:38,209 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:47:01,385 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:47:10,152 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:47:18,419 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:47:31,502 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:47:37,871 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:47:46,757 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:48:00,194 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:48:12,812 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:48:19,580 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:49:02,913 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:49:22,150 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:49:39,406 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:49:45,566 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:49:51,920 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:49:58,686 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:50:06,609 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:50:13,188 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:50:19,451 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:50:27,329 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:50:33,923 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:50:40,580 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:50:48,708 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:50:51,320 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:50:55,757 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:51:01,447 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:51:08,441 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 14:51:14,677 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 17:20:37,393 INFO {"event": "todo_delete", "person": "nik", "actor": "desktop", "day": "среда", "mode": "ui", "title": "Домашнее задание"}
+2026-04-16 17:21:47,303 INFO {"event": "todo_update", "person": "nik", "actor": "desktop", "day": "пятница", "time": "19:00", "title": "Тренировка"}
+2026-04-16 17:21:51,171 INFO {"event": "todo_update", "person": "nik", "actor": "desktop", "day": "пятница", "time": "19:00", "title": "Тренировка"}
+2026-04-16 17:22:00,227 INFO {"event": "todo_delete", "person": "nik", "actor": "desktop", "day": "вторник", "mode": "ui", "title": "во шлёпнуть пупса"}
+2026-04-16 17:22:19,404 INFO {"event": "todo_delete", "person": "nik", "actor": "desktop", "day": "", "mode": "ui", "title": "13"}
+2026-04-16 17:22:28,365 INFO {"event": "todo_delete", "person": "nik", "actor": "desktop", "day": "среда", "mode": "ui", "title": "почитать мише книгу"}
+2026-04-16 17:23:45,985 ERROR {"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-16T17:23:45"}
+2026-04-16 17:23:49,758 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 17:25:10,232 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "21:00", "day": "четверг", "title": "в Работа по ecopfr.ru"}
+2026-04-16 17:25:47,138 INFO {"event": "todo_update", "person": "nik", "actor": "desktop", "day": "четверг", "time": "21:00", "title": "Работа по ecopfr.ru"}
+2026-04-16 17:26:38,396 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 17:26:46,368 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 17:26:58,734 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:06:21,464 ERROR {"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-16T22:06:21"}
+2026-04-16 22:06:54,384 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:07:05,760 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:07:10,104 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:07:17,177 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:07:23,714 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:07:38,515 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:07:43,088 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:07:49,187 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:07:56,575 INFO {"event": "todo_update", "person": "nik", "actor": "desktop", "day": "четверг", "time": "23:00", "title": "Работа по ecopfr.ru"}
+2026-04-16 22:08:41,363 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:09:03,184 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:09:39,916 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:09:46,586 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:09:52,981 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:10:24,934 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:10:31,668 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:10:38,054 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:10:44,726 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:10:51,377 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:11:05,293 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:11:18,226 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:11:24,616 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:11:32,137 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:11:43,663 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:11:50,042 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:11:56,542 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:12:03,483 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:12:16,980 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:12:23,310 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:12:29,771 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:12:36,329 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:12:43,122 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:12:45,643 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:12:57,677 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:13:04,114 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:13:10,983 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:13:17,444 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:13:24,241 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:13:38,362 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:13:45,578 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:14:11,617 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:14:26,738 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:14:45,177 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:15:00,057 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:15:00,067 INFO {"event": "todo_add", "person": "nastya", "count": 1, "recurrence": "", "time": "19:00", "day": "пятница", "title": "тренировка"}
+2026-04-16 22:15:19,108 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:15:34,965 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:15:41,825 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:15:50,100 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:15:57,580 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:16:03,061 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:16:09,368 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:16:17,086 INFO {"event": "todo_update", "person": "nastya", "actor": "desktop", "day": "пятница", "time": "19:00", "title": "тренировка"}
+2026-04-16 22:16:23,155 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:16:29,349 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:16:35,617 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:16:42,380 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:16:52,539 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:16:59,038 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:17:05,244 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:17:11,665 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:17:13,999 INFO {"event": "todo_done", "person": "misha", "actor": "desktop", "day": "четверг", "id": 3, "title": "Домашнее задание"}
+2026-04-16 22:17:18,177 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:17:24,315 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:17:32,345 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:17:44,567 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:17:54,461 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-16 22:20:03,345 INFO {"event": "todo_done", "person": "misha", "actor": "desktop", "day": "четверг", "id": 2, "title": "Выпустить крыс"}
+2026-04-16 22:20:07,142 INFO {"event": "todo_done", "person": "misha", "actor": "desktop", "day": "четверг", "id": 2, "title": "Выпустить крыс"}
+2026-04-16 22:22:34,781 INFO {"event": "todo_add", "person": "nik", "actor": "desktop", "count": 1, "day": "пятница", "time": "19:00", "title": "тренировка", "recurrence": ""}
+2026-04-16 22:30:53,958 INFO {"event": "todo_add", "person": "nik", "actor": "desktop", "count": 1, "day": "пятница", "time": "12:00", "title": "пастирать крысам", "recurrence": ""}
+2026-04-16 22:42:50,901 INFO {"event": "todo_add", "person": "misha", "actor": "desktop", "count": 1, "day": "четверг", "time": "21:20", "title": "Убратся у крыс", "recurrence": "daily"}
+2026-04-16 22:48:44,840 INFO {"event": "todo_add", "person": "misha", "actor": "desktop", "count": 1, "day": "пятница", "time": "19:00", "title": "читать энциклопедию", "recurrence": ""}
+2026-04-16 22:50:15,685 INFO {"event": "todo_delete", "person": "nik", "actor": "desktop", "day": "пятница", "mode": "ui", "title": "Тренировка"}
+2026-04-16 22:50:37,048 INFO {"event": "todo_update", "person": "nik", "actor": "desktop", "day": "пятница", "time": "19:00", "title": "Тренировка"}
+2026-04-16 22:50:54,384 INFO {"event": "todo_update", "person": "nik", "actor": "desktop", "day": "пятница", "time": "19:00", "title": "Тренировка"}
+2026-04-17 03:04:36,278 INFO {"event": "todo_update", "person": "nik", "actor": "desktop", "day": "пятница", "time": "08:00", "title": "Работа по ecopfr.ru"}
+2026-04-17 03:06:36,658 INFO {"event": "todo_add", "person": "nik", "actor": "desktop", "count": 1, "day": "пятница", "time": "12:00", "title": "Стирка", "recurrence": ""}
+2026-04-17 03:15:14,269 INFO {"event": "todo_add", "person": "nik", "actor": "desktop", "count": 1, "day": "пятница", "time": "13:00", "title": "Работа по stylish", "recurrence": ""}
+2026-04-17 03:15:48,629 INFO {"event": "todo_update", "person": "nik", "actor": "desktop", "day": "пятница", "time": "15:00", "title": "пастирать крысам"}
+2026-04-17 09:45:38,602 INFO {"event": "todo_update", "person": "nik", "actor": "desktop", "day": "пятница", "time": "11:00", "title": "Работа по ecopfr.ru"}
+2026-04-17 09:48:12,736 INFO {"event": "todo_add", "person": "misha", "actor": "desktop", "count": 1, "day": "пятница", "time": "11:00", "title": "Работа по ecopfr.ru", "recurrence": ""}
+2026-04-17 09:48:34,873 INFO {"event": "todo_delete", "person": "misha", "actor": "desktop", "day": "пятница", "mode": "ui", "title": "Работа по ecopfr.ru"}
+2026-04-17 10:00:33,783 INFO {"event": "todo_add", "person": "misha", "actor": "desktop", "count": 1, "day": "суббота", "time": "13:00", "title": "полить  ростения", "recurrence": ""}

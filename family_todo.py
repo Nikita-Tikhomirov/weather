@@ -1,0 +1,1599 @@
+﻿import json
+import re
+from dataclasses import dataclass
+from datetime import datetime
+from difflib import SequenceMatcher
+from pathlib import Path
+
+from audio import listen_speech
+from config import SETTINGS
+from todo_actions import apply_move
+from todo_logger import log_event
+from todo_parsing import has_all_parts, token_overlap_score
+from todo_reminders import seconds_until
+from todo_router import resolve_action
+import todo_storage as st
+from tts import speak
+
+try:
+    import winsound
+except Exception:  # pragma: no cover
+    winsound = None
+
+
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "family_data"
+
+
+@dataclass(frozen=True)
+class Person:
+    key: str
+    display_name: str
+    aliases: tuple[str, ...]
+    has_schedule: bool = False
+
+
+PEOPLE: tuple[Person, ...] = (
+    Person("nik", "Ник", ("ник", "я", "никита"), has_schedule=True),
+    Person("misha", "Миша", ("миша", "сын", "михаил"), has_schedule=True),
+    Person("nastya", "Настя", ("настя", "жена", "анастасия"), has_schedule=True),
+    Person("arisha", "Ариша", ("ариша", "арина", "дочь"), has_schedule=True),
+)
+
+STOP_PHRASES = ("стоп", "выход", "хватит", "заверши", "закончи", "пока")
+SWITCH_PERSON_PHRASES = (
+    "сменить человека",
+    "другой человек",
+    "другой пользователь",
+    "выбрать другого",
+)
+NO_TIME_PHRASES = ("без времени", "время не нужно", "не нужно время", "без часа")
+
+DAY_ALIASES = {
+    "понедельник": ("понедельник", "понедельника", "пн"),
+    "вторник": ("вторник", "вторника", "вт"),
+    "среда": ("среда", "среду", "среды", "ср"),
+    "четверг": ("четверг", "четверга", "чт"),
+    "пятница": ("пятница", "пятницу", "пятницы", "пт"),
+    "суббота": ("суббота", "субботу", "субботы", "сб"),
+    "воскресенье": ("воскресенье", "воскресенья", "воскресенью", "вс"),
+}
+DAY_ORDER = ("понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье")
+ADD_PREFIXES = ("добавь", "добавить", "запиши", "создай", "новое дело")
+PRIORITY_ALIASES = {
+    "high": ("важно", "срочно", "приоритет высокий", "высокий приоритет"),
+    "medium": ("обычно", "средний приоритет", "не срочно"),
+    "low": ("потом", "низкий приоритет", "неважно"),
+}
+RECURRING_ALIASES = {
+    "daily": ("каждый день", "ежедневно"),
+    "weekdays": ("каждый будний день", "по будням", "будни"),
+}
+DEFAULT_REMINDER_OFFSETS = [60, 30, 10]
+QUIET_CONFIRMATIONS = True
+TAG_ALIASES = {
+    "дом": ("дом", "домашнее", "быт"),
+    "работа": ("работа", "рабочее"),
+    "школа": ("школа", "уроки", "учеба"),
+    "здоровье": ("здоровье", "врач", "лекарства", "спорт"),
+}
+
+SCHEDULE_DEFAULT = {
+    "понедельник": ["Математика", "Русский язык", "Литература", "Английский", "Окружающий мир", "Физкультура"],
+    "вторник": ["Русский язык", "Математика", "Информатика", "История", "Музыка", "Английский"],
+    "среда": ["Математика", "Русский язык", "Биология", "Литература", "Технология", "Физкультура"],
+    "четверг": ["Английский", "Математика", "География", "Русский язык", "Обществознание", "ИЗО"],
+    "пятница": ["Русский язык", "Математика", "Литература", "Информатика", "Биология", "Физкультура"],
+    "суббота": ["Английский", "Русский язык", "Математика", "История", "Проект", "Музыка"],
+    "воскресенье": ["Чтение", "Логика", "Творчество", "Английский", "Окружающий мир", "Спорт"],
+}
+
+NUM_WORDS = {
+    "ноль": 0,
+    "один": 1,
+    "одна": 1,
+    "первый": 1,
+    "первая": 1,
+    "первое": 1,
+    "два": 2,
+    "две": 2,
+    "второй": 2,
+    "вторая": 2,
+    "второе": 2,
+    "три": 3,
+    "третий": 3,
+    "третья": 3,
+    "третье": 3,
+    "четыре": 4,
+    "четвертый": 4,
+    "четвертая": 4,
+    "четвертое": 4,
+    "пять": 5,
+    "пятый": 5,
+    "пятая": 5,
+    "пятое": 5,
+    "шесть": 6,
+    "седьмой": 7,
+    "семь": 7,
+    "седьмое": 7,
+    "восемь": 8,
+    "восьмое": 8,
+    "девять": 9,
+    "девятое": 9,
+    "десять": 10,
+    "десятое": 10,
+    "одиннадцать": 11,
+    "двенадцать": 12,
+    "тринадцать": 13,
+    "четырнадцать": 14,
+    "пятнадцать": 15,
+    "шестнадцать": 16,
+    "семнадцать": 17,
+    "восемнадцать": 18,
+    "девятнадцать": 19,
+    "двадцать": 20,
+    "тридцать": 30,
+    "сорок": 40,
+    "пятьдесят": 50,
+}
+
+HALF_NEXT_HOUR = {
+    "первого": 1,
+    "второго": 2,
+    "третьего": 3,
+    "четвертого": 4,
+    "пятого": 5,
+    "шестого": 6,
+    "седьмого": 7,
+    "восьмого": 8,
+    "девятого": 9,
+    "десятого": 10,
+    "одиннадцатого": 11,
+    "двенадцатого": 12,
+}
+
+
+def normalize_text(text: str) -> str:
+    cleaned = re.sub(r"[^а-яё0-9:\s-]", " ", text.lower())
+    cleaned = cleaned.replace("ё", "е")
+    return " ".join(cleaned.split())
+
+
+def confirm(message: str = "Готово.") -> None:
+    speak("Готово." if QUIET_CONFIRMATIONS else message)
+
+
+def similarity(a: str, b: str) -> float:
+    return SequenceMatcher(None, a, b).ratio()
+
+
+def contains_phrase(text: str, phrase: str) -> bool:
+    norm_text = normalize_text(text)
+    norm_phrase = normalize_text(phrase)
+    if not norm_text or not norm_phrase:
+        return False
+
+    if norm_phrase == norm_text:
+        return True
+
+    text_words = norm_text.split()
+    phrase_words = norm_phrase.split()
+
+    if len(phrase_words) == 1:
+        target = phrase_words[0]
+        for word in text_words:
+            if word == target or similarity(word, target) >= 0.8:
+                return True
+        return False
+
+    # For phrases, allow small ASR deviations: each phrase word should match some text word.
+    for pword in phrase_words:
+        matched = False
+        for word in text_words:
+            if word == pword or similarity(word, pword) >= 0.78:
+                matched = True
+                break
+        if not matched:
+            return False
+    return True
+
+
+def detect_stop(text: str | None) -> bool:
+    if not text:
+        return False
+    return any(contains_phrase(text, phrase) for phrase in STOP_PHRASES)
+
+
+def detect_switch_person(text: str | None) -> bool:
+    if not text:
+        return False
+    return any(contains_phrase(text, phrase) for phrase in SWITCH_PERSON_PHRASES)
+
+
+def read_json(path: Path, default: object) -> object:
+    return st.read_json(path, default)
+
+
+def write_json(path: Path, data: object) -> None:
+    st.write_json(path, data)
+
+
+def person_dir(person: Person) -> Path:
+    return st.person_dir(DATA_DIR, person.key)
+
+
+def todos_path(person: Person) -> Path:
+    return st.todos_path(DATA_DIR, person.key)
+
+
+def schedule_path(person: Person) -> Path:
+    return st.schedule_path(DATA_DIR, person.key)
+
+
+def history_path(person: Person) -> Path:
+    return st.history_path(DATA_DIR, person.key)
+
+
+def bootstrap_data() -> None:
+    DATA_DIR.mkdir(exist_ok=True)
+    for person in PEOPLE:
+        st.bootstrap_person_data(
+            data_dir=DATA_DIR,
+            person_key=person.key,
+            has_schedule=person.has_schedule,
+            schedule_default=SCHEDULE_DEFAULT,
+        )
+
+
+def listen_once(prompt: str, retries: int = 1, phrase_time_limit: int | None = None) -> str | None:
+    for attempt in range(retries + 1):
+        if prompt:
+            speak(prompt)
+        text = listen_speech(
+            timeout=SETTINGS.audio.default_timeout + 3,
+            phrase_time_limit=phrase_time_limit or SETTINGS.audio.default_phrase_time_limit,
+            ambient_duration=SETTINGS.audio.default_ambient_duration,
+            language=SETTINGS.audio.language,
+            retries=1,
+            with_cue=True,
+        )
+        if text:
+            print(f"Распознано: {text}")
+            return text
+        if attempt < retries:
+            speak("Повтори коротко.")
+    return None
+
+
+def find_person(text: str | None) -> Person | None:
+    if not text:
+        return None
+    for person in PEOPLE:
+        if any(contains_phrase(text, alias) for alias in person.aliases):
+            return person
+    return None
+
+
+def load_todos(person: Person) -> list[dict]:
+    data = read_json(todos_path(person), [])
+    todos = data if isinstance(data, list) else []
+    changed = False
+    for todo in todos:
+        if not isinstance(todo, dict):
+            continue
+        text_blob = " ".join(
+            [
+                str(todo.get("title") or ""),
+                str(todo.get("text") or ""),
+                str(todo.get("details") or ""),
+            ]
+        ).strip()
+
+        if not todo.get("time"):
+            inferred_time = extract_time_from_inline(text_blob)
+            if inferred_time:
+                todo["time"] = inferred_time
+                changed = True
+
+        if not todo.get("day"):
+            inferred_day = parse_day(text_blob)
+            if inferred_day:
+                todo["day"] = inferred_day
+                changed = True
+
+        if not todo.get("title") and todo.get("text"):
+            todo["title"] = str(todo.get("text"))
+            changed = True
+        if not todo.get("priority"):
+            todo["priority"] = "medium"
+            changed = True
+        offsets = todo.get("reminder_offsets")
+        if not isinstance(offsets, list) or not offsets:
+            todo["reminder_offsets"] = list(DEFAULT_REMINDER_OFFSETS)
+            changed = True
+        tags = todo.get("tags")
+        if not isinstance(tags, list):
+            todo["tags"] = []
+            changed = True
+
+    # Legacy migration: recurring tasks used to be duplicated per day.
+    # Keep only one record per recurring signature.
+    seen_recurring: set[tuple[str, str, str, str]] = set()
+    deduped: list[dict] = []
+    for todo in todos:
+        recurrence = str(todo.get("recurring") or "")
+        if recurrence in ("daily", "weekdays"):
+            signature = (
+                recurrence,
+                normalize_text(str(todo.get("title") or todo.get("text") or "")),
+                str(todo.get("time") or ""),
+                normalize_text(str(todo.get("details") or "")),
+            )
+            if signature in seen_recurring:
+                changed = True
+                continue
+            seen_recurring.add(signature)
+        deduped.append(todo)
+    todos = deduped
+
+    if changed:
+        save_todos(person, todos)
+    return todos
+
+
+def save_todos(person: Person, todos: list[dict]) -> None:
+    write_json(todos_path(person), todos)
+
+
+def load_history(person: Person) -> list[dict]:
+    return st.load_history(DATA_DIR, person.key)
+
+
+def save_history(person: Person, history: list[dict]) -> None:
+    st.save_history(DATA_DIR, person.key, history)
+
+
+def push_history(person: Person, action: str, payload: dict) -> None:
+    st.push_history(DATA_DIR, person.key, action, payload)
+
+
+def parse_day(text: str | None) -> str | None:
+    if not text:
+        return None
+    for canonical, aliases in DAY_ALIASES.items():
+        if any(contains_phrase(text, alias) for alias in aliases):
+            return canonical
+    return None
+
+
+def day_from_relative_word(text: str | None) -> str | None:
+    if not text:
+        return None
+    normalized = normalize_text(text)
+    today_idx = datetime.now().weekday()
+    if any(contains_phrase(normalized, phrase) for phrase in ("сегодня", "на сегодня")):
+        return DAY_ORDER[today_idx]
+    if any(contains_phrase(normalized, phrase) for phrase in ("завтра", "на завтра")):
+        return DAY_ORDER[(today_idx + 1) % 7]
+    return None
+
+
+def parse_day_or_relative(text: str | None) -> str | None:
+    return parse_day(text) or day_from_relative_word(text)
+
+
+def parse_priority(text: str | None) -> str:
+    normalized = normalize_text(text or "")
+    for priority, aliases in PRIORITY_ALIASES.items():
+        if any(contains_phrase(normalized, alias) for alias in aliases):
+            return priority
+    return "medium"
+
+
+def priority_label(value: str | None) -> str:
+    if value == "high":
+        return "высокий приоритет"
+    if value == "low":
+        return "низкий приоритет"
+    return "средний приоритет"
+
+
+def parse_recurrence(text: str | None) -> str | None:
+    normalized = normalize_text(text or "")
+    for recurrence, aliases in RECURRING_ALIASES.items():
+        if any(contains_phrase(normalized, alias) for alias in aliases):
+            return recurrence
+    return None
+
+
+def parse_tags(text: str | None) -> list[str]:
+    normalized = normalize_text(text or "")
+    tags: list[str] = []
+    for tag, aliases in TAG_ALIASES.items():
+        if any(contains_phrase(normalized, alias) for alias in aliases):
+            tags.append(tag)
+    return tags
+
+
+def extract_tag_filter(text: str | None) -> str | None:
+    normalized = normalize_text(text or "")
+    for tag, aliases in TAG_ALIASES.items():
+        if any(contains_phrase(normalized, alias) for alias in aliases):
+            return tag
+    return None
+
+
+def recurrence_matches_today(todo: dict, current_day: str, current_date: datetime) -> bool:
+    recurrence = todo.get("recurring")
+    if recurrence == "daily":
+        return True
+    if recurrence == "weekdays":
+        return current_date.weekday() <= 4
+    if recurrence:
+        return False
+    return todo.get("day") == current_day
+
+
+def is_recurring_done_for_today(todo: dict, current_date: datetime) -> bool:
+    if not todo.get("recurring"):
+        return False
+    return str(todo.get("last_done_date") or "") == current_date.date().isoformat()
+
+
+def extract_numbers(text: str | None) -> list[int]:
+    if not text:
+        return []
+    normalized = normalize_text(text)
+    out: list[int] = []
+
+    # Digits first
+    for token in normalized.split():
+        if token.isdigit():
+            out.append(int(token))
+
+    tokens = normalized.split()
+    i = 0
+    while i < len(tokens):
+        token = tokens[i]
+        if token in NUM_WORDS:
+            val = NUM_WORDS[token]
+            # combine tens + units, like "двадцать три"
+            if val in (20, 30, 40, 50) and i + 1 < len(tokens):
+                nxt = tokens[i + 1]
+                nxt_val = NUM_WORDS.get(nxt)
+                if nxt_val is not None and 1 <= nxt_val <= 9:
+                    out.append(val + nxt_val)
+                    i += 2
+                    continue
+            out.append(val)
+        i += 1
+
+    return out
+
+
+def parse_time(text: str | None) -> str | None:
+    if not text:
+        return None
+
+    normalized = normalize_text(text)
+    is_evening = any(word in normalized for word in ("вечера", "дня", "днем", "пополудни"))
+    is_morning = any(word in normalized for word in ("утра", "утром", "ночи"))
+
+    # Conversational style: "пол восьмого" -> 07:30
+    half_match = re.search(r"\bпол\s+([а-я]+)\b", normalized)
+    if half_match:
+        nxt_hour = HALF_NEXT_HOUR.get(half_match.group(1))
+        if nxt_hour:
+            hour = nxt_hour - 1
+            if hour == 0:
+                hour = 12
+            if is_evening and 1 <= hour <= 11:
+                hour += 12
+            return f"{hour:02d}:30"
+
+    # "19:05", "7 30", "7:5", "7-30", "19.05"
+    match = re.search(r"\b([01]?\d|2[0-3])\s*[:.\- ]\s*([0-5]?\d)\b", normalized)
+    if match:
+        hh = int(match.group(1))
+        mm = int(match.group(2))
+        if mm <= 59:
+            if is_evening and 1 <= hh <= 11:
+                hh += 12
+            elif is_morning and hh == 12:
+                hh = 0
+            return f"{hh:02d}:{mm:02d}"
+
+    # "730", "0730", "1905"
+    compact_match = re.search(r"\b(\d{3,4})\b", normalized)
+    if compact_match:
+        raw = compact_match.group(1)
+        hh = int(raw[:-2])
+        mm = int(raw[-2:])
+        if 0 <= hh <= 23 and 0 <= mm <= 59:
+            if is_evening and 1 <= hh <= 11:
+                hh += 12
+            elif is_morning and hh == 12:
+                hh = 0
+            return f"{hh:02d}:{mm:02d}"
+
+    nums = extract_numbers(normalized)
+    if len(nums) >= 2:
+        hh, mm = nums[0], nums[1]
+        if 0 <= hh <= 23 and 0 <= mm <= 59:
+            if is_evening and 1 <= hh <= 11:
+                hh += 12
+            elif is_morning and hh == 12:
+                hh = 0
+            return f"{hh:02d}:{mm:02d}"
+    elif len(nums) == 1 and 0 <= nums[0] <= 23:
+        hh = nums[0]
+        if is_evening and 1 <= hh <= 11:
+            hh += 12
+        elif is_morning and hh == 12:
+            hh = 0
+        return f"{hh:02d}:00"
+
+    return None
+
+
+def capture_time_value() -> tuple[bool, str | None]:
+    """Ask for time and retry if parsing failed.
+
+    Returns (cancelled, time_value).
+    """
+    for attempt in range(3):
+        prompt = (
+            "Время, например 18 30, или без времени."
+            if attempt == 0
+            else "Не понял время. Скажи еще раз, например 19 45, или без времени."
+        )
+        time_text = listen_once(prompt, retries=1, phrase_time_limit=6)
+        if detect_stop(time_text):
+            return True, None
+        if not time_text:
+            continue
+        if any(contains_phrase(time_text, phrase) for phrase in NO_TIME_PHRASES):
+            return False, None
+
+        parsed = parse_time(time_text)
+        if parsed:
+            speak(f"Записал время {parsed}.")
+            return False, parsed
+
+    speak("Время не распознал, сохраню без времени.")
+    return False, None
+
+
+def parse_index(text: str | None) -> int | None:
+    nums = extract_numbers(text)
+    if not nums:
+        return None
+    value = nums[0]
+    return value if value > 0 else None
+
+
+def parse_explicit_index(text: str | None) -> int | None:
+    normalized = normalize_text(text or "")
+    if not normalized:
+        return None
+    if "номер" in normalized:
+        match = re.search(r"\bномер\s+(\d+)\b", normalized)
+        if match:
+            value = int(match.group(1))
+            return value if value > 0 else None
+    return None
+
+
+def format_todo_line(index: int, todo: dict) -> str:
+    done_value = bool(todo.get("done"))
+    if todo.get("recurring"):
+        done_value = is_recurring_done_for_today(todo, datetime.now())
+    status = "сделано" if done_value else "не сделано"
+    day = todo.get("day") or "без дня"
+    recurrence = todo.get("recurring")
+    if recurrence == "daily":
+        day = "каждый день"
+    elif recurrence == "weekdays":
+        day = "по будням"
+    time_value = todo.get("time") or "без времени"
+    priority = priority_label(todo.get("priority"))
+    tags = todo.get("tags") if isinstance(todo.get("tags"), list) else []
+    tags_text = f" теги: {', '.join(tags)}." if tags else ""
+    text = (todo.get("title") or todo.get("text") or "").strip()
+    details = (todo.get("details") or "").strip()
+    if details:
+        return f"{index}. {text}. {details}. {day}, {time_value}. {priority}. {status}.{tags_text}"
+    return f"{index}. {text}. {day}, {time_value}. {priority}. {status}.{tags_text}"
+
+
+def filter_todos_by_day(todos: list[dict], day: str | None) -> list[tuple[int, dict]]:
+    items: list[tuple[int, dict]] = []
+    now_dt = datetime.now()
+    current_day = DAY_ORDER[now_dt.weekday()]
+    for idx, todo in enumerate(todos):
+        recurrence = todo.get("recurring")
+        if day is None:
+            items.append((idx, todo))
+            continue
+        if recurrence:
+            if day == current_day and recurrence_matches_today(todo, day, now_dt):
+                items.append((idx, todo))
+            elif recurrence == "daily":
+                items.append((idx, todo))
+            elif recurrence == "weekdays" and day in DAY_ORDER[:5]:
+                items.append((idx, todo))
+            continue
+        if todo.get("day") == day:
+            items.append((idx, todo))
+    return items
+
+
+def filter_todos_by_tag(items: list[tuple[int, dict]], tag: str | None) -> list[tuple[int, dict]]:
+    if not tag:
+        return items
+    out: list[tuple[int, dict]] = []
+    for idx, todo in items:
+        tags = todo.get("tags") if isinstance(todo.get("tags"), list) else []
+        if tag in tags:
+            out.append((idx, todo))
+    return out
+
+
+def resolve_day_value(text: str | None, prompt: str = "Скажи день недели.") -> str | None:
+    day = parse_day(text)
+    if day:
+        return day
+    answer = listen_once(prompt, retries=1, phrase_time_limit=3)
+    if detect_stop(answer):
+        return None
+    return parse_day(answer)
+
+
+def parse_days_in_text(text: str | None) -> list[str]:
+    if not text:
+        return []
+    normalized = normalize_text(text)
+    hits: list[tuple[int, str]] = []
+    for canonical, aliases in DAY_ALIASES.items():
+        for alias in (canonical, *aliases):
+            match = re.search(rf"\b{re.escape(alias)}\b", normalized)
+            if match:
+                hits.append((match.start(), canonical))
+                break
+    hits.sort(key=lambda x: x[0])
+    out: list[str] = []
+    for _pos, day in hits:
+        if not out or out[-1] != day:
+            out.append(day)
+    rel_day = day_from_relative_word(normalized)
+    if rel_day and rel_day not in out:
+        out.append(rel_day)
+    return out
+
+
+def _day_alias_set() -> set[str]:
+    out: set[str] = set()
+    for canonical, aliases in DAY_ALIASES.items():
+        out.add(canonical)
+        out.update(aliases)
+    return out
+
+
+def _tokens_for_move_match(text: str | None) -> set[str]:
+    if not text:
+        return set()
+    normalized = normalize_text(text)
+    normalized = re.sub(r"\b\d{1,2}\s*[:.\- ]\s*\d{1,2}\b", " ", normalized)
+    normalized = re.sub(r"\b\d{3,4}\b", " ", normalized)
+    normalized = re.sub(r"\b\d+\b", " ", normalized)
+    normalized = re.sub(r"\bпол\s+[а-я]+\b", " ", normalized)
+
+    stop_words = {
+        "перенеси",
+        "перенести",
+        "перенес",
+        "сдвинь",
+        "задачу",
+        "дело",
+        "таск",
+        "на",
+        "в",
+        "к",
+        "с",
+        "со",
+        "из",
+        "во",
+        "и",
+        "или",
+        "пожалуйста",
+    }
+    stop_words.update(_day_alias_set())
+    stop_words.update({"утра", "вечера", "дня", "ночи"})
+
+    tokens = {tok for tok in normalized.split() if tok and tok not in stop_words and len(tok) > 1}
+    return tokens
+
+
+def _move_from_single_phrase(person: Person, text: str) -> bool:
+    """Try direct move: 'перенеси вторник тренировка на среду 19:30'."""
+    days = parse_days_in_text(text)
+    if len(days) < 2:
+        return False
+
+    source_day = days[0]
+    target_day = days[-1]
+    target_time = extract_time_from_inline(text)
+    if target_time is None:
+        return False
+
+    query_tokens = _tokens_for_move_match(text)
+    if not query_tokens:
+        return False
+
+    todos = load_todos(person)
+    candidates: list[tuple[float, int, dict]] = []
+    for idx, todo in enumerate(todos):
+        if todo.get("day") != source_day:
+            continue
+        title = (todo.get("title") or todo.get("text") or "").strip()
+        details = (todo.get("details") or "").strip()
+        todo_tokens = _tokens_for_move_match(f"{title} {details}")
+        if not todo_tokens:
+            continue
+        overlap = len(query_tokens & todo_tokens)
+        if overlap <= 0:
+            continue
+        score = overlap / max(1, len(query_tokens))
+        candidates.append((score, idx, todo))
+
+    if not candidates:
+        return False
+
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    best_score, best_idx, best_todo = candidates[0]
+    if best_score < 0.2:
+        return False
+
+    previous_state = dict(todos[best_idx])
+    apply_move(todos[best_idx], target_day, target_time)
+    save_todos(person, todos)
+    push_history(person, "update_item", {"id": previous_state.get("id"), "before": previous_state})
+
+    title = (best_todo.get("title") or best_todo.get("text") or "задача").strip()
+    confirm(f"Перенес: {title}. На {target_day} в {target_time}.")
+    return True
+
+
+def speak_todos(person: Person, day: str | None = None, tag: str | None = None) -> list[tuple[int, dict]]:
+    todos = load_todos(person)
+    if not todos:
+        speak("Список пуст.")
+        return []
+
+    filtered = filter_todos_by_day(todos, day)
+    filtered = filter_todos_by_tag(filtered, tag)
+    if day and not filtered:
+        speak(f"На {day} дел нет.")
+        return []
+    if tag and not filtered:
+        speak(f"По тегу {tag} дел нет.")
+        return []
+
+    if day:
+        speak(f"На {day} дел: {len(filtered)}")
+    else:
+        speak(f"Дел: {len(filtered)}")
+
+    for local_idx, (_global_idx, todo) in enumerate(filtered, start=1):
+        line = format_todo_line(local_idx, todo)
+        print(line)
+        speak(line)
+    return filtered
+
+
+def strip_add_prefix(text: str) -> str:
+    cleaned = text.strip()
+    for prefix in ADD_PREFIXES:
+        if contains_phrase(cleaned, prefix):
+            pattern = r"^\s*" + re.escape(prefix) + r"\b[:,\s-]*"
+            cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
+            break
+    return " ".join(cleaned.split())
+
+
+def extract_time_from_inline(text: str) -> str | None:
+    normalized = normalize_text(text)
+    patterns = (
+        r"\b([01]?\d|2[0-3])\s*[:.\-]\s*([0-5]?\d)\b",
+        r"\b([01]?\d|2[0-3])\s+([0-5]?\d)\b",
+        r"\b(\d{3,4})\b",
+        r"\b(?:в|к)\s+([01]?\d|2[0-3])\s*[:.\- ]\s*([0-5]?\d)\b",
+        r"\b(?:в|к)\s+(\d{3,4})\b",
+        r"\b(?:в|к)\s+([01]?\d|2[0-3])\b(?:\s+(утра|вечера|дня|ночи))?",
+        r"\b([01]?\d|2[0-3])\b(?:\s+(утра|вечера|дня|ночи))",
+        r"\bпол\s+[а-я]+\b(?:\s+(утра|вечера|дня|ночи))?",
+    )
+    for pat in patterns:
+        match = re.search(pat, normalized)
+        if not match:
+            continue
+        start, end = match.span()
+        parsed = parse_time(normalized[start:end])
+        if parsed:
+            return parsed
+    return None
+
+
+def extract_task_parts(raw_text: str) -> tuple[str, str | None, str | None, str | None]:
+    """Returns (title, details, day, time)."""
+    cleaned = strip_add_prefix(raw_text)
+    day = parse_day(cleaned)
+    time_value = extract_time_from_inline(cleaned)
+
+    # Optional details marker
+    details = None
+    for marker in (" описание ", " подробно ", " чтобы "):
+        if marker in f" {cleaned.lower()} ":
+            parts = cleaned.split(marker.strip(), 1)
+            if len(parts) == 2:
+                cleaned = parts[0].strip()
+                details = parts[1].strip()
+            break
+
+    # Remove day mentions from title text
+    for canonical, aliases in DAY_ALIASES.items():
+        all_aliases = (canonical, *aliases)
+        for alias in all_aliases:
+            cleaned = re.sub(
+                rf"\b(?:на|в|по)?\s*{re.escape(alias)}\b",
+                " ",
+                cleaned,
+                flags=re.IGNORECASE,
+            )
+
+    # Remove time phrases from title text
+    cleaned = re.sub(r"\b(?:в|к)\s+\d{1,2}\s*[:.\- ]\s*\d{1,2}\b", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b(?:в|к)\s+\d{3,4}\b", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b\d{1,2}\s*[:.\- ]\s*\d{1,2}\b", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b\d{3,4}\b", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b(?:в|к)\s+\d{1,2}\b(?:\s+(утра|вечера|дня|ночи))?", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b\d{1,2}\b(?:\s+(утра|вечера|дня|ночи))", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bпол\s+[а-я]+\b(?:\s+(утра|вечера|дня|ночи))?", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bкаждый\s+день\b", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bкаждый\s+будний\s+день\b", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bпо\s+будням\b", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b(важно|срочно|обычно|не\s+срочно|низкий\s+приоритет|высокий\s+приоритет)\b", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bза\s+\d{1,3}\s*(минут|мин|м)\b", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b(задачу|дело|таск)\b", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = cleaned.strip(" ,.-:")
+    cleaned = " ".join(cleaned.split())
+    if not cleaned:
+        cleaned = raw_text.strip()
+
+    return cleaned, details, day, time_value
+
+
+def extract_delete_query(text: str | None) -> str:
+    if not text:
+        return ""
+    cleaned = normalize_text(text)
+    cleaned = re.sub(r"\b(удали|удалить|удаляем|убери|убрать|стереть|стери|очисти|очистить)\b", " ", cleaned)
+    cleaned = re.sub(r"\b(дела|дело|задачу|задача|задачи|расписание|список|на)\b", " ", cleaned)
+    for canonical, aliases in DAY_ALIASES.items():
+        for alias in (canonical, *aliases):
+            cleaned = re.sub(rf"\b{re.escape(alias)}\b", " ", cleaned)
+    cleaned = re.sub(r"\bвсе\b", " ", cleaned)
+    cleaned = re.sub(r"\b\d+\b", " ", cleaned)
+    return " ".join(cleaned.split())
+
+
+def is_clear_all_request(text: str | None) -> bool:
+    if not text:
+        return False
+    normalized = normalize_text(text)
+    has_clear = any(
+        contains_phrase(normalized, phrase)
+        for phrase in ("очисти", "очистить", "удали все", "удалить все")
+    )
+    has_scope = any(
+        contains_phrase(normalized, phrase)
+        for phrase in ("все расписание", "все дела", "полностью", "целиком", "полный список")
+    )
+    has_day = parse_day(normalized) is not None
+    return has_clear and has_scope and not has_day
+
+
+def find_best_todo_match(candidates: list[tuple[int, dict]], query: str) -> tuple[int, dict] | None:
+    if not candidates or not query:
+        return None
+
+    q = normalize_text(query)
+    best: tuple[int, dict] | None = None
+    best_score = 0.0
+    for idx, todo in candidates:
+        haystack = normalize_text(
+            " ".join(
+                [
+                    str(todo.get("title") or ""),
+                    str(todo.get("text") or ""),
+                    str(todo.get("details") or ""),
+                ]
+            )
+        )
+        if not haystack:
+            continue
+        score = similarity(q, haystack)
+        overlap = token_overlap_score(q, haystack)
+        score = max(score, overlap)
+        if q in haystack:
+            score = max(score, 0.95)
+        elif has_all_parts(q.split(), haystack):
+            score = max(score, 0.8)
+        if score > best_score:
+            best_score = score
+            best = (idx, todo)
+
+    return best if best and best_score >= 0.3 else None
+
+
+def parse_reminder_offsets(text: str | None) -> list[int]:
+    normalized = normalize_text(text or "")
+    offsets: list[int] = []
+    for match in re.finditer(r"\bза\s+(\d{1,3})\s*(?:минут|мин|м)\b", normalized):
+        value = int(match.group(1))
+        if 1 <= value <= 180 and value not in offsets:
+            offsets.append(value)
+    return offsets or list(DEFAULT_REMINDER_OFFSETS)
+
+
+def expand_recurrence_days(recurrence: str | None, parsed_day: str | None) -> list[str]:
+    # Recurring task is represented by a single record (no duplication by weekdays).
+    if recurrence in ("daily", "weekdays"):
+        anchor = parsed_day or DAY_ORDER[datetime.now().weekday()]
+        return [anchor]
+    return [parsed_day] if parsed_day else []
+
+
+def extract_bulk_delete_keyword(text: str | None) -> str:
+    normalized = normalize_text(text or "")
+    match = re.search(r"\b(?:где|с)\s+(?:есть|словом|текстом)?\s*([а-я0-9\s-]{2,})", normalized)
+    if not match:
+        return ""
+    keyword = " ".join(match.group(1).split())
+    for filler in ("на", "вторник", "среда", "среду", "понедельник", "четверг", "пятница", "суббота", "воскресенье"):
+        keyword = re.sub(rf"\b{re.escape(filler)}\b", " ", keyword)
+    return " ".join(keyword.split())
+
+
+def _now_weekday_ru() -> str:
+    return DAY_ORDER[datetime.now().weekday()]
+
+
+def _play_reminder_cue() -> None:
+    if not winsound:
+        return
+    try:
+        winsound.PlaySound("SystemNotification", winsound.SND_ALIAS | winsound.SND_ASYNC)
+    except Exception:
+        try:
+            winsound.MessageBeep(winsound.MB_ICONASTERISK)
+        except Exception:
+            pass
+
+
+def _todo_due_in_offset(todo: dict, now: datetime, weekday: str) -> tuple[str, int] | None:
+    if todo.get("done") and not todo.get("recurring"):
+        return None
+    if not recurrence_matches_today(todo, weekday, now):
+        return None
+    if is_recurring_done_for_today(todo, now):
+        return None
+
+    time_value = todo.get("time")
+    if not time_value or not re.match(r"^\d{2}:\d{2}$", str(time_value)):
+        return None
+
+    seconds_left = seconds_until(str(time_value), now)
+    if seconds_left is None:
+        return None
+    if seconds_left < 0:
+        return None
+    offsets = todo.get("reminder_offsets")
+    if not isinstance(offsets, list) or not offsets:
+        offsets = list(DEFAULT_REMINDER_OFFSETS)
+    for offset in sorted([int(v) for v in offsets if isinstance(v, int) or str(v).isdigit()], reverse=True):
+        lower_bound = offset * 60
+        upper_bound = lower_bound + 59
+        if lower_bound <= seconds_left <= upper_bound:
+            return time_value, offset
+    return None
+
+
+def check_due_reminders(person: Person) -> None:
+    todos = load_todos(person)
+    if not todos:
+        return
+
+    now = datetime.now()
+    weekday = _now_weekday_ru()
+    changed = False
+
+    for todo in todos:
+        due = _todo_due_in_offset(todo, now, weekday)
+        if not due:
+            continue
+        time_value, offset = due
+        reminder_key = f"{now.date().isoformat()}:{time_value}:{offset}"
+        if todo.get("last_reminder_key") == reminder_key:
+            continue
+
+        title = (todo.get("title") or todo.get("text") or "дело").strip()
+        speak(f"Напоминание: через {offset} минут дело {title}. Время {time_value}.")
+        _play_reminder_cue()
+        todo["last_reminder_key"] = reminder_key
+        changed = True
+
+    if changed:
+        save_todos(person, todos)
+
+
+def _apply_reminder_reply(person: Person, todo: dict, reply: str | None) -> bool:
+    if not reply:
+        return False
+
+    normalized = normalize_text(reply)
+    if any(contains_phrase(normalized, phrase) for phrase in ("сделано", "отметь сделано", "выполнено", "готово")):
+        if todo.get("recurring"):
+            todo["done"] = False
+            todo["last_done_date"] = datetime.now().date().isoformat()
+        else:
+            todo["done"] = True
+        todo["done_at"] = datetime.now().isoformat(timespec="seconds")
+        speak(f"{person.display_name}: отметил сделанным.")
+        return True
+
+    if any(contains_phrase(normalized, phrase) for phrase in ("перенеси", "перенести", "сдвинь", "потом")):
+        days = parse_days_in_text(normalized)
+        target_day = days[-1] if days else parse_day_or_relative(normalized)
+        target_time = extract_time_from_inline(normalized)
+
+        if target_day is None and target_time is None:
+            speak(f"{person.display_name}: не понял перенос.")
+            return False
+
+        if target_day is not None:
+            todo["day"] = target_day
+            todo["recurring"] = None
+        if target_time is not None:
+            todo["time"] = target_time
+        todo["updated_at"] = datetime.now().isoformat(timespec="seconds")
+        todo.pop("last_reminder_key", None)
+        speak(
+            f"{person.display_name}: перенес. "
+            f"{todo.get('day') or 'без дня'}, {todo.get('time') or 'без времени'}."
+        )
+        return True
+
+    return False
+
+
+def process_global_reminders() -> None:
+    """Run reminders for all family members from the main assistant loop."""
+    bootstrap_data()
+    now = datetime.now()
+    weekday = DAY_ORDER[now.weekday()]
+
+    for person in PEOPLE:
+        todos = load_todos(person)
+        if not todos:
+            continue
+
+        for todo in todos:
+            due = _todo_due_in_offset(todo, now, weekday)
+            if not due:
+                continue
+            time_value, offset = due
+            reminder_key = f"{now.date().isoformat()}:{time_value}:{offset}"
+            if todo.get("last_reminder_key") == reminder_key:
+                continue
+
+            title = (todo.get("title") or todo.get("text") or "дело").strip()
+            speak(
+                f"{person.display_name}, напоминание: {title}. "
+                f"Время {time_value}, через {offset} минут. Скажи: сделано, или перенеси на день и время."
+            )
+            _play_reminder_cue()
+            reply = listen_once("", retries=0, phrase_time_limit=4)
+            _apply_reminder_reply(person, todo, reply)
+            todo["last_reminder_key"] = reminder_key
+            save_todos(person, todos)
+            return
+
+
+def add_todo(person: Person, initial_text: str | None = None) -> None:
+    task_text = initial_text if initial_text and len(initial_text.split()) > 1 else None
+    if not task_text:
+        speak("Скажи команду одной фразой: день, время и задачу.")
+        return
+    if detect_stop(task_text):
+        speak("Отменено.")
+        return
+    if not task_text:
+        speak("Не понял текст дела.")
+        return
+
+    title, details, day_value, time_value = extract_task_parts(task_text)
+    recurrence = parse_recurrence(task_text)
+    priority = parse_priority(task_text)
+    tags = parse_tags(task_text)
+    reminder_offsets = parse_reminder_offsets(task_text)
+    if (not day_value and not recurrence) or not time_value:
+        speak("Для добавления скажи сразу день недели и время. Например: добавь во вторник в 19 30 кормить крыс.")
+        return
+
+    todos = load_todos(person)
+    current_id = max([item.get("id", 0) for item in todos], default=0)
+    created_ids: list[int] = []
+    days_to_create = expand_recurrence_days(recurrence, day_value)
+    if not days_to_create and day_value:
+        days_to_create = [day_value]
+
+    for day_item in days_to_create:
+        current_id += 1
+        created_ids.append(current_id)
+        todos.append(
+            {
+                "id": current_id,
+                "title": title.strip(),
+                "text": title.strip(),  # backward compatibility
+                "details": (details or "").strip(),
+                "day": day_item,
+                "time": time_value,
+                "priority": priority,
+                "tags": tags,
+                "recurring": recurrence,
+                "reminder_offsets": reminder_offsets,
+                "done": False,
+                "created_at": datetime.now().isoformat(timespec="seconds"),
+            }
+        )
+    save_todos(person, todos)
+    push_history(person, "add", {"created_ids": created_ids})
+    log_event(
+        "todo_add",
+        person=person.key,
+        count=len(created_ids),
+        recurrence=recurrence or "",
+        time=time_value,
+        day=day_value or "",
+        title=title.strip(),
+    )
+    if recurrence:
+        confirm(f"Добавил повторяемую задачу. {priority_label(priority)}.")
+    else:
+        confirm(f"Добавил. {priority_label(priority)}.")
+
+
+def delete_todo(person: Person, initial_text: str | None = None) -> None:
+    todos = load_todos(person)
+    if not todos:
+        speak("Список пуст.")
+        return
+
+    if is_clear_all_request(initial_text):
+        push_history(person, "replace_all", {"todos_before": todos})
+        save_todos(person, [])
+        log_event("todo_clear_all", person=person.key)
+        confirm("Очистил все дела полностью.")
+        return
+
+    day = parse_day_or_relative(initial_text)
+    if not day:
+        speak("Скажи день недели в этой же фразе. Например: удали все дела на вторник.")
+        return
+
+    filtered = filter_todos_by_day(todos, day)
+    if not filtered:
+        speak(f"На {day} дел нет.")
+        return
+
+    normalized_text = normalize_text(initial_text or "")
+    remove_all_for_day = any(
+        contains_phrase(normalized_text, phrase)
+        for phrase in ("все дела", "очисти расписание", "очистить расписание", "очисти день", "очистить день")
+    )
+    if remove_all_for_day:
+        removed_items = [todo for todo in todos if todo.get("day") == day]
+        todos = [todo for todo in todos if todo.get("day") != day]
+        save_todos(person, todos)
+        push_history(person, "restore_items", {"items": removed_items})
+        log_event("todo_clear_day", person=person.key, day=day, removed=len(removed_items))
+        confirm(f"Очистил {day} полностью.")
+        return
+
+    bulk_keyword = extract_bulk_delete_keyword(initial_text)
+    if bulk_keyword:
+        removed_items = []
+        kept_items = []
+        for todo in todos:
+            if todo.get("day") != day:
+                kept_items.append(todo)
+                continue
+            haystack = normalize_text(
+                " ".join(
+                    [
+                        str(todo.get("title") or ""),
+                        str(todo.get("text") or ""),
+                        str(todo.get("details") or ""),
+                    ]
+                )
+            )
+            if bulk_keyword in haystack:
+                removed_items.append(todo)
+            else:
+                kept_items.append(todo)
+        if not removed_items:
+            speak("По этому слову ничего не нашел.")
+            return
+        save_todos(person, kept_items)
+        push_history(person, "restore_items", {"items": removed_items})
+        log_event("todo_delete_keyword", person=person.key, day=day, keyword=bulk_keyword, removed=len(removed_items))
+        confirm(f"Удалил по слову '{bulk_keyword}': {len(removed_items)}.")
+        return
+
+    index = parse_index(initial_text)
+    if index:
+        if index > len(filtered):
+            speak("Номер вне списка.")
+            return
+        global_idx, removed = filtered[index - 1]
+        todos.pop(global_idx)
+        save_todos(person, todos)
+        push_history(person, "restore_items", {"items": [removed]})
+        log_event(
+            "todo_delete",
+            person=person.key,
+            day=day,
+            mode="index",
+            title=removed.get("title") or removed.get("text", "дело"),
+        )
+        confirm(f"Удалил: {removed.get('title') or removed.get('text', 'дело')}.")
+        return
+
+    query = extract_delete_query(initial_text)
+    if not query:
+        speak("После дня недели добавь текст задачи или скажи 'все дела'.")
+        return
+
+    best = find_best_todo_match(filtered, query)
+    if not best:
+        speak("Точную задачу не нашел.")
+        return
+
+    global_idx, removed = best
+    todos.pop(global_idx)
+    save_todos(person, todos)
+    push_history(person, "restore_items", {"items": [removed]})
+    log_event(
+        "todo_delete",
+        person=person.key,
+        day=day,
+        mode="query",
+        title=removed.get("title") or removed.get("text", "дело"),
+    )
+    confirm(f"Удалил: {removed.get('title') or removed.get('text', 'дело')}.")
+
+
+def mark_done(person: Person, initial_text: str | None = None) -> None:
+    todos = load_todos(person)
+    if not todos:
+        speak("Список пуст.")
+        return
+
+    day = parse_day_or_relative(initial_text)
+    if not day:
+        speak("Скажи день недели и номер задачи в одной фразе.")
+        return
+    filtered = filter_todos_by_day(todos, day)
+    if not filtered:
+        speak(f"На {day} дел нет.")
+        return
+
+    index = parse_index(initial_text)
+    if not index or index > len(filtered):
+        speak("Номер не понял.")
+        return
+
+    global_idx, _todo = filtered[index - 1]
+    previous_state = dict(todos[global_idx])
+    if todos[global_idx].get("recurring"):
+        todos[global_idx]["last_done_date"] = datetime.now().date().isoformat()
+        todos[global_idx]["done_at"] = datetime.now().isoformat(timespec="seconds")
+        todos[global_idx]["done"] = False
+    else:
+        todos[global_idx]["done"] = True
+        todos[global_idx]["done_at"] = datetime.now().isoformat(timespec="seconds")
+    save_todos(person, todos)
+    push_history(person, "update_item", {"id": previous_state.get("id"), "before": previous_state})
+    log_event(
+        "todo_done",
+        person=person.key,
+        day=day,
+        id=previous_state.get("id"),
+        title=previous_state.get("title") or previous_state.get("text", "дело"),
+    )
+    confirm("Отметил.")
+
+
+def move_todo(person: Person, initial_text: str | None = None) -> None:
+    if initial_text and _move_from_single_phrase(person, initial_text):
+        return
+
+    todos = load_todos(person)
+    if not todos:
+        speak("Список пуст.")
+        return
+
+    days_in_text = parse_days_in_text(initial_text)
+    source_day = days_in_text[0] if days_in_text else parse_day_or_relative(initial_text)
+    day = source_day
+    if not day:
+        speak("Скажи исходный день недели и название задачи в одной фразе.")
+        return
+    filtered = filter_todos_by_day(todos, day)
+    if not filtered:
+        speak(f"На {day} дел нет.")
+        return
+
+    target_day = days_in_text[-1] if len(days_in_text) >= 2 else None
+    if not target_day:
+        speak("Скажи и исходный, и целевой день недели одной фразой.")
+        return
+
+    target_time = extract_time_from_inline(initial_text or "")
+    if target_time is None:
+        speak("Скажи время переноса в этой же фразе.")
+        return
+
+    global_idx: int | None = None
+    explicit_index = parse_explicit_index(initial_text)
+    if explicit_index is not None:
+        if explicit_index <= 0 or explicit_index > len(filtered):
+            speak("Номер вне списка.")
+            return
+        global_idx = filtered[explicit_index - 1][0]
+    else:
+        query_tokens = _tokens_for_move_match(initial_text)
+        best_match: tuple[float, int] | None = None
+        for idx, todo in filtered:
+            title = (todo.get("title") or todo.get("text") or "").strip()
+            details = (todo.get("details") or "").strip()
+            todo_tokens = _tokens_for_move_match(f"{title} {details}")
+            if not todo_tokens:
+                continue
+            overlap = len(query_tokens & todo_tokens)
+            if overlap <= 0:
+                continue
+            score = overlap / max(1, len(query_tokens))
+            if best_match is None or score > best_match[0]:
+                best_match = (score, idx)
+
+        if best_match is None or best_match[0] < 0.2:
+            speak("Не нашел задачу по названию на этот день.")
+            return
+        global_idx = best_match[1]
+
+    if global_idx is None:
+        speak("Не удалось определить задачу для переноса.")
+        return
+
+    previous_state = dict(todos[global_idx])
+    apply_move(todos[global_idx], target_day, target_time)
+    save_todos(person, todos)
+    push_history(person, "update_item", {"id": previous_state.get("id"), "before": previous_state})
+    log_event(
+        "todo_move",
+        person=person.key,
+        id=previous_state.get("id"),
+        source_day=previous_state.get("day"),
+        target_day=target_day,
+        target_time=target_time,
+        title=previous_state.get("title") or previous_state.get("text", "дело"),
+    )
+    confirm(f"Перенес на {target_day}, {target_time or 'без времени'}.")
+
+
+def list_todos_for_requested_day(person: Person, initial_text: str | None = None) -> None:
+    day = parse_day_or_relative(initial_text)
+    tag = extract_tag_filter(initial_text)
+    speak_todos(person, day=day, tag=tag)
+
+
+def get_schedule_for_day(person: Person, initial_text: str | None = None) -> None:
+    if not person.has_schedule:
+        speak("Для этого пользователя расписания нет.")
+        return
+
+    day = parse_day_or_relative(initial_text)
+    if not day:
+        speak("Скажи день недели в этой же фразе. Например: расписание на среду.")
+        return
+
+    schedule = read_json(schedule_path(person), SCHEDULE_DEFAULT)
+    lessons = schedule.get(day, []) if isinstance(schedule, dict) else []
+    if not lessons:
+        speak("На этот день уроков нет.")
+        return
+
+    speak(f"{day}.")
+    for idx, lesson in enumerate(lessons, start=1):
+        line = f"{idx}. {lesson}"
+        print(line)
+        speak(line)
+
+
+def weekly_review(person: Person) -> None:
+    todos = load_todos(person)
+    history = load_history(person)
+    not_done = [t for t in todos if not t.get("done")]
+    by_day: dict[str, int] = {day: 0 for day in DAY_ORDER}
+    for todo in not_done:
+        day = str(todo.get("day") or "")
+        if day in by_day:
+            by_day[day] += 1
+
+    moved_count: dict[int, int] = {}
+    for entry in history:
+        if entry.get("action") != "update_item":
+            continue
+        payload = entry.get("payload")
+        if not isinstance(payload, dict):
+            continue
+        todo_id = payload.get("id")
+        if isinstance(todo_id, int):
+            moved_count[todo_id] = moved_count.get(todo_id, 0) + 1
+
+    top_moved = sorted(moved_count.items(), key=lambda x: x[1], reverse=True)[:3]
+    speak(f"Недельный обзор. Невыполненных: {len(not_done)}.")
+    for day, count in by_day.items():
+        if count > 0:
+            speak(f"{day}: {count}.")
+    if top_moved:
+        speak("Чаще переносились:")
+        by_id = {int(t.get('id') or 0): t for t in todos}
+        for todo_id, cnt in top_moved:
+            title = (by_id.get(todo_id, {}).get("title") or "задача")
+            speak(f"{title}: {cnt} переносов.")
+
+
+def undo_last_action(person: Person) -> None:
+    history = load_history(person)
+    if not history:
+        speak("История пуста.")
+        return
+
+    entry = history.pop()
+    todos = load_todos(person)
+    action = entry.get("action")
+    payload = entry.get("payload") if isinstance(entry.get("payload"), dict) else {}
+
+    if action == "add":
+        created_ids = set(payload.get("created_ids", []))
+        todos = [todo for todo in todos if todo.get("id") not in created_ids]
+        save_todos(person, todos)
+        save_history(person, history)
+        log_event("todo_undo", person=person.key, action="add")
+        confirm("Отменил последнее добавление.")
+        return
+
+    if action == "replace_all":
+        old = payload.get("todos_before")
+        if isinstance(old, list):
+            save_todos(person, old)
+            save_history(person, history)
+            log_event("todo_undo", person=person.key, action="replace_all")
+            confirm("Вернул полный список.")
+            return
+
+    if action == "restore_items":
+        items = payload.get("items")
+        if isinstance(items, list) and items:
+            existing_ids = {todo.get("id") for todo in todos}
+            for item in items:
+                if isinstance(item, dict) and item.get("id") not in existing_ids:
+                    todos.append(item)
+            todos.sort(key=lambda item: int(item.get("id") or 0))
+            save_todos(person, todos)
+            save_history(person, history)
+            log_event("todo_undo", person=person.key, action="restore_items", restored=len(items))
+            confirm("Вернул удаленные задачи.")
+            return
+
+    if action == "update_item":
+        target_id = payload.get("id")
+        old_state = payload.get("before")
+        if target_id is not None and isinstance(old_state, dict):
+            for idx, todo in enumerate(todos):
+                if todo.get("id") == target_id:
+                    todos[idx] = old_state
+                    save_todos(person, todos)
+                    save_history(person, history)
+                    log_event("todo_undo", person=person.key, action="update_item", id=target_id)
+                    confirm("Откатил последнее изменение.")
+                    return
+
+    speak("Не получилось откатить последнее действие.")
+
+
+def parse_action(person: Person, text: str | None) -> str | None:
+    return resolve_action(
+        text=text,
+        person_has_schedule=person.has_schedule,
+        contains_phrase=contains_phrase,
+        detect_stop=detect_stop,
+        detect_switch_person=detect_switch_person,
+    )
+
+
+def choose_person() -> Person | None:
+    speak("Кто это?")
+    while True:
+        text = listen_once("", retries=1, phrase_time_limit=3)
+        if detect_stop(text):
+            return None
+        person = find_person(text)
+        if person:
+            speak(person.display_name)
+            return person
+        speak("Имя не понял.")
+
+
+def run_for_person(person: Person) -> str:
+    speak("Слушаю.")
+
+    while True:
+        check_due_reminders(person)
+        text = listen_once("Команда?", retries=1, phrase_time_limit=8)
+        action = parse_action(person, text)
+        if action == "stop":
+            return "stop"
+        if action == "switch_person":
+            return "switch_person"
+        if action == "add":
+            add_todo(person, initial_text=text)
+        elif action == "delete":
+            delete_todo(person, initial_text=text)
+        elif action == "clear":
+            delete_todo(person, initial_text=text)
+        elif action == "done":
+            mark_done(person, initial_text=text)
+        elif action == "move":
+            move_todo(person, initial_text=text)
+        elif action == "list":
+            list_todos_for_requested_day(person, initial_text=text)
+        elif action == "schedule":
+            get_schedule_for_day(person, initial_text=text)
+        elif action == "undo":
+            undo_last_action(person)
+        elif action == "review":
+            weekly_review(person)
+        else:
+            speak("Не понял команду.")
+
+
+def main() -> None:
+    bootstrap_data()
+    speak("Семейная тудушка.")
+    while True:
+        person = choose_person()
+        if person is None:
+            speak("Пока.")
+            return
+        result = run_for_person(person)
+        if result == "stop":
+            speak("Готово. Пока.")
+            return
+
+
+if __name__ == "__main__":
+    main()

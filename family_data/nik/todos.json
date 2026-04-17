@@ -1,0 +1,120 @@
+[
+  {
+    "id": 17,
+    "title": "Тренировка",
+    "text": "Тренировка",
+    "details": "СУПЕРТРЕНЯ!!!!",
+    "day": "воскресенье",
+    "time": "15:00",
+    "priority": "high",
+    "tags": [
+      "тренировка"
+    ],
+    "recurring": null,
+    "reminder_offsets": [
+      120,
+      60,
+      30,
+      10
+    ],
+    "done": false,
+    "created_at": "2026-04-16T14:50:17"
+  },
+  {
+    "id": 18,
+    "title": "Работа по ecopfr.ru",
+    "text": "Работа по ecopfr.ru",
+    "details": "",
+    "day": "пятница",
+    "time": "11:00",
+    "priority": "medium",
+    "tags": [
+      "работа"
+    ],
+    "recurring": null,
+    "reminder_offsets": [
+      60,
+      30,
+      10
+    ],
+    "done": false,
+    "created_at": "2026-04-16T17:25:10"
+  },
+  {
+    "id": 19,
+    "title": "Тренировка",
+    "text": "Тренировка",
+    "details": "Ноги",
+    "day": "пятница",
+    "time": "19:00",
+    "priority": "high",
+    "tags": [
+      "тренировка"
+    ],
+    "recurring": null,
+    "reminder_offsets": [
+      60,
+      30,
+      10
+    ],
+    "done": false,
+    "created_at": "2026-04-16T22:22:34"
+  },
+  {
+    "id": 20,
+    "title": "пастирать крысам",
+    "text": "пастирать крысам",
+    "details": "",
+    "day": "пятница",
+    "time": "15:00",
+    "priority": "high",
+    "tags": [
+      "домашние дела"
+    ],
+    "recurring": null,
+    "reminder_offsets": [
+      60,
+      30,
+      10
+    ],
+    "done": false,
+    "created_at": "2026-04-16T22:30:53"
+  },
+  {
+    "id": 21,
+    "title": "Стирка",
+    "text": "Стирка",
+    "details": "",
+    "day": "пятница",
+    "time": "12:00",
+    "priority": "medium",
+    "tags": [],
+    "recurring": null,
+    "reminder_offsets": [
+      30,
+      10
+    ],
+    "done": false,
+    "created_at": "2026-04-17T03:06:36"
+  },
+  {
+    "id": 22,
+    "title": "Работа по stylish",
+    "text": "Работа по stylish",
+    "details": "шаблоны + расчеты",
+    "day": "пятница",
+    "time": "13:00",
+    "priority": "medium",
+    "tags": [
+      "работа"
+    ],
+    "recurring": null,
+    "reminder_offsets": [
+      60,
+      30,
+      10
+    ],
+    "done": false,
+    "created_at": "2026-04-17T03:15:14"
+  }
+]
