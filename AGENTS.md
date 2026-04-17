@@ -15,6 +15,9 @@
 ## 2. Git и публикация изменений
 
 - Основная ветка: `master` (или актуальная ветка, которую указал пользователь).
+- Для каждого нового workspace перед первой публикацией агент обязан запускать:
+  - `powershell -NoProfile -ExecutionPolicy Bypass -File C:\Users\user\.codex\scripts\ensure-git-publish.ps1`
+- Этот bootstrap делает автоматически: `git init`, проверку identity, создание GitHub-репозитория (если `origin` отсутствует), первый commit и `push -u`.
 - Если `git commit` не проходит из-за отсутствия `user.name`/`user.email`, агент настраивает их автоматически и продолжает работу без запроса к пользователю.
 - Порядок автоконфигурации git identity:
   - сначала локально в репозитории (`git config user.name`, `git config user.email`);
