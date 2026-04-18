@@ -1,7 +1,8 @@
 ﻿import json
 import re
+import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from difflib import SequenceMatcher
 from pathlib import Path
 
@@ -71,6 +72,7 @@ RECURRING_ALIASES = {
 }
 DEFAULT_REMINDER_OFFSETS = [60, 30, 10]
 QUIET_CONFIRMATIONS = True
+RECURRENCE_HORIZON_DAYS = 30
 TAG_ALIASES = {
     "дом": ("дом", "домашнее", "быт"),
     "работа": ("работа", "рабочее"),
@@ -276,11 +278,31 @@ def find_person(text: str | None) -> Person | None:
 
 def load_todos(person: Person) -> list[dict]:
     data = read_json(todos_path(person), [])
-    todos = data if isinstance(data, list) else []
+    source = data if isinstance(data, list) else []
     changed = False
-    for todo in todos:
+
+    normalized: list[dict] = []
+    used_ids: set[int] = set()
+    max_id = 0
+    today = datetime.now().date()
+
+    def reserve_id(preferred: int | None = None) -> int:
+        nonlocal max_id
+        if preferred is not None and preferred > 0 and preferred not in used_ids:
+            used_ids.add(preferred)
+            max_id = max(max_id, preferred)
+            return preferred
+        max_id = max(max_id + 1, 1)
+        while max_id in used_ids:
+            max_id += 1
+        used_ids.add(max_id)
+        return max_id
+
+    for todo in source:
         if not isinstance(todo, dict):
+            changed = True
             continue
+
         text_blob = " ".join(
             [
                 str(todo.get("title") or ""),
@@ -289,56 +311,118 @@ def load_todos(person: Person) -> list[dict]:
             ]
         ).strip()
 
-        if not todo.get("time"):
-            inferred_time = extract_time_from_inline(text_blob)
+        inferred_time = str(todo.get("time") or "").strip()
+        if not inferred_time:
+            inferred_time = extract_time_from_inline(text_blob) or ""
             if inferred_time:
-                todo["time"] = inferred_time
                 changed = True
 
-        if not todo.get("day"):
-            inferred_day = parse_day(text_blob)
-            if inferred_day:
-                todo["day"] = inferred_day
-                changed = True
+        due_date = todo_due_date(todo, base_date=today)
+        if due_date is None:
+            day_value = parse_day(text_blob) or weekday_ru(today)
+            due_date = nearest_date_for_weekday(day_value, base_date=today).isoformat()
+            changed = True
 
-        if not todo.get("title") and todo.get("text"):
-            todo["title"] = str(todo.get("text"))
+        status = str(todo.get("status") or "")
+        done_flag = bool(todo.get("done"))
+        if status not in {"active", "done"}:
+            status = "done" if done_flag else "active"
             changed = True
-        if not todo.get("priority"):
-            todo["priority"] = "medium"
+
+        recurrence_rule = str(todo.get("recurrence_rule") or todo.get("recurring") or "").strip()
+        if recurrence_rule not in {"daily", "weekdays"}:
+            recurrence_rule = ""
+
+        raw_id = todo.get("id")
+        candidate_id = int(raw_id) if isinstance(raw_id, int) else None
+        item_id = reserve_id(candidate_id)
+        if candidate_id != item_id:
             changed = True
+
+        title = str(todo.get("title") or todo.get("text") or "").strip() or "без названия"
+        if not todo.get("title"):
+            changed = True
+
         offsets = todo.get("reminder_offsets")
         if not isinstance(offsets, list) or not offsets:
-            todo["reminder_offsets"] = list(DEFAULT_REMINDER_OFFSETS)
+            offsets = list(DEFAULT_REMINDER_OFFSETS)
             changed = True
+
         tags = todo.get("tags")
         if not isinstance(tags, list):
-            todo["tags"] = []
+            tags = []
             changed = True
 
-    # Legacy migration: recurring tasks used to be duplicated per day.
-    # Keep only one record per recurring signature.
-    seen_recurring: set[tuple[str, str, str, str]] = set()
-    deduped: list[dict] = []
-    for todo in todos:
-        recurrence = str(todo.get("recurring") or "")
-        if recurrence in ("daily", "weekdays"):
-            signature = (
-                recurrence,
-                normalize_text(str(todo.get("title") or todo.get("text") or "")),
-                str(todo.get("time") or ""),
-                normalize_text(str(todo.get("details") or "")),
-            )
-            if signature in seen_recurring:
+        series_id = todo.get("series_id")
+        if recurrence_rule and not series_id:
+            series_id = f"series-{uuid.uuid4().hex[:12]}"
+            changed = True
+
+        normalized.append(
+            {
+                "id": item_id,
+                "title": title,
+                "text": title,
+                "details": str(todo.get("details") or "").strip(),
+                "due_date": due_date,
+                "day": weekday_ru(datetime.fromisoformat(due_date).date()),
+                "time": inferred_time or None,
+                "priority": str(todo.get("priority") or "medium"),
+                "tags": tags,
+                "status": status,
+                "done": status == "done",
+                "done_at": todo.get("done_at"),
+                "created_at": str(todo.get("created_at") or datetime.now().isoformat(timespec="seconds")),
+                "updated_at": todo.get("updated_at"),
+                "reminder_offsets": offsets,
+                "series_id": series_id,
+                "recurrence_rule": recurrence_rule or None,
+                "generated_from_rule": bool(todo.get("generated_from_rule") or recurrence_rule),
+                "legacy_day": todo.get("day"),
+            }
+        )
+
+    # Ensure recurrence horizon has concrete instances for the next N days.
+    horizon_end = today + timedelta(days=RECURRENCE_HORIZON_DAYS - 1)
+    by_series: dict[str, list[dict]] = {}
+    for todo in normalized:
+        sid = str(todo.get("series_id") or "")
+        rule = str(todo.get("recurrence_rule") or "")
+        if sid and rule:
+            by_series.setdefault(sid, []).append(todo)
+
+    for sid, items in by_series.items():
+        rule = str(items[0].get("recurrence_rule") or "")
+        existing_dates = {str(item.get("due_date")) for item in items}
+        template = min(items, key=lambda x: str(x.get("due_date") or ""))
+        cursor = datetime.fromisoformat(str(template.get("due_date"))).date()
+        while cursor <= horizon_end:
+            cursor_iso = cursor.isoformat()
+            matches = rule == "daily" or (rule == "weekdays" and cursor.weekday() <= 4)
+            if matches and cursor_iso not in existing_dates:
+                new_id = reserve_id(None)
+                normalized.append(
+                    {
+                        **template,
+                        "id": new_id,
+                        "due_date": cursor_iso,
+                        "day": weekday_ru(cursor),
+                        "status": "active",
+                        "done": False,
+                        "done_at": None,
+                        "updated_at": None,
+                        "generated_from_rule": True,
+                    }
+                )
+                existing_dates.add(cursor_iso)
                 changed = True
-                continue
-            seen_recurring.add(signature)
-        deduped.append(todo)
-    todos = deduped
+            cursor += timedelta(days=1)
+
+    normalized.sort(key=lambda item: (str(item.get("due_date") or ""), str(item.get("time") or ""), int(item.get("id") or 0)))
 
     if changed:
-        save_todos(person, todos)
-    return todos
+        save_todos(person, normalized)
+    return normalized
 
 
 def save_todos(person: Person, todos: list[dict]) -> None:
@@ -380,6 +464,154 @@ def day_from_relative_word(text: str | None) -> str | None:
 
 def parse_day_or_relative(text: str | None) -> str | None:
     return parse_day(text) or day_from_relative_word(text)
+
+
+def weekday_ru(dt: date) -> str:
+    return DAY_ORDER[dt.weekday()]
+
+
+def nearest_date_for_weekday(day_ru: str, *, base_date: date | None = None, include_today: bool = True) -> date:
+    base = base_date or datetime.now().date()
+    target_idx = DAY_ORDER.index(day_ru)
+    delta = (target_idx - base.weekday()) % 7
+    if delta == 0 and not include_today:
+        delta = 7
+    return base + timedelta(days=delta)
+
+
+def parse_due_date_input(text: str | None, *, base_date: date | None = None) -> str | None:
+    if not text:
+        return None
+    source = (text or "").strip()
+    normalized = normalize_text(source)
+    today = base_date or datetime.now().date()
+
+    if any(contains_phrase(normalized, phrase) for phrase in ("сегодня", "на сегодня")):
+        return today.isoformat()
+    if any(contains_phrase(normalized, phrase) for phrase in ("завтра", "на завтра")):
+        return (today + timedelta(days=1)).isoformat()
+
+    iso_match = re.search(r"\b(20\d{2})-(\d{1,2})-(\d{1,2})\b", source)
+    if iso_match:
+        y, m, d = map(int, iso_match.groups())
+        try:
+            return date(y, m, d).isoformat()
+        except ValueError:
+            return None
+
+    full_match = re.search(r"\b(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})\b", source)
+    if full_match:
+        d, m, y = full_match.groups()
+        year = int(y)
+        if year < 100:
+            year += 2000
+        try:
+            return date(year, int(m), int(d)).isoformat()
+        except ValueError:
+            return None
+
+    short_match = re.search(r"\b(\d{1,2})[./-](\d{1,2})\b", source)
+    if short_match:
+        d, m = map(int, short_match.groups())
+        for candidate_year in (today.year, today.year + 1):
+            try:
+                dt = date(candidate_year, m, d)
+            except ValueError:
+                continue
+            if dt >= today:
+                return dt.isoformat()
+        return None
+
+    parsed_day = parse_day(normalized)
+    if parsed_day:
+        return nearest_date_for_weekday(parsed_day, base_date=today).isoformat()
+
+    return None
+
+
+def todo_due_date(todo: dict, *, base_date: date | None = None) -> str | None:
+    raw = str(todo.get("due_date") or "").strip()
+    if re.match(r"^\d{4}-\d{2}-\d{2}$", raw):
+        return raw
+    migrated = parse_due_date_input(str(todo.get("date") or "") or str(todo.get("day") or ""), base_date=base_date)
+    return migrated
+
+
+def parse_day_or_date(text: str | None) -> tuple[str | None, str | None]:
+    due_date = parse_due_date_input(text)
+    if due_date:
+        return due_date, None
+    return None, parse_day_or_relative(text)
+
+
+def week_bounds(anchor: date | None = None) -> tuple[date, date]:
+    base = anchor or datetime.now().date()
+    start = base - timedelta(days=base.weekday())
+    end = start + timedelta(days=6)
+    return start, end
+
+
+def month_bounds(anchor: date | None = None) -> tuple[date, date]:
+    base = anchor or datetime.now().date()
+    start = date(base.year, base.month, 1)
+    if base.month == 12:
+        next_month = date(base.year + 1, 1, 1)
+    else:
+        next_month = date(base.year, base.month + 1, 1)
+    end = next_month - timedelta(days=1)
+    return start, end
+
+
+def parse_period_request(text: str | None, *, base_date: date | None = None) -> tuple[str | None, str | None, str]:
+    source = text or ""
+    normalized = normalize_text(source)
+    today = base_date or datetime.now().date()
+
+    if any(contains_phrase(normalized, phrase) for phrase in ("прошлая неделя", "на прошлой неделе")):
+        start, end = week_bounds(today - timedelta(days=7))
+        return start.isoformat(), end.isoformat(), "прошлая неделя"
+    if any(contains_phrase(normalized, phrase) for phrase in ("следующая неделя", "на следующей неделе")):
+        start, end = week_bounds(today + timedelta(days=7))
+        return start.isoformat(), end.isoformat(), "следующая неделя"
+    if any(contains_phrase(normalized, phrase) for phrase in ("эта неделя", "текущая неделя", "на неделе", "за неделю")):
+        start, end = week_bounds(today)
+        return start.isoformat(), end.isoformat(), "текущая неделя"
+
+    if any(contains_phrase(normalized, phrase) for phrase in ("прошлый месяц", "за прошлый месяц")):
+        prev_month_anchor = date(today.year - 1, 12, 15) if today.month == 1 else date(today.year, today.month - 1, 15)
+        start, end = month_bounds(prev_month_anchor)
+        return start.isoformat(), end.isoformat(), "прошлый месяц"
+    if any(contains_phrase(normalized, phrase) for phrase in ("следующий месяц",)):
+        next_month_anchor = date(today.year + 1, 1, 15) if today.month == 12 else date(today.year, today.month + 1, 15)
+        start, end = month_bounds(next_month_anchor)
+        return start.isoformat(), end.isoformat(), "следующий месяц"
+    if any(contains_phrase(normalized, phrase) for phrase in ("этот месяц", "текущий месяц", "за месяц")):
+        start, end = month_bounds(today)
+        return start.isoformat(), end.isoformat(), "текущий месяц"
+
+    range_match = re.search(
+        r"\b(?:с|от)\s+(\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?)\s+(?:по|до)\s+(\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?)\b",
+        source,
+        flags=re.IGNORECASE,
+    )
+    if range_match:
+        left = parse_due_date_input(range_match.group(1), base_date=today)
+        right = parse_due_date_input(range_match.group(2), base_date=today)
+        if left and right:
+            start, end = sorted((left, right))
+            return start, end, f"{start}..{end}"
+
+    due_date = parse_due_date_input(source, base_date=today)
+    if due_date:
+        return due_date, due_date, due_date
+
+    day = parse_day_or_relative(source)
+    if day:
+        due = nearest_date_for_weekday(day, base_date=today).isoformat()
+        return due, due, due
+
+    start, end = week_bounds(today)
+    return start.isoformat(), end.isoformat(), "текущая неделя"
 
 
 def parse_priority(text: str | None) -> str:
@@ -424,20 +656,14 @@ def extract_tag_filter(text: str | None) -> str | None:
 
 
 def recurrence_matches_today(todo: dict, current_day: str, current_date: datetime) -> bool:
-    recurrence = todo.get("recurring")
-    if recurrence == "daily":
-        return True
-    if recurrence == "weekdays":
-        return current_date.weekday() <= 4
-    if recurrence:
-        return False
-    return todo.get("day") == current_day
+    due = str(todo.get("due_date") or "")
+    if due:
+        return due == current_date.date().isoformat()
+    return str(todo.get("day") or "") == current_day
 
 
 def is_recurring_done_for_today(todo: dict, current_date: datetime) -> bool:
-    if not todo.get("recurring"):
-        return False
-    return str(todo.get("last_done_date") or "") == current_date.date().isoformat()
+    return str(todo.get("status") or "active") == "done"
 
 
 def extract_numbers(text: str | None) -> list[int]:
@@ -585,16 +811,16 @@ def parse_explicit_index(text: str | None) -> int | None:
 
 
 def format_todo_line(index: int, todo: dict) -> str:
-    done_value = bool(todo.get("done"))
-    if todo.get("recurring"):
-        done_value = is_recurring_done_for_today(todo, datetime.now())
+    done_value = str(todo.get("status") or ("done" if todo.get("done") else "active")) == "done"
     status = "сделано" if done_value else "не сделано"
+    due_date = str(todo.get("due_date") or "")
     day = todo.get("day") or "без дня"
-    recurrence = todo.get("recurring")
-    if recurrence == "daily":
-        day = "каждый день"
-    elif recurrence == "weekdays":
-        day = "по будням"
+    if due_date:
+        try:
+            dt = datetime.fromisoformat(due_date).date()
+            day = f"{dt.strftime('%d.%m.%Y')} ({weekday_ru(dt)})"
+        except ValueError:
+            day = due_date
     time_value = todo.get("time") or "без времени"
     priority = priority_label(todo.get("priority"))
     tags = todo.get("tags") if isinstance(todo.get("tags"), list) else []
@@ -608,22 +834,43 @@ def format_todo_line(index: int, todo: dict) -> str:
 
 def filter_todos_by_day(todos: list[dict], day: str | None) -> list[tuple[int, dict]]:
     items: list[tuple[int, dict]] = []
-    now_dt = datetime.now()
-    current_day = DAY_ORDER[now_dt.weekday()]
     for idx, todo in enumerate(todos):
-        recurrence = todo.get("recurring")
         if day is None:
             items.append((idx, todo))
             continue
-        if recurrence:
-            if day == current_day and recurrence_matches_today(todo, day, now_dt):
-                items.append((idx, todo))
-            elif recurrence == "daily":
-                items.append((idx, todo))
-            elif recurrence == "weekdays" and day in DAY_ORDER[:5]:
-                items.append((idx, todo))
-            continue
-        if todo.get("day") == day:
+        due_date = str(todo.get("due_date") or "")
+        due_day = str(todo.get("day") or "")
+        if due_date:
+            try:
+                due_day = weekday_ru(datetime.fromisoformat(due_date).date())
+            except ValueError:
+                pass
+        if due_day == day:
+            items.append((idx, todo))
+    return items
+
+
+def filter_todos_by_date(todos: list[dict], due_date: str | None) -> list[tuple[int, dict]]:
+    if not due_date:
+        return list(enumerate(todos))
+    items: list[tuple[int, dict]] = []
+    for idx, todo in enumerate(todos):
+        if str(todo.get("due_date") or "") == due_date:
+            items.append((idx, todo))
+    return items
+
+
+def filter_todos_by_range(
+    todos: list[dict],
+    start_date: str | None,
+    end_date: str | None,
+) -> list[tuple[int, dict]]:
+    if not start_date or not end_date:
+        return list(enumerate(todos))
+    items: list[tuple[int, dict]] = []
+    for idx, todo in enumerate(todos):
+        due = str(todo.get("due_date") or "")
+        if start_date <= due <= end_date:
             items.append((idx, todo))
     return items
 
@@ -637,6 +884,18 @@ def filter_todos_by_tag(items: list[tuple[int, dict]], tag: str | None) -> list[
         if tag in tags:
             out.append((idx, todo))
     return out
+
+
+def todo_items_for_period(
+    person: Person,
+    *,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    tag: str | None = None,
+) -> list[tuple[int, dict]]:
+    todos = load_todos(person)
+    items = filter_todos_by_range(todos, start_date, end_date)
+    return filter_todos_by_tag(items, tag)
 
 
 def resolve_day_value(text: str | None, prompt: str = "Скажи день недели.") -> str | None:
@@ -733,7 +992,14 @@ def _move_from_single_phrase(person: Person, text: str) -> bool:
     todos = load_todos(person)
     candidates: list[tuple[float, int, dict]] = []
     for idx, todo in enumerate(todos):
-        if todo.get("day") != source_day:
+        due = str(todo.get("due_date") or "")
+        todo_day = str(todo.get("day") or "")
+        if due:
+            try:
+                todo_day = weekday_ru(datetime.fromisoformat(due).date())
+            except ValueError:
+                pass
+        if todo_day != source_day:
             continue
         title = (todo.get("title") or todo.get("text") or "").strip()
         details = (todo.get("details") or "").strip()
@@ -756,11 +1022,14 @@ def _move_from_single_phrase(person: Person, text: str) -> bool:
 
     previous_state = dict(todos[best_idx])
     apply_move(todos[best_idx], target_day, target_time)
+    target_due = nearest_date_for_weekday(target_day, include_today=False)
+    todos[best_idx]["due_date"] = target_due.isoformat()
+    todos[best_idx]["day"] = target_day
     save_todos(person, todos)
     push_history(person, "update_item", {"id": previous_state.get("id"), "before": previous_state})
 
     title = (best_todo.get("title") or best_todo.get("text") or "задача").strip()
-    confirm(f"Перенес: {title}. На {target_day} в {target_time}.")
+    confirm(f"Перенес: {title}. На {target_due.strftime('%d.%m.%Y')} в {target_time}.")
     return True
 
 
@@ -982,11 +1251,12 @@ def _play_reminder_cue() -> None:
 
 
 def _todo_due_in_offset(todo: dict, now: datetime, weekday: str) -> tuple[str, int] | None:
-    if todo.get("done") and not todo.get("recurring"):
+    if str(todo.get("status") or "") == "done" or bool(todo.get("done")):
         return None
-    if not recurrence_matches_today(todo, weekday, now):
+    due_date = str(todo.get("due_date") or "")
+    if due_date and due_date != now.date().isoformat():
         return None
-    if is_recurring_done_for_today(todo, now):
+    if not due_date and not recurrence_matches_today(todo, weekday, now):
         return None
 
     time_value = todo.get("time")
@@ -1043,34 +1313,38 @@ def _apply_reminder_reply(person: Person, todo: dict, reply: str | None) -> bool
 
     normalized = normalize_text(reply)
     if any(contains_phrase(normalized, phrase) for phrase in ("сделано", "отметь сделано", "выполнено", "готово")):
-        if todo.get("recurring"):
-            todo["done"] = False
-            todo["last_done_date"] = datetime.now().date().isoformat()
-        else:
-            todo["done"] = True
+        todo["done"] = True
+        todo["status"] = "done"
         todo["done_at"] = datetime.now().isoformat(timespec="seconds")
         speak(f"{person.display_name}: отметил сделанным.")
         return True
 
     if any(contains_phrase(normalized, phrase) for phrase in ("перенеси", "перенести", "сдвинь", "потом")):
-        days = parse_days_in_text(normalized)
-        target_day = days[-1] if days else parse_day_or_relative(normalized)
+        target_due_date = parse_due_date_input(normalized)
+        if target_due_date is None:
+            days = parse_days_in_text(normalized)
+            target_day = days[-1] if days else parse_day_or_relative(normalized)
+            if target_day:
+                target_due_date = nearest_date_for_weekday(target_day, base_date=datetime.now().date(), include_today=False).isoformat()
         target_time = extract_time_from_inline(normalized)
 
-        if target_day is None and target_time is None:
+        if target_due_date is None and target_time is None:
             speak(f"{person.display_name}: не понял перенос.")
             return False
 
-        if target_day is not None:
-            todo["day"] = target_day
-            todo["recurring"] = None
+        if target_due_date is not None:
+            todo["due_date"] = target_due_date
+            todo["day"] = weekday_ru(datetime.fromisoformat(target_due_date).date())
         if target_time is not None:
             todo["time"] = target_time
+        todo["status"] = "active"
+        todo["done"] = False
+        todo["done_at"] = None
         todo["updated_at"] = datetime.now().isoformat(timespec="seconds")
         todo.pop("last_reminder_key", None)
         speak(
             f"{person.display_name}: перенес. "
-            f"{todo.get('day') or 'без дня'}, {todo.get('time') or 'без времени'}."
+            f"{todo.get('due_date') or todo.get('day') or 'без дня'}, {todo.get('time') or 'без времени'}."
         )
         return True
 
@@ -1123,22 +1397,35 @@ def add_todo(person: Person, initial_text: str | None = None) -> None:
         return
 
     title, details, day_value, time_value = extract_task_parts(task_text)
+    due_date_value = parse_due_date_input(task_text)
+    if due_date_value is None and day_value:
+        due_date_value = nearest_date_for_weekday(day_value).isoformat()
     recurrence = parse_recurrence(task_text)
     priority = parse_priority(task_text)
     tags = parse_tags(task_text)
     reminder_offsets = parse_reminder_offsets(task_text)
-    if (not day_value and not recurrence) or not time_value:
-        speak("Для добавления скажи сразу день недели и время. Например: добавь во вторник в 19 30 кормить крыс.")
+    if (not due_date_value and not recurrence) or not time_value:
+        speak("Для добавления скажи дату/день и время. Например: добавь 25.04 в 19 30 кормить крыс.")
         return
 
     todos = load_todos(person)
     current_id = max([item.get("id", 0) for item in todos], default=0)
     created_ids: list[int] = []
-    days_to_create = expand_recurrence_days(recurrence, day_value)
-    if not days_to_create and day_value:
-        days_to_create = [day_value]
+    series_id = f"series-{uuid.uuid4().hex[:12]}" if recurrence else None
 
-    for day_item in days_to_create:
+    dates_to_create: list[date] = []
+    if recurrence:
+        start_dt = datetime.fromisoformat(due_date_value or datetime.now().date().isoformat()).date()
+        end_dt = start_dt + timedelta(days=RECURRENCE_HORIZON_DAYS - 1)
+        cursor = start_dt
+        while cursor <= end_dt:
+            if recurrence == "daily" or (recurrence == "weekdays" and cursor.weekday() <= 4):
+                dates_to_create.append(cursor)
+            cursor += timedelta(days=1)
+    elif due_date_value:
+        dates_to_create = [datetime.fromisoformat(due_date_value).date()]
+
+    for due_dt in dates_to_create:
         current_id += 1
         created_ids.append(current_id)
         todos.append(
@@ -1147,13 +1434,17 @@ def add_todo(person: Person, initial_text: str | None = None) -> None:
                 "title": title.strip(),
                 "text": title.strip(),  # backward compatibility
                 "details": (details or "").strip(),
-                "day": day_item,
+                "due_date": due_dt.isoformat(),
+                "day": weekday_ru(due_dt),
                 "time": time_value,
                 "priority": priority,
                 "tags": tags,
-                "recurring": recurrence,
-                "reminder_offsets": reminder_offsets,
+                "status": "active",
                 "done": False,
+                "recurrence_rule": recurrence,
+                "series_id": series_id,
+                "generated_from_rule": bool(recurrence),
+                "reminder_offsets": reminder_offsets,
                 "created_at": datetime.now().isoformat(timespec="seconds"),
             }
         )
@@ -1166,6 +1457,7 @@ def add_todo(person: Person, initial_text: str | None = None) -> None:
         recurrence=recurrence or "",
         time=time_value,
         day=day_value or "",
+        due_date=due_date_value or "",
         title=title.strip(),
     )
     if recurrence:
@@ -1187,14 +1479,15 @@ def delete_todo(person: Person, initial_text: str | None = None) -> None:
         confirm("Очистил все дела полностью.")
         return
 
-    day = parse_day_or_relative(initial_text)
-    if not day:
-        speak("Скажи день недели в этой же фразе. Например: удали все дела на вторник.")
+    due_date, day = parse_day_or_date(initial_text)
+    if not day and not due_date:
+        speak("Скажи дату или день в этой же фразе. Например: удали 25.04 номер 1.")
         return
 
-    filtered = filter_todos_by_day(todos, day)
+    filtered = filter_todos_by_date(todos, due_date) if due_date else filter_todos_by_day(todos, day)
     if not filtered:
-        speak(f"На {day} дел нет.")
+        label = due_date or day or "выбранную дату"
+        speak(f"На {label} дел нет.")
         return
 
     normalized_text = normalize_text(initial_text or "")
@@ -1203,12 +1496,16 @@ def delete_todo(person: Person, initial_text: str | None = None) -> None:
         for phrase in ("все дела", "очисти расписание", "очистить расписание", "очисти день", "очистить день")
     )
     if remove_all_for_day:
-        removed_items = [todo for todo in todos if todo.get("day") == day]
-        todos = [todo for todo in todos if todo.get("day") != day]
+        if due_date:
+            removed_items = [todo for todo in todos if str(todo.get("due_date") or "") == due_date]
+            todos = [todo for todo in todos if str(todo.get("due_date") or "") != due_date]
+        else:
+            removed_items = [todo for todo in todos if todo.get("day") == day]
+            todos = [todo for todo in todos if todo.get("day") != day]
         save_todos(person, todos)
         push_history(person, "restore_items", {"items": removed_items})
-        log_event("todo_clear_day", person=person.key, day=day, removed=len(removed_items))
-        confirm(f"Очистил {day} полностью.")
+        log_event("todo_clear_day", person=person.key, day=day or "", due_date=due_date or "", removed=len(removed_items))
+        confirm(f"Очистил {due_date or day} полностью.")
         return
 
     bulk_keyword = extract_bulk_delete_keyword(initial_text)
@@ -1216,7 +1513,10 @@ def delete_todo(person: Person, initial_text: str | None = None) -> None:
         removed_items = []
         kept_items = []
         for todo in todos:
-            if todo.get("day") != day:
+            if due_date and str(todo.get("due_date") or "") != due_date:
+                kept_items.append(todo)
+                continue
+            if not due_date and todo.get("day") != day:
                 kept_items.append(todo)
                 continue
             haystack = normalize_text(
@@ -1237,7 +1537,14 @@ def delete_todo(person: Person, initial_text: str | None = None) -> None:
             return
         save_todos(person, kept_items)
         push_history(person, "restore_items", {"items": removed_items})
-        log_event("todo_delete_keyword", person=person.key, day=day, keyword=bulk_keyword, removed=len(removed_items))
+        log_event(
+            "todo_delete_keyword",
+            person=person.key,
+            day=day or "",
+            due_date=due_date or "",
+            keyword=bulk_keyword,
+            removed=len(removed_items),
+        )
         confirm(f"Удалил по слову '{bulk_keyword}': {len(removed_items)}.")
         return
 
@@ -1253,7 +1560,8 @@ def delete_todo(person: Person, initial_text: str | None = None) -> None:
         log_event(
             "todo_delete",
             person=person.key,
-            day=day,
+            day=day or "",
+            due_date=due_date or "",
             mode="index",
             title=removed.get("title") or removed.get("text", "дело"),
         )
@@ -1277,7 +1585,8 @@ def delete_todo(person: Person, initial_text: str | None = None) -> None:
     log_event(
         "todo_delete",
         person=person.key,
-        day=day,
+        day=day or "",
+        due_date=due_date or "",
         mode="query",
         title=removed.get("title") or removed.get("text", "дело"),
     )
@@ -1290,13 +1599,13 @@ def mark_done(person: Person, initial_text: str | None = None) -> None:
         speak("Список пуст.")
         return
 
-    day = parse_day_or_relative(initial_text)
-    if not day:
-        speak("Скажи день недели и номер задачи в одной фразе.")
+    due_date, day = parse_day_or_date(initial_text)
+    if not day and not due_date:
+        speak("Скажи дату/день и номер задачи в одной фразе.")
         return
-    filtered = filter_todos_by_day(todos, day)
+    filtered = filter_todos_by_date(todos, due_date) if due_date else filter_todos_by_day(todos, day)
     if not filtered:
-        speak(f"На {day} дел нет.")
+        speak(f"На {due_date or day} дел нет.")
         return
 
     index = parse_index(initial_text)
@@ -1306,19 +1615,16 @@ def mark_done(person: Person, initial_text: str | None = None) -> None:
 
     global_idx, _todo = filtered[index - 1]
     previous_state = dict(todos[global_idx])
-    if todos[global_idx].get("recurring"):
-        todos[global_idx]["last_done_date"] = datetime.now().date().isoformat()
-        todos[global_idx]["done_at"] = datetime.now().isoformat(timespec="seconds")
-        todos[global_idx]["done"] = False
-    else:
-        todos[global_idx]["done"] = True
-        todos[global_idx]["done_at"] = datetime.now().isoformat(timespec="seconds")
+    todos[global_idx]["done"] = True
+    todos[global_idx]["status"] = "done"
+    todos[global_idx]["done_at"] = datetime.now().isoformat(timespec="seconds")
     save_todos(person, todos)
     push_history(person, "update_item", {"id": previous_state.get("id"), "before": previous_state})
     log_event(
         "todo_done",
         person=person.key,
-        day=day,
+        day=day or "",
+        due_date=due_date or "",
         id=previous_state.get("id"),
         title=previous_state.get("title") or previous_state.get("text", "дело"),
     )
@@ -1334,20 +1640,23 @@ def move_todo(person: Person, initial_text: str | None = None) -> None:
         speak("Список пуст.")
         return
 
+    source_due_date = parse_due_date_input(initial_text)
     days_in_text = parse_days_in_text(initial_text)
     source_day = days_in_text[0] if days_in_text else parse_day_or_relative(initial_text)
-    day = source_day
-    if not day:
-        speak("Скажи исходный день недели и название задачи в одной фразе.")
+    if not source_day and not source_due_date:
+        speak("Скажи исходную дату/день и название задачи в одной фразе.")
         return
-    filtered = filter_todos_by_day(todos, day)
+    filtered = filter_todos_by_date(todos, source_due_date) if source_due_date else filter_todos_by_day(todos, source_day)
     if not filtered:
-        speak(f"На {day} дел нет.")
+        speak(f"На {source_due_date or source_day} дел нет.")
         return
 
+    target_due_date = parse_due_date_input(normalize_text(initial_text or "").replace(str(source_due_date or ""), "")) or None
     target_day = days_in_text[-1] if len(days_in_text) >= 2 else None
-    if not target_day:
-        speak("Скажи и исходный, и целевой день недели одной фразой.")
+    if not target_due_date and target_day:
+        target_due_date = nearest_date_for_weekday(target_day, include_today=False).isoformat()
+    if not target_due_date:
+        speak("Скажи целевую дату или день недели одной фразой.")
         return
 
     target_time = extract_time_from_inline(initial_text or "")
@@ -1388,25 +1697,47 @@ def move_todo(person: Person, initial_text: str | None = None) -> None:
         return
 
     previous_state = dict(todos[global_idx])
-    apply_move(todos[global_idx], target_day, target_time)
+    todos[global_idx]["due_date"] = target_due_date
+    todos[global_idx]["day"] = weekday_ru(datetime.fromisoformat(target_due_date).date())
+    todos[global_idx]["time"] = target_time
+    todos[global_idx]["status"] = "active"
+    todos[global_idx]["done"] = False
+    todos[global_idx]["done_at"] = None
+    todos[global_idx]["updated_at"] = datetime.now().isoformat(timespec="seconds")
     save_todos(person, todos)
     push_history(person, "update_item", {"id": previous_state.get("id"), "before": previous_state})
     log_event(
         "todo_move",
         person=person.key,
         id=previous_state.get("id"),
-        source_day=previous_state.get("day"),
-        target_day=target_day,
+        source_day=previous_state.get("day") or "",
+        source_due_date=previous_state.get("due_date") or "",
+        target_day=todos[global_idx].get("day") or "",
+        target_due_date=target_due_date,
         target_time=target_time,
         title=previous_state.get("title") or previous_state.get("text", "дело"),
     )
-    confirm(f"Перенес на {target_day}, {target_time or 'без времени'}.")
+    confirm(f"Перенес на {target_due_date}, {target_time or 'без времени'}.")
 
 
 def list_todos_for_requested_day(person: Person, initial_text: str | None = None) -> None:
-    day = parse_day_or_relative(initial_text)
     tag = extract_tag_filter(initial_text)
-    speak_todos(person, day=day, tag=tag)
+    start_date, end_date, label = parse_period_request(initial_text)
+    todos = load_todos(person)
+    filtered = filter_todos_by_range(todos, start_date, end_date)
+    filtered = filter_todos_by_tag(filtered, tag)
+    if not filtered:
+        speak(f"За период {label} дел нет.")
+        return
+
+    if start_date == end_date:
+        speak(f"На {label} дел: {len(filtered)}")
+    else:
+        speak(f"За период {label} дел: {len(filtered)}")
+    for local_idx, (_global_idx, todo) in enumerate(filtered, start=1):
+        line = format_todo_line(local_idx, todo)
+        print(line)
+        speak(line)
 
 
 def get_schedule_for_day(person: Person, initial_text: str | None = None) -> None:
@@ -1435,10 +1766,27 @@ def get_schedule_for_day(person: Person, initial_text: str | None = None) -> Non
 def weekly_review(person: Person) -> None:
     todos = load_todos(person)
     history = load_history(person)
-    not_done = [t for t in todos if not t.get("done")]
+    today = datetime.now().date()
+    week_start, week_end = week_bounds(today)
+    month_start, month_end = month_bounds(today)
+
+    not_done = [
+        t
+        for t in todos
+        if str(t.get("status") or ("done" if t.get("done") else "active")) != "done"
+    ]
+    week_items = filter_todos_by_range(todos, week_start.isoformat(), week_end.isoformat())
+    month_items = filter_todos_by_range(todos, month_start.isoformat(), month_end.isoformat())
+
     by_day: dict[str, int] = {day: 0 for day in DAY_ORDER}
-    for todo in not_done:
+    for _idx, todo in week_items:
         day = str(todo.get("day") or "")
+        due = str(todo.get("due_date") or "")
+        if due:
+            try:
+                day = weekday_ru(datetime.fromisoformat(due).date())
+            except ValueError:
+                pass
         if day in by_day:
             by_day[day] += 1
 
@@ -1454,7 +1802,12 @@ def weekly_review(person: Person) -> None:
             moved_count[todo_id] = moved_count.get(todo_id, 0) + 1
 
     top_moved = sorted(moved_count.items(), key=lambda x: x[1], reverse=True)[:3]
-    speak(f"Недельный обзор. Невыполненных: {len(not_done)}.")
+    speak(
+        "Обзор. "
+        f"Невыполненных всего: {len(not_done)}. "
+        f"На текущую неделю: {len(week_items)}. "
+        f"На текущий месяц: {len(month_items)}."
+    )
     for day, count in by_day.items():
         if count > 0:
             speak(f"{day}: {count}.")
@@ -1597,3 +1950,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+

@@ -36,8 +36,10 @@ class FamilyTodoTests(unittest.TestCase):
     def test_add_recurring_single_record(self) -> None:
         ft.add_todo(self.person, "добавь каждый день в 19 30 кормить крыс")
         todos = ft.load_todos(self.person)
-        recurring = [t for t in todos if t.get("recurring") == "daily"]
-        self.assertEqual(len(recurring), 1)
+        recurring = [t for t in todos if (t.get("recurrence_rule") or t.get("recurring")) == "daily"]
+        self.assertGreaterEqual(len(recurring), 1)
+        series_ids = {t.get("series_id") for t in recurring}
+        self.assertEqual(len(series_ids), 1)
 
     def test_move_by_title_without_index(self) -> None:
         ft.add_todo(self.person, "добавь во вторник в 19 30 кормить крыс")

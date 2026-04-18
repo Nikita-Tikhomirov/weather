@@ -1,6 +1,6 @@
 ﻿import json
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import requests
@@ -17,7 +17,6 @@ STATE_PATH = BASE_DIR / "family_data" / "telegram_state.json"
 ADULTS = {"nik", "nastya"}
 CHILDREN = {"misha", "arisha"}
 
-DAY_LABELS = list(ft.DAY_ORDER)
 TIME_LABELS = [
     f"{hour:02d}:{minute:02d}"
     for hour in range(7, 23)
@@ -173,12 +172,11 @@ def profile_keyboard(actor_key: str | None) -> dict:
     return {"keyboard": rows, "resize_keyboard": True, "one_time_keyboard": True}
 
 
-def day_keyboard() -> dict:
+def date_keyboard() -> dict:
     rows = [
-        [{"text": "понедельник"}, {"text": "вторник"}, {"text": "среда"}],
-        [{"text": "четверг"}, {"text": "пятница"}, {"text": "суббота"}],
-        [{"text": "воскресенье"}],
         [{"text": "сегодня"}, {"text": "завтра"}],
+        [{"text": "через 2 дня"}, {"text": "через 3 дня"}],
+        [{"text": "⌨ Ввести дату"}],
         [{"text": "❌ Отмена"}],
     ]
     return {"keyboard": rows, "resize_keyboard": True, "one_time_keyboard": True}
@@ -211,13 +209,20 @@ def minute_keyboard() -> dict:
     return {"keyboard": rows, "resize_keyboard": True, "one_time_keyboard": True}
 
 
-def parse_day_choice(text: str) -> str | None:
+def parse_date_choice(text: str) -> str | None:
     normalized = (text or "").strip().lower()
+    today = datetime.now().date()
     if normalized == "сегодня":
-        return ft.DAY_ORDER[datetime.now().weekday()]
+        return today.isoformat()
     if normalized == "завтра":
-        return ft.DAY_ORDER[(datetime.now().weekday() + 1) % 7]
-    return normalized if normalized in DAY_LABELS else None
+        return (today + timedelta(days=1)).isoformat()
+    if normalized == "через 2 дня":
+        return (today + timedelta(days=2)).isoformat()
+    if normalized == "через 3 дня":
+        return (today + timedelta(days=3)).isoformat()
+    if normalized in {"⌨ ввести дату", "ввести дату", "дата"}:
+        return None
+    return ft.parse_due_date_input(normalized)
 
 
 def parse_time_choice(text: str) -> str | None:
@@ -245,8 +250,28 @@ def parse_minute_choice(text: str) -> str | None:
     return None
 
 
-def todo_items_for_day(person, day: str) -> list[tuple[int, dict]]:
-    return ft.filter_todos_by_day(ft.load_todos(person), day)
+def todo_items_for_date(person, due_date: str) -> list[tuple[int, dict]]:
+    return ft.filter_todos_by_date(ft.load_todos(person), due_date)
+
+
+def format_date_for_command(due_date: str) -> str:
+    try:
+        dt = datetime.fromisoformat(due_date).date()
+        return dt.strftime("%d.%m.%Y")
+    except ValueError:
+        return due_date
+
+
+def period_keyboard() -> dict:
+    return {
+        "keyboard": [
+            [{"text": "Текущая неделя"}, {"text": "Текущий месяц"}],
+            [{"text": "Прошлый месяц"}, {"text": "Конкретная дата"}],
+            [{"text": "❌ Отмена"}],
+        ],
+        "resize_keyboard": True,
+        "one_time_keyboard": True,
+    }
 
 
 def make_pick_keyboard(items: list[tuple[int, dict]], prefix: str) -> tuple[dict, dict[str, int]]:
@@ -364,15 +389,15 @@ def handle_flow(chat_id: int, state: dict, text: str) -> bool:
         return True
 
     name = flow.get("name")
-    if name == "add_day":
-        day = parse_day_choice(text)
-        if not day:
-            send_message(chat_id, "Выбери день кнопкой.", day_keyboard())
+    if name == "add_date":
+        due_date = parse_date_choice(text)
+        if not due_date:
+            send_message(chat_id, "Выбери дату кнопкой или введи вручную (дд.мм или дд.мм.гггг).", date_keyboard())
             return True
-        flow["day"] = day
+        flow["due_date"] = due_date
         flow["name"] = "add_hour"
         set_flow(state, chat_id, flow)
-        send_message(chat_id, f"Выбран день: {day}. Теперь выбери час или введи время вручную.", hour_keyboard())
+        send_message(chat_id, f"Выбрана дата: {format_date_for_command(due_date)}. Теперь выбери час или введи время вручную.", hour_keyboard())
         return True
 
     if name == "add_hour":
@@ -432,43 +457,41 @@ def handle_flow(chat_id: int, state: dict, text: str) -> bool:
         if not title or title.startswith("🪪") or title.startswith("👤"):
             send_message(chat_id, "Напиши текст задачи обычным сообщением.", main_keyboard(state, chat_id))
             return True
-        day = str(flow.get("day"))
+        due_date = str(flow.get("due_date"))
         time_value = str(flow.get("time"))
-        command = f"добавь в {day} в {time_value.replace(':', ' ')} {title}"
+        command = f"добавь на {format_date_for_command(due_date)} в {time_value.replace(':', ' ')} {title}"
         replies = execute_todo_command(target, command, actor.key)
         clear_flow(state, chat_id)
         for reply in replies:
             send_message(chat_id, reply, main_keyboard(state, chat_id))
         return True
 
-    if name in {"delete_day", "done_day", "move_day", "schedule_remove_day", "schedule_add_day", "schedule_view_day", "list_view_day"}:
-        day = parse_day_choice(text)
-        if not day:
-            send_message(chat_id, "Выбери день кнопкой.", day_keyboard())
+    if name in {"delete_date", "done_date", "move_date", "schedule_remove_day", "schedule_add_day", "schedule_view_day"}:
+        due_date = parse_date_choice(text)
+        if not due_date:
+            send_message(chat_id, "Выбери дату кнопкой.", date_keyboard())
             return True
-        flow["day"] = day
+        flow["due_date"] = due_date
 
         if name == "schedule_view_day":
+            day = ft.weekday_ru(datetime.fromisoformat(due_date).date())
             replies = execute_todo_command(target, f"расписание {day}", actor.key)
             clear_flow(state, chat_id)
             for reply in replies:
                 send_message(chat_id, reply, main_keyboard(state, chat_id))
             return True
 
-        if name == "list_view_day":
-            replies = execute_todo_command(target, f"список на {day}", actor.key)
-            clear_flow(state, chat_id)
-            for reply in replies:
-                send_message(chat_id, reply, main_keyboard(state, chat_id))
-            return True
-
         if name == "schedule_add_day":
+            day = ft.weekday_ru(datetime.fromisoformat(due_date).date())
+            flow["day"] = day
             flow["name"] = "schedule_add_title"
             set_flow(state, chat_id, flow)
             send_message(chat_id, f"Напиши урок/пункт расписания на {day}.", main_keyboard(state, chat_id))
             return True
 
         if name == "schedule_remove_day":
+            day = ft.weekday_ru(datetime.fromisoformat(due_date).date())
+            flow["day"] = day
             schedule = ensure_schedule_dict(target)
             lessons = schedule.get(day, [])
             if not lessons:
@@ -485,19 +508,52 @@ def handle_flow(chat_id: int, state: dict, text: str) -> bool:
             send_message(chat_id, "Выбери пункт для удаления:\n" + "\n".join(text_lines), {"keyboard": rows, "resize_keyboard": True, "one_time_keyboard": True})
             return True
 
-        items = todo_items_for_day(target, day)
+        items = todo_items_for_date(target, due_date)
         if not items:
             clear_flow(state, chat_id)
-            send_message(chat_id, f"На {day} задач нет.", main_keyboard(state, chat_id))
+            send_message(chat_id, f"На {format_date_for_command(due_date)} задач нет.", main_keyboard(state, chat_id))
             return True
 
         rows_text = [ft.format_todo_line(i, todo) for i, (_idx, todo) in enumerate(items, start=1)]
-        prefix = "✅ №" if name == "done_day" else ("🗑 №" if name == "delete_day" else "🔁 №")
+        prefix = "✅ №" if name == "done_date" else ("🗑 №" if name == "delete_date" else "🔁 №")
         keyboard_payload, mapping = make_pick_keyboard(items, prefix)
         flow["keys"] = mapping
-        flow["name"] = {"done_day": "done_pick", "delete_day": "delete_pick", "move_day": "move_pick"}[name]
+        flow["name"] = {"done_date": "done_pick", "delete_date": "delete_pick", "move_date": "move_pick"}[name]
         set_flow(state, chat_id, flow)
         send_message(chat_id, "Выбери задачу:\n" + "\n".join(rows_text), keyboard_payload)
+        return True
+
+    if name == "list_period_pick":
+        normalized = (text or "").strip().lower()
+        if normalized == "текущая неделя":
+            query = "список за текущую неделю"
+        elif normalized == "текущий месяц":
+            query = "список за текущий месяц"
+        elif normalized == "прошлый месяц":
+            query = "список за прошлый месяц"
+        elif normalized == "конкретная дата":
+            flow["name"] = "list_single_date"
+            set_flow(state, chat_id, flow)
+            send_message(chat_id, "Выбери дату для просмотра списка.", date_keyboard())
+            return True
+        else:
+            send_message(chat_id, "Выбери период кнопкой.", period_keyboard())
+            return True
+        replies = execute_todo_command(target, query, actor.key)
+        clear_flow(state, chat_id)
+        for reply in replies:
+            send_message(chat_id, reply, main_keyboard(state, chat_id))
+        return True
+
+    if name == "list_single_date":
+        due_date = parse_date_choice(text)
+        if not due_date:
+            send_message(chat_id, "Выбери дату кнопкой.", date_keyboard())
+            return True
+        replies = execute_todo_command(target, f"список на {format_date_for_command(due_date)}", actor.key)
+        clear_flow(state, chat_id)
+        for reply in replies:
+            send_message(chat_id, reply, main_keyboard(state, chat_id))
         return True
 
     if name == "done_pick":
@@ -505,9 +561,9 @@ def handle_flow(chat_id: int, state: dict, text: str) -> bool:
         if text not in keys:
             send_message(chat_id, "Выбери номер кнопкой.", None)
             return True
-        day = str(flow.get("day"))
+        due_date = str(flow.get("due_date"))
         index = int(keys[text])
-        replies = execute_todo_command(target, f"отметь {day} номер {index}", actor.key)
+        replies = execute_todo_command(target, f"отметь {format_date_for_command(due_date)} номер {index}", actor.key)
         clear_flow(state, chat_id)
         for reply in replies:
             send_message(chat_id, reply, main_keyboard(state, chat_id))
@@ -518,9 +574,9 @@ def handle_flow(chat_id: int, state: dict, text: str) -> bool:
         if text not in keys:
             send_message(chat_id, "Выбери номер кнопкой.", None)
             return True
-        day = str(flow.get("day"))
+        due_date = str(flow.get("due_date"))
         index = int(keys[text])
-        replies = execute_todo_command(target, f"удали {day} номер {index}", actor.key)
+        replies = execute_todo_command(target, f"удали {format_date_for_command(due_date)} номер {index}", actor.key)
         clear_flow(state, chat_id)
         for reply in replies:
             send_message(chat_id, reply, main_keyboard(state, chat_id))
@@ -532,17 +588,17 @@ def handle_flow(chat_id: int, state: dict, text: str) -> bool:
             send_message(chat_id, "Выбери номер кнопкой.", None)
             return True
         flow["index"] = int(keys[text])
-        flow["name"] = "move_target_day"
+        flow["name"] = "move_target_date"
         set_flow(state, chat_id, flow)
-        send_message(chat_id, "Выбери новый день.", day_keyboard())
+        send_message(chat_id, "Выбери новую дату.", date_keyboard())
         return True
 
-    if name == "move_target_day":
-        day = parse_day_choice(text)
-        if not day:
-            send_message(chat_id, "Выбери день кнопкой.", day_keyboard())
+    if name == "move_target_date":
+        due_date = parse_date_choice(text)
+        if not due_date:
+            send_message(chat_id, "Выбери дату кнопкой.", date_keyboard())
             return True
-        flow["target_day"] = day
+        flow["target_due_date"] = due_date
         flow["name"] = "move_target_hour"
         set_flow(state, chat_id, flow)
         send_message(chat_id, "Выбери новый час или введи время вручную.", hour_keyboard())
@@ -554,12 +610,12 @@ def handle_flow(chat_id: int, state: dict, text: str) -> bool:
             return True
         time_value = parse_time_choice(text)
         if time_value:
-            source_day = str(flow.get("day"))
+            source_due_date = str(flow.get("due_date"))
             index = int(flow.get("index") or 1)
-            target_day = str(flow.get("target_day"))
+            target_due_date = str(flow.get("target_due_date"))
             replies = execute_todo_command(
                 target,
-                f"перенеси {source_day} номер {index} на {target_day} в {time_value.replace(':', ' ')}",
+                f"перенеси {format_date_for_command(source_due_date)} номер {index} на {format_date_for_command(target_due_date)} в {time_value.replace(':', ' ')}",
                 actor.key,
             )
             clear_flow(state, chat_id)
@@ -596,12 +652,12 @@ def handle_flow(chat_id: int, state: dict, text: str) -> bool:
             target_hour = str(flow.get("target_hour") or "19")
             time_value = f"{target_hour}:{minute}"
 
-        source_day = str(flow.get("day"))
+        source_due_date = str(flow.get("due_date"))
         index = int(flow.get("index") or 1)
-        target_day = str(flow.get("target_day"))
+        target_due_date = str(flow.get("target_due_date"))
         replies = execute_todo_command(
             target,
-            f"перенеси {source_day} номер {index} на {target_day} в {time_value.replace(':', ' ')}",
+            f"перенеси {format_date_for_command(source_due_date)} номер {index} на {format_date_for_command(target_due_date)} в {time_value.replace(':', ' ')}",
             actor.key,
         )
         clear_flow(state, chat_id)
@@ -715,8 +771,8 @@ def handle_text(chat_id: int, state: dict, text: str) -> None:
         if not can_view(actor.key, target.key):
             send_message(chat_id, owner_restriction_text(), main_keyboard(state, chat_id))
             return
-        set_flow(state, chat_id, {"name": "list_view_day"})
-        send_message(chat_id, "Выбери день для списка задач.", day_keyboard())
+        set_flow(state, chat_id, {"name": "list_period_pick"})
+        send_message(chat_id, "Выбери период просмотра.", period_keyboard())
         return
 
     if text_clean == "🗓 Расписание":
@@ -724,39 +780,39 @@ def handle_text(chat_id: int, state: dict, text: str) -> None:
             send_message(chat_id, owner_restriction_text(), main_keyboard(state, chat_id))
             return
         set_flow(state, chat_id, {"name": "schedule_view_day"})
-        send_message(chat_id, "Выбери день для просмотра расписания.", day_keyboard())
+        send_message(chat_id, "Выбери дату для просмотра расписания.", date_keyboard())
         return
 
     if text_clean == "➕ Задача":
         if not can_edit(actor.key, target.key):
             send_message(chat_id, owner_restriction_text(), main_keyboard(state, chat_id))
             return
-        set_flow(state, chat_id, {"name": "add_day"})
-        send_message(chat_id, "Выбери день новой задачи.", day_keyboard())
+        set_flow(state, chat_id, {"name": "add_date"})
+        send_message(chat_id, "Выбери дату новой задачи.", date_keyboard())
         return
 
     if text_clean == "🗑 Удалить":
         if not can_edit(actor.key, target.key):
             send_message(chat_id, owner_restriction_text(), main_keyboard(state, chat_id))
             return
-        set_flow(state, chat_id, {"name": "delete_day"})
-        send_message(chat_id, "Выбери день, откуда удалять задачу.", day_keyboard())
+        set_flow(state, chat_id, {"name": "delete_date"})
+        send_message(chat_id, "Выбери дату, где удалить задачу.", date_keyboard())
         return
 
     if text_clean == "✅ Сделано":
         if not can_edit(actor.key, target.key):
             send_message(chat_id, owner_restriction_text(), main_keyboard(state, chat_id))
             return
-        set_flow(state, chat_id, {"name": "done_day"})
-        send_message(chat_id, "Выбери день задачи для отметки.", day_keyboard())
+        set_flow(state, chat_id, {"name": "done_date"})
+        send_message(chat_id, "Выбери дату задачи для отметки.", date_keyboard())
         return
 
     if text_clean == "🔁 Перенести":
         if not can_edit(actor.key, target.key):
             send_message(chat_id, owner_restriction_text(), main_keyboard(state, chat_id))
             return
-        set_flow(state, chat_id, {"name": "move_day"})
-        send_message(chat_id, "Выбери день задачи для переноса.", day_keyboard())
+        set_flow(state, chat_id, {"name": "move_date"})
+        send_message(chat_id, "Выбери дату задачи для переноса.", date_keyboard())
         return
 
     if text_clean == "➕ Урок":
@@ -764,7 +820,7 @@ def handle_text(chat_id: int, state: dict, text: str) -> None:
             send_message(chat_id, owner_restriction_text(), main_keyboard(state, chat_id))
             return
         set_flow(state, chat_id, {"name": "schedule_add_day"})
-        send_message(chat_id, "Выбери день, куда добавить пункт расписания.", day_keyboard())
+        send_message(chat_id, "Выбери дату, куда добавить пункт расписания.", date_keyboard())
         return
 
     if text_clean == "🗑 Урок":
@@ -772,7 +828,7 @@ def handle_text(chat_id: int, state: dict, text: str) -> None:
             send_message(chat_id, owner_restriction_text(), main_keyboard(state, chat_id))
             return
         set_flow(state, chat_id, {"name": "schedule_remove_day"})
-        send_message(chat_id, "Выбери день, откуда удалить пункт расписания.", day_keyboard())
+        send_message(chat_id, "Выбери дату, откуда удалить пункт расписания.", date_keyboard())
         return
 
     send_message(chat_id, "Используй кнопки меню. Для начала нажми '🪪 Кто я'.", main_keyboard(state, chat_id))

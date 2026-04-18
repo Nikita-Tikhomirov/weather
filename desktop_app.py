@@ -5,7 +5,8 @@ import subprocess
 import sys
 import threading
 import traceback
-from datetime import datetime
+import uuid
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import customtkinter as ctk
@@ -133,9 +134,7 @@ class TaskCard(ctk.CTkFrame):
 
         self.grid_columnconfigure(1, weight=1)
 
-        done_value = bool(todo.get("done"))
-        if todo.get("recurring"):
-            done_value = ft.is_recurring_done_for_today(todo, datetime.now())
+        done_value = str(todo.get("status") or ("done" if todo.get("done") else "active")) == "done"
         done_text = "готово" if done_value else "в работе"
 
         badge_color = "#2ECC71" if done_value else "#F39C12"
@@ -152,11 +151,18 @@ class TaskCard(ctk.CTkFrame):
         title_label = ctk.CTkLabel(self, text=f"{local_index}. {title}", font=ctk.CTkFont(size=15, weight="bold"), anchor="w")
         title_label.grid(row=0, column=1, sticky="we", pady=(10, 2))
 
-        day = todo.get("day") or "без дня"
-        if todo.get("recurring") == "daily":
-            day = "каждый день"
-        elif todo.get("recurring") == "weekdays":
-            day = "по будням"
+        day = todo.get("due_date") or todo.get("day") or "без даты"
+        if todo.get("due_date"):
+            try:
+                dt = datetime.fromisoformat(str(todo.get("due_date"))).date()
+                day = f"{dt.strftime('%d.%m.%Y')} ({ft.weekday_ru(dt)})"
+            except ValueError:
+                day = str(todo.get("due_date"))
+        recurrence = str(todo.get("recurrence_rule") or todo.get("recurring") or "")
+        if recurrence == "daily":
+            day = f"{day} | каждый день"
+        elif recurrence == "weekdays":
+            day = f"{day} | по будням"
         time_text = todo.get("time") or "без времени"
         priority = ft.priority_label(todo.get("priority"))
         tags = todo.get("tags") if isinstance(todo.get("tags"), list) else []
@@ -167,12 +173,12 @@ class TaskCard(ctk.CTkFrame):
 
         details = str(todo.get("details") or "").strip()
         if details:
-            if len(details) > 95:
-                details = details[:92] + "..."
+            if len(details) > 140:
+                details = details[:137] + "..."
             details_line = f"Описание: {details}"
         else:
             details_line = "Описание: —"
-        details_label = ctk.CTkLabel(self, text=details_line, anchor="w", text_color=("#CBD5E1", "#94A3B8"))
+        details_label = ctk.CTkLabel(self, text=details_line, anchor="w", text_color=("#CBD5E1", "#94A3B8"), wraplength=380)
         details_label.grid(row=2, column=1, sticky="we", pady=(0, 10))
 
         buttons = ctk.CTkFrame(self, fg_color="transparent")
@@ -208,12 +214,12 @@ class DesktopTodoApp(ctk.CTk):
         self.display_names = [p.display_name for p in ft.PEOPLE]
 
         self.person_var = ctk.StringVar(value=self.display_names[0])
-        self.filter_var = ctk.StringVar(value="Сегодня")
+        self.filter_var = ctk.StringVar(value="Текущая неделя")
         self.search_var = ctk.StringVar(value="")
 
         self.title_var = ctk.StringVar(value="")
         self.details_var = ctk.StringVar(value="")
-        self.day_var = ctk.StringVar(value=ft.DAY_ORDER[datetime.now().weekday()])
+        self.due_date_var = ctk.StringVar(value=datetime.now().date().isoformat())
         self.time_var = ctk.StringVar(value="19:00")
         self.time_hour_var = ctk.StringVar(value="19")
         self.time_min_var = ctk.StringVar(value="00")
@@ -226,6 +232,12 @@ class DesktopTodoApp(ctk.CTk):
         self.bot_var = ctk.BooleanVar(value=False)
         self.voice_worker: VoiceWorker | None = None
         self.bot_host = BotProcessHost(on_log=self._threadsafe_log)
+
+        self.period_anchor: date = datetime.now().date()
+        self.search_after_id: str | None = None
+        self._cache_person_key: str | None = None
+        self._cache_todos: list[dict] = []
+        self._cards: list[TaskCard] = []
 
         self.current_items: list[tuple[int, dict]] = []
         self.selected_local_index: int | None = None
@@ -258,7 +270,7 @@ class DesktopTodoApp(ctk.CTk):
         )
 
         ctk.CTkLabel(sidebar, text="Профиль", anchor="w").grid(row=1, column=0, padx=20, sticky="w")
-        ctk.CTkOptionMenu(sidebar, variable=self.person_var, values=self.display_names, command=lambda _v: self.refresh_tasks()).grid(
+        ctk.CTkOptionMenu(sidebar, variable=self.person_var, values=self.display_names, command=lambda _v: self.on_person_changed()).grid(
             row=2,
             column=0,
             padx=20,
@@ -270,8 +282,8 @@ class DesktopTodoApp(ctk.CTk):
         ctk.CTkOptionMenu(
             sidebar,
             variable=self.filter_var,
-            values=["Сегодня", "Завтра", "Неделя", "Все", *[d.capitalize() for d in ft.DAY_ORDER]],
-            command=lambda _v: self.refresh_tasks(),
+            values=["Текущая неделя", "Текущий месяц", "Сегодня", "Завтра", "Все"],
+            command=lambda _v: self.on_filter_changed(),
         ).grid(row=4, column=0, padx=20, pady=(6, 12), sticky="ew")
 
         self.voice_switch = ctk.CTkSwitch(sidebar, text="Голосовой режим", variable=self.voice_var, command=self.toggle_voice)
@@ -308,11 +320,18 @@ class DesktopTodoApp(ctk.CTk):
             sticky="w",
         )
 
-        self.search_entry = ctk.CTkEntry(header, textvariable=self.search_var, placeholder_text="Поиск по задачам")
-        self.search_entry.grid(row=0, column=1, padx=(12, 8), sticky="ew")
-        self.search_entry.bind("<KeyRelease>", lambda _e: self.refresh_tasks())
+        nav = ctk.CTkFrame(header, fg_color="transparent")
+        nav.grid(row=0, column=1, sticky="w", padx=(12, 8))
+        ctk.CTkButton(nav, text="←", width=36, command=lambda: self.shift_period(-1)).pack(side="left", padx=(0, 4))
+        ctk.CTkButton(nav, text="→", width=36, command=lambda: self.shift_period(1)).pack(side="left")
+        self.period_label = ctk.CTkLabel(nav, text="", text_color="#94A3B8")
+        self.period_label.pack(side="left", padx=(8, 0))
 
-        ctk.CTkButton(header, text="+ Быстро добавить", width=140, command=self.quick_add_today).grid(row=0, column=2, sticky="e")
+        self.search_entry = ctk.CTkEntry(header, textvariable=self.search_var, placeholder_text="Поиск по задачам")
+        self.search_entry.grid(row=0, column=2, padx=(8, 8), sticky="ew")
+        self.search_entry.bind("<KeyRelease>", lambda _e: self._debounced_refresh())
+
+        ctk.CTkButton(header, text="+ Быстро добавить", width=140, command=self.quick_add_today).grid(row=0, column=3, sticky="e")
 
         self.list_area = ctk.CTkScrollableFrame(main, corner_radius=14, fg_color=("#1E293B", "#1E293B"))
         self.list_area.grid(row=1, column=0, sticky="nsew", padx=(18, 10), pady=(0, 16))
@@ -331,13 +350,13 @@ class DesktopTodoApp(ctk.CTk):
 
         self._form_row(form, 0, "Название", ctk.CTkEntry(form, textvariable=self.title_var, placeholder_text="Что сделать"))
         self._form_row(form, 1, "Детали", ctk.CTkEntry(form, textvariable=self.details_var, placeholder_text="Дополнительные детали"))
-        self._form_row(form, 2, "День", ctk.CTkOptionMenu(form, variable=self.day_var, values=list(ft.DAY_ORDER)))
+        self._form_row(form, 2, "Дата", ctk.CTkEntry(form, textvariable=self.due_date_var, placeholder_text="2026-04-18 или 18.04"))
 
         time_frame = ctk.CTkFrame(form, fg_color="transparent")
         ctk.CTkOptionMenu(time_frame, variable=self.time_hour_var, values=[f"{h:02d}" for h in range(0, 24)], width=86, command=lambda _v: self._sync_time_from_dropdowns()).pack(side="left")
         ctk.CTkLabel(time_frame, text=":", width=16).pack(side="left", padx=4)
         ctk.CTkOptionMenu(time_frame, variable=self.time_min_var, values=["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"], width=86, command=lambda _v: self._sync_time_from_dropdowns()).pack(side="left")
-        ctk.CTkEntry(time_frame, textvariable=self.time_var, width=90, placeholder_text="19:30").pack(side="left", padx=(8, 0))
+        ctk.CTkEntry(time_frame, textvariable=self.time_var, width=110, placeholder_text="20:15 / 20-15").pack(side="left", padx=(8, 0))
         self._form_row(form, 3, "Время", time_frame)
 
         self._form_row(form, 4, "Приоритет", ctk.CTkOptionMenu(form, variable=self.priority_var, values=list(PRIORITY_RU_TO_KEY.keys())))
@@ -403,8 +422,10 @@ class DesktopTodoApp(ctk.CTk):
         self.time_var.set(parsed)
 
     def _selected_time_value(self) -> str | None:
-        self._sync_time_from_dropdowns()
         candidate = self.time_var.get().strip()
+        if not candidate:
+            self._sync_time_from_dropdowns()
+            candidate = self.time_var.get().strip()
         parsed = ft.parse_time(candidate)
         if parsed:
             self._sync_dropdowns_from_time(parsed)
@@ -413,21 +434,66 @@ class DesktopTodoApp(ctk.CTk):
     def get_person(self) -> ft.Person:
         return self.person_by_name[self.person_var.get()]
 
-    def _resolve_filter_days(self) -> list[str] | None:
-        value = self.filter_var.get().strip().lower()
-        today_idx = datetime.now().weekday()
+    def on_person_changed(self) -> None:
+        self._cache_person_key = None
+        self.selected_local_index = None
+        self.refresh_tasks()
 
-        if value == "все":
-            return None
+    def on_filter_changed(self) -> None:
+        self.selected_local_index = None
+        self.refresh_tasks()
+
+    def _debounced_refresh(self) -> None:
+        if self.search_after_id is not None:
+            self.after_cancel(self.search_after_id)
+        self.search_after_id = self.after(280, self.refresh_tasks)
+
+    def _load_cached_todos(self, person: ft.Person) -> list[dict]:
+        if self._cache_person_key != person.key:
+            self._cache_person_key = person.key
+            self._cache_todos = ft.load_todos(person)
+        return self._cache_todos
+
+    def _invalidate_cache(self) -> None:
+        self._cache_person_key = None
+        self._cache_todos = []
+
+    def _resolve_filter_range(self) -> tuple[str | None, str | None, str]:
+        value = self.filter_var.get().strip().lower()
+        today = datetime.now().date()
+
         if value == "сегодня":
-            return [ft.DAY_ORDER[today_idx]]
+            iso = today.isoformat()
+            return iso, iso, today.strftime("%d.%m.%Y")
         if value == "завтра":
-            return [ft.DAY_ORDER[(today_idx + 1) % 7]]
-        if value == "неделя":
-            return list(ft.DAY_ORDER)
-        if value in ft.DAY_ORDER:
-            return [value]
-        return [ft.DAY_ORDER[today_idx]]
+            tomorrow = today + timedelta(days=1)
+            iso = tomorrow.isoformat()
+            return iso, iso, tomorrow.strftime("%d.%m.%Y")
+        if value == "все":
+            return None, None, "все"
+        if value == "текущий месяц":
+            start, end = ft.month_bounds(self.period_anchor)
+            return start.isoformat(), end.isoformat(), f"{start.strftime('%m.%Y')}"
+
+        start, end = ft.week_bounds(self.period_anchor)
+        return start.isoformat(), end.isoformat(), f"{start.strftime('%d.%m')} - {end.strftime('%d.%m')}"
+
+    def shift_period(self, delta: int) -> None:
+        mode = self.filter_var.get().strip().lower()
+        if mode == "текущий месяц":
+            base = self.period_anchor
+            month = base.month + delta
+            year = base.year
+            while month < 1:
+                month += 12
+                year -= 1
+            while month > 12:
+                month -= 12
+                year += 1
+            self.period_anchor = date(year, month, min(base.day, 28))
+        else:
+            self.period_anchor = self.period_anchor + timedelta(days=7 * delta)
+        self.refresh_tasks()
 
     def _matches_search(self, todo: dict) -> bool:
         needle = self.search_var.get().strip().lower()
@@ -439,6 +505,7 @@ class DesktopTodoApp(ctk.CTk):
                 str(todo.get("text") or "").lower(),
                 str(todo.get("details") or "").lower(),
                 str(todo.get("day") or "").lower(),
+                str(todo.get("due_date") or "").lower(),
                 str(todo.get("time") or "").lower(),
             ]
         )
@@ -446,25 +513,16 @@ class DesktopTodoApp(ctk.CTk):
 
     def refresh_tasks(self) -> None:
         person = self.get_person()
-        todos = ft.load_todos(person)
+        todos = self._load_cached_todos(person)
+        start_date, end_date, label = self._resolve_filter_range()
+        self.period_label.configure(text=label)
 
-        days = self._resolve_filter_days()
-        out: list[tuple[int, dict]] = []
-        if days is None:
-            out = list(enumerate(todos))
-        else:
-            for day in days:
-                out.extend(ft.filter_todos_by_day(todos, day))
-
-        dedup: dict[int, dict] = {}
-        for idx, todo in out:
-            dedup[idx] = todo
-        ordered = [(idx, dedup[idx]) for idx in sorted(dedup.keys())]
-
+        ordered = ft.filter_todos_by_range(todos, start_date, end_date)
         self.current_items = [(idx, todo) for idx, todo in ordered if self._matches_search(todo)]
 
         for child in self.list_area.winfo_children():
             child.destroy()
+        self._cards = []
 
         if not self.current_items:
             ctk.CTkLabel(self.list_area, text="По этому фильтру задач нет", text_color="#94A3B8").grid(row=0, column=0, sticky="w", padx=10, pady=10)
@@ -474,9 +532,19 @@ class DesktopTodoApp(ctk.CTk):
         for local_idx, (_global_idx, todo) in enumerate(self.current_items, start=1):
             card = TaskCard(self.list_area, self, local_index=local_idx, todo=todo, selected=(self.selected_local_index == local_idx - 1))
             card.grid(row=local_idx, column=0, sticky="ew", padx=10, pady=6)
+            self._cards.append(card)
 
         if self.selected_local_index is not None and self.selected_local_index >= len(self.current_items):
             self.selected_local_index = None
+        self._apply_card_selection()
+
+    def _apply_card_selection(self) -> None:
+        for idx, card in enumerate(self._cards):
+            selected = self.selected_local_index == idx
+            if selected:
+                card.configure(border_color="#2FA4FF", fg_color=("#263042", "#263042"))
+            else:
+                card.configure(border_color=("#555", "#444"), fg_color=("#1F2937", "#1F2937"))
 
     def select_task(self, local_index: int) -> None:
         if local_index < 0 or local_index >= len(self.current_items):
@@ -486,22 +554,22 @@ class DesktopTodoApp(ctk.CTk):
         _, todo = self.current_items[local_index]
         self.title_var.set(str(todo.get("title") or todo.get("text") or ""))
         self.details_var.set(str(todo.get("details") or ""))
-        self.day_var.set(str(todo.get("day") or ft.DAY_ORDER[datetime.now().weekday()]))
+        self.due_date_var.set(str(todo.get("due_date") or datetime.now().date().isoformat()))
         time_value = str(todo.get("time") or "")
         self.time_var.set(time_value)
         self._sync_dropdowns_from_time(time_value)
         self.priority_var.set(self._priority_to_ru(str(todo.get("priority") or "medium")))
         tags = todo.get("tags") if isinstance(todo.get("tags"), list) else []
         self.tags_var.set(", ".join(tags))
-        self.recurring_var.set(self._recurrence_to_ru(str(todo.get("recurring") or "")))
+        self.recurring_var.set(self._recurrence_to_ru(str(todo.get("recurrence_rule") or todo.get("recurring") or "")))
         offsets = todo.get("reminder_offsets") if isinstance(todo.get("reminder_offsets"), list) else [60, 30, 10]
         self.reminders_var.set(",".join(str(x) for x in offsets))
-        self.refresh_tasks()
+        self._apply_card_selection()
 
     def clear_form(self) -> None:
         self.title_var.set("")
         self.details_var.set("")
-        self.day_var.set(ft.DAY_ORDER[datetime.now().weekday()])
+        self.due_date_var.set(datetime.now().date().isoformat())
         self.time_hour_var.set("19")
         self.time_min_var.set("00")
         self._sync_time_from_dropdowns()
@@ -583,12 +651,12 @@ class DesktopTodoApp(ctk.CTk):
             return
 
         recurring = self._recurrence_to_key(self.recurring_var.get()) or None
-        day = self.day_var.get().strip().lower()
-        if not recurring and day not in ft.DAY_ORDER:
-            messagebox.showwarning("Добавление", "Укажи корректный день недели")
+        due_date = ft.parse_due_date_input(self.due_date_var.get().strip())
+        if not due_date:
+            messagebox.showwarning("Добавление", "Укажи корректную дату (например 2026-04-18 или 18.04)")
             return
 
-        todos = ft.load_todos(person)
+        todos = self._load_cached_todos(person)
         next_id = max([item.get("id", 0) for item in todos], default=0) + 1
 
         todo = {
@@ -596,19 +664,25 @@ class DesktopTodoApp(ctk.CTk):
             "title": title,
             "text": title,
             "details": self.details_var.get().strip(),
-            "day": day,
+            "due_date": due_date,
+            "day": ft.weekday_ru(datetime.fromisoformat(due_date).date()),
             "time": parsed_time,
             "priority": self._priority_to_key(self.priority_var.get()),
             "tags": self._parse_tags(),
-            "recurring": recurring,
+            "recurrence_rule": recurring,
+            "series_id": str(uuid.uuid4()) if recurring else None,
+            "generated_from_rule": bool(recurring),
             "reminder_offsets": self._parse_offsets(),
+            "status": "active",
             "done": False,
+            "done_at": None,
             "created_at": datetime.now().isoformat(timespec="seconds"),
         }
 
         ft.save_todos(person, [*todos, todo])
         ft.push_history(person, "add", {"created_ids": [next_id]})
-        log_event("todo_add", person=person.key, actor="desktop", count=1, day=day, time=parsed_time, title=title, recurrence=recurring or "")
+        log_event("todo_add", person=person.key, actor="desktop", count=1, day=todo["day"], due_date=due_date, time=parsed_time, title=title, recurrence=recurring or "")
+        self._invalidate_cache()
         self._append_log(f"Добавил задачу: {title}")
         self.clear_form()
         self.refresh_tasks()
@@ -621,7 +695,7 @@ class DesktopTodoApp(ctk.CTk):
 
         person = self.get_person()
         global_idx, _todo = selected
-        todos = ft.load_todos(person)
+        todos = self._load_cached_todos(person)
         if global_idx >= len(todos):
             self.refresh_tasks()
             return
@@ -631,10 +705,10 @@ class DesktopTodoApp(ctk.CTk):
             messagebox.showwarning("Редактирование", "Название не может быть пустым")
             return
 
-        day = self.day_var.get().strip().lower()
+        due_date = ft.parse_due_date_input(self.due_date_var.get().strip())
         recurring = self._recurrence_to_key(self.recurring_var.get()) or None
-        if not recurring and day not in ft.DAY_ORDER:
-            messagebox.showwarning("Редактирование", "Укажи корректный день")
+        if not due_date:
+            messagebox.showwarning("Редактирование", "Укажи корректную дату (например 2026-04-18 или 18.04)")
             return
 
         parsed_time = self._selected_time_value()
@@ -646,16 +720,23 @@ class DesktopTodoApp(ctk.CTk):
         todos[global_idx]["title"] = title
         todos[global_idx]["text"] = title
         todos[global_idx]["details"] = self.details_var.get().strip()
-        todos[global_idx]["day"] = day
+        todos[global_idx]["due_date"] = due_date
+        todos[global_idx]["day"] = ft.weekday_ru(datetime.fromisoformat(due_date).date())
         todos[global_idx]["time"] = parsed_time
         todos[global_idx]["priority"] = self._priority_to_key(self.priority_var.get())
         todos[global_idx]["tags"] = self._parse_tags()
-        todos[global_idx]["recurring"] = recurring
+        todos[global_idx]["recurrence_rule"] = recurring
+        todos[global_idx]["generated_from_rule"] = bool(recurring)
+        if recurring and not todos[global_idx].get("series_id"):
+            todos[global_idx]["series_id"] = str(uuid.uuid4())
         todos[global_idx]["reminder_offsets"] = self._parse_offsets()
+        todos[global_idx]["status"] = "active" if str(todos[global_idx].get("status") or "") not in {"done"} else "done"
+        todos[global_idx]["updated_at"] = datetime.now().isoformat(timespec="seconds")
 
         ft.save_todos(person, todos)
         ft.push_history(person, "update_item", {"id": old_state.get("id"), "before": old_state})
-        log_event("todo_update", person=person.key, actor="desktop", day=day, time=parsed_time, title=title)
+        log_event("todo_update", person=person.key, actor="desktop", day=todos[global_idx].get("day") or "", due_date=due_date, time=parsed_time, title=title)
+        self._invalidate_cache()
         self._append_log(f"Сохранил изменения: {title}")
         self.refresh_tasks()
 
@@ -665,7 +746,7 @@ class DesktopTodoApp(ctk.CTk):
 
         person = self.get_person()
         global_idx, todo = self.current_items[local_index]
-        todos = ft.load_todos(person)
+        todos = self._load_cached_todos(person)
         if global_idx >= len(todos):
             self.refresh_tasks()
             return
@@ -674,7 +755,8 @@ class DesktopTodoApp(ctk.CTk):
         ft.save_todos(person, todos)
         ft.push_history(person, "restore_items", {"items": [removed]})
         title = todo.get("title") or todo.get("text") or "задача"
-        log_event("todo_delete", person=person.key, actor="desktop", day=removed.get("day") or "", mode="ui", title=title)
+        log_event("todo_delete", person=person.key, actor="desktop", day=removed.get("day") or "", due_date=removed.get("due_date") or "", mode="ui", title=title)
+        self._invalidate_cache()
         self._append_log(f"Удалил: {title}")
 
         if self.selected_local_index == local_index:
@@ -687,7 +769,7 @@ class DesktopTodoApp(ctk.CTk):
 
         person = self.get_person()
         global_idx, todo = self.current_items[local_index]
-        todos = ft.load_todos(person)
+        todos = self._load_cached_todos(person)
         if global_idx >= len(todos):
             self.refresh_tasks()
             return
@@ -695,22 +777,20 @@ class DesktopTodoApp(ctk.CTk):
         old_state = copy.deepcopy(todos[global_idx])
         now_iso = datetime.now().isoformat(timespec="seconds")
 
-        if todos[global_idx].get("recurring"):
-            todos[global_idx]["last_done_date"] = datetime.now().date().isoformat()
-            todos[global_idx]["done"] = False
-        else:
-            todos[global_idx]["done"] = True
+        todos[global_idx]["done"] = True
+        todos[global_idx]["status"] = "done"
         todos[global_idx]["done_at"] = now_iso
 
         ft.save_todos(person, todos)
         ft.push_history(person, "update_item", {"id": old_state.get("id"), "before": old_state})
         title = todo.get("title") or todo.get("text") or "задача"
-        log_event("todo_done", person=person.key, actor="desktop", day=todos[global_idx].get("day") or "", id=old_state.get("id"), title=title)
+        log_event("todo_done", person=person.key, actor="desktop", day=todos[global_idx].get("day") or "", due_date=todos[global_idx].get("due_date") or "", id=old_state.get("id"), title=title)
+        self._invalidate_cache()
         self._append_log(f"Отметил готово: {title}")
         self.refresh_tasks()
 
     def quick_add_today(self) -> None:
-        self.day_var.set(ft.DAY_ORDER[datetime.now().weekday()])
+        self.due_date_var.set(datetime.now().date().isoformat())
         self.time_hour_var.set("19")
         self.time_min_var.set("00")
         self._sync_time_from_dropdowns()
@@ -721,12 +801,17 @@ class DesktopTodoApp(ctk.CTk):
         action = ft.parse_action(person, text)
         if action:
             return action
-
         normalized = ft.normalize_text(text)
+        action = ft.parse_action(person, normalized)
+        if action:
+            return action
+
         if not normalized:
             return None
 
         if ft.parse_day_or_relative(normalized) and ft.extract_time_from_inline(normalized):
+            return "add"
+        if ft.parse_due_date_input(normalized) and ft.extract_time_from_inline(normalized):
             return "add"
         if normalized.startswith(("список", "покажи", "что на")):
             return "list"
@@ -747,7 +832,7 @@ class DesktopTodoApp(ctk.CTk):
         def runner() -> None:
             action = self._resolve_text_action(person, text)
             if action in {None, "stop", "switch_person"}:
-                matched_global = match_command(text)
+                matched_global = match_command(text) or match_command(text.lower()) or match_command(ft.normalize_text(text))
                 if matched_global:
                     execute_command(matched_global)
                     ft.speak("Команда выполнена.")
@@ -778,6 +863,7 @@ class DesktopTodoApp(ctk.CTk):
             self._append_log(msg)
 
         self.command_entry.delete(0, "end")
+        self._invalidate_cache()
         self.refresh_tasks()
 
     def run_weekly_review(self) -> None:
@@ -791,6 +877,7 @@ class DesktopTodoApp(ctk.CTk):
         messages = self._collect_messages(lambda: ft.undo_last_action(person))
         for msg in messages or ["Откат выполнен"]:
             self._append_log(msg)
+        self._invalidate_cache()
         self.refresh_tasks()
 
     def toggle_voice(self) -> None:
