@@ -1,5 +1,6 @@
 ﻿
 import copy
+import calendar
 import os
 import subprocess
 import sys
@@ -36,6 +37,114 @@ RECURRING_RU_TO_KEY = {
     "По будням": "weekdays",
 }
 RECURRING_KEY_TO_RU = {v: k for k, v in RECURRING_RU_TO_KEY.items()}
+MONTH_NAMES_RU = (
+    "январь",
+    "февраль",
+    "март",
+    "апрель",
+    "май",
+    "июнь",
+    "июль",
+    "август",
+    "сентябрь",
+    "октябрь",
+    "ноябрь",
+    "декабрь",
+)
+WEEKDAY_SHORT_RU = ("пн", "вт", "ср", "чт", "пт", "сб", "вс")
+
+
+class DatePickerPopup(ctk.CTkToplevel):
+    def __init__(self, parent, initial_date: date, on_select):
+        super().__init__(parent)
+        self.parent = parent
+        self.on_select = on_select
+        self.selected_date = initial_date
+        self.view_year = initial_date.year
+        self.view_month = initial_date.month
+        self.day_buttons: list[ctk.CTkButton] = []
+
+        self.title("Календарь")
+        self.geometry("360x360")
+        self.resizable(False, False)
+        self.transient(parent)
+        self.grab_set()
+
+        self._build()
+        self._render_month()
+
+    def _build(self) -> None:
+        container = ctk.CTkFrame(self, fg_color=("#111827", "#111827"))
+        container.pack(fill="both", expand=True, padx=10, pady=10)
+
+        header = ctk.CTkFrame(container, fg_color="transparent")
+        header.pack(fill="x", pady=(4, 8))
+        ctk.CTkButton(header, text="<<", width=38, command=lambda: self._change_month(-12)).pack(side="left")
+        ctk.CTkButton(header, text="<", width=38, command=lambda: self._change_month(-1)).pack(side="left", padx=(4, 8))
+        self.title_label = ctk.CTkLabel(header, text="", font=ctk.CTkFont(size=16, weight="bold"))
+        self.title_label.pack(side="left", expand=True)
+        ctk.CTkButton(header, text=">", width=38, command=lambda: self._change_month(1)).pack(side="right", padx=(8, 4))
+        ctk.CTkButton(header, text=">>", width=38, command=lambda: self._change_month(12)).pack(side="right")
+
+        week = ctk.CTkFrame(container, fg_color="transparent")
+        week.pack(fill="x", pady=(0, 6))
+        for label in WEEKDAY_SHORT_RU:
+            ctk.CTkLabel(week, text=label, text_color="#94A3B8", width=42).pack(side="left", expand=True)
+
+        self.days_grid = ctk.CTkFrame(container, fg_color="transparent")
+        self.days_grid.pack(fill="both", expand=True)
+        for r in range(6):
+            self.days_grid.grid_rowconfigure(r, weight=1)
+        for c in range(7):
+            self.days_grid.grid_columnconfigure(c, weight=1)
+
+        footer = ctk.CTkFrame(container, fg_color="transparent")
+        footer.pack(fill="x", pady=(8, 2))
+        ctk.CTkButton(footer, text="Сегодня", command=self._pick_today).pack(side="left")
+        ctk.CTkButton(footer, text="Закрыть", fg_color="#334155", command=self.destroy).pack(side="right")
+
+    def _change_month(self, delta: int) -> None:
+        index = (self.view_year * 12 + self.view_month - 1) + delta
+        self.view_year = index // 12
+        self.view_month = (index % 12) + 1
+        self._render_month()
+
+    def _render_month(self) -> None:
+        for btn in self.day_buttons:
+            btn.destroy()
+        self.day_buttons = []
+
+        self.title_label.configure(text=f"{MONTH_NAMES_RU[self.view_month - 1]} {self.view_year}")
+        month_matrix = calendar.monthcalendar(self.view_year, self.view_month)
+        while len(month_matrix) < 6:
+            month_matrix.append([0] * 7)
+
+        for r, week in enumerate(month_matrix):
+            for c, day_num in enumerate(week):
+                if day_num <= 0:
+                    lbl = ctk.CTkLabel(self.days_grid, text="", width=42)
+                    lbl.grid(row=r, column=c, padx=2, pady=2, sticky="nsew")
+                    continue
+                day_date = date(self.view_year, self.view_month, day_num)
+                is_selected = day_date == self.selected_date
+                btn = ctk.CTkButton(
+                    self.days_grid,
+                    text=str(day_num),
+                    width=42,
+                    fg_color="#2563EB" if is_selected else "#1F2937",
+                    hover_color="#1D4ED8" if is_selected else "#334155",
+                    command=lambda dt=day_date: self._pick_date(dt),
+                )
+                btn.grid(row=r, column=c, padx=2, pady=2, sticky="nsew")
+                self.day_buttons.append(btn)
+
+    def _pick_today(self) -> None:
+        self._pick_date(datetime.now().date())
+
+    def _pick_date(self, picked: date) -> None:
+        self.selected_date = picked
+        self.on_select(picked)
+        self.destroy()
 
 
 class VoiceWorker(threading.Thread):
@@ -214,7 +323,7 @@ class DesktopTodoApp(ctk.CTk):
         self.display_names = [p.display_name for p in ft.PEOPLE]
 
         self.person_var = ctk.StringVar(value=self.display_names[0])
-        self.filter_var = ctk.StringVar(value="Текущая неделя")
+        self.filter_var = ctk.StringVar(value="Выбранный день")
         self.search_var = ctk.StringVar(value="")
 
         self.title_var = ctk.StringVar(value="")
@@ -259,7 +368,7 @@ class DesktopTodoApp(ctk.CTk):
 
         sidebar = ctk.CTkFrame(self, corner_radius=0, fg_color=("#0B1220", "#0B1220"))
         sidebar.grid(row=0, column=0, sticky="nsew")
-        sidebar.grid_rowconfigure(9, weight=1)
+        sidebar.grid_rowconfigure(11, weight=1)
 
         ctk.CTkLabel(sidebar, text="Control Center", font=ctk.CTkFont(size=24, weight="bold"), text_color="#C7D2FE").grid(
             row=0,
@@ -282,21 +391,23 @@ class DesktopTodoApp(ctk.CTk):
         ctk.CTkOptionMenu(
             sidebar,
             variable=self.filter_var,
-            values=["Текущая неделя", "Текущий месяц", "Сегодня", "Завтра", "Все"],
+            values=["Выбранный день", "Текущая неделя", "Текущий месяц", "Сегодня", "Завтра", "Все"],
             command=lambda _v: self.on_filter_changed(),
         ).grid(row=4, column=0, padx=20, pady=(6, 12), sticky="ew")
 
+        ctk.CTkButton(sidebar, text="Календарь", command=self.open_filter_calendar).grid(row=5, column=0, padx=20, pady=(4, 6), sticky="ew")
+
         self.voice_switch = ctk.CTkSwitch(sidebar, text="Голосовой режим", variable=self.voice_var, command=self.toggle_voice)
-        self.voice_switch.grid(row=5, column=0, padx=20, pady=(8, 2), sticky="w")
+        self.voice_switch.grid(row=6, column=0, padx=20, pady=(8, 2), sticky="w")
 
         self.bot_switch = ctk.CTkSwitch(sidebar, text="Встроенный Telegram-бот", variable=self.bot_var, command=self.toggle_bot)
-        self.bot_switch.grid(row=6, column=0, padx=20, pady=(8, 2), sticky="w")
+        self.bot_switch.grid(row=7, column=0, padx=20, pady=(8, 2), sticky="w")
 
         self.voice_status = ctk.CTkLabel(sidebar, text="Голос: OFF", text_color="#94A3B8")
-        self.voice_status.grid(row=7, column=0, padx=20, sticky="w")
+        self.voice_status.grid(row=8, column=0, padx=20, sticky="w")
 
         self.bot_status = ctk.CTkLabel(sidebar, text="Бот: OFF", text_color="#94A3B8")
-        self.bot_status.grid(row=8, column=0, padx=20, sticky="w")
+        self.bot_status.grid(row=9, column=0, padx=20, sticky="w")
 
         actions = ctk.CTkFrame(sidebar, fg_color="transparent")
         actions.grid(row=10, column=0, padx=16, pady=16, sticky="ew")
@@ -350,7 +461,11 @@ class DesktopTodoApp(ctk.CTk):
 
         self._form_row(form, 0, "Название", ctk.CTkEntry(form, textvariable=self.title_var, placeholder_text="Что сделать"))
         self._form_row(form, 1, "Детали", ctk.CTkEntry(form, textvariable=self.details_var, placeholder_text="Дополнительные детали"))
-        self._form_row(form, 2, "Дата", ctk.CTkEntry(form, textvariable=self.due_date_var, placeholder_text="2026-04-18 или 18.04"))
+        date_row = ctk.CTkFrame(form, fg_color="transparent")
+        date_row.grid_columnconfigure(0, weight=1)
+        ctk.CTkEntry(date_row, textvariable=self.due_date_var, placeholder_text="2026-04-18 или 18.04").grid(row=0, column=0, sticky="ew")
+        ctk.CTkButton(date_row, text="📅", width=44, command=self.open_editor_calendar).grid(row=0, column=1, padx=(8, 0))
+        self._form_row(form, 2, "Дата", date_row)
 
         time_frame = ctk.CTkFrame(form, fg_color="transparent")
         ctk.CTkOptionMenu(time_frame, variable=self.time_hour_var, values=[f"{h:02d}" for h in range(0, 24)], width=86, command=lambda _v: self._sync_time_from_dropdowns()).pack(side="left")
@@ -440,8 +555,30 @@ class DesktopTodoApp(ctk.CTk):
         self.refresh_tasks()
 
     def on_filter_changed(self) -> None:
+        value = self.filter_var.get().strip().lower()
+        if value == "сегодня":
+            self.period_anchor = datetime.now().date()
+        elif value == "завтра":
+            self.period_anchor = datetime.now().date() + timedelta(days=1)
         self.selected_local_index = None
         self.refresh_tasks()
+
+    def open_filter_calendar(self) -> None:
+        DatePickerPopup(self, self.period_anchor, self._on_filter_date_selected)
+
+    def open_editor_calendar(self) -> None:
+        parsed = ft.parse_due_date_input(self.due_date_var.get().strip())
+        base = datetime.fromisoformat(parsed).date() if parsed else datetime.now().date()
+        DatePickerPopup(self, base, self._on_editor_date_selected)
+
+    def _on_filter_date_selected(self, selected: date) -> None:
+        self.period_anchor = selected
+        self.filter_var.set("Выбранный день")
+        self.selected_local_index = None
+        self.refresh_tasks()
+
+    def _on_editor_date_selected(self, selected: date) -> None:
+        self.due_date_var.set(selected.isoformat())
 
     def _debounced_refresh(self) -> None:
         if self.search_after_id is not None:
@@ -462,6 +599,9 @@ class DesktopTodoApp(ctk.CTk):
         value = self.filter_var.get().strip().lower()
         today = datetime.now().date()
 
+        if value == "выбранный день":
+            iso = self.period_anchor.isoformat()
+            return iso, iso, self.period_anchor.strftime("%d.%m.%Y")
         if value == "сегодня":
             iso = today.isoformat()
             return iso, iso, today.strftime("%d.%m.%Y")
@@ -491,6 +631,12 @@ class DesktopTodoApp(ctk.CTk):
                 month -= 12
                 year += 1
             self.period_anchor = date(year, month, min(base.day, 28))
+        elif mode == "выбранный день":
+            self.period_anchor = self.period_anchor + timedelta(days=delta)
+        elif mode in {"сегодня", "завтра"}:
+            self.filter_var.set("Выбранный день")
+            self.period_anchor = datetime.now().date() + timedelta(days=0 if mode == "сегодня" else 1)
+            self.period_anchor = self.period_anchor + timedelta(days=delta)
         else:
             self.period_anchor = self.period_anchor + timedelta(days=7 * delta)
         self.refresh_tasks()
@@ -529,9 +675,27 @@ class DesktopTodoApp(ctk.CTk):
             self.selected_local_index = None
             return
 
-        for local_idx, (_global_idx, todo) in enumerate(self.current_items, start=1):
+        grouped_view = start_date != end_date or start_date is None
+        grid_row = 1
+        local_idx = 0
+        previous_date = ""
+        for _global_idx, todo in self.current_items:
+            local_idx += 1
+            due = str(todo.get("due_date") or "")
+            if grouped_view and due != previous_date:
+                previous_date = due
+                date_label = due
+                try:
+                    dt = datetime.fromisoformat(due).date()
+                    date_label = f"{dt.strftime('%d.%m.%Y')} ({ft.weekday_ru(dt)})"
+                except ValueError:
+                    pass
+                header = ctk.CTkLabel(self.list_area, text=date_label, text_color="#93C5FD", anchor="w", font=ctk.CTkFont(size=13, weight="bold"))
+                header.grid(row=grid_row, column=0, sticky="w", padx=10, pady=(8, 2))
+                grid_row += 1
             card = TaskCard(self.list_area, self, local_index=local_idx, todo=todo, selected=(self.selected_local_index == local_idx - 1))
-            card.grid(row=local_idx, column=0, sticky="ew", padx=10, pady=6)
+            card.grid(row=grid_row, column=0, sticky="ew", padx=10, pady=6)
+            grid_row += 1
             self._cards.append(card)
 
         if self.selected_local_index is not None and self.selected_local_index >= len(self.current_items):
