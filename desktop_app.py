@@ -639,6 +639,7 @@ class DesktopTodoApp(ctk.CTk):
         self._search_after_id: str | None = None
         self._drop_status_frames: dict[str, ctk.CTkBaseClass] = {}
         self._drop_column_frames: dict[str, ctk.CTkFrame] = {}
+        self._drop_column_headers: dict[str, ctk.CTkLabel] = {}
         self._calendar_cells: dict[str, ctk.CTkFrame] = {}
         self._column_cards: dict[str, list[KanbanCard]] = {}
         self._kanban_render_token = 0
@@ -830,6 +831,8 @@ class DesktopTodoApp(ctk.CTk):
             self.calendar_grid.configure(fg_color=self._c("bg_panel"), border_color=self._c("border"))
         for frame in self._drop_column_frames.values():
             frame.configure(fg_color=self._c("bg_card"), border_color=self._c("border"))
+        for header in self._drop_column_headers.values():
+            header.configure(text_color=self._c("text_primary"))
         for sc in self.kanban_columns.values():
             sc.configure(fg_color=self._c("bg_card"))
             if hasattr(sc, "_parent_canvas"):
@@ -1042,13 +1045,15 @@ class DesktopTodoApp(ctk.CTk):
             setattr(col, "_drop_status", status)
             self._drop_column_frames[status] = col
 
-            ctk.CTkLabel(
+            header_label = ctk.CTkLabel(
                 col,
                 text=WORKFLOW_KEY_TO_RU[status],
                 font=ctk.CTkFont(size=15, weight="bold"),
                 anchor="w",
                 text_color=self._c("text_primary"),
-            ).grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 6))
+            )
+            header_label.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 6))
+            self._drop_column_headers[status] = header_label
             sc = ctk.CTkScrollableFrame(col, fg_color="transparent")
             sc.grid(row=1, column=0, sticky="nsew", padx=8)
             sc.grid_columnconfigure(0, weight=1)
