@@ -1,4 +1,4 @@
-import calendar
+﻿import calendar
 import copy
 import os
 import subprocess
@@ -15,42 +15,43 @@ import family_todo as ft
 from audio import listen_command
 from commands import execute_command, match_command
 from todo_logger import log_event
+from todo_ops import move_task, transition_task
 
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
 PRIORITY_RU_TO_KEY = {
-    "Высокий": "high",
-    "Обычный": "medium",
-    "Низкий": "low",
+    "Р’С‹СЃРѕРєРёР№": "high",
+    "РћР±С‹С‡РЅС‹Р№": "medium",
+    "РќРёР·РєРёР№": "low",
 }
 PRIORITY_KEY_TO_RU = {v: k for k, v in PRIORITY_RU_TO_KEY.items()}
 
 WORKFLOW_RU_TO_KEY = {
-    "К выполнению": "todo",
-    "В работе": "in_progress",
-    "На проверке": "in_review",
-    "Готово": "done",
+    "Рљ РІС‹РїРѕР»РЅРµРЅРёСЋ": "todo",
+    "Р’ СЂР°Р±РѕС‚Рµ": "in_progress",
+    "РќР° РїСЂРѕРІРµСЂРєРµ": "in_review",
+    "Р“РѕС‚РѕРІРѕ": "done",
 }
 WORKFLOW_KEY_TO_RU = {v: k for k, v in WORKFLOW_RU_TO_KEY.items()}
 WORKFLOW_ORDER = ["todo", "in_progress", "in_review", "done"]
 
 MONTH_NAMES_RU = (
-    "Январь",
-    "Февраль",
-    "Март",
-    "Апрель",
-    "Май",
-    "Июнь",
-    "Июль",
-    "Август",
-    "Сентябрь",
-    "Октябрь",
-    "Ноябрь",
-    "Декабрь",
+    "РЇРЅРІР°СЂСЊ",
+    "Р¤РµРІСЂР°Р»СЊ",
+    "РњР°СЂС‚",
+    "РђРїСЂРµР»СЊ",
+    "РњР°Р№",
+    "РСЋРЅСЊ",
+    "РСЋР»СЊ",
+    "РђРІРіСѓСЃС‚",
+    "РЎРµРЅС‚СЏР±СЂСЊ",
+    "РћРєС‚СЏР±СЂСЊ",
+    "РќРѕСЏР±СЂСЊ",
+    "Р”РµРєР°Р±СЂСЊ",
 )
-WEEKDAY_SHORT_RU = ("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
+WEEKDAY_SHORT_RU = ("РџРЅ", "Р’С‚", "РЎСЂ", "Р§С‚", "РџС‚", "РЎР±", "Р’СЃ")
 
 
 class VoiceWorker(threading.Thread):
@@ -65,7 +66,7 @@ class VoiceWorker(threading.Thread):
 
     def run(self) -> None:
         self._on_state(True)
-        self._on_log("Голосовой режим включен")
+        self._on_log("Р“РѕР»РѕСЃРѕРІРѕР№ СЂРµР¶РёРј РІРєР»СЋС‡РµРЅ")
         try:
             while not self._stop_event.is_set():
                 ft.process_global_reminders()
@@ -91,12 +92,12 @@ class VoiceWorker(threading.Thread):
                 elif action == "list":
                     ft.list_todos_for_requested_day(person, initial_text=command_text)
                 else:
-                    self._on_log(f"Команда не распознана: {command_text}")
+                    self._on_log(f"РљРѕРјР°РЅРґР° РЅРµ СЂР°СЃРїРѕР·РЅР°РЅР°: {command_text}")
         except Exception:
-            self._on_log("Ошибка голосового режима:\n" + traceback.format_exc())
+            self._on_log("РћС€РёР±РєР° РіРѕР»РѕСЃРѕРІРѕРіРѕ СЂРµР¶РёРјР°:\n" + traceback.format_exc())
         finally:
             self._on_state(False)
-            self._on_log("Голосовой режим выключен")
+            self._on_log("Р“РѕР»РѕСЃРѕРІРѕР№ СЂРµР¶РёРј РІС‹РєР»СЋС‡РµРЅ")
 
 
 class BotProcessHost:
@@ -116,10 +117,10 @@ class BotProcessHost:
             cmd = [sys.executable, str(Path(__file__).resolve()), "--bot-only"]
         try:
             self._process = subprocess.Popen(cmd, cwd=str(Path(__file__).resolve().parent))
-            self._on_log("Встроенный Telegram-бот запущен")
+            self._on_log("Р’СЃС‚СЂРѕРµРЅРЅС‹Р№ Telegram-Р±РѕС‚ Р·Р°РїСѓС‰РµРЅ")
             return True
         except Exception as exc:
-            self._on_log(f"Не удалось запустить Telegram-бота: {exc}")
+            self._on_log(f"РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РїСѓСЃС‚РёС‚СЊ Telegram-Р±РѕС‚Р°: {exc}")
             self._process = None
             return False
 
@@ -137,7 +138,7 @@ class BotProcessHost:
                 pass
         finally:
             self._process = None
-            self._on_log("Встроенный Telegram-бот остановлен")
+            self._on_log("Р’СЃС‚СЂРѕРµРЅРЅС‹Р№ Telegram-Р±РѕС‚ РѕСЃС‚Р°РЅРѕРІР»РµРЅ")
 
 
 class DatePickerPopup(ctk.CTkToplevel):
@@ -147,7 +148,7 @@ class DatePickerPopup(ctk.CTkToplevel):
         self.selected_date = initial_date
         self.view_year = initial_date.year
         self.view_month = initial_date.month
-        self.title("Календарь")
+        self.title("РљР°Р»РµРЅРґР°СЂСЊ")
         self.geometry("360x340")
         self.resizable(False, False)
         self.transient(parent)
@@ -213,7 +214,7 @@ class TaskEditorPopup(ctk.CTkToplevel):
         self.todo = copy.deepcopy(todo) if todo else None
         self.on_save = on_save
         self.on_delete = on_delete
-        self.title("Редактор задачи")
+        self.title("Р РµРґР°РєС‚РѕСЂ Р·Р°РґР°С‡Рё")
         self.geometry("520x500")
         self.resizable(False, False)
         self.transient(parent)
@@ -223,8 +224,8 @@ class TaskEditorPopup(ctk.CTkToplevel):
         self.details_var = ctk.StringVar(value=str(src.get("details") or ""))
         self.date_var = ctk.StringVar(value=str(src.get("due_date") or date.today().isoformat()))
         self.time_var = ctk.StringVar(value=str(src.get("time") or "19:00"))
-        self.priority_var = ctk.StringVar(value=PRIORITY_KEY_TO_RU.get(str(src.get("priority") or "medium"), "Обычный"))
-        self.status_var = ctk.StringVar(value=WORKFLOW_KEY_TO_RU.get(str(src.get("workflow_status") or "todo"), "К выполнению"))
+        self.priority_var = ctk.StringVar(value=PRIORITY_KEY_TO_RU.get(str(src.get("priority") or "medium"), "РћР±С‹С‡РЅС‹Р№"))
+        self.status_var = ctk.StringVar(value=WORKFLOW_KEY_TO_RU.get(str(src.get("workflow_status") or "todo"), "Рљ РІС‹РїРѕР»РЅРµРЅРёСЋ"))
         self.tags_var = ctk.StringVar(value=", ".join(src.get("tags") if isinstance(src.get("tags"), list) else []))
         self._build()
 
@@ -232,23 +233,23 @@ class TaskEditorPopup(ctk.CTkToplevel):
         root = ctk.CTkFrame(self)
         root.pack(fill="both", expand=True, padx=12, pady=12)
         root.grid_columnconfigure(1, weight=1)
-        self._row(root, 0, "Название", ctk.CTkEntry(root, textvariable=self.title_var))
-        self._row(root, 1, "Детали", ctk.CTkEntry(root, textvariable=self.details_var))
+        self._row(root, 0, "РќР°Р·РІР°РЅРёРµ", ctk.CTkEntry(root, textvariable=self.title_var))
+        self._row(root, 1, "Р”РµС‚Р°Р»Рё", ctk.CTkEntry(root, textvariable=self.details_var))
         date_row = ctk.CTkFrame(root, fg_color="transparent")
         date_row.grid_columnconfigure(0, weight=1)
         ctk.CTkEntry(date_row, textvariable=self.date_var).grid(row=0, column=0, sticky="ew")
-        ctk.CTkButton(date_row, text="📅", width=40, command=self._pick_date).grid(row=0, column=1, padx=(8, 0))
-        self._row(root, 2, "Дата", date_row)
-        self._row(root, 3, "Время", ctk.CTkEntry(root, textvariable=self.time_var))
-        self._row(root, 4, "Приоритет", ctk.CTkOptionMenu(root, variable=self.priority_var, values=list(PRIORITY_RU_TO_KEY.keys())))
-        self._row(root, 5, "Статус", ctk.CTkOptionMenu(root, variable=self.status_var, values=list(WORKFLOW_RU_TO_KEY.keys())))
-        self._row(root, 6, "Теги", ctk.CTkEntry(root, textvariable=self.tags_var))
+        ctk.CTkButton(date_row, text="рџ“…", width=40, command=self._pick_date).grid(row=0, column=1, padx=(8, 0))
+        self._row(root, 2, "Р”Р°С‚Р°", date_row)
+        self._row(root, 3, "Р’СЂРµРјСЏ", ctk.CTkEntry(root, textvariable=self.time_var))
+        self._row(root, 4, "РџСЂРёРѕСЂРёС‚РµС‚", ctk.CTkOptionMenu(root, variable=self.priority_var, values=list(PRIORITY_RU_TO_KEY.keys())))
+        self._row(root, 5, "РЎС‚Р°С‚СѓСЃ", ctk.CTkOptionMenu(root, variable=self.status_var, values=list(WORKFLOW_RU_TO_KEY.keys())))
+        self._row(root, 6, "РўРµРіРё", ctk.CTkEntry(root, textvariable=self.tags_var))
         btns = ctk.CTkFrame(root, fg_color="transparent")
         btns.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(14, 0))
-        ctk.CTkButton(btns, text="Сохранить", command=self._save).pack(side="left")
+        ctk.CTkButton(btns, text="РЎРѕС…СЂР°РЅРёС‚СЊ", command=self._save).pack(side="left")
         if self.todo and self.on_delete:
-            ctk.CTkButton(btns, text="Удалить", fg_color="#DC2626", hover_color="#B91C1C", command=self._delete).pack(side="left", padx=(8, 0))
-        ctk.CTkButton(btns, text="Закрыть", fg_color="#64748B", command=self.destroy).pack(side="left", padx=(8, 0))
+            ctk.CTkButton(btns, text="РЈРґР°Р»РёС‚СЊ", fg_color="#DC2626", hover_color="#B91C1C", command=self._delete).pack(side="left", padx=(8, 0))
+        ctk.CTkButton(btns, text="Р—Р°РєСЂС‹С‚СЊ", fg_color="#64748B", command=self.destroy).pack(side="left", padx=(8, 0))
 
     def _row(self, parent, idx: int, label: str, widget) -> None:
         ctk.CTkLabel(parent, text=label, anchor="w").grid(row=idx, column=0, sticky="w", pady=6, padx=(0, 8))
@@ -262,15 +263,15 @@ class TaskEditorPopup(ctk.CTkToplevel):
     def _save(self) -> None:
         title = self.title_var.get().strip()
         if not title:
-            messagebox.showwarning("Редактор", "Название не может быть пустым")
+            messagebox.showwarning("Р РµРґР°РєС‚РѕСЂ", "РќР°Р·РІР°РЅРёРµ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј")
             return
         due = ft.parse_due_date_input(self.date_var.get().strip())
         if not due:
-            messagebox.showwarning("Редактор", "Некорректная дата")
+            messagebox.showwarning("Р РµРґР°РєС‚РѕСЂ", "РќРµРєРѕСЂСЂРµРєС‚РЅР°СЏ РґР°С‚Р°")
             return
         time_value = ft.parse_time(self.time_var.get().strip())
         if not time_value:
-            messagebox.showwarning("Редактор", "Некорректное время")
+            messagebox.showwarning("Р РµРґР°РєС‚РѕСЂ", "РќРµРєРѕСЂСЂРµРєС‚РЅРѕРµ РІСЂРµРјСЏ")
             return
         wf = WORKFLOW_RU_TO_KEY.get(self.status_var.get(), "todo")
         payload = {
@@ -292,7 +293,118 @@ class TaskEditorPopup(ctk.CTkToplevel):
         self.destroy()
 
     def _delete(self) -> None:
-        if self.on_delete and messagebox.askyesno("Удаление", "Удалить задачу?"):
+        if self.on_delete and messagebox.askyesno("РЈРґР°Р»РµРЅРёРµ", "РЈРґР°Р»РёС‚СЊ Р·Р°РґР°С‡Сѓ?"):
+            self.on_delete()
+            self.destroy()
+
+
+class FamilyTaskPopup(ctk.CTkToplevel):
+    def __init__(self, parent, task: dict | None, on_save, on_delete=None):
+        super().__init__(parent)
+        self.task = copy.deepcopy(task) if task else None
+        self.on_save = on_save
+        self.on_delete = on_delete
+        src = task or {}
+        self.title("Семейное дело")
+        self.geometry("620x560")
+        self.resizable(False, False)
+        self.transient(parent)
+        self.grab_set()
+
+        start_at = str(src.get("start_at") or "")
+        start_dt = datetime.fromisoformat(start_at) if start_at else datetime.now().replace(minute=0, second=0, microsecond=0)
+        self.title_var = ctk.StringVar(value=str(src.get("title") or src.get("text") or ""))
+        self.details_var = ctk.StringVar(value=str(src.get("details") or ""))
+        self.date_var = ctk.StringVar(value=start_dt.date().isoformat())
+        self.time_var = ctk.StringVar(value=start_dt.strftime("%H:%M"))
+        self.duration_var = ctk.StringVar(value=str(src.get("duration_minutes") or 60))
+        self.status_var = ctk.StringVar(value=WORKFLOW_KEY_TO_RU.get(str(src.get("workflow_status") or "todo"), "К выполнению"))
+        participants = src.get("participants") if isinstance(src.get("participants"), list) else []
+        self.participant_vars: dict[str, ctk.BooleanVar] = {
+            person.key: ctk.BooleanVar(value=person.key in participants) for person in ft.PEOPLE
+        }
+        self._build()
+
+    def _build(self) -> None:
+        root = ctk.CTkFrame(self)
+        root.pack(fill="both", expand=True, padx=12, pady=12)
+        root.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(root, text="Название").grid(row=0, column=0, sticky="w", pady=6, padx=(0, 8))
+        ctk.CTkEntry(root, textvariable=self.title_var).grid(row=0, column=1, sticky="ew", pady=6)
+        ctk.CTkLabel(root, text="Детали").grid(row=1, column=0, sticky="w", pady=6, padx=(0, 8))
+        ctk.CTkEntry(root, textvariable=self.details_var).grid(row=1, column=1, sticky="ew", pady=6)
+        date_row = ctk.CTkFrame(root, fg_color="transparent")
+        date_row.grid_columnconfigure(0, weight=1)
+        ctk.CTkEntry(date_row, textvariable=self.date_var).grid(row=0, column=0, sticky="ew")
+        ctk.CTkButton(date_row, text="📅", width=40, command=self._pick_date).grid(row=0, column=1, padx=(8, 0))
+        ctk.CTkLabel(root, text="Дата").grid(row=2, column=0, sticky="w", pady=6, padx=(0, 8))
+        date_row.grid(row=2, column=1, sticky="ew", pady=6)
+        ctk.CTkLabel(root, text="Время").grid(row=3, column=0, sticky="w", pady=6, padx=(0, 8))
+        ctk.CTkEntry(root, textvariable=self.time_var).grid(row=3, column=1, sticky="ew", pady=6)
+        ctk.CTkLabel(root, text="Длительность (мин)").grid(row=4, column=0, sticky="w", pady=6, padx=(0, 8))
+        ctk.CTkEntry(root, textvariable=self.duration_var).grid(row=4, column=1, sticky="ew", pady=6)
+        ctk.CTkLabel(root, text="Статус").grid(row=5, column=0, sticky="w", pady=6, padx=(0, 8))
+        ctk.CTkOptionMenu(root, variable=self.status_var, values=list(WORKFLOW_RU_TO_KEY.keys())).grid(row=5, column=1, sticky="ew", pady=6)
+
+        ctk.CTkLabel(root, text="Участники").grid(row=6, column=0, sticky="nw", pady=6, padx=(0, 8))
+        users = ctk.CTkFrame(root, fg_color="transparent")
+        users.grid(row=6, column=1, sticky="ew", pady=6)
+        for idx, person in enumerate(ft.PEOPLE):
+            ctk.CTkCheckBox(users, text=person.display_name, variable=self.participant_vars[person.key]).grid(row=idx // 2, column=idx % 2, sticky="w", padx=(0, 12), pady=4)
+
+        btns = ctk.CTkFrame(root, fg_color="transparent")
+        btns.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(12, 0))
+        ctk.CTkButton(btns, text="Сохранить", command=self._save).pack(side="left")
+        if self.task and self.on_delete:
+            ctk.CTkButton(btns, text="Удалить", fg_color="#DC2626", hover_color="#B91C1C", command=self._delete).pack(side="left", padx=(8, 0))
+        ctk.CTkButton(btns, text="Закрыть", fg_color="#64748B", command=self.destroy).pack(side="left", padx=(8, 0))
+
+    def _pick_date(self) -> None:
+        parsed = ft.parse_due_date_input(self.date_var.get())
+        base = datetime.fromisoformat(parsed).date() if parsed else date.today()
+        DatePickerPopup(self, base, lambda d: self.date_var.set(d.isoformat()))
+
+    def _save(self) -> None:
+        title = self.title_var.get().strip()
+        if not title:
+            messagebox.showwarning("Семейное дело", "Название не может быть пустым.")
+            return
+        due_date = ft.parse_due_date_input(self.date_var.get().strip())
+        if not due_date:
+            messagebox.showwarning("Семейное дело", "Некорректная дата.")
+            return
+        time_value = ft.parse_time(self.time_var.get().strip())
+        if not time_value:
+            messagebox.showwarning("Семейное дело", "Некорректное время.")
+            return
+        try:
+            duration = max(0, int(self.duration_var.get().strip()))
+        except ValueError:
+            messagebox.showwarning("Семейное дело", "Длительность должна быть числом.")
+            return
+        participants = [key for key, var in self.participant_vars.items() if var.get()]
+        if not participants:
+            messagebox.showwarning("Семейное дело", "Выберите хотя бы одного участника.")
+            return
+        workflow_status = WORKFLOW_RU_TO_KEY.get(self.status_var.get(), "todo")
+        payload = {
+            "title": title,
+            "text": title,
+            "details": self.details_var.get().strip(),
+            "start_at": f"{due_date}T{time_value}",
+            "due_date": due_date,
+            "time": time_value,
+            "duration_minutes": duration,
+            "participants": participants,
+            "is_family": True,
+            "workflow_status": workflow_status,
+            "updated_at": datetime.now().isoformat(timespec="seconds"),
+        }
+        self.on_save(payload)
+        self.destroy()
+
+    def _delete(self) -> None:
+        if self.on_delete and messagebox.askyesno("Удаление", "Удалить семейное дело?"):
             self.on_delete()
             self.destroy()
 
@@ -316,10 +428,17 @@ class KanbanCard(ctk.CTkFrame):
         ctk.CTkLabel(self, text=f"{todo.get('due_date') or ''} {todo.get('time') or ''}".strip(), anchor="w", text_color="#64748B").grid(row=2, column=0, sticky="ew", padx=10, pady=(2, 6))
         btns = ctk.CTkFrame(self, fg_color="transparent")
         btns.grid(row=3, column=0, sticky="ew", padx=10, pady=(0, 8))
-        ctk.CTkButton(btns, text="Открыть", width=72, height=26, command=lambda: app.open_task_editor(todo)).pack(side="left")
-        self.bind("<ButtonPress-1>", lambda e: app.start_drag(todo, e))
-        self.bind("<ButtonRelease-1>", lambda e: app.end_drag(todo, e))
+        ctk.CTkButton(btns, text="Открыть", width=68, height=26, command=lambda: app.open_task_editor(todo)).pack(side="left")
+        ctk.CTkButton(btns, text="Готово", width=62, height=26, fg_color="#16A34A", hover_color="#15803D", command=lambda: app.quick_mark_done(todo)).pack(side="left", padx=(6, 0))
+        ctk.CTkButton(btns, text="Удалить", width=62, height=26, fg_color="#DC2626", hover_color="#B91C1C", command=lambda: app.delete_task(todo)).pack(side="left", padx=(6, 0))
+        self._bind_drag(self)
 
+    def _bind_drag(self, widget) -> None:
+        widget.bind("<ButtonPress-1>", lambda e: self.app.start_drag(self.todo, e))
+        widget.bind("<B1-Motion>", lambda e: self.app.on_drag_motion(self.todo, e))
+        widget.bind("<ButtonRelease-1>", lambda e: self.app.end_drag(self.todo, e))
+        for child in widget.winfo_children():
+            self._bind_drag(child)
 
 class DesktopTodoApp(ctk.CTk):
     def __init__(self) -> None:
@@ -329,10 +448,11 @@ class DesktopTodoApp(ctk.CTk):
         self.minsize(1260, 760)
         self.configure(fg_color="#F1F5F9")
         ft.bootstrap_data()
-        self.cleanup_report = ft.cleanup_legacy_misha_todos()
+        self.cleanup_report = ft.cleanup_misha_todos_from_date("2026-04-20")
         self.person_by_name = {p.display_name: p for p in ft.PEOPLE}
         self.display_names = [p.display_name for p in ft.PEOPLE]
         self.person_var = ctk.StringVar(value=self.display_names[0])
+        self.family_filter_var = ctk.StringVar(value="upcoming")
         self.search_var = ctk.StringVar(value="")
         self.current_page = "dashboard"
         self.current_month_anchor = date.today().replace(day=1)
@@ -345,13 +465,20 @@ class DesktopTodoApp(ctk.CTk):
         self._cache_person_key: str | None = None
         self._cache_todos: list[dict] = []
         self._drag_id: int = 0
+        self._drag_status_hint: str | None = None
+        self._drag_preview: ctk.CTkToplevel | None = None
         self._search_after_id: str | None = None
         self._drop_status_frames: dict[str, ctk.CTkBaseClass] = {}
+        self._drop_column_frames: dict[str, ctk.CTkFrame] = {}
+        self._column_cards: dict[str, list[KanbanCard]] = {}
+        self._kanban_render_token = 0
         self._build_layout()
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.refresh_all_views()
         if self.cleanup_report.get("removed", 0) > 0:
-            self._append_log(f"Legacy у Миши удалено: {self.cleanup_report['removed']}")
+            self._append_log(
+                f"Очистка Миши: удалено {self.cleanup_report['removed']}, backup: {self.cleanup_report.get('backup_path') or '-'}"
+            )
 
     def _build_layout(self) -> None:
         self.grid_columnconfigure(1, weight=1)
@@ -363,19 +490,20 @@ class DesktopTodoApp(ctk.CTk):
         act = ctk.CTkFrame(top, fg_color="transparent")
         act.grid(row=0, column=2, padx=12, pady=8, sticky="e")
         ctk.CTkOptionMenu(act, variable=self.person_var, values=self.display_names, command=lambda _v: self.on_person_changed()).pack(side="left", padx=(0, 8))
-        ctk.CTkSwitch(act, text="Голос", variable=self.voice_var, command=self.toggle_voice).pack(side="left", padx=(0, 8))
-        ctk.CTkSwitch(act, text="Бот", variable=self.bot_var, command=self.toggle_bot).pack(side="left", padx=(0, 8))
-        ctk.CTkButton(act, text="+ Новая задача", command=lambda: self.open_task_editor(None)).pack(side="left")
+        ctk.CTkSwitch(act, text="Р“РѕР»РѕСЃ", variable=self.voice_var, command=self.toggle_voice).pack(side="left", padx=(0, 8))
+        ctk.CTkSwitch(act, text="Р‘РѕС‚", variable=self.bot_var, command=self.toggle_bot).pack(side="left", padx=(0, 8))
+        ctk.CTkButton(act, text="+ РќРѕРІР°СЏ Р·Р°РґР°С‡Р°", command=lambda: self.open_task_editor(None)).pack(side="left")
         sidebar = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=0, border_width=1, border_color="#E2E8F0", width=220)
         sidebar.grid(row=1, column=0, sticky="nsew")
         sidebar.grid_propagate(False)
         sidebar.grid_rowconfigure(9, weight=1)
         self.nav_buttons = {
-            "dashboard": ctk.CTkButton(sidebar, text="Дашборд", anchor="w", command=lambda: self.show_page("dashboard")),
-            "tasks": ctk.CTkButton(sidebar, text="Задачи", anchor="w", command=lambda: self.show_page("tasks")),
-            "calendar": ctk.CTkButton(sidebar, text="Календарь", anchor="w", command=lambda: self.show_page("calendar")),
+            "dashboard": ctk.CTkButton(sidebar, text="🏠 Дашборд", anchor="w", command=lambda: self.show_page("dashboard")),
+            "tasks": ctk.CTkButton(sidebar, text="🗂 Задачи", anchor="w", command=lambda: self.show_page("tasks")),
+            "calendar": ctk.CTkButton(sidebar, text="📅 Календарь", anchor="w", command=lambda: self.show_page("calendar")),
+            "family": ctk.CTkButton(sidebar, text="👨‍👩‍👧‍👦 Семейные дела", anchor="w", command=lambda: self.show_page("family")),
         }
-        for i, key in enumerate(["dashboard", "tasks", "calendar"], start=1):
+        for i, key in enumerate(["dashboard", "tasks", "calendar", "family"], start=1):
             self.nav_buttons[key].grid(row=i, column=0, padx=14, pady=4, sticky="ew")
         self.log_box = ctk.CTkTextbox(sidebar, height=200)
         self.log_box.grid(row=10, column=0, padx=12, pady=12, sticky="ew")
@@ -393,9 +521,11 @@ class DesktopTodoApp(ctk.CTk):
         self.dashboard_page = ctk.CTkFrame(self.page_wrap, fg_color="transparent")
         self.tasks_page = ctk.CTkFrame(self.page_wrap, fg_color="transparent")
         self.calendar_page = ctk.CTkFrame(self.page_wrap, fg_color="transparent")
+        self.family_page = ctk.CTkFrame(self.page_wrap, fg_color="transparent")
         self._build_dashboard_page()
         self._build_tasks_page()
         self._build_calendar_page()
+        self._build_family_page()
         self.show_page("dashboard")
 
     def get_person(self) -> ft.Person:
@@ -422,24 +552,28 @@ class DesktopTodoApp(ctk.CTk):
 
     def show_page(self, page: str) -> None:
         self.current_page = page
-        for w in (self.dashboard_page, self.tasks_page, self.calendar_page):
+        for w in (self.dashboard_page, self.tasks_page, self.calendar_page, self.family_page):
             w.grid_forget()
         for key, btn in self.nav_buttons.items():
             btn.configure(fg_color="#E2E8F0" if key == page else "#FFFFFF", text_color="#0F172A")
         if page == "dashboard":
-            self.page_title.configure(text="Дашборд")
+            self.page_title.configure(text="Р”Р°С€Р±РѕСЂРґ")
             self.dashboard_page.grid(row=0, column=0, sticky="nsew")
         elif page == "tasks":
-            self.page_title.configure(text="Задачи")
+            self.page_title.configure(text="Р—Р°РґР°С‡Рё")
             self.tasks_page.grid(row=0, column=0, sticky="nsew")
-        else:
-            self.page_title.configure(text="Календарь")
+        elif page == "calendar":
+            self.page_title.configure(text="РљР°Р»РµРЅРґР°СЂСЊ")
             self.calendar_page.grid(row=0, column=0, sticky="nsew")
+        else:
+            self.page_title.configure(text="Семейные дела")
+            self.family_page.grid(row=0, column=0, sticky="nsew")
 
     def refresh_all_views(self) -> None:
         self.refresh_dashboard()
         self.refresh_tasks_kanban()
         self.refresh_calendar()
+        self.refresh_family_tasks()
 
     def _build_dashboard_page(self) -> None:
         self.dashboard_page.grid_columnconfigure(0, weight=1)
@@ -448,7 +582,7 @@ class DesktopTodoApp(ctk.CTk):
         for i in range(4):
             kpi.grid_columnconfigure(i, weight=1)
         self.kpi_vals: list[ctk.CTkLabel] = []
-        for i, title in enumerate(["Всего задач", "В работе", "Завершено", "Просрочено"]):
+        for i, title in enumerate(["Р’СЃРµРіРѕ Р·Р°РґР°С‡", "Р’ СЂР°Р±РѕС‚Рµ", "Р—Р°РІРµСЂС€РµРЅРѕ", "РџСЂРѕСЃСЂРѕС‡РµРЅРѕ"]):
             card = ctk.CTkFrame(kpi, fg_color="#FFFFFF", border_width=1, border_color="#E2E8F0")
             card.grid(row=0, column=i, sticky="ew", padx=(0 if i == 0 else 8, 0))
             ctk.CTkLabel(card, text=title, text_color="#64748B").pack(anchor="w", padx=12, pady=(10, 4))
@@ -461,12 +595,12 @@ class DesktopTodoApp(ctk.CTk):
         charts.grid_columnconfigure(1, weight=2)
         left = ctk.CTkFrame(charts, fg_color="#FFFFFF", border_width=1, border_color="#E2E8F0")
         left.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
-        ctk.CTkLabel(left, text="Динамика (7 дней)", font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", padx=12, pady=(10, 4))
+        ctk.CTkLabel(left, text="Р”РёРЅР°РјРёРєР° (7 РґРЅРµР№)", font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", padx=12, pady=(10, 4))
         self.line_canvas = ctk.CTkCanvas(left, height=220, bg="#FFFFFF", highlightthickness=0)
         self.line_canvas.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         right = ctk.CTkFrame(charts, fg_color="#FFFFFF", border_width=1, border_color="#E2E8F0")
         right.grid(row=0, column=1, sticky="nsew")
-        ctk.CTkLabel(right, text="Статусы", font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", padx=12, pady=(10, 4))
+        ctk.CTkLabel(right, text="РЎС‚Р°С‚СѓСЃС‹", font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", padx=12, pady=(10, 4))
         self.donut_canvas = ctk.CTkCanvas(right, height=220, bg="#FFFFFF", highlightthickness=0)
         self.donut_canvas.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
@@ -523,7 +657,7 @@ class DesktopTodoApp(ctk.CTk):
             extent = 360 * counts[key] / total
             cv.create_arc(cx - r, cy - r, cx + r, cy + r, start=start, extent=-extent, style="arc", width=20, outline=colors[key])
             start -= extent
-        cv.create_text(cx, cy, text=f"{counts['done']}\nготово", font=("Arial", 12, "bold"), fill="#0F172A")
+        cv.create_text(cx, cy, text=f"{counts['done']}\nРіРѕС‚РѕРІРѕ", font=("Arial", 12, "bold"), fill="#0F172A")
 
     def _build_tasks_page(self) -> None:
         self.tasks_page.grid_rowconfigure(1, weight=1)
@@ -537,16 +671,21 @@ class DesktopTodoApp(ctk.CTk):
         ctk.CTkButton(toolbar, text="Выбрать", command=self.toggle_selection_mode).grid(row=0, column=1, padx=(0, 8))
         ctk.CTkButton(toolbar, text="Удалить выбранные", fg_color="#DC2626", hover_color="#B91C1C", command=self.delete_selected_tasks).grid(row=0, column=2, padx=(0, 8))
         ctk.CTkButton(toolbar, text="Новая задача", command=lambda: self.open_task_editor(None)).grid(row=0, column=3)
+
         self.kanban_wrap = ctk.CTkFrame(self.tasks_page, fg_color="transparent")
         self.kanban_wrap.grid(row=1, column=0, sticky="nsew")
+        self.kanban_wrap.grid_rowconfigure(0, weight=1)
         for i in range(4):
             self.kanban_wrap.grid_columnconfigure(i, weight=1)
+
         self.kanban_columns: dict[str, ctk.CTkScrollableFrame] = {}
         for i, status in enumerate(WORKFLOW_ORDER):
             col = ctk.CTkFrame(self.kanban_wrap, fg_color="#F8FAFC", border_width=1, border_color="#E2E8F0")
             col.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 8, 0))
             col.grid_rowconfigure(1, weight=1)
             col.grid_columnconfigure(0, weight=1)
+            self._drop_column_frames[status] = col
+
             ctk.CTkLabel(col, text=WORKFLOW_KEY_TO_RU[status], font=ctk.CTkFont(size=15, weight="bold"), anchor="w").grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 6))
             sc = ctk.CTkScrollableFrame(col, fg_color="transparent")
             sc.grid(row=1, column=0, sticky="nsew", padx=8)
@@ -554,7 +693,16 @@ class DesktopTodoApp(ctk.CTk):
             setattr(sc, "_drop_status", status)
             self._drop_status_frames[status] = sc
             self.kanban_columns[status] = sc
-            ctk.CTkButton(col, text="+ Добавить задачу", fg_color="#E2E8F0", text_color="#0F172A", hover_color="#CBD5E1", command=lambda st=status: self.open_task_editor({"workflow_status": st})).grid(row=2, column=0, sticky="ew", padx=8, pady=(6, 8))
+            self._column_cards[status] = []
+
+            ctk.CTkButton(
+                col,
+                text="+ Добавить задачу",
+                fg_color="#E2E8F0",
+                text_color="#0F172A",
+                hover_color="#CBD5E1",
+                command=lambda st=status: self.open_task_editor({"workflow_status": st}),
+            ).grid(row=2, column=0, sticky="ew", padx=8, pady=(6, 8))
 
     def _debounced_refresh_tasks(self) -> None:
         if self._search_after_id is not None:
@@ -562,13 +710,20 @@ class DesktopTodoApp(ctk.CTk):
         self._search_after_id = self.after(250, self.refresh_tasks_kanban)
 
     def refresh_tasks_kanban(self) -> None:
+        started = datetime.now()
+        self._kanban_render_token += 1
+        token = self._kanban_render_token
         todos = self._load_cached_todos()
         needle = self.search_var.get().strip().lower()
         for col in self.kanban_columns.values():
             for child in col.winfo_children():
                 child.destroy()
+        self._column_cards = {k: [] for k in WORKFLOW_ORDER}
+
         grouped = {k: [] for k in WORKFLOW_ORDER}
         for todo in todos:
+            if bool(todo.get("is_family")):
+                continue
             status = str(todo.get("workflow_status") or "todo")
             if status not in grouped:
                 status = "todo"
@@ -577,11 +732,67 @@ class DesktopTodoApp(ctk.CTk):
                 if needle not in hay:
                     continue
             grouped[status].append(todo)
+
+        queues: dict[str, list[dict]] = {}
         for status in WORKFLOW_ORDER:
-            items = sorted(grouped[status], key=lambda t: (int(t.get("sort_order") or 0), str(t.get("due_date") or ""), str(t.get("time") or ""), int(t.get("id") or 0)))
-            for todo in items[:250]:
-                card = KanbanCard(self.kanban_columns[status], self, todo)
-                card.grid(sticky="ew", padx=2, pady=4)
+            queues[status] = sorted(
+                grouped[status],
+                key=lambda t: (int(t.get("sort_order") or 0), str(t.get("due_date") or ""), str(t.get("time") or ""), int(t.get("id") or 0)),
+            )[:350]
+
+        def render_chunk() -> None:
+            if token != self._kanban_render_token:
+                return
+            has_more = False
+            for status in WORKFLOW_ORDER:
+                batch = queues[status][:24]
+                if not batch:
+                    continue
+                has_more = True
+                del queues[status][:24]
+                for todo in batch:
+                    card = KanbanCard(self.kanban_columns[status], self, todo)
+                    card.grid(sticky="ew", padx=2, pady=4)
+                    self._column_cards[status].append(card)
+            if has_more:
+                self.after(1, render_chunk)
+                return
+            elapsed = int((datetime.now() - started).total_seconds() * 1000)
+            self._append_log(f"telemetry: render_kanban={elapsed}ms")
+            log_event("ui_metric", metric="render_kanban", ms=elapsed, person=self.get_person().key)
+
+        render_chunk()
+
+    def quick_mark_done(self, todo: dict) -> None:
+        todo_id = int(todo.get("id") or 0)
+        if todo_id <= 0:
+            return
+        todos = self._load_cached_todos()
+        for item in todos:
+            if int(item.get("id") or 0) == todo_id:
+                transition_task(item, "done")
+                break
+        self._save_todos(todos)
+        self.refresh_all_views()
+
+    def delete_task(self, todo: dict) -> None:
+        todo_id = int(todo.get("id") or 0)
+        if todo_id <= 0:
+            return
+        if not messagebox.askyesno("Удаление", "Удалить выбранную задачу?"):
+            return
+        person = self.get_person()
+        todos = self._load_cached_todos()
+        removed = None
+        for idx, item in enumerate(todos):
+            if int(item.get("id") or 0) == todo_id:
+                removed = todos.pop(idx)
+                break
+        if removed is None:
+            return
+        ft.push_history(person, "restore_items", {"items": [removed]})
+        self._save_todos(todos)
+        self.refresh_all_views()
 
     def toggle_selection_mode(self) -> None:
         self.selection_mode = not self.selection_mode
@@ -615,32 +826,57 @@ class DesktopTodoApp(ctk.CTk):
 
     def open_task_editor(self, todo: dict | None) -> None:
         person = self.get_person()
+
         def on_save(payload: dict) -> None:
+            started_save = datetime.now()
             todos = self._load_cached_todos()
             now_iso = datetime.now().isoformat(timespec="seconds")
+            due = str(payload.get("due_date") or "")
+            time_value = str(payload.get("time") or "")
+            conflicts = ft.family_conflicts_for_person(person.key, due, time_value)
+            is_existing_family = bool(todo and todo.get("is_family"))
+            if conflicts and not is_existing_family:
+                conflict = conflicts[0]
+                messagebox.showwarning(
+                    "Конфликт",
+                    f"Личная задача пересекается с семейным делом: {conflict.get('title') or conflict.get('text')} ({conflict.get('start_at')}).",
+                )
+                return
+
             if todo and todo.get("id"):
                 target_id = int(todo.get("id") or 0)
                 for item in todos:
                     if int(item.get("id") or 0) == target_id:
                         before = copy.deepcopy(item)
                         item.update(payload)
+                        transition_task(item, str(item.get("workflow_status") or "todo"), now_iso=now_iso)
                         ft.push_history(person, "update_item", {"id": target_id, "before": before})
                         break
             else:
                 next_id = max([int(t.get("id") or 0) for t in todos], default=0) + 1
-                todos.append({
+                item = {
                     "id": next_id,
                     **payload,
                     "sort_order": next_id,
                     "series_id": None,
                     "recurrence_rule": None,
                     "generated_from_rule": False,
+                    "is_family": False,
+                    "participants": [],
+                    "start_at": None,
+                    "duration_minutes": None,
                     "created_at": now_iso,
-                })
+                }
+                transition_task(item, str(item.get("workflow_status") or "todo"), now_iso=now_iso)
+                todos.append(item)
                 ft.push_history(person, "add", {"created_ids": [next_id]})
             ft.save_todos(person, todos)
             self._invalidate_cache()
             self.refresh_all_views()
+            elapsed = int((datetime.now() - started_save).total_seconds() * 1000)
+            self._append_log(f"telemetry: save_popup={elapsed}ms")
+            log_event("ui_metric", metric="save_popup", ms=elapsed, person=person.key)
+
         def on_delete() -> None:
             if not todo or not todo.get("id"):
                 return
@@ -654,17 +890,14 @@ class DesktopTodoApp(ctk.CTk):
             ft.save_todos(person, todos)
             self._invalidate_cache()
             self.refresh_all_views()
+
+        started = datetime.now()
         TaskEditorPopup(self, todo, on_save, on_delete)
+        elapsed = int((datetime.now() - started).total_seconds() * 1000)
+        self._append_log(f"telemetry: open_popup={elapsed}ms")
 
-    def start_drag(self, todo: dict, _event) -> None:
-        self._drag_id = int(todo.get("id") or 0)
-
-    def end_drag(self, todo: dict, event) -> None:
-        drag_id = self._drag_id
-        self._drag_id = 0
-        if drag_id <= 0:
-            return
-        widget = self.winfo_containing(event.x_root, event.y_root)
+    def _detect_drop_target(self, x_root: int, y_root: int) -> tuple[str | None, int | None]:
+        widget = self.winfo_containing(x_root, y_root)
         target_status = None
         while widget is not None:
             status = getattr(widget, "_drop_status", None)
@@ -673,19 +906,66 @@ class DesktopTodoApp(ctk.CTk):
                 break
             widget = widget.master
         if not target_status:
+            return None, None
+
+        cards = self._column_cards.get(target_status, [])
+        column = self.kanban_columns.get(target_status)
+        if column is None:
+            return target_status, None
+        local_y = y_root - column.winfo_rooty()
+        for idx, card in enumerate(cards):
+            middle = card.winfo_y() + (card.winfo_height() / 2)
+            if local_y < middle:
+                return target_status, idx
+        return target_status, len(cards)
+
+    def _set_drop_highlight(self, status: str | None) -> None:
+        for key, frame in self._drop_column_frames.items():
+            frame.configure(border_color="#2563EB" if key == status else "#E2E8F0")
+
+    def start_drag(self, todo: dict, event) -> None:
+        self._drag_id = int(todo.get("id") or 0)
+        self._drag_status_hint = None
+        if self._drag_id <= 0:
             return
+        if self._drag_preview is None:
+            self._drag_preview = ctk.CTkToplevel(self)
+            self._drag_preview.overrideredirect(True)
+            self._drag_preview.attributes("-topmost", True)
+            self._drag_preview.configure(fg_color="#0F172A")
+            ctk.CTkLabel(self._drag_preview, text=str(todo.get("title") or todo.get("text") or "Задача"), text_color="#FFFFFF").pack(padx=10, pady=6)
+        self._drag_preview.geometry(f"+{event.x_root + 14}+{event.y_root + 14}")
+
+    def on_drag_motion(self, _todo: dict, event) -> None:
+        if self._drag_id <= 0:
+            return
+        if self._drag_preview is not None:
+            self._drag_preview.geometry(f"+{event.x_root + 14}+{event.y_root + 14}")
+        status, _idx = self._detect_drop_target(event.x_root, event.y_root)
+        self._drag_status_hint = status
+        self._set_drop_highlight(status)
+
+    def end_drag(self, todo: dict, event) -> None:
+        drag_id = self._drag_id
+        self._drag_id = 0
+        if self._drag_preview is not None:
+            self._drag_preview.destroy()
+            self._drag_preview = None
+        status, target_index = self._detect_drop_target(event.x_root, event.y_root)
+        self._set_drop_highlight(None)
+        if drag_id <= 0 or not status:
+            return
+
+        started = datetime.now()
         todos = self._load_cached_todos()
-        for item in todos:
-            if int(item.get("id") or 0) == drag_id:
-                item["workflow_status"] = target_status
-                item["sort_order"] = max([int(t.get("sort_order") or 0) for t in todos if str(t.get("workflow_status") or "todo") == target_status] + [0]) + 1
-                item["status"] = "done" if target_status == "done" else "active"
-                item["done"] = target_status == "done"
-                item["done_at"] = datetime.now().isoformat(timespec="seconds") if target_status == "done" else None
-                item["updated_at"] = datetime.now().isoformat(timespec="seconds")
-                break
+        moved = move_task(todos, drag_id, status, target_index=target_index)
+        if not moved:
+            return
         self._save_todos(todos)
         self.refresh_all_views()
+        elapsed = int((datetime.now() - started).total_seconds() * 1000)
+        self._append_log(f"telemetry: drop_latency={elapsed}ms")
+        log_event("ui_metric", metric="drop_latency", ms=elapsed, person=self.get_person().key)
 
     def _build_calendar_page(self) -> None:
         self.calendar_page.grid_rowconfigure(1, weight=1)
@@ -696,7 +976,7 @@ class DesktopTodoApp(ctk.CTk):
         self.calendar_month_label.pack(side="left")
         ctk.CTkButton(head, text="<", width=36, command=lambda: self.shift_calendar_month(-1)).pack(side="left", padx=(8, 4))
         ctk.CTkButton(head, text=">", width=36, command=lambda: self.shift_calendar_month(1)).pack(side="left")
-        ctk.CTkButton(head, text="Сегодня", command=self.go_calendar_today).pack(side="left", padx=(8, 0))
+        ctk.CTkButton(head, text="РЎРµРіРѕРґРЅСЏ", command=self.go_calendar_today).pack(side="left", padx=(8, 0))
         self.calendar_grid = ctk.CTkFrame(self.calendar_page, fg_color="#FFFFFF", border_width=1, border_color="#E2E8F0")
         self.calendar_grid.grid(row=1, column=0, sticky="nsew")
         for r in range(7):
@@ -721,6 +1001,7 @@ class DesktopTodoApp(ctk.CTk):
         self.refresh_calendar()
 
     def refresh_calendar(self) -> None:
+        started = datetime.now()
         for child in self.calendar_grid.winfo_children():
             child.destroy()
         y = self.current_month_anchor.year
@@ -728,50 +1009,175 @@ class DesktopTodoApp(ctk.CTk):
         self.calendar_month_label.configure(text=f"{MONTH_NAMES_RU[m - 1]} {y}")
         for c, wd in enumerate(WEEKDAY_SHORT_RU):
             ctk.CTkLabel(self.calendar_grid, text=wd, text_color="#64748B").grid(row=0, column=c, sticky="n", pady=4)
-        todos = self._load_cached_todos()
+
+        todos = [t for t in self._load_cached_todos() if not bool(t.get("is_family"))]
         by_date: dict[str, list[dict]] = {}
         for t in todos:
-            by_date.setdefault(str(t.get("due_date") or ""), []).append(t)
+            due_date = str(t.get("due_date") or "")
+            if due_date:
+                by_date.setdefault(due_date, []).append(t)
+
         matrix = calendar.monthcalendar(y, m)
         while len(matrix) < 6:
             matrix.append([0] * 7)
+
+        total_h = max(self.calendar_grid.winfo_height(), 720)
+        row_count = max(1, len(matrix))
+        cell_h = max(112, int((total_h - 36) / row_count))
+        visible_cards = max(1, int((cell_h - 34) / 24))
+
         for r, week in enumerate(matrix, start=1):
             for c, d in enumerate(week):
-                cell = ctk.CTkFrame(self.calendar_grid, fg_color="#FFFFFF", border_width=1, border_color="#E2E8F0")
+                cell = ctk.CTkFrame(self.calendar_grid, fg_color="#FFFFFF", border_width=1, border_color="#E2E8F0", height=cell_h)
                 cell.grid(row=r, column=c, sticky="nsew", padx=2, pady=2)
+                cell.grid_propagate(False)
                 if d <= 0:
                     continue
                 dt = date(y, m, d)
                 due = dt.isoformat()
-                ctk.CTkButton(cell, text=str(d), width=28, height=24, fg_color="transparent", text_color="#0F172A", hover_color="#E2E8F0", command=lambda dd=dt: self.open_day_popup(dd)).pack(anchor="ne", padx=2, pady=2)
+                ctk.CTkButton(
+                    cell,
+                    text=str(d),
+                    width=28,
+                    height=24,
+                    fg_color="transparent",
+                    text_color="#0F172A",
+                    hover_color="#E2E8F0",
+                    command=lambda dd=dt: self.open_day_popup(dd),
+                ).pack(anchor="ne", padx=2, pady=2)
                 tasks = sorted(by_date.get(due, []), key=lambda x: (str(x.get("time") or ""), int(x.get("id") or 0)))
-                for t in tasks[:3]:
-                    ctk.CTkButton(cell, text=str(t.get("title") or t.get("text") or "")[:24], height=20, fg_color="#DBEAFE", text_color="#1E3A8A", hover_color="#BFDBFE", command=lambda todo=t: self.open_task_editor(todo)).pack(fill="x", padx=4, pady=1)
-                if len(tasks) > 3:
-                    ctk.CTkLabel(cell, text=f"+{len(tasks)-3} еще", text_color="#64748B").pack(anchor="w", padx=6)
+                for t in tasks[:visible_cards]:
+                    ctk.CTkButton(
+                        cell,
+                        text=str(t.get("title") or t.get("text") or "")[:24],
+                        height=20,
+                        fg_color="#DBEAFE",
+                        text_color="#1E3A8A",
+                        hover_color="#BFDBFE",
+                        command=lambda todo=t: self.open_task_editor(todo),
+                    ).pack(fill="x", padx=4, pady=1)
+                if len(tasks) > visible_cards:
+                    hidden = len(tasks) - visible_cards
+                    ctk.CTkButton(
+                        cell,
+                        text=f"+{hidden} еще",
+                        height=20,
+                        fg_color="transparent",
+                        text_color="#64748B",
+                        hover_color="#E2E8F0",
+                        anchor="w",
+                        command=lambda dd=dt: self.open_day_popup(dd),
+                    ).pack(fill="x", padx=4, pady=(1, 2))
+
+        elapsed = int((datetime.now() - started).total_seconds() * 1000)
+        self._append_log(f"telemetry: calendar_render={elapsed}ms")
+        log_event("ui_metric", metric="calendar_month_render", ms=elapsed, person=self.get_person().key)
 
     def open_day_popup(self, day_date: date) -> None:
         win = ctk.CTkToplevel(self)
-        win.title(f"Задачи на {day_date.strftime('%d.%m.%Y')}")
+        win.title(f"Р—Р°РґР°С‡Рё РЅР° {day_date.strftime('%d.%m.%Y')}")
         win.geometry("520x520")
         win.transient(self)
         win.grab_set()
         wrap = ctk.CTkFrame(win)
         wrap.pack(fill="both", expand=True, padx=12, pady=12)
-        ctk.CTkLabel(wrap, text=f"Задачи на {day_date.strftime('%d.%m.%Y')}", font=ctk.CTkFont(size=18, weight="bold")).pack(anchor="w", pady=(0, 8))
+        ctk.CTkLabel(wrap, text=f"Р—Р°РґР°С‡Рё РЅР° {day_date.strftime('%d.%m.%Y')}", font=ctk.CTkFont(size=18, weight="bold")).pack(anchor="w", pady=(0, 8))
         sc = ctk.CTkScrollableFrame(wrap)
         sc.pack(fill="both", expand=True)
         due = day_date.isoformat()
-        items = [t for t in self._load_cached_todos() if str(t.get("due_date") or "") == due]
+        items = [
+            t
+            for t in self._load_cached_todos()
+            if not bool(t.get("is_family")) and str(t.get("due_date") or "") == due
+        ]
         if not items:
-            ctk.CTkLabel(sc, text="На этот день задач нет", text_color="#64748B").pack(anchor="w", padx=8, pady=8)
+            ctk.CTkLabel(sc, text="РќР° СЌС‚РѕС‚ РґРµРЅСЊ Р·Р°РґР°С‡ РЅРµС‚", text_color="#64748B").pack(anchor="w", padx=8, pady=8)
         for t in items:
             row = ctk.CTkFrame(sc, fg_color="#F8FAFC")
             row.pack(fill="x", padx=6, pady=4)
             ctk.CTkLabel(row, text=str(t.get("title") or t.get("text") or ""), anchor="w", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=8, pady=(8, 2))
-            ctk.CTkLabel(row, text=f"{t.get('time') or 'без времени'} · {WORKFLOW_KEY_TO_RU.get(str(t.get('workflow_status') or 'todo'),'К выполнению')}", text_color="#64748B").pack(anchor="w", padx=8, pady=(0, 8))
-            ctk.CTkButton(row, text="Открыть", width=80, command=lambda todo=t: self.open_task_editor(todo)).pack(anchor="e", padx=8, pady=(0, 8))
-        ctk.CTkButton(wrap, text="+ Добавить задачу", command=lambda: self.open_task_editor({"due_date": due})).pack(anchor="e", pady=(8, 0))
+            ctk.CTkLabel(row, text=f"{t.get('time') or 'Р±РµР· РІСЂРµРјРµРЅРё'} В· {WORKFLOW_KEY_TO_RU.get(str(t.get('workflow_status') or 'todo'),'Рљ РІС‹РїРѕР»РЅРµРЅРёСЋ')}", text_color="#64748B").pack(anchor="w", padx=8, pady=(0, 8))
+            ctk.CTkButton(row, text="РћС‚РєСЂС‹С‚СЊ", width=80, command=lambda todo=t: self.open_task_editor(todo)).pack(anchor="e", padx=8, pady=(0, 8))
+        ctk.CTkButton(wrap, text="+ Р”РѕР±Р°РІРёС‚СЊ Р·Р°РґР°С‡Сѓ", command=lambda: self.open_task_editor({"due_date": due})).pack(anchor="e", pady=(8, 0))
+
+    def _build_family_page(self) -> None:
+        self.family_page.grid_rowconfigure(1, weight=1)
+        self.family_page.grid_columnconfigure(0, weight=1)
+        top = ctk.CTkFrame(self.family_page, fg_color="transparent")
+        top.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        ctk.CTkButton(top, text="+ Семейное дело", command=lambda: self.open_family_task_editor(None)).pack(side="left")
+        ctk.CTkSegmentedButton(
+            top,
+            values=["upcoming", "past", "all"],
+            variable=self.family_filter_var,
+            command=lambda _v: self.refresh_family_tasks(),
+        ).pack(side="left", padx=(10, 0))
+        self.family_list = ctk.CTkScrollableFrame(self.family_page, fg_color="#FFFFFF", border_width=1, border_color="#E2E8F0")
+        self.family_list.grid(row=1, column=0, sticky="nsew")
+        self.family_list.grid_columnconfigure(0, weight=1)
+
+    def refresh_family_tasks(self) -> None:
+        for child in self.family_list.winfo_children():
+            child.destroy()
+        items = ft.load_family_tasks()
+        now = datetime.now()
+        mode = self.family_filter_var.get()
+        filtered: list[dict] = []
+        for item in items:
+            start_at = datetime.fromisoformat(str(item.get("start_at") or now.isoformat()))
+            if mode == "upcoming" and start_at < now:
+                continue
+            if mode == "past" and start_at >= now:
+                continue
+            filtered.append(item)
+        filtered.sort(key=lambda x: str(x.get("start_at") or ""))
+
+        if not filtered:
+            ctk.CTkLabel(self.family_list, text="Семейных дел пока нет.", text_color="#64748B").grid(row=0, column=0, sticky="w", padx=10, pady=10)
+            return
+        for idx, item in enumerate(filtered):
+            row = ctk.CTkFrame(self.family_list, fg_color="#F8FAFC", border_width=1, border_color="#E2E8F0")
+            row.grid(row=idx, column=0, sticky="ew", padx=6, pady=4)
+            row.grid_columnconfigure(0, weight=1)
+            title = str(item.get("title") or item.get("text") or "Семейное дело")
+            ctk.CTkLabel(row, text=title, font=ctk.CTkFont(size=14, weight="bold"), anchor="w").grid(row=0, column=0, sticky="w", padx=8, pady=(8, 2))
+            participants = [ft.person_by_key(k).display_name for k in item.get("participants", []) if ft.person_by_key(k)]
+            info = (
+                f"{item.get('start_at')} · {item.get('duration_minutes')} мин · "
+                f"участники: {', '.join(participants) if participants else '-'}"
+            )
+            ctk.CTkLabel(row, text=info, text_color="#64748B", anchor="w").grid(row=1, column=0, sticky="w", padx=8, pady=(0, 8))
+            ctk.CTkButton(row, text="Открыть", width=84, command=lambda t=item: self.open_family_task_editor(t)).grid(row=0, column=1, rowspan=2, padx=8, pady=8)
+
+    def open_family_task_editor(self, task: dict | None) -> None:
+        started = datetime.now()
+
+        def on_save(payload: dict) -> None:
+            if task and task.get("id"):
+                ok, error, _updated = ft.update_family_task(int(task.get("id") or 0), payload)
+            else:
+                ok, error, _created = ft.create_family_task(
+                    title=str(payload.get("title") or ""),
+                    details=str(payload.get("details") or ""),
+                    start_at=str(payload.get("start_at") or ""),
+                    duration_minutes=int(payload.get("duration_minutes") or 0),
+                    participants=list(payload.get("participants") or []),
+                )
+            if not ok:
+                messagebox.showwarning("Семейное дело", error)
+                return
+            self.refresh_family_tasks()
+
+        def on_delete() -> None:
+            if not task:
+                return
+            ft.delete_family_task(int(task.get("id") or 0))
+            self.refresh_family_tasks()
+
+        FamilyTaskPopup(self, task, on_save, on_delete if task else None)
+        elapsed = int((datetime.now() - started).total_seconds() * 1000)
+        self._append_log(f"telemetry: open_family_popup={elapsed}ms")
+        log_event("ui_metric", metric="open_family_popup", ms=elapsed, person=self.get_person().key)
 
     def _append_log(self, message: str) -> None:
         stamp = datetime.now().strftime("%H:%M:%S")
@@ -794,7 +1200,7 @@ class DesktopTodoApp(ctk.CTk):
     def toggle_bot(self) -> None:
         if self.bot_var.get():
             if not os.getenv("TELEGRAM_BOT_TOKEN", "").strip():
-                self._append_log("Нельзя включить бота: TELEGRAM_BOT_TOKEN не задан")
+                self._append_log("РќРµР»СЊР·СЏ РІРєР»СЋС‡РёС‚СЊ Р±РѕС‚Р°: TELEGRAM_BOT_TOKEN РЅРµ Р·Р°РґР°РЅ")
                 self.bot_var.set(False)
                 return
             self.bot_var.set(self.bot_host.start())
@@ -824,4 +1230,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
 

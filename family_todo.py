@@ -10,6 +10,15 @@ from audio import listen_speech
 from config import SETTINGS
 from todo_actions import apply_move
 from todo_logger import log_event
+from todo_ops import (
+    WORKFLOW_SET,
+    compute_interval,
+    ensure_workflow_status,
+    intervals_overlap,
+    move_task,
+    parse_iso_datetime,
+    transition_task,
+)
 from todo_parsing import has_all_parts, token_overlap_score
 from todo_reminders import seconds_until
 from todo_router import resolve_action
@@ -24,6 +33,7 @@ except Exception:  # pragma: no cover
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "family_data"
+FAMILY_TASKS_PATH = DATA_DIR / "family_tasks.json"
 
 
 @dataclass(frozen=True)
@@ -60,7 +70,7 @@ DAY_ALIASES = {
     "воскресенье": ("воскресенье", "воскресенья", "воскресенью", "вс"),
 }
 DAY_ORDER = ("понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье")
-WORKFLOW_STATUSES = {"todo", "in_progress", "in_review", "done"}
+WORKFLOW_STATUSES = WORKFLOW_SET
 ADD_PREFIXES = ("добавь", "добавить", "запиши", "создай", "новое дело")
 PRIORITY_ALIASES = {
     "high": ("важно", "срочно", "приоритет высокий", "высокий приоритет"),
@@ -248,6 +258,178 @@ def bootstrap_data() -> None:
         )
 
 
+def person_by_key(person_key: str) -> Person | None:
+    for person in PEOPLE:
+        if person.key == person_key:
+            return person
+    return None
+
+
+def load_family_tasks() -> list[dict]:
+    raw = read_json(FAMILY_TASKS_PATH, [])
+    source = raw if isinstance(raw, list) else []
+    normalized: list[dict] = []
+    changed = False
+    max_id = 0
+    for item in source:
+        if not isinstance(item, dict):
+            changed = True
+            continue
+        raw_id = item.get("id")
+        item_id = int(raw_id) if isinstance(raw_id, int) else max_id + 1
+        max_id = max(max_id, item_id)
+        participants_raw = item.get("participants")
+        participants = [str(p) for p in participants_raw] if isinstance(participants_raw, list) else []
+        participants = sorted({p for p in participants if person_by_key(p)})
+        if not participants:
+            changed = True
+            continue
+        workflow = str(item.get("workflow_status") or "todo")
+        if workflow not in WORKFLOW_STATUSES:
+            workflow = "todo"
+            changed = True
+        duration_raw = item.get("duration_minutes")
+        duration = int(duration_raw) if isinstance(duration_raw, int) and duration_raw >= 0 else 60
+        if duration != duration_raw:
+            changed = True
+        start_at = str(item.get("start_at") or "")
+        if not parse_iso_datetime(start_at):
+            changed = True
+            continue
+        due = start_at[:10]
+        time_value = start_at[11:16]
+        normalized.append(
+            {
+                "id": item_id,
+                "title": str(item.get("title") or item.get("text") or "семейное дело").strip(),
+                "text": str(item.get("title") or item.get("text") or "семейное дело").strip(),
+                "details": str(item.get("details") or "").strip(),
+                "due_date": due,
+                "time": time_value,
+                "start_at": start_at,
+                "duration_minutes": duration,
+                "participants": participants,
+                "is_family": True,
+                "workflow_status": workflow,
+                "status": "done" if workflow == "done" else "active",
+                "done": workflow == "done",
+                "done_at": item.get("done_at"),
+                "reminder_offsets": item.get("reminder_offsets") if isinstance(item.get("reminder_offsets"), list) else list(DEFAULT_REMINDER_OFFSETS),
+                "sort_order": int(item.get("sort_order") or item_id),
+                "updated_at": item.get("updated_at"),
+                "created_at": str(item.get("created_at") or datetime.now().isoformat(timespec="seconds")),
+                "last_reminder_key": item.get("last_reminder_key"),
+            }
+        )
+    normalized.sort(key=lambda x: (str(x.get("start_at") or ""), int(x.get("id") or 0)))
+    if changed:
+        save_family_tasks(normalized)
+    return normalized
+
+
+def save_family_tasks(items: list[dict]) -> None:
+    write_json(FAMILY_TASKS_PATH, items)
+
+
+def create_family_task(
+    *,
+    title: str,
+    details: str,
+    start_at: str,
+    duration_minutes: int,
+    participants: list[str],
+) -> tuple[bool, str, dict | None]:
+    cleaned_participants = sorted({p for p in participants if person_by_key(p)})
+    if not cleaned_participants:
+        return False, "Не выбраны участники семейного дела.", None
+    start_dt = parse_iso_datetime(start_at)
+    if start_dt is None:
+        return False, "Некорректная дата/время семейного дела.", None
+    tasks = load_family_tasks()
+    next_id = max([int(t.get("id") or 0) for t in tasks], default=0) + 1
+    now_iso = datetime.now().isoformat(timespec="seconds")
+    item = {
+        "id": next_id,
+        "title": title.strip() or "семейное дело",
+        "text": title.strip() or "семейное дело",
+        "details": details.strip(),
+        "due_date": start_dt.date().isoformat(),
+        "time": start_dt.strftime("%H:%M"),
+        "start_at": start_dt.isoformat(timespec="minutes"),
+        "duration_minutes": max(0, int(duration_minutes or 0)),
+        "participants": cleaned_participants,
+        "is_family": True,
+        "workflow_status": "todo",
+        "status": "active",
+        "done": False,
+        "done_at": None,
+        "reminder_offsets": list(DEFAULT_REMINDER_OFFSETS),
+        "sort_order": next_id,
+        "created_at": now_iso,
+        "updated_at": now_iso,
+    }
+    tasks.append(item)
+    save_family_tasks(tasks)
+    return True, "", item
+
+
+def update_family_task(task_id: int, payload: dict) -> tuple[bool, str, dict | None]:
+    tasks = load_family_tasks()
+    for item in tasks:
+        if int(item.get("id") or 0) != task_id:
+            continue
+        item.update(payload)
+        ensure_workflow_status(item)
+        transition_task(item, str(item.get("workflow_status") or "todo"))
+        item["is_family"] = True
+        item["participants"] = sorted({str(p) for p in item.get("participants", []) if person_by_key(str(p))})
+        if not item["participants"]:
+            return False, "Семейное дело должно иметь хотя бы одного участника.", None
+        if not parse_iso_datetime(str(item.get("start_at") or "")):
+            return False, "Некорректная дата/время семейного дела.", None
+        start_dt = parse_iso_datetime(str(item.get("start_at") or ""))
+        item["due_date"] = start_dt.date().isoformat() if start_dt else item.get("due_date")
+        item["time"] = start_dt.strftime("%H:%M") if start_dt else item.get("time")
+        item["duration_minutes"] = max(0, int(item.get("duration_minutes") or 0))
+        save_family_tasks(tasks)
+        return True, "", item
+    return False, "Семейное дело не найдено.", None
+
+
+def delete_family_task(task_id: int) -> dict | None:
+    tasks = load_family_tasks()
+    for idx, item in enumerate(tasks):
+        if int(item.get("id") or 0) == task_id:
+            removed = tasks.pop(idx)
+            save_family_tasks(tasks)
+            return removed
+    return None
+
+
+def family_conflicts_for_person(person_key: str, due_date: str, time_value: str) -> list[dict]:
+    try:
+        candidate_start = datetime.fromisoformat(f"{due_date}T{time_value}")
+    except ValueError:
+        return []
+    candidate = (candidate_start, candidate_start + timedelta(minutes=1))
+    conflicts: list[dict] = []
+    for family_item in load_family_tasks():
+        if person_key not in family_item.get("participants", []):
+            continue
+        if str(family_item.get("workflow_status") or "todo") == "done":
+            continue
+        family_interval = compute_interval(
+            str(family_item.get("start_at") or ""),
+            int(family_item.get("duration_minutes") or 0),
+        )
+        if family_interval is None:
+            continue
+        blocked = (family_interval[0] - timedelta(minutes=60), family_interval[1])
+        if intervals_overlap(candidate, blocked):
+            conflicts.append(family_item)
+    return conflicts
+
+
 def listen_once(prompt: str, retries: int = 1, phrase_time_limit: int | None = None) -> str | None:
     for attempt in range(retries + 1):
         if prompt:
@@ -334,6 +516,7 @@ def load_todos(person: Person) -> list[dict]:
         if workflow_status not in WORKFLOW_STATUSES:
             workflow_status = "done" if status == "done" else "todo"
             changed = True
+        status = "done" if workflow_status == "done" else "active"
 
         recurrence_rule = str(todo.get("recurrence_rule") or todo.get("recurring") or "").strip()
         if recurrence_rule not in {"daily", "weekdays"}:
@@ -364,6 +547,21 @@ def load_todos(person: Person) -> list[dict]:
             tags = []
             changed = True
 
+        participants_raw = todo.get("participants")
+        participants = [str(v) for v in participants_raw] if isinstance(participants_raw, list) else []
+        participants = sorted({p for p in participants if person_by_key(p)})
+        is_family = bool(todo.get("is_family"))
+        start_at = str(todo.get("start_at") or "").strip() or None
+        duration_raw = todo.get("duration_minutes")
+        duration_minutes = int(duration_raw) if isinstance(duration_raw, int) and duration_raw >= 0 else None
+        if is_family and not start_at:
+            fallback_time = inferred_time or "19:00"
+            start_at = f"{due_date}T{fallback_time}"
+            changed = True
+        if is_family and duration_minutes is None:
+            duration_minutes = 60
+            changed = True
+
         series_id = todo.get("series_id")
         if recurrence_rule and not series_id:
             series_id = f"series-{uuid.uuid4().hex[:12]}"
@@ -385,6 +583,10 @@ def load_todos(person: Person) -> list[dict]:
                 "workflow_status": workflow_status,
                 "sort_order": sort_order,
                 "done_at": todo.get("done_at"),
+                "is_family": is_family,
+                "participants": participants,
+                "start_at": start_at,
+                "duration_minutes": duration_minutes,
                 "created_at": str(todo.get("created_at") or datetime.now().isoformat(timespec="seconds")),
                 "updated_at": todo.get("updated_at"),
                 "reminder_offsets": offsets,
@@ -499,6 +701,41 @@ def cleanup_legacy_misha_todos() -> dict:
     if report.get("removed", 0) > 0:
         log_event("todo_cleanup_legacy", person=target.key, removed=report["removed"])
     return report
+
+
+def cleanup_misha_todos_from_date(min_due_date: str = "2026-04-20") -> dict:
+    target = next((p for p in PEOPLE if p.key == "misha"), None)
+    if target is None:
+        return {"removed": 0, "backup_path": "", "threshold": min_due_date, "error": "профиль не найден"}
+    path = todos_path(target)
+    raw = read_json(path, [])
+    source = raw if isinstance(raw, list) else []
+    kept: list[dict] = []
+    removed = 0
+    for item in source:
+        if not isinstance(item, dict):
+            kept.append(item)
+            continue
+        due = str(item.get("due_date") or "")
+        if due and due >= min_due_date:
+            removed += 1
+            continue
+        kept.append(item)
+    backup_path = ""
+    if removed > 0 and path.exists():
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup = path.with_name(f"todos.backup_cleanup_{stamp}.json")
+        backup.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+        backup_path = str(backup)
+        write_json(path, kept)
+    log_event(
+        "todo_cleanup_misha_due_date",
+        person="misha",
+        threshold=min_due_date,
+        removed=removed,
+        backup_path=backup_path,
+    )
+    return {"removed": removed, "backup_path": backup_path, "threshold": min_due_date}
 
 
 def load_history(person: Person) -> list[dict]:
@@ -1130,6 +1367,7 @@ def _move_from_single_phrase(person: Person, text: str) -> bool:
     target_due = nearest_date_for_weekday(target_day, include_today=False)
     todos[best_idx]["due_date"] = target_due.isoformat()
     todos[best_idx]["day"] = target_day
+    transition_task(todos[best_idx], "todo")
     save_todos(person, todos)
     push_history(person, "update_item", {"id": previous_state.get("id"), "before": previous_state})
 
@@ -1356,7 +1594,7 @@ def _play_reminder_cue() -> None:
 
 
 def _todo_due_in_offset(todo: dict, now: datetime, weekday: str) -> tuple[str, int] | None:
-    if str(todo.get("status") or "") == "done" or bool(todo.get("done")):
+    if str(todo.get("workflow_status") or "") == "done" or str(todo.get("status") or "") == "done" or bool(todo.get("done")):
         return None
     due_date = str(todo.get("due_date") or "")
     if due_date and due_date != now.date().isoformat():
@@ -1418,9 +1656,7 @@ def _apply_reminder_reply(person: Person, todo: dict, reply: str | None) -> bool
 
     normalized = normalize_text(reply)
     if any(contains_phrase(normalized, phrase) for phrase in ("сделано", "отметь сделано", "выполнено", "готово")):
-        todo["done"] = True
-        todo["status"] = "done"
-        todo["done_at"] = datetime.now().isoformat(timespec="seconds")
+        transition_task(todo, "done")
         speak(f"{person.display_name}: отметил сделанным.")
         return True
 
@@ -1442,10 +1678,7 @@ def _apply_reminder_reply(person: Person, todo: dict, reply: str | None) -> bool
             todo["day"] = weekday_ru(datetime.fromisoformat(target_due_date).date())
         if target_time is not None:
             todo["time"] = target_time
-        todo["status"] = "active"
-        todo["done"] = False
-        todo["done_at"] = None
-        todo["updated_at"] = datetime.now().isoformat(timespec="seconds")
+        transition_task(todo, "todo")
         todo.pop("last_reminder_key", None)
         speak(
             f"{person.display_name}: перенес. "
@@ -1461,6 +1694,61 @@ def process_global_reminders() -> None:
     bootstrap_data()
     now = datetime.now()
     weekday = DAY_ORDER[now.weekday()]
+
+    family_items = load_family_tasks()
+    family_changed = False
+    for item in family_items:
+        if str(item.get("workflow_status") or "todo") == "done":
+            continue
+        start_at = str(item.get("start_at") or "")
+        start_dt = parse_iso_datetime(start_at)
+        if start_dt is None:
+            continue
+        time_value = start_dt.strftime("%H:%M")
+        seconds_left = seconds_until(time_value, now)
+        if seconds_left is None or seconds_left < 0:
+            continue
+        offsets = item.get("reminder_offsets")
+        if not isinstance(offsets, list) or not offsets:
+            offsets = list(DEFAULT_REMINDER_OFFSETS)
+        matched_offset = None
+        for offset in sorted([int(v) for v in offsets if isinstance(v, int) or str(v).isdigit()], reverse=True):
+            lower_bound = offset * 60
+            upper_bound = lower_bound + 59
+            if lower_bound <= seconds_left <= upper_bound:
+                matched_offset = offset
+                break
+        if matched_offset is None:
+            continue
+        reminder_key = f"{now.date().isoformat()}:{time_value}:{matched_offset}"
+        if item.get("last_reminder_key") == reminder_key:
+            continue
+
+        participants = [str(p) for p in item.get("participants") if person_by_key(str(p))]
+        participant_names = ", ".join([person_by_key(p).display_name for p in participants if person_by_key(p)])
+        title = (item.get("title") or item.get("text") or "семейное дело").strip()
+        details = str(item.get("details") or "").strip()
+        text = (
+            f"Семейное дело: {title}. "
+            f"Старт {start_dt.strftime('%d.%m.%Y %H:%M')}, через {matched_offset} минут. "
+            f"Участники: {participant_names or 'не указаны'}."
+        )
+        if details:
+            text += f" Детали: {details}"
+
+        from notifier import desktop_notify, push_by_visibility
+
+        desktop_notify(text, title="Семейное напоминание")
+        for participant in participants:
+            push_by_visibility(participant, text)
+        speak(text)
+        item["last_reminder_key"] = reminder_key
+        item["updated_at"] = datetime.now().isoformat(timespec="seconds")
+        family_changed = True
+        break
+
+    if family_changed:
+        save_family_tasks(family_items)
 
     for person in PEOPLE:
         todos = load_todos(person)
@@ -1542,6 +1830,24 @@ def add_todo(person: Person, initial_text: str | None = None) -> None:
         dates_to_create = [datetime.fromisoformat(due_date_value).date()]
 
     for due_dt in dates_to_create:
+        due_iso = due_dt.isoformat()
+        conflicts = family_conflicts_for_person(person.key, due_iso, time_value)
+        if conflicts:
+            conflict = conflicts[0]
+            title = str(conflict.get("title") or conflict.get("text") or "семейное дело")
+            start_at = str(conflict.get("start_at") or "")
+            log_event(
+                "todo_add_blocked_family_conflict",
+                person=person.key,
+                due_date=due_iso,
+                time=time_value,
+                family_task_id=int(conflict.get("id") or 0),
+            )
+            speak(
+                f"Нельзя создать личную задачу: конфликт с семейным делом '{title}' ({start_at})."
+            )
+            return
+
         current_id += 1
         created_ids.append(current_id)
         todos.append(
@@ -1550,7 +1856,7 @@ def add_todo(person: Person, initial_text: str | None = None) -> None:
                 "title": title.strip(),
                 "text": title.strip(),  # backward compatibility
                 "details": (details or "").strip(),
-                "due_date": due_dt.isoformat(),
+                "due_date": due_iso,
                 "day": weekday_ru(due_dt),
                 "time": time_value,
                 "priority": priority,
@@ -1559,6 +1865,10 @@ def add_todo(person: Person, initial_text: str | None = None) -> None:
                 "done": False,
                 "workflow_status": "todo",
                 "sort_order": current_id,
+                "is_family": False,
+                "participants": [],
+                "start_at": None,
+                "duration_minutes": None,
                 "recurrence_rule": recurrence,
                 "series_id": series_id,
                 "generated_from_rule": bool(recurrence),
@@ -1733,9 +2043,7 @@ def mark_done(person: Person, initial_text: str | None = None) -> None:
 
     global_idx, _todo = filtered[index - 1]
     previous_state = dict(todos[global_idx])
-    todos[global_idx]["done"] = True
-    todos[global_idx]["status"] = "done"
-    todos[global_idx]["done_at"] = datetime.now().isoformat(timespec="seconds")
+    transition_task(todos[global_idx], "done")
     save_todos(person, todos)
     push_history(person, "update_item", {"id": previous_state.get("id"), "before": previous_state})
     log_event(
@@ -1818,10 +2126,7 @@ def move_todo(person: Person, initial_text: str | None = None) -> None:
     todos[global_idx]["due_date"] = target_due_date
     todos[global_idx]["day"] = weekday_ru(datetime.fromisoformat(target_due_date).date())
     todos[global_idx]["time"] = target_time
-    todos[global_idx]["status"] = "active"
-    todos[global_idx]["done"] = False
-    todos[global_idx]["done_at"] = None
-    todos[global_idx]["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    transition_task(todos[global_idx], "todo")
     save_todos(person, todos)
     push_history(person, "update_item", {"id": previous_state.get("id"), "before": previous_state})
     log_event(

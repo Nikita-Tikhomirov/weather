@@ -641,3 +641,4 @@
 2026-04-20 11:50:13,095 INFO {"event": "stt_recognized", "engine": "google"}
 2026-04-20 11:50:20,080 INFO {"event": "stt_recognized", "engine": "google"}
 2026-04-20 11:50:39,647 INFO {"event": "stt_recognized", "engine": "google"}
+2026-04-20 13:02:57,537 INFO {"event": "todo_cleanup_misha_due_date", "person": "misha", "threshold": "2026-04-20", "removed": 117, "backup_path": "C:\\Users\\user\\Desktop\\weather\\family_data\\misha\\todos.backup_cleanup_20260420_130257.json"}
