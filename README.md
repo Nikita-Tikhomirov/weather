@@ -258,6 +258,43 @@ python -m unittest discover -s tests -v
 - Проверьте, что установлен FFmpeg и доступен в `PATH`.
 
 2. Речь не распознается
+
+## 12. Mobile + Backend sync (Android + Telegram 2-way)
+
+В проект добавлен backend API для единого source of truth:
+
+- `backend_api/public/index.php`
+- `backend_api/sql/schema.sql`
+- `backend_api/config.example.php`
+
+После деплоя backend включите его для desktop/telegram процесса:
+
+```powershell
+$env:TODO_BACKEND_URL='https://your-domain.tld'
+$env:TODO_BACKEND_API_KEY='YOUR_API_KEY'
+```
+
+Для процесса Telegram-бота дополнительно:
+
+```powershell
+$env:TODO_BACKEND_SOURCE='telegram'
+```
+
+Что это дает:
+
+- desktop и Telegram-бот записывают изменения в backend;
+- мобильное Flutter-приложение (`mobile_app/`) синхронизируется через `/sync/push` и `/sync/pull`;
+- при недоступности Telegram используется outbox-очередь в backend (`telegram_outbox`), которую можно повторно отправить через:
+
+```bash
+POST /telegram/outbox/retry
+```
+
+или локально из проекта:
+
+```powershell
+python .\scripts\retry_telegram_outbox.py
+```
 - Проверьте микрофон в Windows.
 - Увеличьте тишину в комнате (в коде есть авто-калибровка шума).
 - Включите `STT_DEBUG=1`.

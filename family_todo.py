@@ -1,5 +1,9 @@
 ﻿import json
+import os
 import re
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -34,6 +38,9 @@ except Exception:  # pragma: no cover
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "family_data"
 FAMILY_TASKS_PATH = DATA_DIR / "family_tasks.json"
+BACKEND_URL = os.getenv("TODO_BACKEND_URL", "").strip().rstrip("/")
+BACKEND_API_KEY = os.getenv("TODO_BACKEND_API_KEY", "").strip()
+BACKEND_SOURCE = os.getenv("TODO_BACKEND_SOURCE", "desktop").strip() or "desktop"
 
 
 @dataclass(frozen=True)
@@ -278,7 +285,56 @@ def person_by_key(person_key: str) -> Person | None:
     return None
 
 
+def _backend_enabled() -> bool:
+    return bool(BACKEND_URL)
+
+
+def _backend_request(method: str, path: str, payload: dict | None = None) -> dict | None:
+    if not _backend_enabled():
+        return None
+    url = f"{BACKEND_URL}{path}"
+    body = None
+    headers = {"Content-Type": "application/json; charset=utf-8"}
+    if BACKEND_API_KEY:
+        headers["X-Api-Key"] = BACKEND_API_KEY
+    if payload is not None:
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(url, data=body, method=method.upper(), headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw = resp.read().decode("utf-8")
+            parsed = json.loads(raw) if raw else {}
+            return parsed if isinstance(parsed, dict) else None
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError):
+        return None
+
+
+def _backend_pull_snapshot() -> dict | None:
+    query = urllib.parse.urlencode({"since": "1970-01-01T00:00:00"})
+    return _backend_request("GET", f"/sync/pull?{query}")
+
+
+def _push_snapshot_event(actor_profile: str, event: dict) -> None:
+    if not _backend_enabled():
+        return
+    _backend_request(
+        "POST",
+        "/sync/push",
+        payload={
+            "actor_profile": actor_profile,
+            "source": BACKEND_SOURCE,
+            "events": [event],
+        },
+    )
+
+
 def load_family_tasks() -> list[dict]:
+    if _backend_enabled():
+        remote = _backend_pull_snapshot()
+        if isinstance(remote, dict):
+            remote_items = remote.get("family_tasks")
+            if isinstance(remote_items, list):
+                write_json(FAMILY_TASKS_PATH, remote_items)
     raw = read_json(FAMILY_TASKS_PATH, [])
     source = raw if isinstance(raw, list) else []
     normalized: list[dict] = []
@@ -336,12 +392,23 @@ def load_family_tasks() -> list[dict]:
         )
     normalized.sort(key=lambda x: (str(x.get("start_at") or ""), int(x.get("id") or 0)))
     if changed:
-        save_family_tasks(normalized)
+        save_family_tasks(normalized, push_remote=False)
     return normalized
 
 
-def save_family_tasks(items: list[dict]) -> None:
+def save_family_tasks(items: list[dict], *, push_remote: bool = True) -> None:
     write_json(FAMILY_TASKS_PATH, items)
+    if push_remote and _backend_enabled():
+        _push_snapshot_event(
+            actor_profile="nik",
+            event={
+                "event_id": f"desktop-family-snapshot-{uuid.uuid4()}",
+                "entity": "family_task",
+                "action": "replace_family_tasks",
+                "payload": {"items": items},
+                "happened_at": datetime.now().isoformat(timespec="seconds"),
+            },
+        )
 
 
 def create_family_task(
@@ -473,6 +540,20 @@ def find_person(text: str | None) -> Person | None:
 
 
 def load_todos(person: Person) -> list[dict]:
+    if _backend_enabled():
+        remote = _backend_pull_snapshot()
+        if isinstance(remote, dict):
+            remote_tasks = remote.get("tasks")
+            if isinstance(remote_tasks, list):
+                snapshot: list[dict] = []
+                for item in remote_tasks:
+                    if not isinstance(item, dict):
+                        continue
+                    owner = str(item.get("owner_key") or "")
+                    is_family = bool(item.get("is_family"))
+                    if is_family or owner == person.key:
+                        snapshot.append(item)
+                write_json(todos_path(person), snapshot)
     data = read_json(todos_path(person), [])
     source = data if isinstance(data, list) else []
     changed = False
@@ -659,12 +740,23 @@ def load_todos(person: Person) -> list[dict]:
     )
 
     if changed:
-        save_todos(person, normalized)
+        save_todos(person, normalized, push_remote=False)
     return normalized
 
 
-def save_todos(person: Person, todos: list[dict]) -> None:
+def save_todos(person: Person, todos: list[dict], *, push_remote: bool = True) -> None:
     write_json(todos_path(person), todos)
+    if push_remote and _backend_enabled():
+        _push_snapshot_event(
+            actor_profile=person.key,
+            event={
+                "event_id": f"desktop-person-snapshot-{person.key}-{uuid.uuid4()}",
+                "entity": "task",
+                "action": "replace_person_tasks",
+                "payload": {"owner_key": person.key, "tasks": todos},
+                "happened_at": datetime.now().isoformat(timespec="seconds"),
+            },
+        )
 
 
 def cleanup_legacy_todos(person: Person) -> dict:
@@ -2386,5 +2478,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
 

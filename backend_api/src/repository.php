@@ -1,0 +1,222 @@
+<?php
+
+declare(strict_types=1);
+
+function normalize_task(array $task): array
+{
+    $tags = $task['tags'] ?? [];
+    $participants = $task['participants'] ?? [];
+    return [
+        'id' => (string)($task['id'] ?? ''),
+        'owner_key' => (string)($task['owner_key'] ?? ''),
+        'is_family' => (bool)($task['is_family'] ?? false),
+        'title' => trim((string)($task['title'] ?? '')),
+        'details' => trim((string)($task['details'] ?? '')),
+        'due_date' => (string)($task['due_date'] ?? ''),
+        'time' => (string)($task['time'] ?? ''),
+        'workflow_status' => ensure_workflow((string)($task['workflow_status'] ?? 'todo')),
+        'priority' => (string)($task['priority'] ?? 'medium'),
+        'tags' => is_array($tags) ? array_values($tags) : [],
+        'participants' => is_array($participants) ? array_values($participants) : [],
+        'duration_minutes' => (int)($task['duration_minutes'] ?? 0),
+        'updated_at' => (string)($task['updated_at'] ?? iso_now()),
+        'version' => (int)($task['version'] ?? 1),
+    ];
+}
+
+function normalize_family_task(array $item): array
+{
+    $participants = $item['participants'] ?? [];
+    return [
+        'id' => (string)($item['id'] ?? ''),
+        'title' => trim((string)($item['title'] ?? '')),
+        'details' => trim((string)($item['details'] ?? '')),
+        'due_date' => (string)($item['due_date'] ?? ''),
+        'time' => (string)($item['time'] ?? ''),
+        'workflow_status' => ensure_workflow((string)($item['workflow_status'] ?? 'todo')),
+        'participants' => is_array($participants) ? array_values($participants) : [],
+        'duration_minutes' => (int)($item['duration_minutes'] ?? 0),
+        'updated_at' => (string)($item['updated_at'] ?? iso_now()),
+        'version' => (int)($item['version'] ?? 1),
+    ];
+}
+
+function is_duplicate_event(PDO $db, string $eventId): bool
+{
+    $stmt = $db->prepare('SELECT 1 FROM sync_events WHERE event_id = :event_id LIMIT 1');
+    $stmt->execute(['event_id' => $eventId]);
+    return (bool)$stmt->fetchColumn();
+}
+
+function register_event(PDO $db, string $eventId, string $source): void
+{
+    $stmt = $db->prepare(
+        'INSERT INTO sync_events (event_id, source, created_at) VALUES (:event_id, :source, :created_at)'
+    );
+    $stmt->execute([
+        'event_id' => $eventId,
+        'source' => $source,
+        'created_at' => iso_now(),
+    ]);
+}
+
+function upsert_task(PDO $db, array $task): void
+{
+    $sql = <<<SQL
+INSERT INTO tasks (
+    id, owner_key, is_family, title, details, due_date, time_value, workflow_status, priority,
+    tags_json, participants_json, duration_minutes, updated_at, version
+) VALUES (
+    :id, :owner_key, :is_family, :title, :details, :due_date, :time_value, :workflow_status, :priority,
+    :tags_json, :participants_json, :duration_minutes, :updated_at, :version
+)
+ON DUPLICATE KEY UPDATE
+    owner_key = VALUES(owner_key),
+    is_family = VALUES(is_family),
+    title = VALUES(title),
+    details = VALUES(details),
+    due_date = VALUES(due_date),
+    time_value = VALUES(time_value),
+    workflow_status = VALUES(workflow_status),
+    priority = VALUES(priority),
+    tags_json = VALUES(tags_json),
+    participants_json = VALUES(participants_json),
+    duration_minutes = VALUES(duration_minutes),
+    updated_at = VALUES(updated_at),
+    version = GREATEST(version, VALUES(version))
+SQL;
+    $stmt = $db->prepare($sql);
+    $stmt->execute([
+        'id' => $task['id'],
+        'owner_key' => $task['owner_key'],
+        'is_family' => $task['is_family'] ? 1 : 0,
+        'title' => $task['title'],
+        'details' => $task['details'],
+        'due_date' => $task['due_date'],
+        'time_value' => $task['time'],
+        'workflow_status' => $task['workflow_status'],
+        'priority' => $task['priority'],
+        'tags_json' => json_encode($task['tags'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'participants_json' => json_encode($task['participants'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'duration_minutes' => $task['duration_minutes'],
+        'updated_at' => $task['updated_at'],
+        'version' => $task['version'],
+    ]);
+}
+
+function delete_task(PDO $db, string $taskId): void
+{
+    $stmt = $db->prepare('DELETE FROM tasks WHERE id = :id');
+    $stmt->execute(['id' => $taskId]);
+}
+
+function replace_person_tasks(PDO $db, string $ownerKey, array $tasks): void
+{
+    $db->prepare('DELETE FROM tasks WHERE owner_key = :owner_key AND is_family = 0')->execute(['owner_key' => $ownerKey]);
+    foreach ($tasks as $task) {
+        $task = normalize_task(is_array($task) ? $task : []);
+        $task['owner_key'] = $ownerKey;
+        $task['is_family'] = false;
+        upsert_task($db, $task);
+    }
+}
+
+function upsert_family_task(PDO $db, array $item): void
+{
+    $sql = <<<SQL
+INSERT INTO family_tasks (
+    id, title, details, due_date, time_value, workflow_status, participants_json, duration_minutes, updated_at, version
+) VALUES (
+    :id, :title, :details, :due_date, :time_value, :workflow_status, :participants_json, :duration_minutes, :updated_at, :version
+)
+ON DUPLICATE KEY UPDATE
+    title = VALUES(title),
+    details = VALUES(details),
+    due_date = VALUES(due_date),
+    time_value = VALUES(time_value),
+    workflow_status = VALUES(workflow_status),
+    participants_json = VALUES(participants_json),
+    duration_minutes = VALUES(duration_minutes),
+    updated_at = VALUES(updated_at),
+    version = GREATEST(version, VALUES(version))
+SQL;
+    $stmt = $db->prepare($sql);
+    $stmt->execute([
+        'id' => $item['id'],
+        'title' => $item['title'],
+        'details' => $item['details'],
+        'due_date' => $item['due_date'],
+        'time_value' => $item['time'],
+        'workflow_status' => $item['workflow_status'],
+        'participants_json' => json_encode($item['participants'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'duration_minutes' => $item['duration_minutes'],
+        'updated_at' => $item['updated_at'],
+        'version' => $item['version'],
+    ]);
+}
+
+function delete_family_task(PDO $db, string $id): void
+{
+    $stmt = $db->prepare('DELETE FROM family_tasks WHERE id = :id');
+    $stmt->execute(['id' => $id]);
+}
+
+function replace_family_tasks(PDO $db, array $items): void
+{
+    $db->exec('DELETE FROM family_tasks');
+    foreach ($items as $item) {
+        $normalized = normalize_family_task(is_array($item) ? $item : []);
+        upsert_family_task($db, $normalized);
+    }
+}
+
+function changed_tasks_since(PDO $db, string $since): array
+{
+    $stmt = $db->prepare('SELECT * FROM tasks WHERE updated_at >= :since ORDER BY updated_at, id');
+    $stmt->execute(['since' => $since]);
+    $rows = $stmt->fetchAll();
+    $out = [];
+    foreach ($rows as $row) {
+        $out[] = [
+            'id' => (string)$row['id'],
+            'owner_key' => (string)$row['owner_key'],
+            'is_family' => (bool)$row['is_family'],
+            'title' => (string)$row['title'],
+            'details' => (string)$row['details'],
+            'due_date' => (string)$row['due_date'],
+            'time' => (string)$row['time_value'],
+            'workflow_status' => (string)$row['workflow_status'],
+            'priority' => (string)$row['priority'],
+            'tags' => json_decode((string)$row['tags_json'], true) ?: [],
+            'participants' => json_decode((string)$row['participants_json'], true) ?: [],
+            'duration_minutes' => (int)$row['duration_minutes'],
+            'updated_at' => (string)$row['updated_at'],
+            'version' => (int)$row['version'],
+        ];
+    }
+    return $out;
+}
+
+function changed_family_tasks_since(PDO $db, string $since): array
+{
+    $stmt = $db->prepare('SELECT * FROM family_tasks WHERE updated_at >= :since ORDER BY updated_at, id');
+    $stmt->execute(['since' => $since]);
+    $rows = $stmt->fetchAll();
+    $out = [];
+    foreach ($rows as $row) {
+        $out[] = [
+            'id' => (string)$row['id'],
+            'title' => (string)$row['title'],
+            'details' => (string)$row['details'],
+            'due_date' => (string)$row['due_date'],
+            'time' => (string)$row['time_value'],
+            'workflow_status' => (string)$row['workflow_status'],
+            'participants' => json_decode((string)$row['participants_json'], true) ?: [],
+            'duration_minutes' => (int)$row['duration_minutes'],
+            'updated_at' => (string)$row['updated_at'],
+            'version' => (int)$row['version'],
+        ];
+    }
+    return $out;
+}
+
