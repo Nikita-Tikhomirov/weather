@@ -247,6 +247,19 @@ def history_path(person: Person) -> Path:
     return st.history_path(DATA_DIR, person.key)
 
 
+def ui_settings_path(person: Person) -> Path:
+    return person_dir(person) / "ui_settings.json"
+
+
+def load_ui_settings(person: Person) -> dict:
+    raw = read_json(ui_settings_path(person), {})
+    return raw if isinstance(raw, dict) else {}
+
+
+def save_ui_settings(person: Person, settings: dict) -> None:
+    write_json(ui_settings_path(person), settings)
+
+
 def bootstrap_data() -> None:
     DATA_DIR.mkdir(exist_ok=True)
     for person in PEOPLE:
