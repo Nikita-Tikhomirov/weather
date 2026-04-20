@@ -311,6 +311,10 @@ def _backend_request(method: str, path: str, payload: dict | None = None) -> dic
 
 def _backend_pull_snapshot() -> dict | None:
     query = urllib.parse.urlencode({"since": "1970-01-01T00:00:00"})
+    response = _backend_request("GET", f"/sync_pull.php?{query}")
+    if isinstance(response, dict):
+        return response
+    # Backward-compatible fallback for rewrite-enabled deployments.
     return _backend_request("GET", f"/sync/pull?{query}")
 
 
@@ -319,7 +323,7 @@ def _push_snapshot_event(actor_profile: str, event: dict) -> None:
         return
     _backend_request(
         "POST",
-        "/sync/push",
+        "/sync_push.php",
         payload={
             "actor_profile": actor_profile,
             "source": BACKEND_SOURCE,

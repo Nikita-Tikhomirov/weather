@@ -2,15 +2,17 @@
 
 Backend синхронизации для мобильного приложения и Telegram-бота.
 
+В этом хостинг-профиле используются плоские endpoint-файлы (`*.php`), чтобы не зависеть от nginx rewrite.
+
 ## Что реализовано
 
-- `POST /sync/push` — прием батча изменений (идемпотентно по `event_id`)
-- `GET /sync/pull?since=...` — выдача изменений задач/семейных задач
-- `POST /telegram/events` — прием событий из Telegram-бота
-- `POST /telegram/outbox/retry` — повторная отправка pending/failed событий в Telegram
-- `POST /devices/register` — регистрация FCM token устройства
-- `POST /devices/unregister` — деактивация FCM token устройства
-- `POST /push/outbox/retry` — повторная отправка pending/failed app push в FCM
+- `POST /sync_push.php` — прием батча изменений (идемпотентно по `event_id`)
+- `GET /sync_pull.php?since=...` — выдача изменений задач/семейных задач
+- `POST /telegram_events.php` — прием событий из Telegram-бота
+- `POST /telegram_outbox_retry.php` — повторная отправка pending/failed событий в Telegram
+- `POST /devices_register.php` — регистрация FCM token устройства
+- `POST /devices_unregister.php` — деактивация FCM token устройства
+- `POST /push_outbox_retry.php` — повторная отправка pending/failed app push в FCM
 - права:
   - личные задачи редактирует только владелец;
   - семейные задачи редактируют только `nik` и `nastya`.

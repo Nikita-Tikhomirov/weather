@@ -27,7 +27,7 @@ class ApiClient {
     if (events.isEmpty) {
       return;
     }
-    final uri = Uri.parse('$baseUrl/sync/push');
+    final uri = Uri.parse('$baseUrl/sync_push.php');
     final payload = {
       'actor_profile': actorProfile,
       'source': source,
@@ -48,7 +48,7 @@ class ApiClient {
   }
 
   Future<(List<TaskItem>, String)> pull({required String since}) async {
-    final uri = Uri.parse('$baseUrl/sync/pull?since=$since');
+    final uri = Uri.parse('$baseUrl/sync_pull.php?since=$since');
     final response = await http.get(uri);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('pull failed: ${response.statusCode} ${response.body}');
@@ -70,7 +70,7 @@ class ApiClient {
     required String appVersion,
     String? deviceId,
   }) async {
-    final uri = Uri.parse('$baseUrl/devices/register');
+    final uri = Uri.parse('$baseUrl/devices_register.php');
     final payload = {
       'actor_profile': actorProfile,
       'token': token,
@@ -88,7 +88,7 @@ class ApiClient {
     required String actorProfile,
     required String token,
   }) async {
-    final uri = Uri.parse('$baseUrl/devices/unregister');
+    final uri = Uri.parse('$baseUrl/devices_unregister.php');
     final payload = {
       'actor_profile': actorProfile,
       'token': token,

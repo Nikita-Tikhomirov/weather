@@ -39,7 +39,7 @@ class BackendBridgeTests(unittest.TestCase):
         self.assertEqual(len(captured), 1)
         method, path, payload = captured[0]
         self.assertEqual(method, "POST")
-        self.assertEqual(path, "/sync/push")
+        self.assertEqual(path, "/sync_push.php")
         self.assertEqual(payload["source"], "telegram")
         self.assertEqual(payload["actor_profile"], self.person.key)
         self.assertEqual(payload["events"][0]["action"], "replace_person_tasks")
@@ -47,4 +47,3 @@ class BackendBridgeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

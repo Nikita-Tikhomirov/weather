@@ -15,7 +15,7 @@ def main() -> int:
         return 1
 
     req = urllib.request.Request(
-        f"{base_url}/telegram/outbox/retry",
+        f"{base_url}/telegram_outbox_retry.php",
         method="POST",
         headers={
             "Content-Type": "application/json; charset=utf-8",
@@ -36,4 +36,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

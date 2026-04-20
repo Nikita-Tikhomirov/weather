@@ -296,6 +296,21 @@ POST /telegram/outbox/retry
 python .\scripts\retry_telegram_outbox.py
 ```
 
+Для этого хостинга без rewrite используйте URL вида:
+
+```powershell
+$env:TODO_BACKEND_URL='https://familly.nikportfolio.ru/backend_api/public'
+```
+
+И endpoint-файлы:
+
+- `sync_push.php`
+- `sync_pull.php`
+- `devices_register.php`
+- `devices_unregister.php`
+- `telegram_outbox_retry.php`
+- `push_outbox_retry.php`
+
 ### FCM app-to-app push
 
 В backend появились endpoint'ы:

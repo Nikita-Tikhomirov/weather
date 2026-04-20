@@ -20,7 +20,7 @@ Flutter-клиент с offline-first синхронизацией.
 ```bash
 flutter pub get
 flutter run \
-  --dart-define=API_BASE_URL=https://your-domain.tld \
+  --dart-define=API_BASE_URL=https://your-domain.tld/backend_api/public \
   --dart-define=API_KEY=YOUR_API_KEY
 ```
 
