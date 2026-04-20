@@ -9,3 +9,7 @@
 {"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-16T14:46:05"}
 {"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-16T17:23:45"}
 {"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-16T22:06:21"}
+{"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-17T15:17:05"}
+{"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-18T17:07:19"}
+{"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-19T14:23:27"}
+{"event": "stt_whisper_init_failed", "error": "Requested int8_float16 compute type, but the target device or backend do not support efficient int8_float16 computation.", "ts": "2026-04-20T11:45:53"}

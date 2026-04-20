@@ -1,194 +1,5 @@
 [
   {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        2
-      ]
-    },
-    "created_at": "2026-04-16T14:56:50"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        3
-      ]
-    },
-    "created_at": "2026-04-16T14:58:02"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        4
-      ]
-    },
-    "created_at": "2026-04-16T15:01:27"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        4
-      ]
-    },
-    "created_at": "2026-04-16T15:08:06"
-  },
-  {
-    "action": "restore_items",
-    "payload": {
-      "items": [
-        {
-          "id": 1,
-          "text": "кормить крыс",
-          "day": null,
-          "time": "16:20",
-          "done": true,
-          "created_at": "2026-04-13T12:48:18",
-          "done_at": "2026-04-13T12:51:56",
-          "title": "кормить крыс",
-          "priority": "medium",
-          "reminder_offsets": [
-            60,
-            30,
-            10
-          ],
-          "tags": []
-        }
-      ]
-    },
-    "created_at": "2026-04-16T15:09:28"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        4
-      ]
-    },
-    "created_at": "2026-04-16T15:18:42"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        5
-      ]
-    },
-    "created_at": "2026-04-16T15:18:51"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 3,
-      "before": {
-        "id": 3,
-        "title": "Домашнее задание",
-        "text": "Домашнее задание",
-        "details": "",
-        "day": "четверг",
-        "time": "19:00",
-        "priority": "medium",
-        "tags": [
-          "обучение"
-        ],
-        "recurring": "daily",
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "done": false,
-        "created_at": "2026-04-16T14:58:02"
-      }
-    },
-    "created_at": "2026-04-16T22:17:13"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 2,
-      "before": {
-        "id": 2,
-        "title": "Выпустить крыс",
-        "text": "Выпустить крыс",
-        "details": "Любимых пупсиков",
-        "day": "четверг",
-        "time": "21:00",
-        "priority": "high",
-        "tags": [
-          "домашние дела"
-        ],
-        "recurring": "daily",
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "done": false,
-        "created_at": "2026-04-16T14:56:50"
-      }
-    },
-    "created_at": "2026-04-16T22:20:03"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 2,
-      "before": {
-        "id": 2,
-        "title": "Выпустить крыс",
-        "text": "Выпустить крыс",
-        "details": "Любимых пупсиков",
-        "day": "четверг",
-        "time": "21:00",
-        "priority": "high",
-        "tags": [
-          "домашние дела"
-        ],
-        "recurring": "daily",
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "done": false,
-        "created_at": "2026-04-16T14:56:50",
-        "last_done_date": "2026-04-16",
-        "done_at": "2026-04-16T22:20:03"
-      }
-    },
-    "created_at": "2026-04-16T22:20:07"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        5
-      ]
-    },
-    "created_at": "2026-04-16T22:42:50"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        5
-      ]
-    },
-    "created_at": "2026-04-16T22:48:44"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        6
-      ]
-    },
-    "created_at": "2026-04-17T09:48:12"
-  },
-  {
     "action": "restore_items",
     "payload": {
       "items": [
@@ -224,5 +35,831 @@
       ]
     },
     "created_at": "2026-04-17T10:00:33"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 6,
+      "before": {
+        "id": 6,
+        "title": "полить  ростения",
+        "text": "полить  ростения",
+        "details": "полить   свой   сад",
+        "day": "суббота",
+        "time": "13:00",
+        "priority": "high",
+        "tags": [
+          "домашние    дела"
+        ],
+        "recurring": null,
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "done": false,
+        "created_at": "2026-04-17T10:00:33"
+      }
+    },
+    "created_at": "2026-04-18T11:01:56"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 6,
+      "before": {
+        "id": 6,
+        "title": "полить  ростения",
+        "text": "полить  ростения",
+        "details": "полить   свой   сад",
+        "day": "суббота",
+        "time": "13:00",
+        "priority": "high",
+        "tags": [
+          "домашние    дела"
+        ],
+        "recurring": null,
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "done": true,
+        "created_at": "2026-04-17T10:00:33",
+        "done_at": "2026-04-18T11:01:56"
+      }
+    },
+    "created_at": "2026-04-18T11:02:21"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 2,
+      "before": {
+        "id": 2,
+        "title": "Выпустить крыс",
+        "text": "Выпустить крыс",
+        "details": "Любимых пупсиков",
+        "day": "четверг",
+        "time": "21:00",
+        "priority": "high",
+        "tags": [
+          "домашние дела"
+        ],
+        "recurring": "daily",
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "done": false,
+        "created_at": "2026-04-16T14:56:50",
+        "last_done_date": "2026-04-16",
+        "done_at": "2026-04-16T22:20:07"
+      }
+    },
+    "created_at": "2026-04-18T11:03:04"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 2,
+      "before": {
+        "id": 2,
+        "title": "Выпустить крыс",
+        "text": "Выпустить крыс",
+        "details": "Любимых пупсиков",
+        "day": "четверг",
+        "time": "21:00",
+        "priority": "high",
+        "tags": [
+          "домашние дела"
+        ],
+        "recurring": "daily",
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "done": false,
+        "created_at": "2026-04-16T14:56:50",
+        "last_done_date": "2026-04-18",
+        "done_at": "2026-04-18T11:03:04"
+      }
+    },
+    "created_at": "2026-04-18T11:03:27"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 3,
+      "before": {
+        "id": 3,
+        "title": "Домашнее задание",
+        "text": "Домашнее задание",
+        "details": "",
+        "day": "четверг",
+        "time": "19:00",
+        "priority": "medium",
+        "tags": [
+          "обучение"
+        ],
+        "recurring": "daily",
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "done": false,
+        "created_at": "2026-04-16T14:58:02",
+        "last_done_date": "2026-04-16",
+        "done_at": "2026-04-16T22:17:13"
+      }
+    },
+    "created_at": "2026-04-18T11:03:51"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 3,
+      "before": {
+        "id": 3,
+        "title": "Домашнее задание",
+        "text": "Домашнее задание",
+        "details": "",
+        "day": "четверг",
+        "time": "19:00",
+        "priority": "medium",
+        "tags": [
+          "обучение"
+        ],
+        "recurring": "daily",
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "done": false,
+        "created_at": "2026-04-16T14:58:02",
+        "last_done_date": "2026-04-18",
+        "done_at": "2026-04-18T11:03:51"
+      }
+    },
+    "created_at": "2026-04-18T11:04:16"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 4,
+      "before": {
+        "id": 4,
+        "title": "Убратся у крыс",
+        "text": "Убратся у крыс",
+        "details": "у сваих жопсиков",
+        "day": "четверг",
+        "time": "21:20",
+        "priority": "high",
+        "tags": [
+          "домашние дела"
+        ],
+        "recurring": "daily",
+        "reminder_offsets": [
+          5
+        ],
+        "done": false,
+        "created_at": "2026-04-16T15:18:42"
+      }
+    },
+    "created_at": "2026-04-18T11:04:37"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 5,
+      "before": {
+        "id": 5,
+        "title": "читать энциклопедию",
+        "text": "читать энциклопедию",
+        "details": "про лечение",
+        "day": "пятница",
+        "time": "19:00",
+        "priority": "medium",
+        "tags": [],
+        "recurring": null,
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "done": false,
+        "created_at": "2026-04-16T22:48:44"
+      }
+    },
+    "created_at": "2026-04-18T11:06:23"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 5,
+      "before": {
+        "id": 5,
+        "title": "читать энциклопедию",
+        "text": "читать энциклопедию",
+        "details": "про лечение",
+        "day": "суббота",
+        "time": "11:10",
+        "priority": "medium",
+        "tags": [],
+        "recurring": null,
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "done": false,
+        "created_at": "2026-04-16T22:48:44"
+      }
+    },
+    "created_at": "2026-04-18T11:17:51"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 2,
+      "before": {
+        "id": 2,
+        "title": "Выпустить крыс",
+        "text": "Выпустить крыс",
+        "details": "Любимых пупсиков",
+        "due_date": "2026-04-23",
+        "day": "четверг",
+        "time": "21:00",
+        "priority": "high",
+        "tags": [
+          "домашние дела"
+        ],
+        "status": "active",
+        "done": false,
+        "done_at": "2026-04-18T11:03:27",
+        "created_at": "2026-04-16T14:56:50",
+        "updated_at": null,
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": "series-98cdcad1693f",
+        "recurrence_rule": "daily",
+        "generated_from_rule": true,
+        "legacy_day": "четверг"
+      }
+    },
+    "created_at": "2026-04-18T12:30:13"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 4,
+      "before": {
+        "id": 4,
+        "title": "Убратся у крыс",
+        "text": "Убратся у крыс",
+        "details": "у сваих жопсиков",
+        "due_date": "2026-04-23",
+        "day": "четверг",
+        "time": "21:20",
+        "priority": "high",
+        "tags": [
+          "домашние дела"
+        ],
+        "status": "active",
+        "done": false,
+        "done_at": "2026-04-18T11:04:37",
+        "created_at": "2026-04-16T15:18:42",
+        "updated_at": null,
+        "reminder_offsets": [
+          5
+        ],
+        "series_id": "series-7e40f8539c15",
+        "recurrence_rule": "daily",
+        "generated_from_rule": true,
+        "legacy_day": "четверг"
+      }
+    },
+    "created_at": "2026-04-18T12:30:36"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 2,
+      "before": {
+        "id": 2,
+        "title": "Выпустить крыс",
+        "text": "Выпустить крыс",
+        "details": "Любимых пупсиков",
+        "due_date": "2026-04-18",
+        "day": "суббота",
+        "time": "21:00",
+        "priority": "high",
+        "tags": [
+          "домашние дела"
+        ],
+        "status": "active",
+        "done": false,
+        "done_at": "2026-04-18T11:03:27",
+        "created_at": "2026-04-16T14:56:50",
+        "updated_at": "2026-04-18T12:30:13",
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": "series-98cdcad1693f",
+        "recurrence_rule": "daily",
+        "generated_from_rule": true,
+        "legacy_day": "суббота"
+      }
+    },
+    "created_at": "2026-04-18T16:22:00"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        89
+      ]
+    },
+    "created_at": "2026-04-18T16:22:43"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 89,
+          "title": "Дошить гамак",
+          "text": "Дошить гамак",
+          "details": "",
+          "due_date": "2026-04-18",
+          "day": "суббота",
+          "time": "14:00",
+          "priority": "high",
+          "tags": [
+            "домашние дела"
+          ],
+          "status": "active",
+          "done": false,
+          "done_at": null,
+          "created_at": "2026-04-18T16:22:43",
+          "updated_at": null,
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": "суббота"
+        }
+      ]
+    },
+    "created_at": "2026-04-18T16:22:57"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        92
+      ]
+    },
+    "created_at": "2026-04-19T13:21:34"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 93,
+      "before": {
+        "id": 93,
+        "title": "кормить крыс",
+        "text": "кормить крыс",
+        "details": "своих питомцев",
+        "due_date": "2026-04-20",
+        "day": "понедельник",
+        "time": "11:00",
+        "priority": "high",
+        "tags": [],
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-19T13:21:34",
+        "updated_at": null,
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": "a2c0702b-c309-46fe-baca-425d8d831413",
+        "recurrence_rule": "daily",
+        "generated_from_rule": true,
+        "legacy_day": "воскресенье"
+      }
+    },
+    "created_at": "2026-04-19T13:21:44"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 80,
+      "before": {
+        "id": 80,
+        "title": "Выпустить крыс",
+        "text": "Выпустить крыс",
+        "details": "Любимых пупсиков",
+        "due_date": "2026-04-20",
+        "day": "понедельник",
+        "time": "21:00",
+        "priority": "high",
+        "tags": [
+          "домашние дела"
+        ],
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-16T14:56:50",
+        "updated_at": null,
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": "series-98cdcad1693f",
+        "recurrence_rule": "daily",
+        "generated_from_rule": true,
+        "legacy_day": "понедельник"
+      }
+    },
+    "created_at": "2026-04-19T13:59:16"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 85,
+      "before": {
+        "id": 85,
+        "title": "Убратся у крыс",
+        "text": "Убратся у крыс",
+        "details": "у сваих жопсиков",
+        "due_date": "2026-04-20",
+        "day": "понедельник",
+        "time": "21:20",
+        "priority": "high",
+        "tags": [
+          "домашние дела"
+        ],
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-16T15:18:42",
+        "updated_at": null,
+        "reminder_offsets": [
+          5
+        ],
+        "series_id": "series-7e40f8539c15",
+        "recurrence_rule": "daily",
+        "generated_from_rule": true,
+        "legacy_day": "понедельник"
+      }
+    },
+    "created_at": "2026-04-19T14:22:25"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 84,
+      "before": {
+        "id": 84,
+        "title": "Убратся у крыс",
+        "text": "Убратся у крыс",
+        "details": "у сваих жопсиков",
+        "due_date": "2026-04-19",
+        "day": "воскресенье",
+        "time": "21:20",
+        "priority": "high",
+        "tags": [
+          "домашние дела"
+        ],
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-16T15:18:42",
+        "updated_at": null,
+        "reminder_offsets": [
+          5
+        ],
+        "series_id": "series-7e40f8539c15",
+        "recurrence_rule": "daily",
+        "generated_from_rule": true,
+        "legacy_day": "воскресенье"
+      }
+    },
+    "created_at": "2026-04-19T21:59:28"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 79,
+      "before": {
+        "id": 79,
+        "title": "Выпустить крыс",
+        "text": "Выпустить крыс",
+        "details": "Любимых пупсиков",
+        "due_date": "2026-04-19",
+        "day": "воскресенье",
+        "time": "21:00",
+        "priority": "high",
+        "tags": [
+          "домашние дела"
+        ],
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-16T14:56:50",
+        "updated_at": null,
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": "series-98cdcad1693f",
+        "recurrence_rule": "daily",
+        "generated_from_rule": true,
+        "legacy_day": "воскресенье"
+      }
+    },
+    "created_at": "2026-04-19T21:59:36"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 92,
+      "before": {
+        "id": 92,
+        "title": "кормить крыс",
+        "text": "кормить крыс",
+        "details": "своих питомцев",
+        "due_date": "2026-04-19",
+        "day": "воскресенье",
+        "time": "11:00",
+        "priority": "high",
+        "tags": [],
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-19T13:21:34",
+        "updated_at": null,
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": "a2c0702b-c309-46fe-baca-425d8d831413",
+        "recurrence_rule": "daily",
+        "generated_from_rule": true,
+        "legacy_day": "воскресенье"
+      }
+    },
+    "created_at": "2026-04-19T21:59:42"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 93,
+          "title": "кормить крыс",
+          "text": "кормить крыс",
+          "details": "своих питомцев",
+          "due_date": "2026-04-20",
+          "day": "понедельник",
+          "time": "11:00",
+          "priority": "high",
+          "tags": [],
+          "status": "done",
+          "done": true,
+          "done_at": "2026-04-19T13:21:44",
+          "created_at": "2026-04-19T13:21:34",
+          "updated_at": null,
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": "a2c0702b-c309-46fe-baca-425d8d831413",
+          "recurrence_rule": "daily",
+          "generated_from_rule": true,
+          "legacy_day": "понедельник"
+        }
+      ]
+    },
+    "created_at": "2026-04-19T22:01:42"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 122,
+          "title": "кормить крыс",
+          "text": "кормить крыс",
+          "details": "своих питомцев",
+          "due_date": "2026-04-20",
+          "day": "понедельник",
+          "time": "11:00",
+          "priority": "high",
+          "tags": [],
+          "status": "active",
+          "done": false,
+          "done_at": null,
+          "created_at": "2026-04-19T13:21:34",
+          "updated_at": null,
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": "a2c0702b-c309-46fe-baca-425d8d831413",
+          "recurrence_rule": "daily",
+          "generated_from_rule": true,
+          "legacy_day": "воскресенье"
+        }
+      ]
+    },
+    "created_at": "2026-04-19T22:01:53"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 122,
+          "title": "кормить крыс",
+          "text": "кормить крыс",
+          "details": "своих питомцев",
+          "due_date": "2026-04-20",
+          "day": "понедельник",
+          "time": "11:00",
+          "priority": "high",
+          "tags": [],
+          "status": "active",
+          "done": false,
+          "done_at": null,
+          "created_at": "2026-04-19T13:21:34",
+          "updated_at": null,
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": "a2c0702b-c309-46fe-baca-425d8d831413",
+          "recurrence_rule": "daily",
+          "generated_from_rule": true,
+          "legacy_day": "воскресенье"
+        }
+      ]
+    },
+    "created_at": "2026-04-19T22:02:05"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 122,
+          "title": "кормить крыс",
+          "text": "кормить крыс",
+          "details": "своих питомцев",
+          "due_date": "2026-04-20",
+          "day": "понедельник",
+          "time": "11:00",
+          "priority": "high",
+          "tags": [],
+          "status": "active",
+          "done": false,
+          "done_at": null,
+          "created_at": "2026-04-19T13:21:34",
+          "updated_at": null,
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": "a2c0702b-c309-46fe-baca-425d8d831413",
+          "recurrence_rule": "daily",
+          "generated_from_rule": true,
+          "legacy_day": "воскресенье"
+        }
+      ]
+    },
+    "created_at": "2026-04-19T22:02:17"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 85,
+          "title": "Убратся у крыс",
+          "text": "Убратся у крыс",
+          "details": "у сваих жопсиков",
+          "due_date": "2026-04-20",
+          "day": "понедельник",
+          "time": "21:20",
+          "priority": "high",
+          "tags": [
+            "домашние дела"
+          ],
+          "status": "done",
+          "done": true,
+          "done_at": "2026-04-19T14:22:25",
+          "created_at": "2026-04-16T15:18:42",
+          "updated_at": null,
+          "reminder_offsets": [
+            5
+          ],
+          "series_id": "series-7e40f8539c15",
+          "recurrence_rule": "daily",
+          "generated_from_rule": true,
+          "legacy_day": "понедельник"
+        }
+      ]
+    },
+    "created_at": "2026-04-19T22:02:27"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 90,
+          "title": "Убратся у крыс",
+          "text": "Убратся у крыс",
+          "details": "у сваих жопсиков",
+          "due_date": "2026-05-18",
+          "day": "понедельник",
+          "time": "21:20",
+          "priority": "high",
+          "tags": [
+            "домашние дела"
+          ],
+          "status": "active",
+          "done": false,
+          "done_at": null,
+          "created_at": "2026-04-16T15:18:42",
+          "updated_at": null,
+          "reminder_offsets": [
+            5
+          ],
+          "series_id": "series-7e40f8539c15",
+          "recurrence_rule": "daily",
+          "generated_from_rule": true,
+          "legacy_day": "понедельник"
+        }
+      ]
+    },
+    "created_at": "2026-04-19T22:02:45"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 124,
+          "title": "Убратся у крыс",
+          "text": "Убратся у крыс",
+          "details": "у сваих жопсиков",
+          "due_date": "2026-05-18",
+          "day": "понедельник",
+          "time": "21:20",
+          "priority": "high",
+          "tags": [
+            "домашние дела"
+          ],
+          "status": "active",
+          "done": false,
+          "done_at": null,
+          "created_at": "2026-04-16T15:18:42",
+          "updated_at": null,
+          "reminder_offsets": [
+            5
+          ],
+          "series_id": "series-7e40f8539c15",
+          "recurrence_rule": "daily",
+          "generated_from_rule": true,
+          "legacy_day": "суббота"
+        }
+      ]
+    },
+    "created_at": "2026-04-19T22:03:09"
   }
 ]

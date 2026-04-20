@@ -1,248 +1,43 @@
 [
   {
-    "action": "restore_items",
+    "action": "update_item",
     "payload": {
-      "items": [
-        {
-          "id": 14,
-          "title": "в пупсик",
-          "text": "в пупсик",
-          "details": "",
-          "day": "пятница",
-          "time": "16:00",
-          "priority": "medium",
-          "tags": [],
-          "recurring": null,
-          "reminder_offsets": [
-            60,
-            30,
-            10
-          ],
-          "done": false,
-          "created_at": "2026-04-15T23:49:57"
-        }
-      ]
+      "id": 21,
+      "before": {
+        "id": 21,
+        "title": "Стирка",
+        "text": "Стирка",
+        "details": "",
+        "day": "пятница",
+        "time": "16:00",
+        "priority": "medium",
+        "tags": [],
+        "recurring": null,
+        "reminder_offsets": [
+          30,
+          10
+        ],
+        "done": false,
+        "created_at": "2026-04-17T03:06:36"
+      }
     },
-    "created_at": "2026-04-15T23:53:03"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        14
-      ]
-    },
-    "created_at": "2026-04-15T23:54:01"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        15
-      ]
-    },
-    "created_at": "2026-04-15T23:57:08"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        16
-      ]
-    },
-    "created_at": "2026-04-15T23:59:09"
-  },
-  {
-    "action": "restore_items",
-    "payload": {
-      "items": [
-        {
-          "id": 15,
-          "title": "в В сад",
-          "text": "в В сад",
-          "details": "",
-          "day": "четверг",
-          "time": "11:00",
-          "priority": "medium",
-          "tags": [],
-          "recurring": null,
-          "reminder_offsets": [
-            60,
-            30,
-            10
-          ],
-          "done": false,
-          "created_at": "2026-04-15T23:57:08"
-        }
-      ]
-    },
-    "created_at": "2026-04-16T14:45:20"
-  },
-  {
-    "action": "restore_items",
-    "payload": {
-      "items": [
-        {
-          "id": 14,
-          "title": "в Работа по stylish-house.net",
-          "text": "в Работа по stylish-house.net",
-          "details": "",
-          "day": "четверг",
-          "time": "15:00",
-          "priority": "medium",
-          "tags": [
-            "работа"
-          ],
-          "recurring": null,
-          "reminder_offsets": [
-            60,
-            30,
-            10
-          ],
-          "done": false,
-          "created_at": "2026-04-15T23:54:01"
-        }
-      ]
-    },
-    "created_at": "2026-04-16T14:48:21"
-  },
-  {
-    "action": "restore_items",
-    "payload": {
-      "items": [
-        {
-          "id": 13,
-          "title": "в Гулять с ребенком",
-          "text": "в Гулять с ребенком",
-          "details": "",
-          "day": "четверг",
-          "time": "11:00",
-          "priority": "medium",
-          "tags": [],
-          "recurring": null,
-          "reminder_offsets": [
-            60,
-            30,
-            10
-          ],
-          "done": false,
-          "created_at": "2026-04-15T22:27:58"
-        }
-      ]
-    },
-    "created_at": "2026-04-16T14:48:41"
-  },
-  {
-    "action": "restore_items",
-    "payload": {
-      "items": [
-        {
-          "id": 12,
-          "title": "в Выступление Миши",
-          "text": "в Выступление Миши",
-          "details": "",
-          "day": "четверг",
-          "time": "10:00",
-          "priority": "medium",
-          "tags": [],
-          "recurring": null,
-          "reminder_offsets": [
-            60,
-            30,
-            10
-          ],
-          "done": false,
-          "created_at": "2026-04-15T22:27:17"
-        }
-      ]
-    },
-    "created_at": "2026-04-16T14:48:42"
-  },
-  {
-    "action": "restore_items",
-    "payload": {
-      "items": [
-        {
-          "id": 11,
-          "title": "в ОТВЕСТИ МИШУ В САД",
-          "text": "в ОТВЕСТИ МИШУ В САД",
-          "details": "",
-          "day": "четверг",
-          "time": "08:00",
-          "priority": "medium",
-          "tags": [],
-          "recurring": null,
-          "reminder_offsets": [
-            60,
-            30,
-            10
-          ],
-          "done": false,
-          "created_at": "2026-04-15T22:23:47"
-        }
-      ]
-    },
-    "created_at": "2026-04-16T14:48:49"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        17
-      ]
-    },
-    "created_at": "2026-04-16T14:50:17"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        18
-      ]
-    },
-    "created_at": "2026-04-16T14:54:33"
-  },
-  {
-    "action": "restore_items",
-    "payload": {
-      "items": [
-        {
-          "id": 18,
-          "title": "Домашнее задание",
-          "text": "Домашнее задание",
-          "details": "Каждый день",
-          "day": "среда",
-          "time": "19:00",
-          "priority": "medium",
-          "tags": [
-            "обучение"
-          ],
-          "recurring": "daily",
-          "reminder_offsets": [
-            60,
-            30,
-            10
-          ],
-          "done": false,
-          "created_at": "2026-04-16T14:54:33"
-        }
-      ]
-    },
-    "created_at": "2026-04-16T17:20:37"
+    "created_at": "2026-04-17T16:42:28"
   },
   {
     "action": "update_item",
     "payload": {
-      "id": 9,
+      "id": 18,
       "before": {
-        "id": 9,
-        "title": "в тренировка",
-        "text": "в тренировка",
+        "id": 18,
+        "title": "Работа по ecopfr.ru",
+        "text": "Работа по ecopfr.ru",
         "details": "",
         "day": "пятница",
-        "time": "19:00",
+        "time": "11:00",
         "priority": "medium",
-        "tags": [],
+        "tags": [
+          "работа"
+        ],
         "recurring": null,
         "reminder_offsets": [
           60,
@@ -250,24 +45,26 @@
           10
         ],
         "done": false,
-        "created_at": "2026-04-15T21:52:25"
+        "created_at": "2026-04-16T17:25:10"
       }
     },
-    "created_at": "2026-04-16T17:21:47"
+    "created_at": "2026-04-17T21:15:38"
   },
   {
     "action": "update_item",
     "payload": {
-      "id": 9,
+      "id": 19,
       "before": {
-        "id": 9,
+        "id": 19,
         "title": "Тренировка",
         "text": "Тренировка",
         "details": "Ноги",
         "day": "пятница",
         "time": "19:00",
         "priority": "high",
-        "tags": [],
+        "tags": [
+          "тренировка"
+        ],
         "recurring": null,
         "reminder_offsets": [
           60,
@@ -275,289 +72,198 @@
           10
         ],
         "done": false,
-        "created_at": "2026-04-15T21:52:25"
+        "created_at": "2026-04-16T22:22:34"
       }
     },
-    "created_at": "2026-04-16T17:21:51"
+    "created_at": "2026-04-17T21:15:57"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        25
+      ]
+    },
+    "created_at": "2026-04-18T11:31:43"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 25,
+      "before": {
+        "id": 25,
+        "title": "Работа по Stylish-house.com",
+        "text": "Работа по Stylish-house.com",
+        "details": "",
+        "due_date": "2026-04-18",
+        "day": "суббота",
+        "time": "20:10",
+        "priority": "high",
+        "tags": [
+          "работа"
+        ],
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-18T11:31:43",
+        "updated_at": null,
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": null,
+        "recurrence_rule": null,
+        "generated_from_rule": false,
+        "legacy_day": "суббота"
+      }
+    },
+    "created_at": "2026-04-18T12:22:18"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 25,
+      "before": {
+        "id": 25,
+        "title": "Работа по Stylish-house.com",
+        "text": "Работа по Stylish-house.com",
+        "details": "",
+        "due_date": "2026-04-19",
+        "day": "воскресенье",
+        "time": "20:10",
+        "priority": "high",
+        "tags": [
+          "работа"
+        ],
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-18T11:31:43",
+        "updated_at": "2026-04-18T12:22:18",
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": null,
+        "recurrence_rule": null,
+        "generated_from_rule": false,
+        "legacy_day": "воскресенье"
+      }
+    },
+    "created_at": "2026-04-18T12:25:56"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 23,
+      "before": {
+        "id": 23,
+        "title": "врач у миши",
+        "text": "врач у миши",
+        "details": "",
+        "due_date": "2026-04-21",
+        "day": "вторник",
+        "time": "09:20",
+        "priority": "high",
+        "tags": [
+          "здоровье"
+        ],
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-17T15:17:50",
+        "updated_at": null,
+        "reminder_offsets": [
+          600,
+          60,
+          30
+        ],
+        "series_id": null,
+        "recurrence_rule": null,
+        "generated_from_rule": false,
+        "legacy_day": "вторник"
+      }
+    },
+    "created_at": "2026-04-18T12:32:16"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        26
+      ]
+    },
+    "created_at": "2026-04-18T12:33:05"
   },
   {
     "action": "restore_items",
     "payload": {
       "items": [
         {
-          "id": 16,
-          "title": "во шлёпнуть пупса",
-          "text": "во шлёпнуть пупса",
+          "id": 26,
+          "title": "Врач у Миши",
+          "text": "Врач у Миши",
           "details": "",
+          "due_date": "2026-04-21",
           "day": "вторник",
-          "time": "18:30",
-          "priority": "medium",
-          "tags": [],
-          "recurring": null,
-          "reminder_offsets": [
-            60,
-            30,
-            10
-          ],
-          "done": false,
-          "created_at": "2026-04-15T23:59:09"
-        }
-      ]
-    },
-    "created_at": "2026-04-16T17:22:00"
-  },
-  {
-    "action": "restore_items",
-    "payload": {
-      "items": [
-        {
-          "id": 8,
-          "title": "13",
-          "text": "13",
-          "details": "",
-          "day": null,
-          "time": "13:13",
-          "done": false,
-          "created_at": "2026-04-14T12:41:06",
-          "priority": "medium",
-          "reminder_offsets": [
-            60,
-            30,
-            10
-          ],
-          "tags": []
-        }
-      ]
-    },
-    "created_at": "2026-04-16T17:22:19"
-  },
-  {
-    "action": "restore_items",
-    "payload": {
-      "items": [
-        {
-          "id": 10,
-          "title": "почитать мише книгу",
-          "text": "почитать мише книгу",
-          "details": "",
-          "day": "среда",
-          "time": "21:00",
-          "priority": "medium",
-          "tags": [],
-          "recurring": null,
-          "reminder_offsets": [
-            60,
-            30,
-            10
-          ],
-          "done": false,
-          "created_at": "2026-04-15T21:56:41"
-        }
-      ]
-    },
-    "created_at": "2026-04-16T17:22:28"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        18
-      ]
-    },
-    "created_at": "2026-04-16T17:25:10"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 18,
-      "before": {
-        "id": 18,
-        "title": "в Работа по ecopfr.ru",
-        "text": "в Работа по ecopfr.ru",
-        "details": "",
-        "day": "четверг",
-        "time": "21:00",
-        "priority": "medium",
-        "tags": [
-          "работа"
-        ],
-        "recurring": null,
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "done": false,
-        "created_at": "2026-04-16T17:25:10"
-      }
-    },
-    "created_at": "2026-04-16T17:25:47"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 18,
-      "before": {
-        "id": 18,
-        "title": "Работа по ecopfr.ru",
-        "text": "Работа по ecopfr.ru",
-        "details": "",
-        "day": "четверг",
-        "time": "21:00",
-        "priority": "medium",
-        "tags": [
-          "работа"
-        ],
-        "recurring": null,
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "done": false,
-        "created_at": "2026-04-16T17:25:10"
-      }
-    },
-    "created_at": "2026-04-16T22:07:56"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        19
-      ]
-    },
-    "created_at": "2026-04-16T22:22:34"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        20
-      ]
-    },
-    "created_at": "2026-04-16T22:30:53"
-  },
-  {
-    "action": "restore_items",
-    "payload": {
-      "items": [
-        {
-          "id": 9,
-          "title": "Тренировка",
-          "text": "Тренировка",
-          "details": "Ноги",
-          "day": "пятница",
-          "time": "19:00",
+          "time": "09:20",
           "priority": "high",
+          "tags": [
+            "здоровье"
+          ],
+          "status": "active",
+          "done": false,
+          "done_at": null,
+          "created_at": "2026-04-18T12:33:05",
+          "updated_at": null,
+          "reminder_offsets": [
+            600,
+            60,
+            30
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": "вторник"
+        }
+      ]
+    },
+    "created_at": "2026-04-18T12:33:10"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 24,
+          "title": "прпоп",
+          "text": "прпоп",
+          "details": "",
+          "due_date": "2026-04-20",
+          "day": "понедельник",
+          "time": "22:30",
+          "priority": "medium",
           "tags": [],
-          "recurring": null,
+          "status": "active",
+          "done": false,
+          "done_at": null,
+          "created_at": "2026-04-17T15:24:07",
+          "updated_at": null,
           "reminder_offsets": [
             60,
             30,
             10
           ],
-          "done": false,
-          "created_at": "2026-04-15T21:52:25"
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": "понедельник"
         }
       ]
     },
-    "created_at": "2026-04-16T22:50:15"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 19,
-      "before": {
-        "id": 19,
-        "title": "тренировка",
-        "text": "тренировка",
-        "details": "",
-        "day": "пятница",
-        "time": "19:00",
-        "priority": "high",
-        "tags": [],
-        "recurring": null,
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "done": false,
-        "created_at": "2026-04-16T22:22:34"
-      }
-    },
-    "created_at": "2026-04-16T22:50:37"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 19,
-      "before": {
-        "id": 19,
-        "title": "Тренировка",
-        "text": "Тренировка",
-        "details": "Ноги",
-        "day": "пятница",
-        "time": "19:00",
-        "priority": "high",
-        "tags": [],
-        "recurring": null,
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "done": false,
-        "created_at": "2026-04-16T22:22:34"
-      }
-    },
-    "created_at": "2026-04-16T22:50:54"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 18,
-      "before": {
-        "id": 18,
-        "title": "Работа по ecopfr.ru",
-        "text": "Работа по ecopfr.ru",
-        "details": "",
-        "day": "четверг",
-        "time": "23:00",
-        "priority": "medium",
-        "tags": [
-          "работа"
-        ],
-        "recurring": null,
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "done": false,
-        "created_at": "2026-04-16T17:25:10"
-      }
-    },
-    "created_at": "2026-04-17T03:04:36"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        21
-      ]
-    },
-    "created_at": "2026-04-17T03:06:36"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        22
-      ]
-    },
-    "created_at": "2026-04-17T03:15:14"
+    "created_at": "2026-04-18T12:33:22"
   },
   {
     "action": "update_item",
@@ -568,49 +274,525 @@
         "title": "пастирать крысам",
         "text": "пастирать крысам",
         "details": "",
+        "due_date": "2026-04-24",
         "day": "пятница",
-        "time": "12:00",
+        "time": "22:00",
         "priority": "high",
         "tags": [
           "домашние дела"
         ],
-        "recurring": null,
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-16T22:30:53",
+        "updated_at": null,
         "reminder_offsets": [
           60,
           30,
           10
         ],
-        "done": false,
-        "created_at": "2026-04-16T22:30:53"
+        "series_id": null,
+        "recurrence_rule": null,
+        "generated_from_rule": false,
+        "legacy_day": "пятница"
       }
     },
-    "created_at": "2026-04-17T03:15:48"
+    "created_at": "2026-04-18T12:34:16"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        26
+      ]
+    },
+    "created_at": "2026-04-18T17:08:44"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 18,
+          "title": "Работа по ecopfr.ru",
+          "text": "Работа по ecopfr.ru",
+          "details": "",
+          "due_date": "2026-04-24",
+          "day": "пятница",
+          "time": "11:00",
+          "priority": "medium",
+          "tags": [
+            "работа"
+          ],
+          "status": "done",
+          "done": true,
+          "done_at": "2026-04-17T21:15:38",
+          "created_at": "2026-04-16T17:25:10",
+          "updated_at": null,
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": "пятница"
+        }
+      ]
+    },
+    "created_at": "2026-04-18T17:09:43"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 21,
+          "title": "Стирка",
+          "text": "Стирка",
+          "details": "",
+          "due_date": "2026-04-24",
+          "day": "пятница",
+          "time": "17:00",
+          "priority": "medium",
+          "tags": [],
+          "status": "done",
+          "done": true,
+          "done_at": "2026-04-17T16:49:33",
+          "created_at": "2026-04-17T03:06:36",
+          "updated_at": null,
+          "reminder_offsets": [
+            17,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": "пятница"
+        }
+      ]
+    },
+    "created_at": "2026-04-18T17:09:48"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 22,
+          "title": "Работа по stylish",
+          "text": "Работа по stylish",
+          "details": "шаблоны + расчеты",
+          "due_date": "2026-04-24",
+          "day": "пятница",
+          "time": "13:00",
+          "priority": "medium",
+          "tags": [
+            "работа"
+          ],
+          "status": "active",
+          "done": false,
+          "done_at": null,
+          "created_at": "2026-04-17T03:15:14",
+          "updated_at": null,
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": "пятница"
+        }
+      ]
+    },
+    "created_at": "2026-04-18T17:09:57"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        26
+      ]
+    },
+    "created_at": "2026-04-18T17:13:17"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 19,
+          "title": "Тренировка",
+          "text": "Тренировка",
+          "details": "Ноги",
+          "due_date": "2026-04-18",
+          "day": "суббота",
+          "time": "19:00",
+          "priority": "high",
+          "tags": [
+            "тренировка"
+          ],
+          "status": "active",
+          "done": false,
+          "done_at": null,
+          "created_at": "2026-04-16T22:22:34",
+          "updated_at": null,
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": "суббота"
+        }
+      ]
+    },
+    "created_at": "2026-04-19T05:53:14"
   },
   {
     "action": "update_item",
     "payload": {
-      "id": 18,
+      "id": 25,
       "before": {
-        "id": 18,
-        "title": "Работа по ecopfr.ru",
-        "text": "Работа по ecopfr.ru",
+        "id": 25,
+        "title": "Работа по Stylish-house.com",
+        "text": "Работа по Stylish-house.com",
         "details": "",
-        "day": "пятница",
-        "time": "08:00",
-        "priority": "medium",
+        "due_date": "2026-04-18",
+        "day": "суббота",
+        "time": "20:10",
+        "priority": "high",
         "tags": [
           "работа"
         ],
-        "recurring": null,
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-18T11:31:43",
+        "updated_at": "2026-04-18T12:25:56",
         "reminder_offsets": [
           60,
           30,
           10
         ],
-        "done": false,
-        "created_at": "2026-04-16T17:25:10"
+        "series_id": null,
+        "recurrence_rule": null,
+        "generated_from_rule": false,
+        "legacy_day": "суббота"
       }
     },
-    "created_at": "2026-04-17T09:45:38"
+    "created_at": "2026-04-19T05:53:29"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 20,
+      "before": {
+        "id": 20,
+        "title": "Дошить гамак",
+        "text": "Дошить гамак",
+        "details": "",
+        "due_date": "2026-04-18",
+        "day": "суббота",
+        "time": "14:00",
+        "priority": "high",
+        "tags": [
+          "домашние дела"
+        ],
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-16T22:30:53",
+        "updated_at": "2026-04-18T12:34:16",
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": null,
+        "recurrence_rule": null,
+        "generated_from_rule": false,
+        "legacy_day": "суббота"
+      }
+    },
+    "created_at": "2026-04-19T05:53:41"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 20,
+      "before": {
+        "id": 20,
+        "title": "Дошить гамак",
+        "text": "Дошить гамак",
+        "details": "",
+        "due_date": "2026-04-20",
+        "day": "понедельник",
+        "time": "14:00",
+        "priority": "high",
+        "tags": [
+          "домашние дела"
+        ],
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-16T22:30:53",
+        "updated_at": "2026-04-19T05:53:41",
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": null,
+        "recurrence_rule": null,
+        "generated_from_rule": false,
+        "legacy_day": "понедельник"
+      }
+    },
+    "created_at": "2026-04-19T05:54:05"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 25,
+      "before": {
+        "id": 25,
+        "title": "Работа по Stylish-house.com",
+        "text": "Работа по Stylish-house.com",
+        "details": "",
+        "due_date": "2026-04-20",
+        "day": "понедельник",
+        "time": "20:10",
+        "priority": "high",
+        "tags": [
+          "работа"
+        ],
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-18T11:31:43",
+        "updated_at": "2026-04-19T05:53:29",
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": null,
+        "recurrence_rule": null,
+        "generated_from_rule": false,
+        "legacy_day": "понедельник"
+      }
+    },
+    "created_at": "2026-04-19T05:54:15"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 25,
+      "before": {
+        "id": 25,
+        "title": "Работа по Stylish-house.com",
+        "text": "Работа по Stylish-house.com",
+        "details": "",
+        "due_date": "2026-04-19",
+        "day": "воскресенье",
+        "time": "20:10",
+        "priority": "high",
+        "tags": [
+          "работа"
+        ],
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-18T11:31:43",
+        "updated_at": "2026-04-19T05:54:15",
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": null,
+        "recurrence_rule": null,
+        "generated_from_rule": false,
+        "legacy_day": "воскресенье"
+      }
+    },
+    "created_at": "2026-04-19T05:54:23"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        27
+      ]
+    },
+    "created_at": "2026-04-19T13:10:58"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 27,
+      "before": {
+        "id": 27,
+        "title": "Stylish-house.net",
+        "text": "Stylish-house.net",
+        "details": "Доработать модуль с рачетами",
+        "due_date": "2026-04-19",
+        "day": "воскресенье",
+        "time": "12:00",
+        "priority": "medium",
+        "tags": [
+          "работа"
+        ],
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-19T13:10:58",
+        "updated_at": null,
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": null,
+        "recurrence_rule": null,
+        "generated_from_rule": false,
+        "legacy_day": "воскресенье"
+      }
+    },
+    "created_at": "2026-04-19T13:11:26"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        28
+      ]
+    },
+    "created_at": "2026-04-19T13:12:43"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        29
+      ]
+    },
+    "created_at": "2026-04-19T13:13:34"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 29,
+      "before": {
+        "id": 29,
+        "title": "Стирка",
+        "text": "Стирка",
+        "details": "для зала",
+        "due_date": "2026-04-20",
+        "day": "понедельник",
+        "time": "10:00",
+        "priority": "medium",
+        "tags": [],
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-19T13:13:34",
+        "updated_at": null,
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": null,
+        "recurrence_rule": null,
+        "generated_from_rule": false,
+        "legacy_day": "понедельник"
+      }
+    },
+    "created_at": "2026-04-19T19:17:47"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 17,
+      "before": {
+        "id": 17,
+        "title": "Тренировка",
+        "text": "Тренировка",
+        "details": "СУПЕРТРЕНЯ!!!!",
+        "due_date": "2026-04-19",
+        "day": "воскресенье",
+        "time": "15:00",
+        "priority": "high",
+        "tags": [
+          "тренировка"
+        ],
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-16T14:50:17",
+        "updated_at": null,
+        "reminder_offsets": [
+          120,
+          60,
+          30,
+          10
+        ],
+        "series_id": null,
+        "recurrence_rule": null,
+        "generated_from_rule": false,
+        "legacy_day": "воскресенье"
+      }
+    },
+    "created_at": "2026-04-19T19:18:19"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 20,
+      "before": {
+        "id": 20,
+        "title": "Дошить гамак",
+        "text": "Дошить гамак",
+        "details": "",
+        "due_date": "2026-04-19",
+        "day": "воскресенье",
+        "time": "14:00",
+        "priority": "high",
+        "tags": [
+          "домашние дела"
+        ],
+        "status": "active",
+        "done": false,
+        "done_at": null,
+        "created_at": "2026-04-16T22:30:53",
+        "updated_at": "2026-04-19T05:54:05",
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": null,
+        "recurrence_rule": null,
+        "generated_from_rule": false,
+        "legacy_day": "воскресенье"
+      }
+    },
+    "created_at": "2026-04-19T23:53:15"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        30
+      ]
+    },
+    "created_at": "2026-04-20T11:48:31"
   }
 ]
