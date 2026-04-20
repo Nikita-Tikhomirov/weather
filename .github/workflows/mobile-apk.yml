@@ -15,6 +15,8 @@ permissions:
 jobs:
   build-android-apk:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout
@@ -31,31 +33,45 @@ jobs:
         with:
           channel: stable
 
-      - name: Prepare Flutter project structure
+      - name: Prepare isolated Flutter project
         shell: bash
         run: |
           set -euo pipefail
-          cd mobile_app
+          APP_DIR="/tmp/family_todo_mobile"
+          rm -rf "$APP_DIR"
+          flutter create --platforms=android --project-name family_todo_mobile --org com.example "$APP_DIR"
 
-          mkdir -p /tmp/mobile_backup
-          cp -R lib /tmp/mobile_backup/lib
-          cp pubspec.yaml /tmp/mobile_backup/pubspec.yaml
-          if [ -f android/app/google-services.json ]; then
-            cp android/app/google-services.json /tmp/mobile_backup/google-services.json
+          rm -rf "$APP_DIR/lib"
+          cp -R mobile_app/lib "$APP_DIR/lib"
+          cp mobile_app/pubspec.yaml "$APP_DIR/pubspec.yaml"
+          if [ -f mobile_app/android/app/google-services.json ]; then
+            cp mobile_app/android/app/google-services.json "$APP_DIR/android/app/google-services.json"
+          fi
+          if [ -f mobile_app/android/app/src/main/AndroidManifest.xml ]; then
+            cp mobile_app/android/app/src/main/AndroidManifest.xml "$APP_DIR/android/app/src/main/AndroidManifest.xml"
           fi
 
-          flutter create --platforms=android --project-name family_todo_mobile --org com.example --overwrite .
+          if [ -f "$APP_DIR/android/build.gradle" ]; then
+            if ! grep -q "com.google.gms:google-services" "$APP_DIR/android/build.gradle"; then
+              cat <<'EOF' >> "$APP_DIR/android/build.gradle"
+buildscript {
+    dependencies {
+        classpath 'com.google.gms:google-services:4.4.2'
+    }
+}
+EOF
+            fi
+          fi
 
-          rm -rf lib
-          cp -R /tmp/mobile_backup/lib ./lib
-          cp /tmp/mobile_backup/pubspec.yaml ./pubspec.yaml
-          if [ -f /tmp/mobile_backup/google-services.json ]; then
-            cp /tmp/mobile_backup/google-services.json android/app/google-services.json
+          if [ -f "$APP_DIR/android/app/build.gradle" ]; then
+            if ! grep -q "com.google.gms.google-services" "$APP_DIR/android/app/build.gradle"; then
+              perl -0777 -i -pe "s/id \"dev.flutter.flutter-gradle-plugin\"/id \"dev.flutter.flutter-gradle-plugin\"\\n    id \"com.google.gms.google-services\"/g" "$APP_DIR/android/app/build.gradle"
+            fi
           fi
 
       - name: Flutter pub get
         run: |
-          cd mobile_app
+          cd /tmp/family_todo_mobile
           flutter pub get
 
       - name: Build release APK
@@ -63,25 +79,25 @@ jobs:
           API_BASE_URL: https://familly.nikportfolio.ru/backend_api/public
           API_KEY: ${{ secrets.TODO_BACKEND_API_KEY }}
         run: |
-          cd mobile_app
+          cd /tmp/family_todo_mobile
           flutter build apk --release \
             --dart-define=API_BASE_URL="$API_BASE_URL" \
-            --dart-define=API_KEY="$API_KEY"
+            --dart-define=API_KEY="${API_KEY:-dev-local-key}"
 
       - name: Rename artifact
         run: |
-          cp mobile_app/build/app/outputs/flutter-apk/app-release.apk mobile_app/build/app/outputs/flutter-apk/family-todo-release.apk
+          cp /tmp/family_todo_mobile/build/app/outputs/flutter-apk/app-release.apk /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: family-todo-release-apk
-          path: mobile_app/build/app/outputs/flutter-apk/family-todo-release.apk
+          path: /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: mobile-v${{ github.run_number }}
           name: Mobile APK v${{ github.run_number }}
-          files: mobile_app/build/app/outputs/flutter-apk/family-todo-release.apk
+          files: /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk
           generate_release_notes: true
