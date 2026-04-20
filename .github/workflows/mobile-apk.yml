@@ -53,13 +53,7 @@ jobs:
 
           if [ -f "$APP_DIR/android/build.gradle" ]; then
             if ! grep -q "com.google.gms:google-services" "$APP_DIR/android/build.gradle"; then
-              cat <<'EOF' >> "$APP_DIR/android/build.gradle"
-buildscript {
-    dependencies {
-        classpath 'com.google.gms:google-services:4.4.2'
-    }
-}
-EOF
+              printf "\nbuildscript {\n    dependencies {\n        classpath 'com.google.gms:google-services:4.4.2'\n    }\n}\n" >> "$APP_DIR/android/build.gradle"
             fi
           fi
 
