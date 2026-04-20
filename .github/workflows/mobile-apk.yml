@@ -1,0 +1,87 @@
+name: Mobile APK Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - 'mobile_app/**'
+      - '.github/workflows/mobile-apk.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-android-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Prepare Flutter project structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd mobile_app
+
+          mkdir -p /tmp/mobile_backup
+          cp -R lib /tmp/mobile_backup/lib
+          cp pubspec.yaml /tmp/mobile_backup/pubspec.yaml
+          if [ -f android/app/google-services.json ]; then
+            cp android/app/google-services.json /tmp/mobile_backup/google-services.json
+          fi
+
+          flutter create --platforms=android --project-name family_todo_mobile --org com.example --overwrite .
+
+          rm -rf lib
+          cp -R /tmp/mobile_backup/lib ./lib
+          cp /tmp/mobile_backup/pubspec.yaml ./pubspec.yaml
+          if [ -f /tmp/mobile_backup/google-services.json ]; then
+            cp /tmp/mobile_backup/google-services.json android/app/google-services.json
+          fi
+
+      - name: Flutter pub get
+        run: |
+          cd mobile_app
+          flutter pub get
+
+      - name: Build release APK
+        env:
+          API_BASE_URL: https://familly.nikportfolio.ru/backend_api/public
+          API_KEY: ${{ secrets.TODO_BACKEND_API_KEY }}
+        run: |
+          cd mobile_app
+          flutter build apk --release \
+            --dart-define=API_BASE_URL="$API_BASE_URL" \
+            --dart-define=API_KEY="$API_KEY"
+
+      - name: Rename artifact
+        run: |
+          cp mobile_app/build/app/outputs/flutter-apk/app-release.apk mobile_app/build/app/outputs/flutter-apk/family-todo-release.apk
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: family-todo-release-apk
+          path: mobile_app/build/app/outputs/flutter-apk/family-todo-release.apk
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mobile-v${{ github.run_number }}
+          name: Mobile APK v${{ github.run_number }}
+          files: mobile_app/build/app/outputs/flutter-apk/family-todo-release.apk
+          generate_release_notes: true

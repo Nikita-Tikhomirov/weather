@@ -1,31 +1,33 @@
-# Family ToDo Mobile (Android-first)
+# Family ToDo Mobile
 
-Flutter-клиент с offline-first синхронизацией.
+Android-first Flutter app with offline sync, Telegram bridge, and FCM push.
 
-## Что уже есть
+## Install for family (simple)
 
-- локальная БД (`sqflite`) для задач;
-- очередь `pending_events` для офлайн-изменений;
-- sync push/pull с backend API;
-- FCM app-to-app push:
-  - регистрация device token в backend (`/devices/register`);
-  - обновление token через `onTokenRefresh`;
-  - foreground banner + sync;
-  - tap по push запускает sync;
-- Kanban-экран по статусам (`todo`, `in_progress`, `in_review`, `done`);
-- базовый приятный Material 3 дизайн.
+1. Open the latest release link on phone.
+2. Download `family-todo-release.apk`.
+3. Install APK (allow install from browser once).
+4. Next updates: download and install new APK over old one.
 
-## Запуск
+Latest APK link:
+`https://github.com/Nikita-Tikhomirov/weather/releases/latest/download/family-todo-release.apk`
+
+## Build pipeline
+
+APK is built automatically by GitHub Actions workflow:
+`.github/workflows/mobile-apk.yml`
+
+Workflow does:
+- prepares a full Flutter Android structure,
+- restores project `lib/` and `pubspec.yaml`,
+- builds release APK,
+- publishes APK to GitHub Release.
+
+## Local run (for development)
 
 ```bash
 flutter pub get
 flutter run \
-  --dart-define=API_BASE_URL=https://your-domain.tld/backend_api/public \
+  --dart-define=API_BASE_URL=https://familly.nikportfolio.ru/backend_api/public \
   --dart-define=API_KEY=YOUR_API_KEY
 ```
-
-## Firebase setup (Android)
-
-1. Скопируйте ваш `google-services.json` в `mobile_app/android/app/google-services.json`.
-2. Проверьте `applicationId` в `mobile_app/android/app/build.gradle` и package в `google-services.json`.
-3. Включите Firebase Cloud Messaging в проекте Firebase.

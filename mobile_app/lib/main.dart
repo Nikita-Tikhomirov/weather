@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models/task_item.dart';
 import 'services/api_client.dart';
@@ -37,12 +38,14 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late final LocalDb _db;
-  late final SyncService _sync;
   late final ApiClient _api;
+  SyncService? _sync;
   FcmService? _fcm;
   final _tasks = <TaskItem>[];
-  final _owner = 'nik';
   bool _loading = true;
+  String _owner = 'nik';
+
+  static const _profiles = ['nik', 'nastya', 'misha', 'arisha'];
 
   @override
   void initState() {
@@ -51,21 +54,34 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _init() async {
+    final prefs = await SharedPreferences.getInstance();
+    _owner = prefs.getString('actor_profile') ?? 'nik';
+
     _db = await LocalDb.open();
     _api = ApiClient(
       baseUrl: const String.fromEnvironment('API_BASE_URL', defaultValue: 'https://example.com'),
       apiKey: const String.fromEnvironment('API_KEY', defaultValue: ''),
     );
+
+    await _bindOwner();
+    setState(() {
+      _loading = false;
+    });
+  }
+
+  Future<void> _bindOwner() async {
     _sync = SyncService(
       db: _db,
       api: _api,
       actorProfile: _owner,
     );
+
     await _refreshLocal();
     try {
-      await _sync.sync();
+      await _sync!.sync();
       await _refreshLocal();
     } catch (_) {}
+
     _fcm = FcmService(
       api: _api,
       actorProfile: _owner,
@@ -79,7 +95,10 @@ class _HomePageState extends State<HomePage> {
             action: SnackBarAction(
               label: 'Sync',
               onPressed: () async {
-                await _sync.sync();
+                if (_sync == null) {
+                  return;
+                }
+                await _sync!.sync();
                 await _refreshLocal();
               },
             ),
@@ -87,13 +106,34 @@ class _HomePageState extends State<HomePage> {
         );
       },
       onOpenPush: () async {
-        await _sync.sync();
+        if (_sync == null) {
+          return;
+        }
+        await _sync!.sync();
         await _refreshLocal();
       },
     );
+
     try {
       await _fcm!.initialize();
     } catch (_) {}
+  }
+
+  Future<void> _switchProfile(String profile) async {
+    if (profile == _owner) {
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('actor_profile', profile);
+
+    setState(() {
+      _owner = profile;
+      _loading = true;
+      _tasks.clear();
+    });
+
+    await _bindOwner();
+
     setState(() {
       _loading = false;
     });
@@ -109,13 +149,16 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _quickAdd() async {
+    if (_sync == null) {
+      return;
+    }
     final now = DateTime.now().toIso8601String();
     final id = 'm-${DateTime.now().microsecondsSinceEpoch}';
     final item = TaskItem(
       id: id,
       ownerKey: _owner,
       isFamily: false,
-      title: 'Новая задача',
+      title: 'New task',
       details: '',
       dueDate: now.substring(0, 10),
       time: '19:00',
@@ -127,17 +170,20 @@ class _HomePageState extends State<HomePage> {
       updatedAt: now,
       version: 1,
     );
-    await _sync.enqueueUpsert(item);
+    await _sync!.enqueueUpsert(item);
     await _refreshLocal();
   }
 
   Future<void> _move(TaskItem item, String status) async {
+    if (_sync == null) {
+      return;
+    }
     final changed = item.copyWith(
       workflowStatus: status,
       updatedAt: DateTime.now().toIso8601String(),
       version: item.version + 1,
     );
-    await _sync.enqueueUpsert(changed);
+    await _sync!.enqueueUpsert(changed);
     await _refreshLocal();
   }
 
@@ -154,10 +200,31 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text('Family ToDo'),
         actions: [
+          PopupMenuButton<String>(
+            initialValue: _owner,
+            onSelected: (value) async => _switchProfile(value),
+            itemBuilder: (context) => _profiles
+                .map(
+                  (profile) => PopupMenuItem<String>(
+                    value: profile,
+                    child: Text(profile),
+                  ),
+                )
+                .toList(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              child: Center(
+                child: Text(_owner, style: const TextStyle(fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.sync),
             onPressed: () async {
-              await _sync.sync();
+              if (_sync == null) {
+                return;
+              }
+              await _sync!.sync();
               await _refreshLocal();
             },
           ),
@@ -165,7 +232,7 @@ class _HomePageState extends State<HomePage> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _quickAdd,
-        label: const Text('Добавить'),
+        label: const Text('Add'),
         icon: const Icon(Icons.add_task),
       ),
       body: _loading
@@ -174,25 +241,25 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.all(12),
               children: [
                 _KanbanColumn(
-                  title: 'К выполнению',
+                  title: 'Todo',
                   color: const Color(0xFFE3F2FD),
                   items: byStatus['todo']!,
                   onMove: (task) => _move(task, 'in_progress'),
                 ),
                 _KanbanColumn(
-                  title: 'В работе',
+                  title: 'In Progress',
                   color: const Color(0xFFE8F5E9),
                   items: byStatus['in_progress']!,
                   onMove: (task) => _move(task, 'in_review'),
                 ),
                 _KanbanColumn(
-                  title: 'На проверке',
+                  title: 'In Review',
                   color: const Color(0xFFFFF3E0),
                   items: byStatus['in_review']!,
                   onMove: (task) => _move(task, 'done'),
                 ),
                 _KanbanColumn(
-                  title: 'Сделано',
+                  title: 'Done',
                   color: const Color(0xFFEDE7F6),
                   items: byStatus['done']!,
                   onMove: null,

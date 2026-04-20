@@ -50,7 +50,7 @@ class FcmService {
 
     FirebaseMessaging.onMessage.listen((RemoteMessage msg) {
       final title = msg.notification?.title ?? 'Family ToDo';
-      final body = msg.notification?.body ?? 'Есть новое изменение';
+      final body = msg.notification?.body ?? 'There is a new update';
       onForegroundText('$title: $body');
     });
 
