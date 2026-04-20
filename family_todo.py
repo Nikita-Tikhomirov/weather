@@ -60,6 +60,7 @@ DAY_ALIASES = {
     "воскресенье": ("воскресенье", "воскресенья", "воскресенью", "вс"),
 }
 DAY_ORDER = ("понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье")
+WORKFLOW_STATUSES = {"todo", "in_progress", "in_review", "done"}
 ADD_PREFIXES = ("добавь", "добавить", "запиши", "создай", "новое дело")
 PRIORITY_ALIASES = {
     "high": ("важно", "срочно", "приоритет высокий", "высокий приоритет"),
@@ -329,6 +330,11 @@ def load_todos(person: Person) -> list[dict]:
             status = "done" if done_flag else "active"
             changed = True
 
+        workflow_status = str(todo.get("workflow_status") or "").strip()
+        if workflow_status not in WORKFLOW_STATUSES:
+            workflow_status = "done" if status == "done" else "todo"
+            changed = True
+
         recurrence_rule = str(todo.get("recurrence_rule") or todo.get("recurring") or "").strip()
         if recurrence_rule not in {"daily", "weekdays"}:
             recurrence_rule = ""
@@ -337,6 +343,11 @@ def load_todos(person: Person) -> list[dict]:
         candidate_id = int(raw_id) if isinstance(raw_id, int) else None
         item_id = reserve_id(candidate_id)
         if candidate_id != item_id:
+            changed = True
+
+        sort_order_raw = todo.get("sort_order")
+        sort_order = sort_order_raw if isinstance(sort_order_raw, int) else item_id
+        if not isinstance(sort_order_raw, int):
             changed = True
 
         title = str(todo.get("title") or todo.get("text") or "").strip() or "без названия"
@@ -371,6 +382,8 @@ def load_todos(person: Person) -> list[dict]:
                 "tags": tags,
                 "status": status,
                 "done": status == "done",
+                "workflow_status": workflow_status,
+                "sort_order": sort_order,
                 "done_at": todo.get("done_at"),
                 "created_at": str(todo.get("created_at") or datetime.now().isoformat(timespec="seconds")),
                 "updated_at": todo.get("updated_at"),
@@ -409,6 +422,8 @@ def load_todos(person: Person) -> list[dict]:
                         "day": weekday_ru(cursor),
                         "status": "active",
                         "done": False,
+                        "workflow_status": "todo",
+                        "sort_order": new_id,
                         "done_at": None,
                         "updated_at": None,
                         "generated_from_rule": True,
@@ -418,7 +433,15 @@ def load_todos(person: Person) -> list[dict]:
                 changed = True
             cursor += timedelta(days=1)
 
-    normalized.sort(key=lambda item: (str(item.get("due_date") or ""), str(item.get("time") or ""), int(item.get("id") or 0)))
+    normalized.sort(
+        key=lambda item: (
+            str(item.get("due_date") or ""),
+            str(item.get("workflow_status") or "todo"),
+            int(item.get("sort_order") or 0),
+            str(item.get("time") or ""),
+            int(item.get("id") or 0),
+        )
+    )
 
     if changed:
         save_todos(person, normalized)
@@ -427,6 +450,55 @@ def load_todos(person: Person) -> list[dict]:
 
 def save_todos(person: Person, todos: list[dict]) -> None:
     write_json(todos_path(person), todos)
+
+
+def cleanup_legacy_todos(person: Person) -> dict:
+    """Удаляет только legacy-записи, которые нельзя привести к текущей схеме."""
+    path = todos_path(person)
+    raw = read_json(path, [])
+    source = raw if isinstance(raw, list) else []
+    removed = 0
+    kept: list[dict] = []
+    reasons: list[str] = []
+
+    for item in source:
+        if not isinstance(item, dict):
+            removed += 1
+            reasons.append("не словарь")
+            continue
+        raw_id = item.get("id")
+        if not isinstance(raw_id, int) or raw_id <= 0:
+            removed += 1
+            reasons.append("невалидный id")
+            continue
+        due = todo_due_date(item)
+        if due is None:
+            removed += 1
+            reasons.append("битая дата")
+            continue
+        kept.append(item)
+
+    backup_path = ""
+    if removed > 0:
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = str(path.with_name(f"todos.backup_{stamp}.json"))
+        try:
+            Path(backup_path).write_text(Path(path).read_text(encoding="utf-8"), encoding="utf-8")
+        except Exception:
+            backup_path = ""
+        write_json(path, kept)
+
+    return {"removed": removed, "backup_path": backup_path, "reasons": reasons}
+
+
+def cleanup_legacy_misha_todos() -> dict:
+    target = next((p for p in PEOPLE if p.key == "misha"), None)
+    if target is None:
+        return {"removed": 0, "backup_path": "", "reasons": ["профиль не найден"]}
+    report = cleanup_legacy_todos(target)
+    if report.get("removed", 0) > 0:
+        log_event("todo_cleanup_legacy", person=target.key, removed=report["removed"])
+    return report
 
 
 def load_history(person: Person) -> list[dict]:
@@ -521,6 +593,39 @@ def parse_due_date_input(text: str | None, *, base_date: date | None = None) -> 
             if dt >= today:
                 return dt.isoformat()
         return None
+
+    month_map = {
+        "января": 1,
+        "февраля": 2,
+        "марта": 3,
+        "апреля": 4,
+        "мая": 5,
+        "июня": 6,
+        "июля": 7,
+        "августа": 8,
+        "сентября": 9,
+        "октября": 10,
+        "ноября": 11,
+        "декабря": 12,
+    }
+    text_month_match = re.search(
+        r"\b(\d{1,2})\s+(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)(?:\s+(\d{4}))?\b",
+        normalized,
+    )
+    if text_month_match:
+        day_num = int(text_month_match.group(1))
+        month_num = month_map.get(text_month_match.group(2), 0)
+        year_num = int(text_month_match.group(3)) if text_month_match.group(3) else today.year
+        try:
+            dt = date(year_num, month_num, day_num)
+        except ValueError:
+            return None
+        if not text_month_match.group(3) and dt < today:
+            try:
+                dt = date(today.year + 1, month_num, day_num)
+            except ValueError:
+                return None
+        return dt.isoformat()
 
     parsed_day = parse_day(normalized)
     if parsed_day:
@@ -1387,12 +1492,15 @@ def process_global_reminders() -> None:
 def add_todo(person: Person, initial_text: str | None = None) -> None:
     task_text = initial_text if initial_text and len(initial_text.split()) > 1 else None
     if not task_text:
+        log_event("todo_add_failed", person=person.key, reason="empty_text")
         speak("Скажи команду одной фразой: день, время и задачу.")
         return
     if detect_stop(task_text):
+        log_event("todo_add_failed", person=person.key, reason="cancelled")
         speak("Отменено.")
         return
     if not task_text:
+        log_event("todo_add_failed", person=person.key, reason="not_understood")
         speak("Не понял текст дела.")
         return
 
@@ -1405,6 +1513,14 @@ def add_todo(person: Person, initial_text: str | None = None) -> None:
     tags = parse_tags(task_text)
     reminder_offsets = parse_reminder_offsets(task_text)
     if (not due_date_value and not recurrence) or not time_value:
+        log_event(
+            "todo_add_failed",
+            person=person.key,
+            reason="missing_date_or_time",
+            parsed_due=due_date_value or "",
+            parsed_time=time_value or "",
+            text=task_text,
+        )
         speak("Для добавления скажи дату/день и время. Например: добавь 25.04 в 19 30 кормить крыс.")
         return
 
@@ -1441,6 +1557,8 @@ def add_todo(person: Person, initial_text: str | None = None) -> None:
                 "tags": tags,
                 "status": "active",
                 "done": False,
+                "workflow_status": "todo",
+                "sort_order": current_id,
                 "recurrence_rule": recurrence,
                 "series_id": series_id,
                 "generated_from_rule": bool(recurrence),
