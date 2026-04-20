@@ -48,7 +48,7 @@ class ApiClient {
   }
 
   Future<(List<TaskItem>, String)> pull({required String since}) async {
-    final uri = Uri.parse('$baseUrl/sync_pull.php?since=$since');
+    final uri = Uri.parse('$baseUrl/sync_pull.php').replace(queryParameters: {'since': since});
     final response = await http.get(uri);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('pull failed: ${response.statusCode} ${response.body}');

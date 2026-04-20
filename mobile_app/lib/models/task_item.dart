@@ -114,23 +114,33 @@ class TaskItem {
   }
 
   TaskItem copyWith({
+    String? ownerKey,
+    bool? isFamily,
+    String? title,
+    String? details,
+    String? dueDate,
+    String? time,
     String? workflowStatus,
+    String? priority,
+    List<String>? tags,
+    List<String>? participants,
+    int? durationMinutes,
     String? updatedAt,
     int? version,
   }) {
     return TaskItem(
       id: id,
-      ownerKey: ownerKey,
-      isFamily: isFamily,
-      title: title,
-      details: details,
-      dueDate: dueDate,
-      time: time,
+      ownerKey: ownerKey ?? this.ownerKey,
+      isFamily: isFamily ?? this.isFamily,
+      title: title ?? this.title,
+      details: details ?? this.details,
+      dueDate: dueDate ?? this.dueDate,
+      time: time ?? this.time,
       workflowStatus: workflowStatus ?? this.workflowStatus,
-      priority: priority,
-      tags: tags,
-      participants: participants,
-      durationMinutes: durationMinutes,
+      priority: priority ?? this.priority,
+      tags: tags ?? this.tags,
+      participants: participants ?? this.participants,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
       updatedAt: updatedAt ?? this.updatedAt,
       version: version ?? this.version,
     );
@@ -149,4 +159,3 @@ class TaskItem {
     return const [];
   }
 }
-

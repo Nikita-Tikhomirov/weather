@@ -62,11 +62,11 @@ class LocalDb {
     await _db.delete('tasks', where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<List<TaskItem>> readTasks({String? ownerKey}) async {
+  Future<List<TaskItem>> readTasks({String? ownerKey, bool includeAll = false}) async {
     final rows = await _db.query(
       'tasks',
-      where: ownerKey == null ? null : '(owner_key = ? OR is_family = 1)',
-      whereArgs: ownerKey == null ? null : [ownerKey],
+      where: includeAll || ownerKey == null ? null : '(owner_key = ? OR is_family = 1)',
+      whereArgs: includeAll || ownerKey == null ? null : [ownerKey],
       orderBy: 'updated_at DESC',
     );
     return rows.map(TaskItem.fromDbRow).toList();
@@ -101,4 +101,3 @@ class LocalDb {
     await _db.insert('meta', {'k': 'since', 'v': value}, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 }
-
