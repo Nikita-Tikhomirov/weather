@@ -828,6 +828,16 @@ class DesktopTodoApp(ctk.CTk):
             self.calendar_month_label.configure(text_color=self._c("text_primary"))
         if hasattr(self, "calendar_grid"):
             self.calendar_grid.configure(fg_color=self._c("bg_panel"), border_color=self._c("border"))
+        for frame in self._drop_column_frames.values():
+            frame.configure(fg_color=self._c("bg_card"), border_color=self._c("border"))
+        for sc in self.kanban_columns.values():
+            sc.configure(fg_color=self._c("bg_card"))
+            if hasattr(sc, "_parent_canvas"):
+                sc._parent_canvas.configure(bg=self._c("bg_card"))
+        if hasattr(self, "family_list"):
+            self.family_list.configure(fg_color=self._c("bg_panel"), border_color=self._c("border"))
+            if hasattr(self.family_list, "_parent_canvas"):
+                self.family_list._parent_canvas.configure(bg=self._c("bg_panel"))
         self.show_page(self.current_page)
         if refresh:
             self.refresh_all_views()
