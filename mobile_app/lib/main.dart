@@ -46,7 +46,7 @@ class _HomePageState extends State<HomePage> {
   bool _loading = true;
   String _owner = 'nik';
   DateTime _selectedDate = DateTime.now();
-  int _tabIndex = 0;
+  int _pageIndex = 0;
 
   static const _profiles = ['nik', 'nastya', 'misha', 'arisha'];
   static const _adults = {'nik', 'nastya'};
@@ -175,6 +175,7 @@ class _HomePageState extends State<HomePage> {
     );
     final participantsCtl =
         TextEditingController(text: (existing?.participants ?? const []).join(', '));
+
     DateTime selected = existing == null
         ? _selectedDate
         : DateTime.tryParse(existing.dueDate) ?? _selectedDate;
@@ -410,94 +411,298 @@ class _HomePageState extends State<HomePage> {
   List<TaskItem> get _dateTasks =>
       _allTasks.where((t) => _isSameDate(t.dueDate, _selectedDate)).toList();
 
+  List<TaskItem> get _familyDateTasks => _dateTasks.where((t) => t.isFamily).toList();
+
+  List<TaskItem> get _personalDateTasks => _dateTasks.where((t) => !t.isFamily).toList();
+
+  Widget _buildBody() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final byStatus = {
+      for (final s in _statuses)
+        s: _personalDateTasks.where((t) => t.workflowStatus == s).toList(),
+    };
+
+    switch (_pageIndex) {
+      case 0:
+        return _DashboardView(
+          allTasks: _allTasks,
+          selectedDate: _selectedDate,
+          onOpenCalendar: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: _selectedDate,
+              firstDate: DateTime(2024),
+              lastDate: DateTime(2035),
+            );
+            if (picked != null) {
+              setState(() => _selectedDate = picked);
+            }
+          },
+        );
+      case 1:
+        return _TasksBoard(
+          byStatus: byStatus,
+          onDrop: _move,
+          onEdit: (t) => _openTaskEditor(existing: t),
+          onDelete: _delete,
+          onDoneToggle: _toggleDone,
+        );
+      case 2:
+        return _CalendarView(
+          selectedDate: _selectedDate,
+          tasksForSelectedDate: _dateTasks,
+          onDateChange: (d) => setState(() => _selectedDate = d),
+          onEdit: (t) => _openTaskEditor(existing: t),
+          onDelete: _delete,
+        );
+      default:
+        return _FamilyView(
+          familyTasks: _familyDateTasks,
+          personalTasks: _personalDateTasks,
+          showAllPersonal: _isAdult,
+          onEdit: (t) => _openTaskEditor(existing: t),
+          onDelete: _delete,
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final selectedKey = _dateKey(_selectedDate);
-    final byStatus = {
-      for (final s in _statuses)
-        s: _dateTasks.where((t) => !t.isFamily && t.workflowStatus == s).toList(),
-    };
-    final familyTasks = _dateTasks.where((t) => t.isFamily).toList();
-    final personalVisible = _dateTasks.where((t) => !t.isFamily).toList();
-
-    return DefaultTabController(
-      length: 2,
-      initialIndex: _tabIndex,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('Family ToDo • $selectedKey'),
-          actions: [
-            PopupMenuButton<String>(
-              initialValue: _owner,
-              onSelected: (value) async => _switchProfile(value),
-              itemBuilder: (context) => _profiles
-                  .map((profile) => PopupMenuItem<String>(
-                        value: profile,
-                        child: Text(profile),
-                      ))
-                  .toList(),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                child: Center(
-                  child: Text(_owner, style: const TextStyle(fontWeight: FontWeight.w700)),
-                ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Family ToDo • $selectedKey'),
+        actions: [
+          PopupMenuButton<String>(
+            initialValue: _owner,
+            onSelected: (value) async => _switchProfile(value),
+            itemBuilder: (context) => _profiles
+                .map((profile) => PopupMenuItem<String>(
+                      value: profile,
+                      child: Text(profile),
+                    ))
+                .toList(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              child: Center(
+                child: Text(_owner, style: const TextStyle(fontWeight: FontWeight.w700)),
               ),
             ),
-            IconButton(
-              tooltip: 'Календарь',
-              icon: const Icon(Icons.calendar_month),
-              onPressed: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: _selectedDate,
-                  firstDate: DateTime(2024),
-                  lastDate: DateTime(2035),
-                );
-                if (picked != null) {
-                  setState(() => _selectedDate = picked);
-                }
-              },
+          ),
+          IconButton(
+            tooltip: 'Календарь',
+            icon: const Icon(Icons.calendar_month),
+            onPressed: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _selectedDate,
+                firstDate: DateTime(2024),
+                lastDate: DateTime(2035),
+              );
+              if (picked != null) {
+                setState(() => _selectedDate = picked);
+              }
+            },
+          ),
+          IconButton(
+            tooltip: 'Синхронизировать',
+            icon: const Icon(Icons.sync),
+            onPressed: () async => _safeSync(showErrors: true),
+          ),
+        ],
+      ),
+      body: _buildBody(),
+      floatingActionButton: (_pageIndex == 1 || _pageIndex == 3)
+          ? FloatingActionButton.extended(
+              onPressed: () => _openTaskEditor(forceFamily: _pageIndex == 3),
+              icon: const Icon(Icons.add),
+              label: Text(_pageIndex == 3 ? 'Сем. задача' : 'Задача'),
+            )
+          : null,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _pageIndex,
+        onDestinationSelected: (i) => setState(() => _pageIndex = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
+          NavigationDestination(icon: Icon(Icons.view_kanban_outlined), label: 'Tasks'),
+          NavigationDestination(icon: Icon(Icons.calendar_month_outlined), label: 'Calendar'),
+          NavigationDestination(icon: Icon(Icons.family_restroom_outlined), label: 'Family'),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardView extends StatelessWidget {
+  const _DashboardView({
+    required this.allTasks,
+    required this.selectedDate,
+    required this.onOpenCalendar,
+  });
+
+  final List<TaskItem> allTasks;
+  final DateTime selectedDate;
+  final Future<void> Function() onOpenCalendar;
+
+  String _dateKey(DateTime d) {
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return '${d.year}-$m-$day';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final todayKey = _dateKey(selectedDate);
+    final today = allTasks.where((t) => t.dueDate == todayKey).toList();
+    final doneToday = today.where((t) => t.workflowStatus == 'done').length;
+    final familyToday = today.where((t) => t.isFamily).length;
+    final overdue = allTasks
+        .where((t) => t.dueDate.compareTo(todayKey) < 0 && t.workflowStatus != 'done')
+        .length;
+    final upcoming = allTasks.toList()
+      ..sort((a, b) => ('${a.dueDate} ${a.time}').compareTo('${b.dueDate} ${b.time}'));
+
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _MetricCard(title: 'На дату', value: '${today.length}', hint: todayKey),
             ),
-            IconButton(
-              tooltip: 'Синхронизировать',
-              icon: const Icon(Icons.sync),
-              onPressed: () async => _safeSync(showErrors: true),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _MetricCard(title: 'Сделано', value: '$doneToday', hint: 'Done'),
             ),
           ],
-          bottom: TabBar(
-            onTap: (i) => setState(() => _tabIndex = i),
-            tabs: const [
-              Tab(text: 'Задачи'),
-              Tab(text: 'Семья'),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _MetricCard(title: 'Семейных', value: '$familyToday', hint: 'Family'),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _MetricCard(title: 'Просрочено', value: '$overdue', hint: 'Overdue'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: onOpenCalendar,
+          icon: const Icon(Icons.calendar_month),
+          label: const Text('Выбрать дату'),
+        ),
+        const SizedBox(height: 12),
+        Text('Ближайшие задачи', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        for (final t in upcoming.take(8))
+          Card(
+            child: ListTile(
+              title: Text(t.title),
+              subtitle: Text('${t.dueDate} ${t.time} • ${t.ownerKey} • ${t.workflowStatus}'),
+              trailing: t.isFamily ? const Icon(Icons.family_restroom) : null,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _MetricCard extends StatelessWidget {
+  const _MetricCard({
+    required this.title,
+    required this.value,
+    required this.hint,
+  });
+
+  final String title;
+  final String value;
+  final String hint;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            Text(value, style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 4),
+            Text(hint, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CalendarView extends StatelessWidget {
+  const _CalendarView({
+    required this.selectedDate,
+    required this.tasksForSelectedDate,
+    required this.onDateChange,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final DateTime selectedDate;
+  final List<TaskItem> tasksForSelectedDate;
+  final void Function(DateTime) onDateChange;
+  final Future<void> Function(TaskItem) onEdit;
+  final Future<void> Function(TaskItem) onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final start = selectedDate.subtract(const Duration(days: 3));
+    final days = List.generate(10, (i) => start.add(Duration(days: i)));
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 86,
+          child: ListView.separated(
+            padding: const EdgeInsets.all(12),
+            scrollDirection: Axis.horizontal,
+            itemCount: days.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (context, i) {
+              final d = days[i];
+              final isCurrent = d.year == selectedDate.year &&
+                  d.month == selectedDate.month &&
+                  d.day == selectedDate.day;
+              return ChoiceChip(
+                selected: isCurrent,
+                label: Text('${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}'),
+                onSelected: (_) => onDateChange(d),
+              );
+            },
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            children: [
+              if (tasksForSelectedDate.isEmpty)
+                const Card(child: ListTile(title: Text('На выбранную дату задач нет'))),
+              for (final item in tasksForSelectedDate)
+                _TaskCard(
+                  item: item,
+                  onEdit: () => onEdit(item),
+                  onDelete: () => onDelete(item),
+                  onDoneToggle: () async {},
+                ),
             ],
           ),
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => _openTaskEditor(forceFamily: _tabIndex == 1),
-          icon: const Icon(Icons.add),
-          label: Text(_tabIndex == 1 ? 'Сем. задача' : 'Задача'),
-        ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : TabBarView(
-                children: [
-                  _TasksBoard(
-                    byStatus: byStatus,
-                    onDrop: _move,
-                    onEdit: (t) => _openTaskEditor(existing: t),
-                    onDelete: _delete,
-                    onDoneToggle: _toggleDone,
-                  ),
-                  _FamilyView(
-                    familyTasks: familyTasks,
-                    personalTasks: personalVisible,
-                    showAllPersonal: _isAdult,
-                    onEdit: (t) => _openTaskEditor(existing: t),
-                    onDelete: _delete,
-                  ),
-                ],
-              ),
-      ),
+      ],
     );
   }
 }
