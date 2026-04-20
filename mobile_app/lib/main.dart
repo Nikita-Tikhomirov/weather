@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'models/task_item.dart';
 import 'services/api_client.dart';
+import 'services/fcm_service.dart';
 import 'services/local_db.dart';
 import 'services/sync_service.dart';
 
@@ -37,6 +38,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late final LocalDb _db;
   late final SyncService _sync;
+  late final ApiClient _api;
+  FcmService? _fcm;
   final _tasks = <TaskItem>[];
   final _owner = 'nik';
   bool _loading = true;
@@ -49,18 +52,47 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _init() async {
     _db = await LocalDb.open();
+    _api = ApiClient(
+      baseUrl: const String.fromEnvironment('API_BASE_URL', defaultValue: 'https://example.com'),
+      apiKey: const String.fromEnvironment('API_KEY', defaultValue: ''),
+    );
     _sync = SyncService(
       db: _db,
-      api: ApiClient(
-        baseUrl: const String.fromEnvironment('API_BASE_URL', defaultValue: 'https://example.com'),
-        apiKey: const String.fromEnvironment('API_KEY', defaultValue: ''),
-      ),
+      api: _api,
       actorProfile: _owner,
     );
     await _refreshLocal();
     try {
       await _sync.sync();
       await _refreshLocal();
+    } catch (_) {}
+    _fcm = FcmService(
+      api: _api,
+      actorProfile: _owner,
+      onForegroundText: (text) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(text),
+            action: SnackBarAction(
+              label: 'Sync',
+              onPressed: () async {
+                await _sync.sync();
+                await _refreshLocal();
+              },
+            ),
+          ),
+        );
+      },
+      onOpenPush: () async {
+        await _sync.sync();
+        await _refreshLocal();
+      },
+    );
+    try {
+      await _fcm!.initialize();
     } catch (_) {}
     setState(() {
       _loading = false;
@@ -220,4 +252,3 @@ class _KanbanColumn extends StatelessWidget {
     );
   }
 }
-

@@ -51,3 +51,34 @@ CREATE TABLE IF NOT EXISTS telegram_outbox (
   INDEX idx_telegram_outbox_status_next (status, next_retry_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS device_tokens (
+  token VARCHAR(255) PRIMARY KEY,
+  profile_key VARCHAR(32) NOT NULL,
+  platform VARCHAR(32) NOT NULL DEFAULT 'android',
+  app_version VARCHAR(64) NOT NULL DEFAULT '',
+  device_id VARCHAR(128) NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  last_seen_at VARCHAR(32) NOT NULL,
+  created_at VARCHAR(32) NOT NULL,
+  updated_at VARCHAR(32) NOT NULL,
+  INDEX idx_device_tokens_profile_active (profile_key, is_active),
+  INDEX idx_device_tokens_seen (last_seen_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS push_outbox (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  event_id VARCHAR(128) NOT NULL,
+  token VARCHAR(255) NOT NULL,
+  profile_key VARCHAR(32) NOT NULL,
+  title VARCHAR(180) NOT NULL,
+  body_text VARCHAR(512) NOT NULL,
+  data_json JSON NOT NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  retry_count INT NOT NULL DEFAULT 0,
+  next_retry_at VARCHAR(32) NOT NULL,
+  last_error VARCHAR(512) NOT NULL DEFAULT '',
+  created_at VARCHAR(32) NOT NULL,
+  updated_at VARCHAR(32) NOT NULL,
+  UNIQUE KEY uq_push_outbox_event_token (event_id, token),
+  INDEX idx_push_outbox_status_next (status, next_retry_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

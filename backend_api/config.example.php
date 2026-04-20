@@ -13,5 +13,9 @@ return [
         'bot_token' => '',
         'chat_ids' => [],
     ],
+    'fcm' => [
+        'project_id' => '',
+        'service_account_email' => '',
+        'private_key' => '',
+    ],
 ];
-

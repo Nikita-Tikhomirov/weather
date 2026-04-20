@@ -295,6 +295,26 @@ POST /telegram/outbox/retry
 ```powershell
 python .\scripts\retry_telegram_outbox.py
 ```
+
+### FCM app-to-app push
+
+В backend появились endpoint'ы:
+
+- `POST /devices/register`
+- `POST /devices/unregister`
+- `POST /push/outbox/retry`
+
+В `backend_api/config.php` заполните секцию `fcm`:
+
+- `project_id`
+- `service_account_email`
+- `private_key`
+
+Для Android-клиента:
+
+- добавьте `google-services.json` в `mobile_app/android/app/google-services.json`;
+- укажите корректный `applicationId`;
+- убедитесь, что FCM включен в Firebase-проекте.
 - Проверьте микрофон в Windows.
 - Увеличьте тишину в комнате (в коде есть авто-калибровка шума).
 - Включите `STT_DEBUG=1`.

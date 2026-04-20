@@ -57,3 +57,18 @@ function ensure_family_permissions(string $actor): void
     }
 }
 
+function actor_display_name(string $actor): string
+{
+    return match ($actor) {
+        'nik' => 'Ник',
+        'nastya' => 'Настя',
+        'misha' => 'Миша',
+        'arisha' => 'Ариша',
+        default => $actor,
+    };
+}
+
+function recipient_adults_except_actor(string $actor): array
+{
+    return array_values(array_filter(ADULTS, static fn(string $candidate): bool => $candidate !== $actor));
+}

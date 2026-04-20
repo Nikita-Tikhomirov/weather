@@ -62,5 +62,40 @@ class ApiClient {
     final serverTime = (body['server_time'] ?? DateTime.now().toIso8601String()).toString();
     return (tasks, serverTime);
   }
-}
 
+  Future<void> registerDeviceToken({
+    required String actorProfile,
+    required String token,
+    required String platform,
+    required String appVersion,
+    String? deviceId,
+  }) async {
+    final uri = Uri.parse('$baseUrl/devices/register');
+    final payload = {
+      'actor_profile': actorProfile,
+      'token': token,
+      'platform': platform,
+      'app_version': appVersion,
+      if (deviceId != null && deviceId.isNotEmpty) 'device_id': deviceId,
+    };
+    final response = await http.post(uri, headers: _headers, body: jsonEncode(payload));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('registerDeviceToken failed: ${response.statusCode} ${response.body}');
+    }
+  }
+
+  Future<void> unregisterDeviceToken({
+    required String actorProfile,
+    required String token,
+  }) async {
+    final uri = Uri.parse('$baseUrl/devices/unregister');
+    final payload = {
+      'actor_profile': actorProfile,
+      'token': token,
+    };
+    final response = await http.post(uri, headers: _headers, body: jsonEncode(payload));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('unregisterDeviceToken failed: ${response.statusCode} ${response.body}');
+    }
+  }
+}

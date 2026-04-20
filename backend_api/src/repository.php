@@ -220,3 +220,73 @@ function changed_family_tasks_since(PDO $db, string $since): array
     return $out;
 }
 
+function upsert_device_token(
+    PDO $db,
+    string $token,
+    string $profileKey,
+    string $platform,
+    string $appVersion,
+    ?string $deviceId
+): void {
+    $sql = <<<SQL
+INSERT INTO device_tokens (
+  token, profile_key, platform, app_version, device_id, is_active, last_seen_at, created_at, updated_at
+) VALUES (
+  :token, :profile_key, :platform, :app_version, :device_id, 1, :last_seen_at, :created_at, :updated_at
+)
+ON DUPLICATE KEY UPDATE
+  profile_key = VALUES(profile_key),
+  platform = VALUES(platform),
+  app_version = VALUES(app_version),
+  device_id = VALUES(device_id),
+  is_active = 1,
+  last_seen_at = VALUES(last_seen_at),
+  updated_at = VALUES(updated_at)
+SQL;
+    $now = iso_now();
+    $stmt = $db->prepare($sql);
+    $stmt->execute([
+        'token' => $token,
+        'profile_key' => $profileKey,
+        'platform' => $platform,
+        'app_version' => $appVersion,
+        'device_id' => $deviceId,
+        'last_seen_at' => $now,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ]);
+}
+
+function deactivate_device_token(PDO $db, string $token, ?string $profileKey = null): void
+{
+    if ($profileKey === null) {
+        $stmt = $db->prepare(
+            "UPDATE device_tokens SET is_active = 0, updated_at = :updated_at WHERE token = :token"
+        );
+        $stmt->execute(['updated_at' => iso_now(), 'token' => $token]);
+        return;
+    }
+    $stmt = $db->prepare(
+        "UPDATE device_tokens
+         SET is_active = 0, updated_at = :updated_at
+         WHERE token = :token AND profile_key = :profile_key"
+    );
+    $stmt->execute([
+        'updated_at' => iso_now(),
+        'token' => $token,
+        'profile_key' => $profileKey,
+    ]);
+}
+
+function active_device_tokens_for_profiles(PDO $db, array $profiles): array
+{
+    if (!$profiles) {
+        return [];
+    }
+    $profiles = array_values(array_unique(array_map(static fn($x): string => (string)$x, $profiles)));
+    $placeholders = implode(',', array_fill(0, count($profiles), '?'));
+    $sql = "SELECT token, profile_key FROM device_tokens WHERE is_active = 1 AND profile_key IN ($placeholders)";
+    $stmt = $db->prepare($sql);
+    $stmt->execute($profiles);
+    return $stmt->fetchAll();
+}

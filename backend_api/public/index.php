@@ -7,6 +7,77 @@ require_once dirname(__DIR__) . '/src/db.php';
 require_once dirname(__DIR__) . '/src/auth.php';
 require_once dirname(__DIR__) . '/src/repository.php';
 require_once dirname(__DIR__) . '/src/telegram_outbox.php';
+require_once dirname(__DIR__) . '/src/push_outbox.php';
+
+function apply_event(PDO $db, array $event, string $actor, string $source): array
+{
+    $eventId = trim((string)($event['event_id'] ?? ''));
+    if ($eventId === '') {
+        return ['status' => 'skip'];
+    }
+    if (is_duplicate_event($db, $eventId)) {
+        return ['status' => 'duplicate'];
+    }
+
+    $entity = (string)($event['entity'] ?? 'task');
+    $action = (string)($event['action'] ?? 'upsert');
+    $payload = is_array($event['payload'] ?? null) ? $event['payload'] : [];
+
+    if ($entity === 'task') {
+        if ($action === 'delete') {
+            $taskId = trim((string)($payload['id'] ?? ''));
+            if ($taskId !== '') {
+                delete_task($db, $taskId);
+            }
+        } elseif ($action === 'replace_person_tasks') {
+            $owner = trim((string)($payload['owner_key'] ?? $actor));
+            if ($owner !== $actor) {
+                throw new InvalidArgumentException('replace_person_tasks owner mismatch');
+            }
+            $items = $payload['tasks'] ?? [];
+            if (!is_array($items)) {
+                throw new InvalidArgumentException('tasks must be array');
+            }
+            replace_person_tasks($db, $owner, $items);
+        } else {
+            $task = normalize_task($payload);
+            ensure_task_permissions($actor, $task);
+            upsert_task($db, $task);
+        }
+    } elseif ($entity === 'family_task') {
+        ensure_family_permissions($actor);
+        if ($action === 'delete') {
+            $id = trim((string)($payload['id'] ?? ''));
+            if ($id !== '') {
+                delete_family_task($db, $id);
+            }
+        } elseif ($action === 'replace_family_tasks') {
+            $items = $payload['items'] ?? [];
+            if (!is_array($items)) {
+                throw new InvalidArgumentException('items must be array');
+            }
+            replace_family_tasks($db, $items);
+        } else {
+            $item = normalize_family_task($payload);
+            upsert_family_task($db, $item);
+        }
+    } else {
+        throw new InvalidArgumentException('Unsupported entity');
+    }
+
+    register_event($db, $eventId, $source);
+    if ($source !== 'telegram') {
+        enqueue_telegram_event($db, $eventId, [
+            'event_id' => $eventId,
+            'entity' => $entity,
+            'action' => $action,
+            'payload' => $payload,
+            'actor_profile' => $actor,
+        ]);
+    }
+    enqueue_push_notifications($db, $eventId, $actor, $entity, $action, $payload);
+    return ['status' => 'accepted'];
+}
 
 try {
     $config = load_config();
@@ -30,6 +101,35 @@ try {
         exit;
     }
 
+    if ($method === 'POST' && $path === '/devices/register') {
+        require_api_key($config);
+        $body = read_json_body();
+        $actor = ensure_actor((string)($body['actor_profile'] ?? ''));
+        $token = trim((string)($body['token'] ?? ''));
+        if ($token === '') {
+            throw new InvalidArgumentException('token is required');
+        }
+        $platform = trim((string)($body['platform'] ?? 'android')) ?: 'android';
+        $appVersion = trim((string)($body['app_version'] ?? ''));
+        $deviceId = isset($body['device_id']) ? trim((string)$body['device_id']) : null;
+        upsert_device_token($db, $token, $actor, $platform, $appVersion, $deviceId ?: null);
+        json_response(200, ['ok' => true]);
+        exit;
+    }
+
+    if ($method === 'POST' && $path === '/devices/unregister') {
+        require_api_key($config);
+        $body = read_json_body();
+        $actor = ensure_actor((string)($body['actor_profile'] ?? ''));
+        $token = trim((string)($body['token'] ?? ''));
+        if ($token === '') {
+            throw new InvalidArgumentException('token is required');
+        }
+        deactivate_device_token($db, $token, $actor);
+        json_response(200, ['ok' => true]);
+        exit;
+    }
+
     if ($method === 'POST' && $path === '/sync/push') {
         require_api_key($config);
         $body = read_json_body();
@@ -48,71 +148,12 @@ try {
                 if (!is_array($event)) {
                     continue;
                 }
-                $eventId = trim((string)($event['event_id'] ?? ''));
-                if ($eventId === '') {
-                    continue;
-                }
-                if (is_duplicate_event($db, $eventId)) {
+                $result = apply_event($db, $event, $actor, $source);
+                if ($result['status'] === 'accepted') {
+                    $accepted++;
+                } elseif ($result['status'] === 'duplicate') {
                     $duplicates++;
-                    continue;
                 }
-                $entity = (string)($event['entity'] ?? 'task');
-                $action = (string)($event['action'] ?? 'upsert');
-                $payload = is_array($event['payload'] ?? null) ? $event['payload'] : [];
-
-                if ($entity === 'task') {
-                    if ($action === 'delete') {
-                        $taskId = trim((string)($payload['id'] ?? ''));
-                        if ($taskId !== '') {
-                            delete_task($db, $taskId);
-                        }
-                    } elseif ($action === 'replace_person_tasks') {
-                        $owner = trim((string)($payload['owner_key'] ?? $actor));
-                        if ($owner !== $actor) {
-                            throw new InvalidArgumentException('replace_person_tasks owner mismatch');
-                        }
-                        $items = $payload['tasks'] ?? [];
-                        if (!is_array($items)) {
-                            throw new InvalidArgumentException('tasks must be array');
-                        }
-                        replace_person_tasks($db, $owner, $items);
-                    } else {
-                        $task = normalize_task($payload);
-                        ensure_task_permissions($actor, $task);
-                        upsert_task($db, $task);
-                    }
-                } elseif ($entity === 'family_task') {
-                    ensure_family_permissions($actor);
-                    if ($action === 'delete') {
-                        $id = trim((string)($payload['id'] ?? ''));
-                        if ($id !== '') {
-                            delete_family_task($db, $id);
-                        }
-                    } elseif ($action === 'replace_family_tasks') {
-                        $items = $payload['items'] ?? [];
-                        if (!is_array($items)) {
-                            throw new InvalidArgumentException('items must be array');
-                        }
-                        replace_family_tasks($db, $items);
-                    } else {
-                        $item = normalize_family_task($payload);
-                        upsert_family_task($db, $item);
-                    }
-                } else {
-                    throw new InvalidArgumentException('Unsupported entity');
-                }
-
-                register_event($db, $eventId, $source);
-                if ($source !== 'telegram') {
-                    enqueue_telegram_event($db, $eventId, [
-                        'event_id' => $eventId,
-                        'entity' => $entity,
-                        'action' => $action,
-                        'payload' => $payload,
-                        'actor_profile' => $actor,
-                    ]);
-                }
-                $accepted++;
             }
             $db->commit();
         } catch (Throwable $inner) {
@@ -120,10 +161,12 @@ try {
             throw $inner;
         }
 
+        $pushResult = process_push_outbox($db, $config, 200);
         json_response(200, [
             'ok' => true,
             'accepted' => $accepted,
             'duplicates' => $duplicates,
+            'push' => $pushResult,
             'server_time' => iso_now(),
         ]);
         exit;
@@ -132,21 +175,11 @@ try {
     if ($method === 'POST' && $path === '/telegram/events') {
         require_api_key($config);
         $body = read_json_body();
-        $body['source'] = 'telegram';
+        $actor = ensure_actor((string)($body['actor_profile'] ?? ''));
         $events = $body['events'] ?? [];
         if (!is_array($events)) {
             throw new InvalidArgumentException('events must be array');
         }
-        $payload = [
-            'actor_profile' => (string)($body['actor_profile'] ?? ''),
-            'source' => 'telegram',
-            'events' => $events,
-        ];
-        $_SERVER['REQUEST_METHOD'] = 'POST';
-        $tmp = fopen('php://memory', 'r+');
-        fwrite($tmp, json_encode($payload));
-        rewind($tmp);
-        $actor = ensure_actor((string)($payload['actor_profile'] ?? ''));
         $accepted = 0;
         $duplicates = 0;
         $db->beginTransaction();
@@ -155,55 +188,33 @@ try {
                 if (!is_array($event)) {
                     continue;
                 }
-                $eventId = trim((string)($event['event_id'] ?? ''));
-                if ($eventId === '') {
-                    continue;
-                }
-                if (is_duplicate_event($db, $eventId)) {
+                $result = apply_event($db, $event, $actor, 'telegram');
+                if ($result['status'] === 'accepted') {
+                    $accepted++;
+                } elseif ($result['status'] === 'duplicate') {
                     $duplicates++;
-                    continue;
                 }
-                $entity = (string)($event['entity'] ?? 'task');
-                $action = (string)($event['action'] ?? 'upsert');
-                $eventPayload = is_array($event['payload'] ?? null) ? $event['payload'] : [];
-                if ($entity === 'task') {
-                    if ($action === 'delete') {
-                        $taskId = trim((string)($eventPayload['id'] ?? ''));
-                        if ($taskId !== '') {
-                            delete_task($db, $taskId);
-                        }
-                    } else {
-                        $task = normalize_task($eventPayload);
-                        ensure_task_permissions($actor, $task);
-                        upsert_task($db, $task);
-                    }
-                } elseif ($entity === 'family_task') {
-                    ensure_family_permissions($actor);
-                    if ($action === 'delete') {
-                        $id = trim((string)($eventPayload['id'] ?? ''));
-                        if ($id !== '') {
-                            delete_family_task($db, $id);
-                        }
-                    } else {
-                        $item = normalize_family_task($eventPayload);
-                        upsert_family_task($db, $item);
-                    }
-                }
-                register_event($db, $eventId, 'telegram');
-                $accepted++;
             }
             $db->commit();
         } catch (Throwable $inner) {
             $db->rollBack();
             throw $inner;
         }
-        json_response(200, ['ok' => true, 'accepted' => $accepted, 'duplicates' => $duplicates]);
+        $pushResult = process_push_outbox($db, $config, 200);
+        json_response(200, ['ok' => true, 'accepted' => $accepted, 'duplicates' => $duplicates, 'push' => $pushResult]);
         exit;
     }
 
     if ($method === 'POST' && $path === '/telegram/outbox/retry') {
         require_api_key($config);
         $result = process_outbox($db, $config);
+        json_response(200, ['ok' => true, 'result' => $result]);
+        exit;
+    }
+
+    if ($method === 'POST' && $path === '/push/outbox/retry') {
+        require_api_key($config);
+        $result = process_push_outbox($db, $config);
         json_response(200, ['ok' => true, 'result' => $result]);
         exit;
     }
