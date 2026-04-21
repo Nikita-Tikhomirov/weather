@@ -3,11 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'domain/task_draft.dart';
+import 'domain/task_domain_service.dart';
 import 'models/task_item.dart';
+import 'repositories/task_repository.dart';
 import 'services/api_client.dart';
 import 'services/fcm_service.dart';
 import 'services/local_db.dart';
-import 'services/sync_service.dart';
+import 'state/task_store.dart';
 
 const kProfileLabels = {
   'nik': 'Ник',
@@ -57,25 +60,12 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late final LocalDb _db;
-  late final ApiClient _api;
-  SyncService? _sync;
+  static const _profiles = ['nik', 'nastya', 'misha', 'arisha'];
+
+  TaskStore? _store;
   FcmService? _fcm;
   Timer? _deltaSyncTimer;
   Timer? _fullSyncTimer;
-
-  final _allTasks = <TaskItem>[];
-  bool _loading = true;
-  String _owner = 'nik';
-  DateTime _selectedDate = DateTime.now();
-  int _pageIndex = 0;
-
-  static const _profiles = ['nik', 'nastya', 'misha', 'arisha'];
-  static const _profileLabels = kProfileLabels;
-  static const _adults = {'nik', 'nastya'};
-  static const _statuses = ['todo', 'in_progress', 'in_review', 'done'];
-
-  bool get _isAdult => _adults.contains(_owner);
 
   @override
   void initState() {
@@ -85,10 +75,10 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _init() async {
     final prefs = await SharedPreferences.getInstance();
-    _owner = prefs.getString('actor_profile') ?? 'nik';
+    final owner = prefs.getString('actor_profile') ?? 'nik';
 
-    _db = await LocalDb.open();
-    _api = ApiClient(
+    final db = await LocalDb.open();
+    final api = ApiClient(
       baseUrl: const String.fromEnvironment(
         'API_BASE_URL',
         defaultValue: 'https://familly.nikportfolio.ru/backend_api/public',
@@ -98,49 +88,55 @@ class _HomePageState extends State<HomePage> {
         defaultValue: 'dev-local-key',
       ),
     );
-
-    await _bindOwner();
+    final repository = TaskRepository(db: db, api: api);
+    final store = TaskStore(
+      repository: repository,
+      domainService: TaskDomainService(),
+    );
+    await store.initialize(initialOwner: owner);
+    await _safeSyncFull(store, showErrors: false);
+    _bindFcm(api: api, owner: owner);
+    _startSyncLoops(store);
+    if (!mounted) {
+      store.dispose();
+      return;
+    }
     setState(() {
-      _loading = false;
+      _store = store;
     });
   }
 
-  Future<void> _bindOwner() async {
-    _cancelSyncLoops();
-    _sync = SyncService(db: _db, api: _api, actorProfile: _owner);
-
-    await _refreshLocal();
-    await _safeSyncFull();
-
+  void _bindFcm({
+    required ApiClient api,
+    required String owner,
+  }) {
     _fcm = FcmService(
-      api: _api,
-      actorProfile: _owner,
+      api: api,
+      actorProfile: owner,
       onForegroundText: (text) {
         if (!mounted) {
           return;
         }
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(text)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
       },
       onOpenPush: () async {
-        await _safeSyncDelta();
+        final store = _store;
+        if (store == null) {
+          return;
+        }
+        await _safeSyncDelta(store, showErrors: false);
       },
     );
-
-    try {
-      await _fcm!.initialize();
-    } catch (_) {}
-    _startSyncLoops();
+    _fcm!.initialize().catchError((_) {});
   }
 
-  void _startSyncLoops() {
+  void _startSyncLoops(TaskStore store) {
     _cancelSyncLoops();
     _deltaSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
-      await _safeSyncDelta();
+      await _safeSyncDelta(store, showErrors: false);
     });
     _fullSyncTimer = Timer.periodic(const Duration(minutes: 10), (_) async {
-      await _safeSyncFull();
+      await _safeSyncFull(store, showErrors: false);
     });
   }
 
@@ -151,77 +147,56 @@ class _HomePageState extends State<HomePage> {
     _fullSyncTimer = null;
   }
 
-  Future<void> _safeSyncDelta({bool showErrors = false}) async {
-    if (_sync == null) {
-      return;
-    }
+  Future<void> _safeSyncDelta(
+    TaskStore store, {
+    required bool showErrors,
+  }) async {
     try {
-      await _sync!.syncDelta();
-      await _refreshLocal();
-    } catch (e) {
+      await store.syncDelta();
+    } catch (error) {
       if (showErrors && mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка синхронизации: $e')));
+        ).showSnackBar(SnackBar(content: Text('Ошибка синхронизации: $error')));
       }
     }
   }
 
-  Future<void> _safeSyncFull({bool showErrors = false}) async {
-    if (_sync == null) {
-      return;
-    }
+  Future<void> _safeSyncFull(
+    TaskStore store, {
+    required bool showErrors,
+  }) async {
     try {
-      await _sync!.syncFull();
-      await _refreshLocal();
-    } catch (e) {
+      await store.syncFull();
+    } catch (error) {
       if (showErrors && mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка синхронизации: $e')));
+        ).showSnackBar(SnackBar(content: Text('Ошибка синхронизации: $error')));
       }
     }
   }
 
-  Future<void> _switchProfile(String profile) async {
-    if (profile == _owner) {
+  Future<void> _switchProfile(TaskStore store, String profile) async {
+    if (profile == store.owner.value) {
       return;
     }
     _cancelSyncLoops();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('actor_profile', profile);
-
-    setState(() {
-      _owner = profile;
-      _loading = true;
-      _allTasks.clear();
-    });
-
-    await _bindOwner();
-
-    setState(() {
-      _loading = false;
-    });
+    await store.switchOwner(profile);
+    _bindFcm(api: store.repository.api, owner: profile);
+    _startSyncLoops(store);
   }
 
-  Future<void> _refreshLocal() async {
-    final tasks = await _db.readTasks(ownerKey: _owner, includeAll: false);
-    setState(() {
-      _allTasks
-        ..clear()
-        ..addAll(tasks);
-    });
+  String _dateKey(DateTime value) {
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
+    return '${value.year}-$month-$day';
   }
 
-  String _dateKey(DateTime d) {
-    final m = d.month.toString().padLeft(2, '0');
-    final day = d.day.toString().padLeft(2, '0');
-    return '${d.year}-$m-$day';
-  }
-
-  bool _isSameDate(String dueDate, DateTime d) => dueDate == _dateKey(d);
-
-  Future<void> _openTaskEditor({
+  Future<void> _openTaskEditor(
+    TaskStore store, {
     TaskItem? existing,
     bool forceFamily = false,
   }) async {
@@ -230,13 +205,10 @@ class _HomePageState extends State<HomePage> {
     final durationCtl = TextEditingController(
       text: existing == null ? '' : existing.durationMinutes.toString(),
     );
-    final selectedAssignees = <String>{
-      ...(existing?.assignees ?? const <String>[]),
-    };
-
+    final selectedAssignees = <String>{...(existing?.assignees ?? const <String>[])};
     DateTime selected = existing == null
-        ? _selectedDate
-        : DateTime.tryParse(existing.dueDate) ?? _selectedDate;
+        ? store.selectedDate.value
+        : DateTime.tryParse(existing.dueDate) ?? store.selectedDate.value;
     String time = existing?.time ?? '19:00';
     String priority = existing?.priority ?? 'medium';
     String status = existing?.workflowStatus ?? 'todo';
@@ -261,9 +233,7 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      existing == null
-                          ? 'Новая задача'
-                          : 'Редактирование задачи',
+                      existing == null ? 'Новая задача' : 'Редактирование задачи',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 12),
@@ -305,11 +275,7 @@ class _HomePageState extends State<HomePage> {
                               final parts = time.split(':');
                               final initial = TimeOfDay(
                                 hour: int.tryParse(parts.first) ?? 19,
-                                minute:
-                                    int.tryParse(
-                                      parts.length > 1 ? parts[1] : '0',
-                                    ) ??
-                                    0,
+                                minute: int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0,
                               );
                               final picked = await showTimePicker(
                                 context: context,
@@ -331,54 +297,33 @@ class _HomePageState extends State<HomePage> {
                       decoration: const InputDecoration(labelText: 'Приоритет'),
                       items: const [
                         DropdownMenuItem(value: 'low', child: Text('Низкий')),
-                        DropdownMenuItem(
-                          value: 'medium',
-                          child: Text('Средний'),
-                        ),
+                        DropdownMenuItem(value: 'medium', child: Text('Средний')),
                         DropdownMenuItem(value: 'high', child: Text('Высокий')),
                       ],
-                      onChanged: (v) =>
-                          setModalState(() => priority = v ?? 'medium'),
+                      onChanged: (value) => setModalState(() => priority = value ?? 'medium'),
                     ),
                     DropdownButtonFormField<String>(
                       value: status,
                       decoration: const InputDecoration(labelText: 'Статус'),
                       items: const [
-                        DropdownMenuItem(
-                          value: 'todo',
-                          child: Text('К выполнению'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'in_progress',
-                          child: Text('В работе'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'in_review',
-                          child: Text('На проверке'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'done',
-                          child: Text('Выполнено'),
-                        ),
+                        DropdownMenuItem(value: 'todo', child: Text('К выполнению')),
+                        DropdownMenuItem(value: 'in_progress', child: Text('В работе')),
+                        DropdownMenuItem(value: 'in_review', child: Text('На проверке')),
+                        DropdownMenuItem(value: 'done', child: Text('Выполнено')),
                       ],
-                      onChanged: (v) =>
-                          setModalState(() => status = v ?? 'todo'),
+                      onChanged: (value) => setModalState(() => status = value ?? 'todo'),
                     ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Семейная задача'),
                       value: isFamily,
-                      onChanged: forceFamily
-                          ? null
-                          : (v) => setModalState(() => isFamily = v),
+                      onChanged: forceFamily ? null : (value) => setModalState(() => isFamily = value),
                     ),
                     if (isFamily) ...[
                       TextField(
                         controller: durationCtl,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Длительность (мин)',
-                        ),
+                        decoration: const InputDecoration(labelText: 'Длительность (мин)'),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -391,7 +336,7 @@ class _HomePageState extends State<HomePage> {
                         runSpacing: 8,
                         children: _profiles.map((profile) {
                           return FilterChip(
-                            label: Text(_profileLabels[profile] ?? profile),
+                            label: Text(profileLabel(profile)),
                             selected: selectedAssignees.contains(profile),
                             onSelected: (selected) {
                               setModalState(() {
@@ -419,86 +364,32 @@ class _HomePageState extends State<HomePage> {
                         Expanded(
                           child: FilledButton(
                             onPressed: () async {
-                              final title = titleCtl.text.trim();
-                              if (title.isEmpty || _sync == null) {
+                              final draft = TaskDraft(
+                                title: titleCtl.text.trim(),
+                                details: detailsCtl.text.trim(),
+                                dueDate: _dateKey(selected),
+                                time: time,
+                                priority: priority,
+                                workflowStatus: status,
+                                isFamily: isFamily,
+                                assignees: selectedAssignees.toList(),
+                                durationMinutes: int.tryParse(durationCtl.text.trim()) ?? 0,
+                              );
+                              final error = await store.saveDraft(
+                                draft: draft,
+                                existing: existing,
+                              );
+                              if (error != null && mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(error)),
+                                );
                                 return;
                               }
-                              final now = DateTime.now().toIso8601String();
-                              final assignees = selectedAssignees.toList()
-                                ..sort();
-                              if (isFamily && !_isAdult) {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Семейные задачи можно создавать только из взрослого профиля (Ник/Настя).',
-                                      ),
-                                    ),
-                                  );
-                                }
+                              if (!mounted) {
                                 return;
                               }
-                              if (isFamily && assignees.isEmpty) {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Выберите хотя бы одного ответственного.',
-                                      ),
-                                    ),
-                                  );
-                                }
-                                return;
-                              }
-                              final task =
-                                  (existing ??
-                                          TaskItem(
-                                            id: 'm-${DateTime.now().microsecondsSinceEpoch}',
-                                            ownerKey: isFamily
-                                                ? 'family'
-                                                : _owner,
-                                            isFamily: isFamily,
-                                            title: title,
-                                            details: detailsCtl.text.trim(),
-                                            dueDate: _dateKey(selected),
-                                            time: time,
-                                            workflowStatus: status,
-                                            priority: priority,
-                                            tags: const [],
-                                            assignees: assignees,
-                                            durationMinutes:
-                                                int.tryParse(
-                                                  durationCtl.text.trim(),
-                                                ) ??
-                                                0,
-                                            updatedAt: now,
-                                            version: 1,
-                                          ))
-                                      .copyWith(
-                                        ownerKey: isFamily ? 'family' : _owner,
-                                        isFamily: isFamily,
-                                        title: title,
-                                        details: detailsCtl.text.trim(),
-                                        dueDate: _dateKey(selected),
-                                        time: time,
-                                        workflowStatus: status,
-                                        priority: priority,
-                                        assignees: assignees,
-                                        durationMinutes:
-                                            int.tryParse(
-                                              durationCtl.text.trim(),
-                                            ) ??
-                                            0,
-                                        updatedAt: now,
-                                        version: (existing?.version ?? 0) + 1,
-                                      );
-
-                              await _sync!.enqueueUpsert(task);
-                              await _refreshLocal();
-                              if (mounted) {
-                                Navigator.pop(context);
-                              }
-                              await _safeSyncDelta(showErrors: true);
+                              Navigator.pop(context);
+                              await _safeSyncDelta(store, showErrors: true);
                             },
                             child: const Text('Сохранить'),
                           ),
@@ -515,224 +406,222 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _move(TaskItem item, String status) async {
-    if (_sync == null || item.workflowStatus == status) {
-      return;
-    }
-    final changed = item.copyWith(
-      workflowStatus: status,
-      updatedAt: DateTime.now().toIso8601String(),
-      version: item.version + 1,
-    );
-    await _sync!.enqueueUpsert(changed);
-    await _refreshLocal();
-    await _safeSyncDelta(showErrors: true);
-  }
-
-  Future<void> _toggleDone(TaskItem item) async {
-    await _move(item, item.workflowStatus == 'done' ? 'todo' : 'done');
-  }
-
-  Future<void> _delete(TaskItem item) async {
-    if (_sync == null) {
-      return;
-    }
-    await _sync!.enqueueDelete(
-      item.id,
-      ownerKey: item.ownerKey,
-      isFamily: item.isFamily,
-    );
-    await _refreshLocal();
-    await _safeSyncDelta(showErrors: true);
-  }
-
-  List<TaskItem> get _dateTasks =>
-      _allTasks.where((t) => _isSameDate(t.dueDate, _selectedDate)).toList();
-
-  List<TaskItem> get _familyDateTasks => _dateTasks
-      .where((t) => t.isFamily && t.assignees.contains(_owner))
-      .toList();
-
-  List<TaskItem> get _personalDateTasks =>
-      _dateTasks.where((t) => !t.isFamily).toList();
-
-  Widget _buildBody() {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    final byStatus = {
-      for (final s in _statuses)
-        s: _personalDateTasks.where((t) => t.workflowStatus == s).toList(),
-    };
-
-    switch (_pageIndex) {
-      case 0:
-        return _DashboardView(
-          allTasks: _allTasks,
-          selectedDate: _selectedDate,
-          onOpenCalendar: () async {
-            final picked = await showDatePicker(
-              context: context,
-              initialDate: _selectedDate,
-              firstDate: DateTime(2024),
-              lastDate: DateTime(2035),
-            );
-            if (picked != null) {
-              setState(() => _selectedDate = picked);
-            }
-          },
-        );
-      case 1:
-        return _TasksBoard(
-          byStatus: byStatus,
-          onDrop: _move,
-          onEdit: (t) => _openTaskEditor(existing: t),
-          onDelete: _delete,
-          onDoneToggle: _toggleDone,
-        );
-      case 2:
-        return _CalendarView(
-          selectedDate: _selectedDate,
-          tasksForSelectedDate: _dateTasks,
-          onDateChange: (d) => setState(() => _selectedDate = d),
-          onEdit: (t) => _openTaskEditor(existing: t),
-          onDelete: _delete,
-        );
-      default:
-        return _FamilyView(
-          familyTasks: _familyDateTasks,
-          onEdit: (t) => _openTaskEditor(existing: t),
-          onDelete: _delete,
-        );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final selectedKey = _dateKey(_selectedDate);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Family tasks - $selectedKey'),
-        actions: [
-          PopupMenuButton<String>(
-            initialValue: _owner,
-            onSelected: (value) async => _switchProfile(value),
-            itemBuilder: (context) => _profiles
-                .map(
-                  (profile) => PopupMenuItem<String>(
-                    value: profile,
-                    child: Text(_profileLabels[profile] ?? profile),
+    final store = _store;
+    if (store == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: store.loading,
+      builder: (context, loading, _) {
+        return ValueListenableBuilder<String>(
+          valueListenable: store.owner,
+          builder: (context, owner, __) {
+            return ValueListenableBuilder<DateTime>(
+              valueListenable: store.selectedDate,
+              builder: (context, selectedDate, ___) {
+                final selectedDateKey = _dateKey(selectedDate);
+                return Scaffold(
+                  appBar: AppBar(
+                    title: Text('Family tasks - $selectedDateKey'),
+                    actions: [
+                      PopupMenuButton<String>(
+                        initialValue: owner,
+                        onSelected: (value) async => _switchProfile(store, value),
+                        itemBuilder: (context) => _profiles
+                            .map(
+                              (profile) => PopupMenuItem<String>(
+                                value: profile,
+                                child: Text(profileLabel(profile)),
+                              ),
+                            )
+                            .toList(),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          child: Center(
+                            child: Text(
+                              profileLabel(owner),
+                              style: const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Calendar',
+                        icon: const Icon(Icons.calendar_month),
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: selectedDate,
+                            firstDate: DateTime(2024),
+                            lastDate: DateTime(2035),
+                          );
+                          if (picked != null) {
+                            store.setSelectedDate(picked);
+                          }
+                        },
+                      ),
+                      IconButton(
+                        tooltip: 'Sync now',
+                        icon: const Icon(Icons.sync),
+                        onPressed: () async => _safeSyncFull(store, showErrors: true),
+                      ),
+                    ],
                   ),
-                )
-                .toList(),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              child: Center(
-                child: Text(
-                  profileLabel(_owner),
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Calendar',
-            icon: const Icon(Icons.calendar_month),
-            onPressed: () async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: _selectedDate,
-                firstDate: DateTime(2024),
-                lastDate: DateTime(2035),
-              );
-              if (picked != null) {
-                setState(() => _selectedDate = picked);
-              }
-            },
-          ),
-          IconButton(
-            tooltip: 'Sync now',
-            icon: const Icon(Icons.sync),
-            onPressed: () async => _safeSyncFull(showErrors: true),
-          ),
-        ],
-      ),
-      body: _buildBody(),
-      floatingActionButton: (_pageIndex == 1 || _pageIndex == 3)
-          ? FloatingActionButton.extended(
-              onPressed: () => _openTaskEditor(forceFamily: _pageIndex == 3),
-              icon: const Icon(Icons.add),
-              label: Text(_pageIndex == 3 ? 'Family task' : 'Task'),
-            )
-          : null,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _pageIndex,
-        onDestinationSelected: (i) => setState(() => _pageIndex = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            label: 'Dashboard',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.view_kanban_outlined),
-            label: 'Tasks',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            label: 'Calendar',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.family_restroom_outlined),
-            label: 'Family',
-          ),
-        ],
-      ),
+                  body: loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : ValueListenableBuilder<int>(
+                          valueListenable: store.pageIndex,
+                          builder: (context, page, ____) {
+                            if (page == 0) {
+                              return ValueListenableBuilder<DashboardVm>(
+                                valueListenable: store.dashboard,
+                                builder: (context, vm, _) {
+                                  return _DashboardView(
+                                    vm: vm,
+                                    onOpenCalendar: () async {
+                                      final picked = await showDatePicker(
+                                        context: context,
+                                        initialDate: selectedDate,
+                                        firstDate: DateTime(2024),
+                                        lastDate: DateTime(2035),
+                                      );
+                                      if (picked != null) {
+                                        store.setSelectedDate(picked);
+                                      }
+                                    },
+                                  );
+                                },
+                              );
+                            }
+                            if (page == 1) {
+                              return ValueListenableBuilder<Map<String, List<TaskItem>>>(
+                                valueListenable: store.personalByStatus,
+                                builder: (context, byStatus, _) {
+                                  return _TasksBoard(
+                                    byStatus: byStatus,
+                                    onDrop: (item, status) async {
+                                      await store.move(item, status);
+                                      await _safeSyncDelta(store, showErrors: true);
+                                    },
+                                    onEdit: (task) => _openTaskEditor(store, existing: task),
+                                    onDelete: (task) async {
+                                      await store.delete(task);
+                                      await _safeSyncDelta(store, showErrors: true);
+                                    },
+                                    onDoneToggle: (task) async {
+                                      await store.toggleDone(task);
+                                      await _safeSyncDelta(store, showErrors: true);
+                                    },
+                                  );
+                                },
+                              );
+                            }
+                            if (page == 2) {
+                              return ValueListenableBuilder<List<TaskItem>>(
+                                valueListenable: store.tasksForSelectedDate,
+                                builder: (context, tasks, _) {
+                                  return _CalendarView(
+                                    selectedDate: selectedDate,
+                                    tasksForSelectedDate: tasks,
+                                    onDateChange: store.setSelectedDate,
+                                    onEdit: (task) => _openTaskEditor(store, existing: task),
+                                    onDelete: (task) async {
+                                      await store.delete(task);
+                                      await _safeSyncDelta(store, showErrors: true);
+                                    },
+                                  );
+                                },
+                              );
+                            }
+                            return ValueListenableBuilder<List<TaskItem>>(
+                              valueListenable: store.familyTasksForSelectedDate,
+                              builder: (context, tasks, _) {
+                                return _FamilyView(
+                                  familyTasks: tasks,
+                                  onEdit: (task) => _openTaskEditor(store, existing: task),
+                                  onDelete: (task) async {
+                                    await store.delete(task);
+                                    await _safeSyncDelta(store, showErrors: true);
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        ),
+                  floatingActionButton: ValueListenableBuilder<int>(
+                    valueListenable: store.pageIndex,
+                    builder: (context, page, _) {
+                      if (page != 1 && page != 3) {
+                        return const SizedBox.shrink();
+                      }
+                      return FloatingActionButton.extended(
+                        onPressed: () => _openTaskEditor(
+                          store,
+                          forceFamily: page == 3,
+                        ),
+                        icon: const Icon(Icons.add),
+                        label: Text(page == 3 ? 'Family task' : 'Task'),
+                      );
+                    },
+                  ),
+                  bottomNavigationBar: ValueListenableBuilder<int>(
+                    valueListenable: store.pageIndex,
+                    builder: (context, page, _) {
+                      return NavigationBar(
+                        selectedIndex: page,
+                        onDestinationSelected: store.setPage,
+                        destinations: const [
+                          NavigationDestination(
+                            icon: Icon(Icons.dashboard_outlined),
+                            label: 'Dashboard',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(Icons.view_kanban_outlined),
+                            label: 'Tasks',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(Icons.calendar_month_outlined),
+                            label: 'Calendar',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(Icons.family_restroom_outlined),
+                            label: 'Family',
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 
   @override
   void dispose() {
     _cancelSyncLoops();
+    _store?.dispose();
     super.dispose();
   }
 }
 
 class _DashboardView extends StatelessWidget {
   const _DashboardView({
-    required this.allTasks,
-    required this.selectedDate,
+    required this.vm,
     required this.onOpenCalendar,
   });
 
-  final List<TaskItem> allTasks;
-  final DateTime selectedDate;
+  final DashboardVm vm;
   final Future<void> Function() onOpenCalendar;
-
-  String _dateKey(DateTime d) {
-    final m = d.month.toString().padLeft(2, '0');
-    final day = d.day.toString().padLeft(2, '0');
-    return '${d.year}-$m-$day';
-  }
 
   @override
   Widget build(BuildContext context) {
-    final todayKey = _dateKey(selectedDate);
-    final today = allTasks.where((t) => t.dueDate == todayKey).toList();
-    final doneToday = today.where((t) => t.workflowStatus == 'done').length;
-    final familyToday = today.where((t) => t.isFamily).length;
-    final overdue = allTasks
-        .where(
-          (t) =>
-              t.dueDate.compareTo(todayKey) < 0 && t.workflowStatus != 'done',
-        )
-        .length;
-    final upcoming = allTasks.toList()
-      ..sort(
-        (a, b) =>
-            ('${a.dueDate} ${a.time}').compareTo('${b.dueDate} ${b.time}'),
-      );
-
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
@@ -741,15 +630,15 @@ class _DashboardView extends StatelessWidget {
             Expanded(
               child: _MetricCard(
                 title: 'На дату',
-                value: '${today.length}',
-                hint: todayKey,
+                value: '${vm.todayTotal}',
+                hint: vm.todayKey,
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: _MetricCard(
                 title: 'Сделано',
-                value: '$doneToday',
+                value: '${vm.doneToday}',
                 hint: 'Выполнено',
               ),
             ),
@@ -761,7 +650,7 @@ class _DashboardView extends StatelessWidget {
             Expanded(
               child: _MetricCard(
                 title: 'Семейных',
-                value: '$familyToday',
+                value: '${vm.familyToday}',
                 hint: 'Семейные',
               ),
             ),
@@ -769,7 +658,7 @@ class _DashboardView extends StatelessWidget {
             Expanded(
               child: _MetricCard(
                 title: 'Просрочено',
-                value: '$overdue',
+                value: '${vm.overdue}',
                 hint: 'Просрочка',
               ),
             ),
@@ -784,14 +673,14 @@ class _DashboardView extends StatelessWidget {
         const SizedBox(height: 12),
         Text('Ближайшие задачи', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
-        for (final t in upcoming.take(8))
+        for (final task in vm.upcoming)
           Card(
             child: ListTile(
-              title: Text(t.title),
+              title: Text(task.title),
               subtitle: Text(
-                '${t.dueDate} ${t.time} - ${profileLabel(t.ownerKey)} - ${workflowLabel(t.workflowStatus)}',
+                '${task.dueDate} ${task.time} - ${profileLabel(task.ownerKey)} - ${workflowLabel(task.workflowStatus)}',
               ),
-              trailing: t.isFamily ? const Icon(Icons.family_restroom) : null,
+              trailing: task.isFamily ? const Icon(Icons.family_restroom) : null,
             ),
           ),
       ],
@@ -848,7 +737,7 @@ class _CalendarView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final start = selectedDate.subtract(const Duration(days: 3));
-    final days = List.generate(10, (i) => start.add(Duration(days: i)));
+    final days = List.generate(10, (index) => start.add(Duration(days: index)));
 
     return Column(
       children: [
@@ -859,18 +748,17 @@ class _CalendarView extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             itemCount: days.length,
             separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (context, i) {
-              final d = days[i];
-              final isCurrent =
-                  d.year == selectedDate.year &&
-                  d.month == selectedDate.month &&
-                  d.day == selectedDate.day;
+            itemBuilder: (context, index) {
+              final date = days[index];
+              final isCurrent = date.year == selectedDate.year &&
+                  date.month == selectedDate.month &&
+                  date.day == selectedDate.day;
               return ChoiceChip(
                 selected: isCurrent,
                 label: Text(
-                  '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}',
+                  '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}',
                 ),
-                onSelected: (_) => onDateChange(d),
+                onSelected: (_) => onDateChange(date),
               );
             },
           ),
@@ -939,7 +827,7 @@ class _TasksBoard extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: DragTarget<TaskItem>(
-              onAcceptWithDetails: (d) => onDrop(d.data, status),
+              onAcceptWithDetails: (details) => onDrop(details.data, status),
               builder: (context, candidate, rejected) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
