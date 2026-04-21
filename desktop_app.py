@@ -644,11 +644,15 @@ class DesktopTodoApp(ctk.CTk):
         self._calendar_cells: dict[str, ctk.CTkFrame] = {}
         self._column_cards: dict[str, list[KanbanCard]] = {}
         self._kanban_render_token = 0
+        self._sync_poll_after_id: str | None = None
+        self._sync_poll_interval_ms = 2500
+        self._sync_poll_inflight = False
         self._build_layout()
         self._load_person_theme_settings()
         self.apply_theme(refresh=True)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.refresh_all_views()
+        self._schedule_sync_poll(initial=True)
 
     def _build_layout(self) -> None:
         self.grid_columnconfigure(1, weight=1)
@@ -859,8 +863,70 @@ class DesktopTodoApp(ctk.CTk):
         person = self.get_person()
         if self._cache_person_key != person.key:
             self._cache_person_key = person.key
-            self._cache_todos = ft.load_todos(person)
+            self._cache_todos = ft.load_todos(person, pull_remote=False)
         return self._cache_todos
+
+    def _schedule_sync_poll(self, *, initial: bool = False) -> None:
+        if self._sync_poll_after_id is not None:
+            try:
+                self.after_cancel(self._sync_poll_after_id)
+            except Exception:
+                pass
+            self._sync_poll_after_id = None
+        delay = 300 if initial else self._sync_poll_interval_ms
+        self._sync_poll_after_id = self.after(delay, self._run_sync_poll)
+
+    def _run_sync_poll(self) -> None:
+        if not self.winfo_exists():
+            return
+        if self._sync_poll_inflight:
+            self._schedule_sync_poll()
+            return
+        self._sync_poll_inflight = True
+        worker = threading.Thread(target=self._sync_poll_worker, daemon=True)
+        worker.start()
+
+    def _sync_poll_worker(self) -> None:
+        sync_result: dict[str, object] | None = None
+        sync_error: Exception | None = None
+        try:
+            sync_result = ft.pull_backend_snapshot_to_local()
+        except Exception as exc:
+            sync_error = exc
+
+        def finish() -> None:
+            if not self.winfo_exists():
+                return
+            if sync_error is not None:
+                self._append_log(f"Ошибка фоновой синхронизации: {sync_error}")
+            elif isinstance(sync_result, dict) and bool(sync_result.get("changed")):
+                self._invalidate_cache()
+                self.refresh_all_views()
+                self._notify_sync_changes(sync_result)
+            self._sync_poll_inflight = False
+            self._schedule_sync_poll()
+
+        self.after(0, finish)
+
+    def _notify_sync_changes(self, sync_result: dict[str, object]) -> None:
+        changed_profiles = sync_result.get("changed_profiles")
+        profiles = [str(profile) for profile in changed_profiles] if isinstance(changed_profiles, list) else []
+        has_family_updates = bool(sync_result.get("family_changed"))
+        details: list[str] = []
+        if profiles:
+            details.append(f"профили: {', '.join(profiles)}")
+        if has_family_updates:
+            details.append("семейные дела")
+        message = "Получены изменения из backend"
+        if details:
+            message = f"{message} ({'; '.join(details)})"
+        self._append_log(message)
+        try:
+            from notifier import desktop_notify
+
+            desktop_notify(message, title="Синхронизация")
+        except Exception:
+            pass
 
     def _save_todos(self, todos: list[dict]) -> None:
         ft.save_todos(self.get_person(), todos)
@@ -1672,7 +1738,7 @@ class DesktopTodoApp(ctk.CTk):
     def refresh_family_tasks(self) -> None:
         for child in self.family_list.winfo_children():
             child.destroy()
-        items = ft.load_family_tasks()
+        items = ft.load_family_tasks(pull_remote=False)
         now = datetime.now()
         mode = self.family_filter_var.get()
         filtered: list[dict] = []
@@ -1762,6 +1828,12 @@ class DesktopTodoApp(ctk.CTk):
         self.bot_var.set(False)
 
     def on_close(self) -> None:
+        if self._sync_poll_after_id is not None:
+            try:
+                self.after_cancel(self._sync_poll_after_id)
+            except Exception:
+                pass
+            self._sync_poll_after_id = None
         if self.voice_worker:
             self.voice_worker.stop()
         self.bot_host.stop()

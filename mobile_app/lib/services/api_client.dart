@@ -5,6 +5,18 @@ import 'package:http/http.dart' as http;
 import '../models/pending_event.dart';
 import '../models/task_item.dart';
 
+class PullSnapshot {
+  PullSnapshot({
+    required this.tasks,
+    required this.familyTasks,
+    required this.serverTime,
+  });
+
+  final List<TaskItem> tasks;
+  final List<TaskItem> familyTasks;
+  final String serverTime;
+}
+
 class ApiClient {
   ApiClient({
     required this.baseUrl,
@@ -86,19 +98,27 @@ class ApiClient {
     );
   }
 
-  Future<(List<TaskItem>, String)> pull({required String since}) async {
+  Future<PullSnapshot> pull({required String since}) async {
     final response = await _getWithFallback(
       paths: const ['/sync_pull.php', '/sync/pull'],
       query: {'since': since},
     );
     final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final tasksRaw = body['tasks'] as List? ?? const [];
-    final tasks = tasksRaw
+    final tasks = (body['tasks'] as List? ?? const [])
         .whereType<Map>()
         .map((row) => TaskItem.fromJson(Map<String, dynamic>.from(row)))
         .toList();
+    final familyTasks = (body['family_tasks'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) {
+          final source = Map<String, dynamic>.from(row);
+          source['owner_key'] = 'family';
+          source['is_family'] = true;
+          return TaskItem.fromJson(source);
+        })
+        .toList();
     final serverTime = (body['server_time'] ?? DateTime.now().toIso8601String()).toString();
-    return (tasks, serverTime);
+    return PullSnapshot(tasks: tasks, familyTasks: familyTasks, serverTime: serverTime);
   }
 
   Future<void> registerDeviceToken({

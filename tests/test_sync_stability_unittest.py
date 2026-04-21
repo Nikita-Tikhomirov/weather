@@ -64,7 +64,12 @@ class SyncStabilityTests(unittest.TestCase):
         self.assertEqual(captured[0][0], "backend_request_failed")
         self.assertIn("https://example.test/sync_pull.php", captured[0][1].get("url", ""))
 
+    def test_desktop_app_has_background_sync_poll(self) -> None:
+        source = Path("desktop_app.py").read_text(encoding="utf-8")
+        self.assertIn("_schedule_sync_poll(initial=True)", source)
+        self.assertIn("ft.pull_backend_snapshot_to_local()", source)
+        self.assertIn("self._invalidate_cache()", source)
+
 
 if __name__ == "__main__":
     unittest.main()
-

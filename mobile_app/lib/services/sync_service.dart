@@ -18,13 +18,28 @@ class SyncService {
 
   Future<void> enqueueUpsert(TaskItem task) async {
     final now = DateTime.now().toIso8601String();
+    final entity = task.isFamily ? 'family_task' : 'task';
+    final payload = task.isFamily
+        ? {
+            'id': task.id,
+            'title': task.title,
+            'details': task.details,
+            'due_date': task.dueDate,
+            'time': task.time,
+            'workflow_status': task.workflowStatus,
+            'participants': task.participants,
+            'duration_minutes': task.durationMinutes,
+            'updated_at': task.updatedAt,
+            'version': task.version,
+          }
+        : task.toJson();
     await db.upsertTask(task);
     await db.putPending(
       PendingEvent(
         eventId: _eventId('task-upsert'),
-        entity: 'task',
+        entity: entity,
         action: 'upsert',
-        payloadJson: jsonEncode(task.toJson()),
+        payloadJson: jsonEncode(payload),
         happenedAt: now,
       ),
     );
@@ -32,13 +47,17 @@ class SyncService {
 
   Future<void> enqueueDelete(String id, {required String ownerKey, required bool isFamily}) async {
     final now = DateTime.now().toIso8601String();
+    final entity = isFamily ? 'family_task' : 'task';
+    final payload = isFamily
+        ? {'id': id}
+        : {'id': id, 'owner_key': ownerKey, 'is_family': isFamily};
     await db.deleteTask(id);
     await db.putPending(
       PendingEvent(
         eventId: _eventId('task-delete'),
-        entity: 'task',
+        entity: entity,
         action: 'delete',
-        payloadJson: jsonEncode({'id': id, 'owner_key': ownerKey, 'is_family': isFamily}),
+        payloadJson: jsonEncode(payload),
         happenedAt: now,
       ),
     );
@@ -50,12 +69,13 @@ class SyncService {
       await api.push(actorProfile: actorProfile, events: pending, source: 'mobile');
       await db.removePending(pending.map((e) => e.eventId).toList());
     }
-    final since = await db.readSince();
-    final (tasks, serverTime) = await api.pull(since: since);
-    for (final task in tasks) {
-      await db.upsertTask(task);
-    }
-    await db.writeSince(serverTime);
+    final snapshot = await api.pull(since: '1970-01-01T00:00:00');
+    final merged = <TaskItem>[
+      ...snapshot.tasks.where((task) => !task.isFamily),
+      ...snapshot.familyTasks.map((task) => task.copyWith(isFamily: true, ownerKey: 'family')),
+    ];
+    await db.replaceTasks(merged);
+    await db.writeSince(snapshot.serverTime);
   }
 
   String _eventId(String prefix) {
@@ -63,4 +83,3 @@ class SyncService {
     return '$prefix-$actorProfile-$t';
   }
 }
-

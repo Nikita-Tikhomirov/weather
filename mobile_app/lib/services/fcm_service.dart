@@ -48,7 +48,8 @@ class FcmService {
       await _registerToken(newToken);
     });
 
-    FirebaseMessaging.onMessage.listen((RemoteMessage msg) {
+    FirebaseMessaging.onMessage.listen((RemoteMessage msg) async {
+      await onOpenPush();
       final title = msg.notification?.title ?? 'Family ToDo';
       final body = msg.notification?.body ?? 'There is a new update';
       onForegroundText('$title: $body');

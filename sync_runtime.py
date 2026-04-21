@@ -9,7 +9,7 @@ SYNC_CONFIG_LOCAL_PATH = BASE_DIR / "sync_runtime.local.json"
 
 DEFAULTS = {
     "backend_url": "https://familly.nikportfolio.ru/backend_api/public",
-    "backend_api_key": "",
+    "backend_api_key": "dev-local-key",
     "backend_source": "desktop",
 }
 
@@ -32,6 +32,8 @@ def get_sync_runtime(default_source: str = "desktop") -> dict:
 
     backend_url = os.getenv("TODO_BACKEND_URL", str(cfg.get("backend_url") or "")).strip().rstrip("/")
     backend_api_key = os.getenv("TODO_BACKEND_API_KEY", str(cfg.get("backend_api_key") or "")).strip()
+    if not backend_api_key:
+        backend_api_key = "dev-local-key"
     backend_source = os.getenv(
         "TODO_BACKEND_SOURCE",
         str(cfg.get("backend_source") or default_source),
@@ -42,4 +44,3 @@ def get_sync_runtime(default_source: str = "desktop") -> dict:
         "backend_api_key": backend_api_key,
         "backend_source": backend_source,
     }
-

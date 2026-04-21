@@ -90,15 +90,7 @@ class _HomePageState extends State<HomePage> {
           return;
         }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(text),
-            action: SnackBarAction(
-              label: 'Обновить',
-              onPressed: () async {
-                await _safeSync(showErrors: true);
-              },
-            ),
-          ),
+          SnackBar(content: Text(text)),
         );
       },
       onOpenPush: () async {

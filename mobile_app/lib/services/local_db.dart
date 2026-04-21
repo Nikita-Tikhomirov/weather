@@ -62,6 +62,15 @@ class LocalDb {
     await _db.delete('tasks', where: 'id = ?', whereArgs: [id]);
   }
 
+  Future<void> replaceTasks(List<TaskItem> items) async {
+    await _db.transaction((txn) async {
+      await txn.delete('tasks');
+      for (final item in items) {
+        await txn.insert('tasks', item.toDbRow(), conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    });
+  }
+
   Future<List<TaskItem>> readTasks({String? ownerKey, bool includeAll = false}) async {
     final rows = await _db.query(
       'tasks',

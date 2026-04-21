@@ -10,7 +10,7 @@ function enqueue_push_notifications(
     string $action,
     array $payload
 ): void {
-    $recipients = recipient_adults_except_actor($actorProfile);
+    $recipients = recipients_for_push($actorProfile, $entity, $action, $payload);
     if (!$recipients) {
         return;
     }

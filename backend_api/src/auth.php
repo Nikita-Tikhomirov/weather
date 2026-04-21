@@ -81,3 +81,38 @@ function recipient_adults_except_actor(string $actor): array
 {
     return array_values(array_filter(ADULTS, static fn(string $candidate): bool => $candidate !== $actor));
 }
+
+function recipients_by_visibility(string $owner): array
+{
+    if (in_array($owner, ADULTS, true)) {
+        return [$owner];
+    }
+    if (in_array($owner, ALLOWED_PROFILES, true)) {
+        return array_values(array_unique(array_merge([$owner], ADULTS)));
+    }
+    return [];
+}
+
+function recipients_for_push(string $actor, string $entity, string $action, array $payload): array
+{
+    $recipients = [$actor];
+    if ($entity === 'family_task') {
+        $recipients = array_merge($recipients, ADULTS);
+        return array_values(array_unique($recipients));
+    }
+
+    $isFamily = (bool)($payload['is_family'] ?? false);
+    if ($action === 'replace_person_tasks') {
+        $owner = trim((string)($payload['owner_key'] ?? $actor));
+        $recipients = array_merge($recipients, recipients_by_visibility($owner));
+        return array_values(array_unique($recipients));
+    }
+    if ($isFamily) {
+        $recipients = array_merge($recipients, ADULTS);
+        return array_values(array_unique($recipients));
+    }
+
+    $owner = trim((string)($payload['owner_key'] ?? $actor));
+    $recipients = array_merge($recipients, recipients_by_visibility($owner));
+    return array_values(array_unique($recipients));
+}

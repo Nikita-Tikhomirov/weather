@@ -366,9 +366,53 @@ def _backend_pull_snapshot() -> dict | None:
     return None
 
 
-def _push_snapshot_event(actor_profile: str, event: dict) -> None:
+def pull_backend_snapshot_to_local() -> dict[str, object]:
+    """Sync full backend snapshot into local files for all profiles."""
     if not _backend_enabled():
-        return
+        return {"ok": False, "reason": "backend_disabled"}
+    remote = _backend_pull_snapshot()
+    if not isinstance(remote, dict):
+        return {"ok": False, "reason": "pull_failed"}
+
+    raw_tasks = remote.get("tasks")
+    tasks = raw_tasks if isinstance(raw_tasks, list) else []
+    by_owner: dict[str, list[dict]] = {person.key: [] for person in PEOPLE}
+    for item in tasks:
+        if not isinstance(item, dict):
+            continue
+        owner = str(item.get("owner_key") or "").strip()
+        if owner in by_owner and not bool(item.get("is_family")):
+            by_owner[owner].append(item)
+
+    changed_profiles: list[str] = []
+    for person in PEOPLE:
+        target_path = todos_path(person)
+        snapshot = by_owner.get(person.key, [])
+        current = read_json(target_path, [])
+        current_items = current if isinstance(current, list) else []
+        if current_items != snapshot:
+            write_json(target_path, snapshot)
+            changed_profiles.append(person.key)
+
+    raw_family = remote.get("family_tasks")
+    family_items = raw_family if isinstance(raw_family, list) else []
+    current_family = read_json(FAMILY_TASKS_PATH, [])
+    current_family_items = current_family if isinstance(current_family, list) else []
+    family_changed = current_family_items != family_items
+    if family_changed:
+        write_json(FAMILY_TASKS_PATH, family_items)
+
+    return {
+        "ok": True,
+        "changed_profiles": changed_profiles,
+        "family_changed": family_changed,
+        "changed": bool(changed_profiles or family_changed),
+    }
+
+
+def _push_snapshot_event(actor_profile: str, event: dict) -> bool:
+    if not _backend_enabled():
+        return False
     runtime = _backend_runtime(default_source="desktop")
     payload = {
         "actor_profile": actor_profile,
@@ -377,16 +421,19 @@ def _push_snapshot_event(actor_profile: str, event: dict) -> None:
     }
     for path in ("/sync_push.php", "/sync/push"):
         if isinstance(_backend_request("POST", path, payload=payload), dict):
-            return
+            return True
+    log_event(
+        "backend_push_failed",
+        actor_profile=actor_profile,
+        entity=str(event.get("entity") or ""),
+        action=str(event.get("action") or ""),
+    )
+    return False
 
 
-def load_family_tasks() -> list[dict]:
-    if _backend_enabled():
-        remote = _backend_pull_snapshot()
-        if isinstance(remote, dict):
-            remote_items = remote.get("family_tasks")
-            if isinstance(remote_items, list):
-                write_json(FAMILY_TASKS_PATH, remote_items)
+def load_family_tasks(*, pull_remote: bool = False) -> list[dict]:
+    if pull_remote and _backend_enabled():
+        pull_backend_snapshot_to_local()
     raw = read_json(FAMILY_TASKS_PATH, [])
     source = raw if isinstance(raw, list) else []
     normalized: list[dict] = []
@@ -591,21 +638,9 @@ def find_person(text: str | None) -> Person | None:
     return None
 
 
-def load_todos(person: Person) -> list[dict]:
-    if _backend_enabled():
-        remote = _backend_pull_snapshot()
-        if isinstance(remote, dict):
-            remote_tasks = remote.get("tasks")
-            if isinstance(remote_tasks, list):
-                snapshot: list[dict] = []
-                for item in remote_tasks:
-                    if not isinstance(item, dict):
-                        continue
-                    owner = str(item.get("owner_key") or "")
-                    is_family = bool(item.get("is_family"))
-                    if is_family or owner == person.key:
-                        snapshot.append(item)
-                write_json(todos_path(person), snapshot)
+def load_todos(person: Person, *, pull_remote: bool = False) -> list[dict]:
+    if pull_remote and _backend_enabled():
+        pull_backend_snapshot_to_local()
     data = read_json(todos_path(person), [])
     source = data if isinstance(data, list) else []
     changed = False
