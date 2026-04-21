@@ -43,12 +43,12 @@ class ApiClient {
         if (response.statusCode >= 200 && response.statusCode < 300) {
           return response;
         }
-        lastError = StateError('post failed: ${response.statusCode} ${response.body}');
+        lastError = StateError('Ошибка POST: ${response.statusCode} ${response.body}');
       } catch (err) {
         lastError = err;
       }
     }
-    throw StateError('$lastError');
+    throw StateError('Не удалось выполнить POST-запрос: $lastError');
   }
 
   Future<http.Response> _getWithFallback({
@@ -63,12 +63,12 @@ class ApiClient {
         if (response.statusCode >= 200 && response.statusCode < 300) {
           return response;
         }
-        lastError = StateError('get failed: ${response.statusCode} ${response.body}');
+        lastError = StateError('Ошибка GET: ${response.statusCode} ${response.body}');
       } catch (err) {
         lastError = err;
       }
     }
-    throw StateError('$lastError');
+    throw StateError('Не удалось выполнить GET-запрос: $lastError');
   }
 
   Future<void> push({

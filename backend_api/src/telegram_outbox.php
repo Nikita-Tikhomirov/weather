@@ -2,6 +2,101 @@
 
 declare(strict_types=1);
 
+const TELEGRAM_DEDUP_WINDOW_SECONDS = 120;
+const TELEGRAM_RETRY_SUPPRESS_SECONDS = 600;
+
+function tg_normalize_signature_payload(mixed $value): mixed
+{
+    if (!is_array($value)) {
+        if (is_bool($value) || is_int($value) || is_float($value) || is_string($value) || $value === null) {
+            return $value;
+        }
+        return (string)$value;
+    }
+
+    $isList = array_keys($value) === range(0, count($value) - 1);
+    if ($isList) {
+        $normalized = array_map(static fn($item) => tg_normalize_signature_payload($item), $value);
+        $allScalars = true;
+        foreach ($normalized as $item) {
+            if (is_array($item)) {
+                $allScalars = false;
+                break;
+            }
+        }
+        if ($allScalars) {
+            sort($normalized);
+        }
+        return $normalized;
+    }
+
+    ksort($value);
+    $normalized = [];
+    foreach ($value as $key => $item) {
+        $normalized[(string)$key] = tg_normalize_signature_payload($item);
+    }
+    return $normalized;
+}
+
+function tg_payload_without_volatile_fields(array $payload): array
+{
+    $clone = $payload;
+    foreach (['event_id', 'happened_at', 'updated_at', 'version', 'server_time', 'dedup_signature'] as $key) {
+        unset($clone[$key]);
+    }
+    return $clone;
+}
+
+function build_telegram_dedup_signature(array $payload): string
+{
+    $canonical = tg_normalize_signature_payload(tg_payload_without_volatile_fields($payload));
+    return hash('sha256', (string)json_encode($canonical, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+}
+
+function extract_telegram_signature_from_json(string $payloadJson): string
+{
+    $decoded = json_decode($payloadJson, true);
+    if (!is_array($decoded)) {
+        return '';
+    }
+    return trim((string)($decoded['dedup_signature'] ?? ''));
+}
+
+function has_recent_telegram_signature(
+    PDO $db,
+    string $signature,
+    string $sinceIso,
+    ?int $excludeId = null,
+    bool $sentOnly = false
+): bool {
+    if ($signature === '') {
+        return false;
+    }
+
+    $statusFilter = $sentOnly ? "AND status = 'sent'" : '';
+    $sql = "SELECT id, payload_json
+            FROM telegram_outbox
+            WHERE created_at >= :since
+              {$statusFilter}
+            ORDER BY id DESC
+            LIMIT 80";
+    $stmt = $db->prepare($sql);
+    $stmt->execute(['since' => $sinceIso]);
+    $rows = $stmt->fetchAll();
+    foreach ($rows as $row) {
+        $rowId = isset($row['id']) ? (int)$row['id'] : 0;
+        if ($excludeId !== null && $rowId === $excludeId) {
+            continue;
+        }
+        $rowSignature = extract_telegram_signature_from_json((string)($row['payload_json'] ?? ''));
+        if ($rowSignature === $signature) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function enqueue_telegram_event(PDO $db, string $eventId, array $payload, array $recipientProfiles = []): void
 {
     $normalizedProfiles = [];
@@ -14,12 +109,24 @@ function enqueue_telegram_event(PDO $db, string $eventId, array $payload, array 
             $normalizedProfiles[] = $value;
         }
     }
+    sort($normalizedProfiles);
     if ($normalizedProfiles) {
         $payload['recipient_profiles'] = $normalizedProfiles;
     }
+
+    $signature = build_telegram_dedup_signature($payload);
+    $recentSince = (new DateTimeImmutable('now'))
+        ->modify('-' . TELEGRAM_DEDUP_WINDOW_SECONDS . ' seconds')
+        ->format('Y-m-d\\TH:i:s');
+    if (has_recent_telegram_signature($db, $signature, $recentSince, null, false)) {
+        return;
+    }
+
+    $payload['dedup_signature'] = $signature;
     $stmt = $db->prepare(
         'INSERT INTO telegram_outbox (event_id, payload_json, status, retry_count, next_retry_at, created_at, updated_at)
-         VALUES (:event_id, :payload_json, :status, 0, :next_retry_at, :created_at, :updated_at)'
+         VALUES (:event_id, :payload_json, :status, 0, :next_retry_at, :created_at, :updated_at)
+         ON DUPLICATE KEY UPDATE updated_at = VALUES(updated_at)'
     );
     $now = iso_now();
     $stmt->execute([
@@ -57,7 +164,29 @@ function process_outbox(PDO $db, array $config, int $limit = 100): array
     $failed = 0;
     foreach ($rows as $row) {
         $processed++;
-        $ok = send_telegram_payload($token, $chatIds, $chatIdsByProfile, $row['payload_json']);
+        $payloadJson = (string)$row['payload_json'];
+        $signature = extract_telegram_signature_from_json($payloadJson);
+
+        if ($signature !== '') {
+            $retrySince = (new DateTimeImmutable('now'))
+                ->modify('-' . TELEGRAM_RETRY_SUPPRESS_SECONDS . ' seconds')
+                ->format('Y-m-d\\TH:i:s');
+            $alreadySent = has_recent_telegram_signature($db, $signature, $retrySince, (int)$row['id'], true);
+            if ($alreadySent) {
+                $db->prepare(
+                    "UPDATE telegram_outbox
+                     SET status = 'sent', updated_at = :updated_at
+                     WHERE id = :id"
+                )->execute([
+                    'updated_at' => iso_now(),
+                    'id' => (int)$row['id'],
+                ]);
+                $sent++;
+                continue;
+            }
+        }
+
+        $ok = send_telegram_payload($token, $chatIds, $chatIdsByProfile, $payloadJson);
         if ($ok) {
             $db->prepare(
                 "UPDATE telegram_outbox
@@ -69,7 +198,7 @@ function process_outbox(PDO $db, array $config, int $limit = 100): array
         }
 
         $retryCount = (int)$row['retry_count'] + 1;
-        $nextRetry = (new DateTimeImmutable('now'))->modify('+' . min(120, 2 * $retryCount) . ' minutes')->format('Y-m-d\TH:i:s');
+        $nextRetry = (new DateTimeImmutable('now'))->modify('+' . min(120, 2 * $retryCount) . ' minutes')->format('Y-m-d\\TH:i:s');
         $db->prepare(
             "UPDATE telegram_outbox
              SET status = 'failed', retry_count = :retry_count, next_retry_at = :next_retry_at, updated_at = :updated_at

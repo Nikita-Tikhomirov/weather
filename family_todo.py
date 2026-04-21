@@ -451,6 +451,7 @@ def _diff_events(before: list[dict], after: list[dict], *, owner_key: str, is_fa
         item = after_by_id[item_id]
         events.append(
             {
+                "event_id": f"{owner_key}:{'family' if is_family else 'person'}:add:{item_id}",
                 "kind": "add",
                 "owner_key": owner_key,
                 "is_family": is_family,
@@ -462,6 +463,7 @@ def _diff_events(before: list[dict], after: list[dict], *, owner_key: str, is_fa
         item = before_by_id[item_id]
         events.append(
             {
+                "event_id": f"{owner_key}:{'family' if is_family else 'person'}:delete:{item_id}",
                 "kind": "delete",
                 "owner_key": owner_key,
                 "is_family": is_family,
@@ -476,6 +478,7 @@ def _diff_events(before: list[dict], after: list[dict], *, owner_key: str, is_fa
             continue
         events.append(
             {
+                "event_id": f"{owner_key}:{'family' if is_family else 'person'}:update:{item_id}",
                 "kind": "update",
                 "owner_key": owner_key,
                 "is_family": is_family,

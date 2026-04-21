@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 import traceback
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -53,6 +54,28 @@ MONTH_NAMES_RU = (
     "Декабрь",
 )
 WEEKDAY_SHORT_RU = ("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
+
+
+def detect_build_marker() -> str:
+    explicit = os.getenv("WEATHER_BUILD_MARKER", "").strip()
+    if explicit:
+        return explicit
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=str(Path(__file__).resolve().parent),
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        commit = (result.stdout or "").strip()
+        if result.returncode == 0 and commit:
+            return commit
+    except Exception:
+        pass
+    fallback = os.getenv("WEATHER_APP_VERSION", "").strip()
+    return fallback or "local"
 
 APPEARANCE_LABEL_TO_KEY = {
     "Светлая": "light",
@@ -238,6 +261,15 @@ class BotProcessHost:
             env = os.environ.copy()
             env.setdefault("TODO_BACKEND_SOURCE", "telegram")
             self._process = subprocess.Popen(cmd, cwd=str(Path(__file__).resolve().parent), env=env)
+            time.sleep(0.6)
+            if self._process.poll() is not None:
+                code = self._process.returncode
+                self._on_log(
+                    f"Встроенный Telegram-бот не удержал запуск (код {code}). "
+                    "Возможен уже активный --bot-only процесс."
+                )
+                self._process = None
+                return False
             self._on_log("Встроенный Telegram-бот запущен")
             return True
         except Exception as exc:
@@ -604,7 +636,8 @@ class KanbanCard(ctk.CTkFrame):
 class DesktopTodoApp(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("Ctrl-Center")
+        self._build_marker = detect_build_marker()
+        self.title(f"Ctrl-Center [{self._build_marker}]")
         self.geometry("1520x920")
         self.minsize(1260, 760)
         self._appearance_mode_key = "light"
@@ -649,13 +682,17 @@ class DesktopTodoApp(ctk.CTk):
         self._sync_poll_after_id: str | None = None
         self._sync_poll_interval_ms = 2500
         self._sync_poll_inflight = False
-        self._last_sync_notify_fingerprint = ""
-        self._last_sync_notify_at: datetime | None = None
+        self._sync_notify_cooldown_seconds = 120
+        self._sync_notify_history: dict[str, datetime] = {}
+        self._pending_sync_notify_events: list[dict[str, str]] = []
+        self._sync_notify_flush_after_id: str | None = None
+        self._sync_notify_flush_delay_ms = 1400
         self._build_layout()
         self._load_person_theme_settings()
         self.apply_theme(refresh=True)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.refresh_all_views()
+        self._append_log(f"Версия сборки: {self._build_marker}")
         self._schedule_sync_poll(initial=True)
 
     def _build_layout(self) -> None:
@@ -672,7 +709,7 @@ class DesktopTodoApp(ctk.CTk):
         self.top_bar.grid_columnconfigure(1, weight=1)
         self.top_title = ctk.CTkLabel(
             self.top_bar,
-            text="Ctrl-Center",
+            text=f"Ctrl-Center • {self._build_marker}",
             font=ctk.CTkFont(size=22, weight="bold"),
             text_color=self._c("text_primary"),
         )
@@ -923,32 +960,86 @@ class DesktopTodoApp(ctk.CTk):
         events = events_raw if isinstance(events_raw, list) else []
         if not events:
             return
-        rendered: list[str] = []
-        for event in events[:4]:
+        now = datetime.now()
+        self._prune_sync_notify_history(now)
+        queued = 0
+        for event in events:
             if not isinstance(event, dict):
                 continue
+            event_key = self._sync_event_key(event)
+            seen_at = self._sync_notify_history.get(event_key)
+            if seen_at is not None:
+                age = (now - seen_at).total_seconds()
+                if age < self._sync_notify_cooldown_seconds:
+                    continue
             owner = str(event.get("owner_key") or "")
             title = str(event.get("title") or "без названия")
             kind = str(event.get("kind") or "update")
             prefix = "Семейная" if bool(event.get("is_family")) else owner
+            line = ""
             if kind == "add":
-                rendered.append(f"{prefix}: добавлена «{title}»")
+                line = f"{prefix}: добавлена «{title}»"
             elif kind == "delete":
-                rendered.append(f"{prefix}: удалена «{title}»")
+                line = f"{prefix}: удалена «{title}»"
             else:
-                rendered.append(f"{prefix}: изменена «{title}»")
-        if not rendered:
+                line = f"{prefix}: изменена «{title}»"
+            if not line:
+                continue
+            self._sync_notify_history[event_key] = now
+            self._pending_sync_notify_events.append({"event_key": event_key, "line": line})
+            queued += 1
+        if queued <= 0:
             return
-        if len(events) > 4:
-            rendered.append(f"и еще {len(events) - 4}")
+        self._schedule_sync_notify_flush()
+
+    def _sync_event_key(self, event: dict[str, object]) -> str:
+        event_id = str(event.get("event_id") or "").strip()
+        if event_id:
+            return f"event:{event_id}"
+        owner = str(event.get("owner_key") or "").strip()
+        item_id = str(event.get("id") or "").strip()
+        kind = str(event.get("kind") or "update").strip()
+        family = "family" if bool(event.get("is_family")) else "person"
+        return f"{family}:{owner}:{kind}:{item_id}"
+
+    def _prune_sync_notify_history(self, now: datetime) -> None:
+        cutoff = now - timedelta(seconds=self._sync_notify_cooldown_seconds)
+        stale_keys = [key for key, stamp in self._sync_notify_history.items() if stamp < cutoff]
+        for key in stale_keys:
+            self._sync_notify_history.pop(key, None)
+
+    def _schedule_sync_notify_flush(self) -> None:
+        if self._sync_notify_flush_after_id is not None:
+            return
+        self._sync_notify_flush_after_id = self.after(self._sync_notify_flush_delay_ms, self._flush_sync_notify_events)
+
+    def _flush_sync_notify_events(self) -> None:
+        self._sync_notify_flush_after_id = None
+        if not self._pending_sync_notify_events:
+            return
+
+        line_order: list[str] = []
+        line_counts: dict[str, int] = {}
+        for event in self._pending_sync_notify_events:
+            line = str(event.get("line") or "").strip()
+            if not line:
+                continue
+            if line not in line_counts:
+                line_order.append(line)
+                line_counts[line] = 0
+            line_counts[line] += 1
+        self._pending_sync_notify_events.clear()
+
+        if not line_order:
+            return
+        rendered: list[str] = []
+        for line in line_order[:4]:
+            count = line_counts.get(line, 1)
+            rendered.append(f"{line} (x{count})" if count > 1 else line)
+        if len(line_order) > 4:
+            rendered.append(f"и еще {len(line_order) - 4} изменений")
+
         message = "\n".join(rendered)
-        fingerprint = "|".join(rendered)
-        now = datetime.now()
-        if self._last_sync_notify_fingerprint == fingerprint and self._last_sync_notify_at is not None:
-            if (now - self._last_sync_notify_at).total_seconds() < 45:
-                return
-        self._last_sync_notify_fingerprint = fingerprint
-        self._last_sync_notify_at = now
         self._append_log(message)
         try:
             from notifier import desktop_notify
@@ -1871,6 +1962,12 @@ class DesktopTodoApp(ctk.CTk):
             except Exception:
                 pass
             self._sync_poll_after_id = None
+        if self._sync_notify_flush_after_id is not None:
+            try:
+                self.after_cancel(self._sync_notify_flush_after_id)
+            except Exception:
+                pass
+            self._sync_notify_flush_after_id = None
         if self.voice_worker:
             self.voice_worker.stop()
         self.bot_host.stop()

@@ -1,5 +1,6 @@
 ﻿import json
 import os
+import atexit
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -8,12 +9,13 @@ import requests
 
 import family_todo as ft
 from notifier import event_actor, telegram_api
-from todo_logger import log_event
+from todo_logger import log_event, log_exception
 from tts import muted_tts
 
 
 BASE_DIR = Path(__file__).resolve().parent
 STATE_PATH = BASE_DIR / "family_data" / "telegram_state.json"
+LOCK_PATH = BASE_DIR / "family_data" / "telegram_bot.lock"
 
 ADULTS = {"nik", "nastya"}
 CHILDREN = {"misha", "arisha"}
@@ -25,6 +27,61 @@ TIME_LABELS = [
 ]
 HOUR_LABELS = [f"{hour:02d}" for hour in range(0, 24)]
 MINUTE_LABELS = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"]
+_LOCK_HANDLE = None
+
+
+def acquire_singleton_lock() -> bool:
+    global _LOCK_HANDLE
+    LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+    handle = LOCK_PATH.open("a+", encoding="utf-8")
+    handle.seek(0)
+    handle.write("1")
+    handle.flush()
+    handle.seek(0)
+    try:
+        if os.name == "nt":
+            import msvcrt
+
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except Exception:
+        handle.close()
+        return False
+
+    handle.seek(0)
+    handle.truncate(0)
+    handle.write(f"pid={os.getpid()} ts={datetime.now().isoformat(timespec='seconds')}\n")
+    handle.flush()
+    _LOCK_HANDLE = handle
+    atexit.register(release_singleton_lock)
+    return True
+
+
+def release_singleton_lock() -> None:
+    global _LOCK_HANDLE
+    handle = _LOCK_HANDLE
+    _LOCK_HANDLE = None
+    if handle is None:
+        return
+    try:
+        if os.name == "nt":
+            import msvcrt
+
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+    except Exception:
+        pass
+    try:
+        handle.close()
+    except Exception:
+        pass
 
 
 def read_state() -> dict:
@@ -54,10 +111,37 @@ def send_message(chat_id: int, text: str, keyboard: dict | None = None) -> None:
     payload: dict[str, object] = {"chat_id": chat_id, "text": text}
     if keyboard:
         payload["reply_markup"] = keyboard
+    keyboard_rows = 0
+    keyboard_mode = "none"
+    if isinstance(keyboard, dict):
+        rows = keyboard.get("keyboard")
+        keyboard_rows = len(rows) if isinstance(rows, list) else 0
+        keyboard_mode = "main" if not bool(keyboard.get("one_time_keyboard")) else "flow"
     try:
-        requests.post(telegram_api("sendMessage"), json=payload, timeout=12)
-    except Exception:
-        pass
+        response = requests.post(telegram_api("sendMessage"), json=payload, timeout=12)
+        if response.status_code < 200 or response.status_code >= 300:
+            log_event(
+                "telegram_send_failed",
+                chat_id=chat_id,
+                status=response.status_code,
+                keyboard_mode=keyboard_mode,
+                keyboard_rows=keyboard_rows,
+            )
+            return
+        log_event(
+            "telegram_keyboard_sent",
+            chat_id=chat_id,
+            keyboard_mode=keyboard_mode,
+            keyboard_rows=keyboard_rows,
+        )
+    except Exception as exc:
+        log_exception(
+            "telegram_send_exception",
+            exc,
+            chat_id=chat_id,
+            keyboard_mode=keyboard_mode,
+            keyboard_rows=keyboard_rows,
+        )
 
 
 def person_by_key(key: str | None):
@@ -147,6 +231,10 @@ def main_keyboard(state: dict, chat_id: int) -> dict:
         "resize_keyboard": True,
         "one_time_keyboard": False,
     }
+
+
+def send_main_menu(chat_id: int, state: dict, text: str = "Главное меню.") -> None:
+    send_message(chat_id, text, main_keyboard(state, chat_id))
 
 
 def identity_keyboard() -> dict:
@@ -560,7 +648,7 @@ def handle_flow(chat_id: int, state: dict, text: str) -> bool:
     if name == "done_pick":
         keys = flow.get("keys", {})
         if text not in keys:
-            send_message(chat_id, "Выбери номер кнопкой.", None)
+            send_main_menu(chat_id, state, "Выбери номер кнопкой. Главное меню восстановлено.")
             return True
         due_date = str(flow.get("due_date"))
         index = int(keys[text])
@@ -573,7 +661,7 @@ def handle_flow(chat_id: int, state: dict, text: str) -> bool:
     if name == "delete_pick":
         keys = flow.get("keys", {})
         if text not in keys:
-            send_message(chat_id, "Выбери номер кнопкой.", None)
+            send_main_menu(chat_id, state, "Выбери номер кнопкой. Главное меню восстановлено.")
             return True
         due_date = str(flow.get("due_date"))
         index = int(keys[text])
@@ -586,7 +674,7 @@ def handle_flow(chat_id: int, state: dict, text: str) -> bool:
     if name == "move_pick":
         keys = flow.get("keys", {})
         if text not in keys:
-            send_message(chat_id, "Выбери номер кнопкой.", None)
+            send_main_menu(chat_id, state, "Выбери номер кнопкой. Главное меню восстановлено.")
             return True
         flow["index"] = int(keys[text])
         flow["name"] = "move_target_date"
@@ -680,7 +768,7 @@ def handle_flow(chat_id: int, state: dict, text: str) -> bool:
     if name == "schedule_remove_pick":
         keys = flow.get("keys", {})
         if text not in keys:
-            send_message(chat_id, "Выбери пункт кнопкой.", None)
+            send_main_menu(chat_id, state, "Выбери пункт кнопкой. Главное меню восстановлено.")
             return True
         day = str(flow.get("day"))
         reply = remove_lesson(target, day, int(keys[text]), actor.key)
@@ -693,10 +781,16 @@ def handle_flow(chat_id: int, state: dict, text: str) -> bool:
 
 def handle_text(chat_id: int, state: dict, text: str) -> None:
     text_clean = (text or "").strip()
+    normalized = text_clean.lower()
 
     if text_clean in {"/start", "/help", "❓ Помощь"}:
         clear_flow(state, chat_id)
         send_message(chat_id, help_text(), main_keyboard(state, chat_id))
+        return
+
+    if normalized in {"меню", "/menu"}:
+        clear_flow(state, chat_id)
+        send_main_menu(chat_id, state, "Главное меню восстановлено.")
         return
 
     if text_clean == "❌ Отмена":
@@ -706,7 +800,7 @@ def handle_text(chat_id: int, state: dict, text: str) -> None:
 
     if text_clean == "⬅ Назад":
         clear_flow(state, chat_id)
-        send_message(chat_id, "Главное меню.", main_keyboard(state, chat_id))
+        send_main_menu(chat_id, state, "Главное меню.")
         return
 
     if handle_flow(chat_id, state, text_clean):
@@ -843,14 +937,23 @@ def handle_update(update: dict, state: dict) -> None:
         return
 
     if "text" in message:
-        handle_text(chat_id, state, str(message.get("text") or ""))
+        try:
+            handle_text(chat_id, state, str(message.get("text") or ""))
+        except Exception as exc:
+            log_exception("telegram_handle_text_failed", exc, chat_id=chat_id)
+            clear_flow(state, chat_id)
+            send_main_menu(chat_id, state, "Произошла ошибка. Главное меню восстановлено.")
         return
 
-    send_message(chat_id, "Бот работает в кнопочно-текстовом режиме. Используй кнопки и текст там, где бот попросит.", main_keyboard(state, chat_id))
+    send_main_menu(chat_id, state, "Используй кнопки меню и текст там, где бот попросит.")
 
 
 def main() -> None:
     os.environ.setdefault("TODO_BACKEND_SOURCE", "telegram")
+    if not acquire_singleton_lock():
+        print("Telegram-бот уже запущен в другом процессе (--bot-only singleton).")
+        return
+    log_event("telegram_bot_singleton_acquired", pid=os.getpid())
     token_ready = False
     try:
         telegram_api("getMe")
@@ -890,7 +993,8 @@ def main() -> None:
         except KeyboardInterrupt:
             print("Остановка Telegram-бота.")
             break
-        except Exception:
+        except Exception as exc:
+            log_exception("telegram_polling_failed", exc, offset=offset)
             time.sleep(2)
 
 

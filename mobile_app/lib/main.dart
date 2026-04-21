@@ -7,6 +7,24 @@ import 'services/fcm_service.dart';
 import 'services/local_db.dart';
 import 'services/sync_service.dart';
 
+const kProfileLabels = {
+  'nik': 'Ник',
+  'nastya': 'Настя',
+  'misha': 'Миша',
+  'arisha': 'Ариша',
+  'family': 'Семья',
+};
+
+const kWorkflowLabels = {
+  'todo': 'К выполнению',
+  'in_progress': 'В работе',
+  'in_review': 'На проверке',
+  'done': 'Выполнено',
+};
+
+String profileLabel(String key) => kProfileLabels[key] ?? key;
+String workflowLabel(String key) => kWorkflowLabels[key] ?? key;
+
 void main() {
   runApp(const FamilyTodoApp());
 }
@@ -49,12 +67,7 @@ class _HomePageState extends State<HomePage> {
   int _pageIndex = 0;
 
   static const _profiles = ['nik', 'nastya', 'misha', 'arisha'];
-  static const _profileLabels = {
-    'nik': 'Ник',
-    'nastya': 'Настя',
-    'misha': 'Миша',
-    'arisha': 'Ариша',
-  };
+  static const _profileLabels = kProfileLabels;
   static const _adults = {'nik', 'nastya'};
   static const _statuses = ['todo', 'in_progress', 'in_review', 'done'];
 
@@ -522,7 +535,7 @@ class _HomePageState extends State<HomePage> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Center(
-                child: Text(_owner, style: const TextStyle(fontWeight: FontWeight.w700)),
+                child: Text(profileLabel(_owner), style: const TextStyle(fontWeight: FontWeight.w700)),
               ),
             ),
           ),
@@ -609,7 +622,7 @@ class _DashboardView extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: _MetricCard(title: 'Сделано', value: '$doneToday', hint: 'Done'),
+              child: _MetricCard(title: 'Сделано', value: '$doneToday', hint: 'Выполнено'),
             ),
           ],
         ),
@@ -617,11 +630,11 @@ class _DashboardView extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _MetricCard(title: 'Семейных', value: '$familyToday', hint: 'Family'),
+              child: _MetricCard(title: 'Семейных', value: '$familyToday', hint: 'Семейные'),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: _MetricCard(title: 'Просрочено', value: '$overdue', hint: 'Overdue'),
+              child: _MetricCard(title: 'Просрочено', value: '$overdue', hint: 'Просрочка'),
             ),
           ],
         ),
@@ -638,7 +651,9 @@ class _DashboardView extends StatelessWidget {
           Card(
             child: ListTile(
               title: Text(t.title),
-              subtitle: Text('${t.dueDate} ${t.time} • ${t.ownerKey} • ${t.workflowStatus}'),
+              subtitle: Text(
+                '${t.dueDate} ${t.time} • ${profileLabel(t.ownerKey)} • ${workflowLabel(t.workflowStatus)}',
+              ),
               trailing: t.isFamily ? const Icon(Icons.family_restroom) : null,
             ),
           ),
@@ -757,10 +772,10 @@ class _TasksBoard extends StatelessWidget {
   final Future<void> Function(TaskItem) onDoneToggle;
 
   static const _titles = {
-    'todo': 'Todo',
-    'in_progress': 'In Progress',
-    'in_review': 'In Review',
-    'done': 'Done',
+    'todo': 'К выполнению',
+    'in_progress': 'В работе',
+    'in_review': 'На проверке',
+    'done': 'Выполнено',
   };
 
   static const _colors = {
@@ -871,12 +886,14 @@ class _TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final assigneeLabels = item.assignees.map(profileLabel).toList();
     final subtitle = [
       '${item.dueDate} ${item.time}'.trim(),
-      if (item.isFamily && item.assignees.isNotEmpty) 'Ответственные: ${item.assignees.join(', ')}',
+      'Статус: ${workflowLabel(item.workflowStatus)}',
+      if (item.isFamily && assigneeLabels.isNotEmpty) 'Ответственные: ${assigneeLabels.join(', ')}',
       if (item.isFamily && item.durationMinutes > 0) 'Длительность: ${item.durationMinutes} мин',
       if (item.details.isNotEmpty) item.details,
-      'Владелец: ${item.ownerKey}',
+      'Владелец: ${profileLabel(item.ownerKey)}',
     ].join('\n');
 
     return Card(
