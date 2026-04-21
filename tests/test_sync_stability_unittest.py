@@ -67,8 +67,8 @@ class SyncStabilityTests(unittest.TestCase):
     def test_desktop_app_has_background_sync_poll(self) -> None:
         source = Path("desktop_app.py").read_text(encoding="utf-8")
         self.assertIn("_schedule_sync_poll(initial=True)", source)
-        self.assertIn("ft.pull_backend_family_snapshot_to_local()", source)
-        self.assertIn("self.refresh_family_tasks()", source)
+        self.assertIn("ft.pull_backend_snapshot_to_local()", source)
+        self.assertIn("self.refresh_all_views()", source)
 
     def test_sync_pull_uses_actor_filter_for_mobile(self) -> None:
         source = Path("backend_api/public/index.php").read_text(encoding="utf-8")

@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import family_todo as ft
@@ -55,6 +56,28 @@ class FamilyTodoTests(unittest.TestCase):
         self.assertEqual(len(ft.load_todos(self.person)), 1)
         ft.mark_done(self.person, "отметь вторник номер 1")
         self.assertTrue(ft.load_todos(self.person)[0].get("done"))
+
+    def test_family_conflict_window_blocks_assignee_one_hour_before_and_during(self) -> None:
+        start_dt = (datetime.now() + timedelta(days=1)).replace(hour=19, minute=0, second=0, microsecond=0)
+        ok, error, _created = ft.create_family_task(
+            title="Family slot",
+            details="",
+            start_at=start_dt.isoformat(timespec="minutes"),
+            duration_minutes=90,
+            assignees=["nik"],
+        )
+        self.assertTrue(ok, error)
+
+        same_day = start_dt.date().isoformat()
+        one_hour_before_conflicts = ft.family_conflicts_for_person("nik", same_day, "18:20")
+        during_conflicts = ft.family_conflicts_for_person("nik", same_day, "19:45")
+        before_window_conflicts = ft.family_conflicts_for_person("nik", same_day, "17:30")
+        other_person_conflicts = ft.family_conflicts_for_person("arisha", same_day, "19:45")
+
+        self.assertTrue(one_hour_before_conflicts)
+        self.assertTrue(during_conflicts)
+        self.assertFalse(before_window_conflicts)
+        self.assertFalse(other_person_conflicts)
 
 
 if __name__ == "__main__":

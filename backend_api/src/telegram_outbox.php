@@ -2,8 +2,21 @@
 
 declare(strict_types=1);
 
-function enqueue_telegram_event(PDO $db, string $eventId, array $payload): void
+function enqueue_telegram_event(PDO $db, string $eventId, array $payload, array $recipientProfiles = []): void
 {
+    $normalizedProfiles = [];
+    foreach ($recipientProfiles as $profile) {
+        $value = trim((string)$profile);
+        if ($value === '') {
+            continue;
+        }
+        if (!in_array($value, $normalizedProfiles, true)) {
+            $normalizedProfiles[] = $value;
+        }
+    }
+    if ($normalizedProfiles) {
+        $payload['recipient_profiles'] = $normalizedProfiles;
+    }
     $stmt = $db->prepare(
         'INSERT INTO telegram_outbox (event_id, payload_json, status, retry_count, next_retry_at, created_at, updated_at)
          VALUES (:event_id, :payload_json, :status, 0, :next_retry_at, :created_at, :updated_at)'
@@ -23,7 +36,8 @@ function process_outbox(PDO $db, array $config, int $limit = 100): array
 {
     $token = (string)($config['telegram']['bot_token'] ?? '');
     $chatIds = $config['telegram']['chat_ids'] ?? [];
-    if ($token === '' || !is_array($chatIds) || !$chatIds) {
+    $chatIdsByProfile = $config['telegram']['chat_ids_by_profile'] ?? [];
+    if ($token === '') {
         return ['processed' => 0, 'sent' => 0, 'failed' => 0, 'message' => 'telegram config incomplete'];
     }
 
@@ -43,7 +57,7 @@ function process_outbox(PDO $db, array $config, int $limit = 100): array
     $failed = 0;
     foreach ($rows as $row) {
         $processed++;
-        $ok = send_telegram_payload($token, $chatIds, $row['payload_json']);
+        $ok = send_telegram_payload($token, $chatIds, $chatIdsByProfile, $row['payload_json']);
         if ($ok) {
             $db->prepare(
                 "UPDATE telegram_outbox
@@ -72,11 +86,63 @@ function process_outbox(PDO $db, array $config, int $limit = 100): array
     return ['processed' => $processed, 'sent' => $sent, 'failed' => $failed];
 }
 
-function send_telegram_payload(string $token, array $chatIds, string $payloadJson): bool
+function normalize_telegram_chat_ids(array $rawValues): array
+{
+    $chatIds = [];
+    foreach ($rawValues as $raw) {
+        if (is_int($raw)) {
+            $chatIds[] = $raw;
+            continue;
+        }
+        $value = trim((string)$raw);
+        if ($value === '' || !preg_match('/^-?\d+$/', $value)) {
+            continue;
+        }
+        $chatIds[] = (int)$value;
+    }
+    return array_values(array_unique($chatIds));
+}
+
+function resolve_telegram_chat_ids(array $payload, array $chatIds, array $chatIdsByProfile): array
+{
+    $defaultChatIds = normalize_telegram_chat_ids($chatIds);
+    if (!$chatIdsByProfile) {
+        return $defaultChatIds;
+    }
+    $rawProfiles = $payload['recipient_profiles'] ?? [];
+    if (!is_array($rawProfiles) || !$rawProfiles) {
+        return $defaultChatIds;
+    }
+
+    $resolved = [];
+    foreach ($rawProfiles as $profileRaw) {
+        $profile = trim((string)$profileRaw);
+        if ($profile === '' || !array_key_exists($profile, $chatIdsByProfile)) {
+            continue;
+        }
+        $mapping = $chatIdsByProfile[$profile];
+        if (is_array($mapping)) {
+            $resolved = array_merge($resolved, normalize_telegram_chat_ids($mapping));
+        } else {
+            $resolved = array_merge($resolved, normalize_telegram_chat_ids([$mapping]));
+        }
+    }
+
+    if ($resolved) {
+        return array_values(array_unique($resolved));
+    }
+    return $defaultChatIds;
+}
+
+function send_telegram_payload(string $token, array $chatIds, array $chatIdsByProfile, string $payloadJson): bool
 {
     $payload = json_decode($payloadJson, true);
     if (!is_array($payload)) {
         return false;
+    }
+    $targetChatIds = resolve_telegram_chat_ids($payload, $chatIds, $chatIdsByProfile);
+    if (!$targetChatIds) {
+        return true;
     }
     $entity = (string)($payload['entity'] ?? 'task');
     $action = (string)($payload['action'] ?? 'update');
@@ -88,7 +154,7 @@ function send_telegram_payload(string $token, array $chatIds, string $payloadJso
         $line = "[$actor] $entity/$action";
     }
     $url = "https://api.telegram.org/bot{$token}/sendMessage";
-    foreach ($chatIds as $chatId) {
+    foreach ($targetChatIds as $chatId) {
         $body = json_encode(['chat_id' => $chatId, 'text' => $line], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_POST, true);
@@ -105,4 +171,3 @@ function send_telegram_payload(string $token, array $chatIds, string $payloadJso
     }
     return true;
 }
-

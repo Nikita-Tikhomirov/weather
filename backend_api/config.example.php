@@ -12,6 +12,12 @@ return [
     'telegram' => [
         'bot_token' => '',
         'chat_ids' => [],
+        'chat_ids_by_profile' => [
+            // 'nik' => [-1001234567890],
+            // 'nastya' => [-1001234567891],
+            // 'misha' => [-1001234567892],
+            // 'arisha' => [-1001234567893],
+        ],
     ],
     'fcm' => [
         'project_id' => '',

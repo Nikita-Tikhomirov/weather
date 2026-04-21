@@ -22,6 +22,7 @@ function apply_event(PDO $db, array $event, string $actor, string $source): arra
     $entity = (string)($event['entity'] ?? 'task');
     $action = (string)($event['action'] ?? 'upsert');
     $payload = is_array($event['payload'] ?? null) ? $event['payload'] : [];
+    $recipients = recipients_for_push($actor, $entity, $action, $payload);
 
     if ($entity === 'task') {
         if ($action === 'delete') {
@@ -74,9 +75,9 @@ function apply_event(PDO $db, array $event, string $actor, string $source): arra
             'action' => $action,
             'payload' => $payload,
             'actor_profile' => $actor,
-        ]);
+        ], $recipients);
     }
-    enqueue_push_notifications($db, $eventId, $actor, $entity, $action, $payload);
+    enqueue_push_notifications($db, $eventId, $actor, $entity, $action, $payload, $recipients);
     return ['status' => 'accepted'];
 }
 

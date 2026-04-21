@@ -104,21 +104,10 @@ function recipient_adults_except_actor(string $actor): array
     return array_values(array_filter(ADULTS, static fn(string $candidate): bool => $candidate !== $actor));
 }
 
-function spouse_for(string $profile): ?string
-{
-    if ($profile === 'nik') {
-        return 'nastya';
-    }
-    if ($profile === 'nastya') {
-        return 'nik';
-    }
-    return null;
-}
-
 function recipients_for_push(string $actor, string $entity, string $action, array $payload): array
 {
     if ($entity === 'family_task') {
-        return ALLOWED_PROFILES;
+        return normalize_assignees($payload);
     }
 
     $owner = trim((string)($payload['owner_key'] ?? $actor));
@@ -126,12 +115,7 @@ function recipients_for_push(string $actor, string $entity, string $action, arra
         $owner = $actor;
     }
     if (in_array($owner, ADULTS, true)) {
-        $spouse = spouse_for($owner);
-        $recipients = [$owner];
-        if ($spouse !== null) {
-            $recipients[] = $spouse;
-        }
-        return array_values(array_unique($recipients));
+        return [$owner];
     }
     if (in_array($owner, ALLOWED_PROFILES, true)) {
         return array_values(array_unique(array_merge([$owner], ADULTS)));

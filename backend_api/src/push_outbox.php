@@ -8,9 +8,10 @@ function enqueue_push_notifications(
     string $actorProfile,
     string $entity,
     string $action,
-    array $payload
+    array $payload,
+    ?array $recipientProfiles = null
 ): void {
-    $recipients = recipients_for_push($actorProfile, $entity, $action, $payload);
+    $recipients = $recipientProfiles ?? recipients_for_push($actorProfile, $entity, $action, $payload);
     if (!$recipients) {
         return;
     }

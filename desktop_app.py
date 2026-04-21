@@ -647,7 +647,7 @@ class DesktopTodoApp(ctk.CTk):
         self._column_cards: dict[str, list[KanbanCard]] = {}
         self._kanban_render_token = 0
         self._sync_poll_after_id: str | None = None
-        self._sync_poll_interval_ms = 5000
+        self._sync_poll_interval_ms = 2500
         self._sync_poll_inflight = False
         self._last_sync_notify_fingerprint = ""
         self._last_sync_notify_at: datetime | None = None
@@ -894,7 +894,7 @@ class DesktopTodoApp(ctk.CTk):
         sync_result: dict[str, object] | None = None
         sync_error: Exception | None = None
         try:
-            sync_result = ft.pull_backend_family_snapshot_to_local()
+            sync_result = ft.pull_backend_snapshot_to_local()
         except Exception as exc:
             sync_error = exc
 
@@ -904,9 +904,14 @@ class DesktopTodoApp(ctk.CTk):
             if sync_error is not None:
                 self._append_log(f"Ошибка фоновой синхронизации: {sync_error}")
             elif isinstance(sync_result, dict) and bool(sync_result.get("changed")):
+                changed_profiles = sync_result.get("changed_profiles")
+                profiles = [str(profile) for profile in changed_profiles] if isinstance(changed_profiles, list) else []
+                current_person = self.get_person().key
                 family_changed = bool(sync_result.get("family_changed"))
-                if family_changed:
-                    self.refresh_family_tasks()
+                should_refresh = current_person in profiles or family_changed
+                if should_refresh:
+                    self._invalidate_cache()
+                    self.refresh_all_views()
                     self._notify_sync_changes(sync_result)
             self._sync_poll_inflight = False
             self._schedule_sync_poll()
