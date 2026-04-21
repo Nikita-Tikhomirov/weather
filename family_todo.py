@@ -1,5 +1,4 @@
 ﻿import json
-import os
 import re
 import urllib.error
 import urllib.parse
@@ -12,8 +11,9 @@ from pathlib import Path
 
 from audio import listen_speech
 from config import SETTINGS
+from sync_runtime import get_sync_runtime
 from todo_actions import apply_move
-from todo_logger import log_event
+from todo_logger import log_event, log_exception
 from todo_ops import (
     WORKFLOW_SET,
     compute_interval,
@@ -38,9 +38,10 @@ except Exception:  # pragma: no cover
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "family_data"
 FAMILY_TASKS_PATH = DATA_DIR / "family_tasks.json"
-BACKEND_URL = os.getenv("TODO_BACKEND_URL", "").strip().rstrip("/")
-BACKEND_API_KEY = os.getenv("TODO_BACKEND_API_KEY", "").strip()
-BACKEND_SOURCE = os.getenv("TODO_BACKEND_SOURCE", "desktop").strip() or "desktop"
+# Backward-compatible runtime overrides used in tests/manual runs.
+BACKEND_URL = ""
+BACKEND_API_KEY = ""
+BACKEND_SOURCE = ""
 
 
 @dataclass(frozen=True)
@@ -286,17 +287,39 @@ def person_by_key(person_key: str) -> Person | None:
 
 
 def _backend_enabled() -> bool:
-    return bool(BACKEND_URL)
+    runtime = _backend_runtime()
+    return bool(runtime["backend_url"])
 
 
-def _backend_request(method: str, path: str, payload: dict | None = None) -> dict | None:
+def _backend_runtime(default_source: str = "desktop") -> dict:
+    runtime = get_sync_runtime(default_source=default_source)
+    backend_url = str(BACKEND_URL or runtime["backend_url"]).strip().rstrip("/")
+    backend_api_key = str(BACKEND_API_KEY or runtime["backend_api_key"]).strip()
+    backend_source = str(BACKEND_SOURCE or runtime["backend_source"]).strip() or default_source
+    return {
+        "backend_url": backend_url,
+        "backend_api_key": backend_api_key,
+        "backend_source": backend_source,
+    }
+
+
+def _backend_request(
+    method: str,
+    path: str,
+    payload: dict | None = None,
+    *,
+    raise_on_error: bool = False,
+) -> dict | None:
     if not _backend_enabled():
         return None
-    url = f"{BACKEND_URL}{path}"
+    runtime = _backend_runtime(default_source="desktop")
+    base_url = runtime["backend_url"]
+    api_key = runtime["backend_api_key"]
+    url = f"{base_url}{path}"
     body = None
     headers = {"Content-Type": "application/json; charset=utf-8"}
-    if BACKEND_API_KEY:
-        headers["X-Api-Key"] = BACKEND_API_KEY
+    if api_key:
+        headers["X-Api-Key"] = api_key
     if payload is not None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(url, data=body, method=method.upper(), headers=headers)
@@ -305,31 +328,56 @@ def _backend_request(method: str, path: str, payload: dict | None = None) -> dic
             raw = resp.read().decode("utf-8")
             parsed = json.loads(raw) if raw else {}
             return parsed if isinstance(parsed, dict) else None
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError):
+    except urllib.error.HTTPError as exc:
+        response_body = ""
+        try:
+            response_body = exc.read().decode("utf-8", errors="replace")[:400]
+        except Exception:
+            response_body = "<unavailable>"
+        log_exception(
+            "backend_http_error",
+            exc,
+            method=method.upper(),
+            url=url,
+            status=getattr(exc, "code", None),
+            response=response_body,
+        )
+        if raise_on_error:
+            raise
+        return None
+    except (urllib.error.URLError, TimeoutError, ValueError) as exc:
+        log_exception(
+            "backend_request_failed",
+            exc if isinstance(exc, Exception) else Exception(str(exc)),
+            method=method.upper(),
+            url=url,
+        )
+        if raise_on_error:
+            raise
         return None
 
 
 def _backend_pull_snapshot() -> dict | None:
     query = urllib.parse.urlencode({"since": "1970-01-01T00:00:00"})
-    response = _backend_request("GET", f"/sync_pull.php?{query}")
-    if isinstance(response, dict):
-        return response
-    # Backward-compatible fallback for rewrite-enabled deployments.
-    return _backend_request("GET", f"/sync/pull?{query}")
+    for path in (f"/sync_pull.php?{query}", f"/sync/pull?{query}"):
+        response = _backend_request("GET", path)
+        if isinstance(response, dict):
+            return response
+    return None
 
 
 def _push_snapshot_event(actor_profile: str, event: dict) -> None:
     if not _backend_enabled():
         return
-    _backend_request(
-        "POST",
-        "/sync_push.php",
-        payload={
-            "actor_profile": actor_profile,
-            "source": BACKEND_SOURCE,
-            "events": [event],
-        },
-    )
+    runtime = _backend_runtime(default_source="desktop")
+    payload = {
+        "actor_profile": actor_profile,
+        "source": runtime["backend_source"],
+        "events": [event],
+    }
+    for path in ("/sync_push.php", "/sync/push"):
+        if isinstance(_backend_request("POST", path, payload=payload), dict):
+            return
 
 
 def load_family_tasks() -> list[dict]:
@@ -809,6 +857,17 @@ def cleanup_legacy_misha_todos() -> dict:
     report = cleanup_legacy_todos(target)
     if report.get("removed", 0) > 0:
         log_event("todo_cleanup_legacy", person=target.key, removed=report["removed"])
+    return report
+
+
+def cleanup_legacy_todos_all_profiles() -> dict:
+    report = {"profiles": {}, "total_removed": 0}
+    for person in PEOPLE:
+        person_report = cleanup_legacy_todos(person)
+        report["profiles"][person.key] = person_report
+        report["total_removed"] += int(person_report.get("removed", 0))
+        if int(person_report.get("removed", 0)) > 0:
+            log_event("todo_cleanup_legacy", person=person.key, removed=person_report["removed"])
     return report
 
 

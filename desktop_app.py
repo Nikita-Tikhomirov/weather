@@ -235,7 +235,9 @@ class BotProcessHost:
         else:
             cmd = [sys.executable, str(Path(__file__).resolve()), "--bot-only"]
         try:
-            self._process = subprocess.Popen(cmd, cwd=str(Path(__file__).resolve().parent))
+            env = os.environ.copy()
+            env.setdefault("TODO_BACKEND_SOURCE", "telegram")
+            self._process = subprocess.Popen(cmd, cwd=str(Path(__file__).resolve().parent), env=env)
             self._on_log("Встроенный Telegram-бот запущен")
             return True
         except Exception as exc:
@@ -608,7 +610,6 @@ class DesktopTodoApp(ctk.CTk):
         self._theme_tokens = THEME_SCHEMES[self._appearance_mode_key][self._theme_scheme]
         self.configure(fg_color=self._c("bg_app"))
         ft.bootstrap_data()
-        self.cleanup_report = ft.cleanup_misha_todos_from_date("2026-04-20")
         self.person_by_name = {p.display_name: p for p in ft.PEOPLE}
         self.display_names = [p.display_name for p in ft.PEOPLE]
         self.person_var = ctk.StringVar(value=self.display_names[0])
@@ -648,10 +649,6 @@ class DesktopTodoApp(ctk.CTk):
         self.apply_theme(refresh=True)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.refresh_all_views()
-        if self.cleanup_report.get("removed", 0) > 0:
-            self._append_log(
-                f"Очистка Миши: удалено {self.cleanup_report['removed']}, backup: {self.cleanup_report.get('backup_path') or '-'}"
-            )
 
     def _build_layout(self) -> None:
         self.grid_columnconfigure(1, weight=1)

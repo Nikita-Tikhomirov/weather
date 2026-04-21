@@ -274,11 +274,28 @@ $env:TODO_BACKEND_URL='https://your-domain.tld'
 $env:TODO_BACKEND_API_KEY='YOUR_API_KEY'
 ```
 
+Или задайте единый конфиг проекта (рекомендуется, без ручного `set env` на каждый запуск):
+
+- `sync_runtime.json` - базовый runtime-конфиг (в репозитории);
+- `sync_runtime.local.json` - локальные секреты/переопределения (игнорируется git).
+
+Пример `sync_runtime.local.json`:
+
+```json
+{
+  "backend_url": "https://familly.nikportfolio.ru/backend_api/public",
+  "backend_api_key": "YOUR_API_KEY",
+  "backend_source": "desktop"
+}
+```
+
 Для процесса Telegram-бота дополнительно:
 
 ```powershell
 $env:TODO_BACKEND_SOURCE='telegram'
 ```
+
+Примечание: встроенный бот из `desktop_app.py` теперь автоматически запускается с `TODO_BACKEND_SOURCE=telegram`.
 
 Что это дает:
 
@@ -311,6 +328,8 @@ $env:TODO_BACKEND_URL='https://familly.nikportfolio.ru/backend_api/public'
 - `telegram_outbox_retry.php`
 - `push_outbox_retry.php`
 
+В репозитории присутствуют плоские endpoint-обертки в `backend_api/public/*.php` для shared-hosting деплоя без rewrite.
+
 ### FCM app-to-app push
 
 В backend появились endpoint'ы:
@@ -330,6 +349,17 @@ $env:TODO_BACKEND_URL='https://familly.nikportfolio.ru/backend_api/public'
 - добавьте `google-services.json` в `mobile_app/android/app/google-services.json`;
 - укажите корректный `applicationId`;
 - убедитесь, что FCM включен в Firebase-проекте.
+- прогоните smoke backend-проверку:
+
+```powershell
+python .\scripts\smoke_backend_sync.py
+```
+
+Legacy-cleanup старых/битых записей у всех профилей (без удаления валидных задач):
+
+```powershell
+python .\scripts\cleanup_legacy_todos.py
+```
 - Проверьте микрофон в Windows.
 - Увеличьте тишину в комнате (в коде есть авто-калибровка шума).
 - Включите `STT_DEBUG=1`.

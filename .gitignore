@@ -9,3 +9,7 @@ dist/
 
 # Local browser bundle (too large for GitHub regular git)
 chrome-win64/
+
+# Local runtime secrets
+sync_runtime.local.json
+backend_api/config.php

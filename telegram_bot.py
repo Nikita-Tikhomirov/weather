@@ -1,4 +1,5 @@
 ﻿import json
+import os
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -849,6 +850,7 @@ def handle_update(update: dict, state: dict) -> None:
 
 
 def main() -> None:
+    os.environ.setdefault("TODO_BACKEND_SOURCE", "telegram")
     token_ready = False
     try:
         telegram_api("getMe")

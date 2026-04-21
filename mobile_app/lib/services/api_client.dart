@@ -19,6 +19,46 @@ class ApiClient {
         'X-Api-Key': apiKey,
       };
 
+  Future<http.Response> _postWithFallback({
+    required List<String> paths,
+    required String body,
+  }) async {
+    Object? lastError;
+    for (final path in paths) {
+      final uri = Uri.parse('$baseUrl$path');
+      try {
+        final response = await http.post(uri, headers: _headers, body: body);
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return response;
+        }
+        lastError = StateError('post failed: ${response.statusCode} ${response.body}');
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw StateError('$lastError');
+  }
+
+  Future<http.Response> _getWithFallback({
+    required List<String> paths,
+    Map<String, String>? query,
+  }) async {
+    Object? lastError;
+    for (final path in paths) {
+      final uri = Uri.parse('$baseUrl$path').replace(queryParameters: query);
+      try {
+        final response = await http.get(uri);
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return response;
+        }
+        lastError = StateError('get failed: ${response.statusCode} ${response.body}');
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw StateError('$lastError');
+  }
+
   Future<void> push({
     required String actorProfile,
     required List<PendingEvent> events,
@@ -27,7 +67,6 @@ class ApiClient {
     if (events.isEmpty) {
       return;
     }
-    final uri = Uri.parse('$baseUrl/sync_push.php');
     final payload = {
       'actor_profile': actorProfile,
       'source': source,
@@ -41,18 +80,17 @@ class ApiClient {
         };
       }).toList(),
     };
-    final response = await http.post(uri, headers: _headers, body: jsonEncode(payload));
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('push failed: ${response.statusCode} ${response.body}');
-    }
+    await _postWithFallback(
+      paths: const ['/sync_push.php', '/sync/push'],
+      body: jsonEncode(payload),
+    );
   }
 
   Future<(List<TaskItem>, String)> pull({required String since}) async {
-    final uri = Uri.parse('$baseUrl/sync_pull.php').replace(queryParameters: {'since': since});
-    final response = await http.get(uri);
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('pull failed: ${response.statusCode} ${response.body}');
-    }
+    final response = await _getWithFallback(
+      paths: const ['/sync_pull.php', '/sync/pull'],
+      query: {'since': since},
+    );
     final body = jsonDecode(response.body) as Map<String, dynamic>;
     final tasksRaw = body['tasks'] as List? ?? const [];
     final tasks = tasksRaw
@@ -70,7 +108,6 @@ class ApiClient {
     required String appVersion,
     String? deviceId,
   }) async {
-    final uri = Uri.parse('$baseUrl/devices_register.php');
     final payload = {
       'actor_profile': actorProfile,
       'token': token,
@@ -78,24 +115,23 @@ class ApiClient {
       'app_version': appVersion,
       if (deviceId != null && deviceId.isNotEmpty) 'device_id': deviceId,
     };
-    final response = await http.post(uri, headers: _headers, body: jsonEncode(payload));
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('registerDeviceToken failed: ${response.statusCode} ${response.body}');
-    }
+    await _postWithFallback(
+      paths: const ['/devices_register.php', '/devices/register'],
+      body: jsonEncode(payload),
+    );
   }
 
   Future<void> unregisterDeviceToken({
     required String actorProfile,
     required String token,
   }) async {
-    final uri = Uri.parse('$baseUrl/devices_unregister.php');
     final payload = {
       'actor_profile': actorProfile,
       'token': token,
     };
-    final response = await http.post(uri, headers: _headers, body: jsonEncode(payload));
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('unregisterDeviceToken failed: ${response.statusCode} ${response.body}');
-    }
+    await _postWithFallback(
+      paths: const ['/devices_unregister.php', '/devices/unregister'],
+      body: jsonEncode(payload),
+    );
   }
 }
