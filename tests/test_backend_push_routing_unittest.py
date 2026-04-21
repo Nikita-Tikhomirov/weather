@@ -29,14 +29,14 @@ class BackendPushRoutingTests(unittest.TestCase):
         recipients = _php_json(
             f"require '{AUTH_PATH}'; echo json_encode(recipients_for_push('nik', 'task', 'upsert', ['owner_key' => 'nik', 'is_family' => false]));"
         )
-        self.assertEqual(set(recipients), {"nastya"})
+        self.assertEqual(set(recipients), {"nik", "nastya"})
 
     @unittest.skipIf(shutil.which("php") is None, "php is not installed in test environment")
     def test_child_update_keeps_visibility_and_actor(self) -> None:
         recipients = _php_json(
             f"require '{AUTH_PATH}'; echo json_encode(recipients_for_push('nik', 'task', 'upsert', ['owner_key' => 'misha', 'is_family' => false]));"
         )
-        self.assertEqual(set(recipients), {"nik", "nastya"})
+        self.assertEqual(set(recipients), {"nik", "nastya", "misha"})
 
     @unittest.skipIf(shutil.which("php") is None, "php is not installed in test environment")
     def test_family_update_targets_both_adults(self) -> None:

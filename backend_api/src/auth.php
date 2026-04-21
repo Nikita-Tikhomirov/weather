@@ -105,10 +105,14 @@ function recipients_for_push(string $actor, string $entity, string $action, arra
     }
     if (in_array($owner, ADULTS, true)) {
         $spouse = spouse_for($owner);
-        return $spouse !== null ? [$spouse] : [];
+        $recipients = [$owner];
+        if ($spouse !== null) {
+            $recipients[] = $spouse;
+        }
+        return array_values(array_unique($recipients));
     }
     if (in_array($owner, ALLOWED_PROFILES, true)) {
-        return ADULTS;
+        return array_values(array_unique(array_merge([$owner], ADULTS)));
     }
     return [];
 }
