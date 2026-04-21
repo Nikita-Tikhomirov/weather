@@ -142,7 +142,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _refreshLocal() async {
     final tasks = await _db.readTasks(
       ownerKey: _owner,
-      includeAll: _isAdult,
+      includeAll: false,
     );
     setState(() {
       _allTasks

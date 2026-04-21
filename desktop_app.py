@@ -902,9 +902,15 @@ class DesktopTodoApp(ctk.CTk):
             if sync_error is not None:
                 self._append_log(f"Ошибка фоновой синхронизации: {sync_error}")
             elif isinstance(sync_result, dict) and bool(sync_result.get("changed")):
-                self._invalidate_cache()
-                self.refresh_all_views()
-                self._notify_sync_changes(sync_result)
+                changed_profiles = sync_result.get("changed_profiles")
+                profiles = [str(profile) for profile in changed_profiles] if isinstance(changed_profiles, list) else []
+                current_person = self.get_person().key
+                family_changed = bool(sync_result.get("family_changed"))
+                should_refresh = current_person in profiles or family_changed
+                if should_refresh:
+                    self._invalidate_cache()
+                    self.refresh_all_views()
+                    self._notify_sync_changes(sync_result)
             self._sync_poll_inflight = False
             self._schedule_sync_poll()
 

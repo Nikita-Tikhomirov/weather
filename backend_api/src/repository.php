@@ -24,6 +24,30 @@ function normalize_task(array $task): array
     ];
 }
 
+function task_storage_id(string $ownerKey, string $taskId, bool $isFamily): string
+{
+    $trimmed = trim($taskId);
+    if ($isFamily || $trimmed === '') {
+        return $trimmed;
+    }
+    if (str_starts_with($trimmed, $ownerKey . '::')) {
+        return $trimmed;
+    }
+    return $ownerKey . '::' . $trimmed;
+}
+
+function task_external_id(string $ownerKey, string $storedId, bool $isFamily): string
+{
+    if ($isFamily) {
+        return $storedId;
+    }
+    $prefix = $ownerKey . '::';
+    if (str_starts_with($storedId, $prefix)) {
+        return substr($storedId, strlen($prefix));
+    }
+    return $storedId;
+}
+
 function normalize_family_task(array $item): array
 {
     $participants = $item['participants'] ?? [];
@@ -62,6 +86,9 @@ function register_event(PDO $db, string $eventId, string $source): void
 
 function upsert_task(PDO $db, array $task): void
 {
+    $ownerKey = (string)$task['owner_key'];
+    $isFamily = (bool)$task['is_family'];
+    $storedId = task_storage_id($ownerKey, (string)$task['id'], $isFamily);
     $sql = <<<SQL
 INSERT INTO tasks (
     id, owner_key, is_family, title, details, due_date, time_value, workflow_status, priority,
@@ -87,9 +114,9 @@ ON DUPLICATE KEY UPDATE
 SQL;
     $stmt = $db->prepare($sql);
     $stmt->execute([
-        'id' => $task['id'],
-        'owner_key' => $task['owner_key'],
-        'is_family' => $task['is_family'] ? 1 : 0,
+        'id' => $storedId,
+        'owner_key' => $ownerKey,
+        'is_family' => $isFamily ? 1 : 0,
         'title' => $task['title'],
         'details' => $task['details'],
         'due_date' => $task['due_date'],
@@ -104,8 +131,16 @@ SQL;
     ]);
 }
 
-function delete_task(PDO $db, string $taskId): void
+function delete_task(PDO $db, string $taskId, ?string $ownerKey = null): void
 {
+    if ($ownerKey !== null && trim($ownerKey) !== '') {
+        $stmt = $db->prepare('DELETE FROM tasks WHERE id = :id OR id = :scoped_id');
+        $stmt->execute([
+            'id' => $taskId,
+            'scoped_id' => task_storage_id($ownerKey, $taskId, false),
+        ]);
+        return;
+    }
     $stmt = $db->prepare('DELETE FROM tasks WHERE id = :id');
     $stmt->execute(['id' => $taskId]);
 }
@@ -177,10 +212,13 @@ function changed_tasks_since(PDO $db, string $since): array
     $rows = $stmt->fetchAll();
     $out = [];
     foreach ($rows as $row) {
+        $owner = (string)$row['owner_key'];
+        $isFamily = (bool)$row['is_family'];
+        $storedId = (string)$row['id'];
         $out[] = [
-            'id' => (string)$row['id'],
-            'owner_key' => (string)$row['owner_key'],
-            'is_family' => (bool)$row['is_family'],
+            'id' => task_external_id($owner, $storedId, $isFamily),
+            'owner_key' => $owner,
+            'is_family' => $isFamily,
             'title' => (string)$row['title'],
             'details' => (string)$row['details'],
             'due_date' => (string)$row['due_date'],
@@ -209,10 +247,13 @@ function changed_tasks_since_for_actor(PDO $db, string $since, string $actor): a
     $rows = $stmt->fetchAll();
     $out = [];
     foreach ($rows as $row) {
+        $owner = (string)$row['owner_key'];
+        $isFamily = (bool)$row['is_family'];
+        $storedId = (string)$row['id'];
         $out[] = [
-            'id' => (string)$row['id'],
-            'owner_key' => (string)$row['owner_key'],
-            'is_family' => (bool)$row['is_family'],
+            'id' => task_external_id($owner, $storedId, $isFamily),
+            'owner_key' => $owner,
+            'is_family' => $isFamily,
             'title' => (string)$row['title'],
             'details' => (string)$row['details'],
             'due_date' => (string)$row['due_date'],

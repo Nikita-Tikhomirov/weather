@@ -26,8 +26,9 @@ function apply_event(PDO $db, array $event, string $actor, string $source): arra
     if ($entity === 'task') {
         if ($action === 'delete') {
             $taskId = trim((string)($payload['id'] ?? ''));
+            $owner = trim((string)($payload['owner_key'] ?? $actor));
             if ($taskId !== '') {
-                delete_task($db, $taskId);
+                delete_task($db, $taskId, $owner);
             }
         } elseif ($action === 'replace_person_tasks') {
             $owner = trim((string)($payload['owner_key'] ?? $actor));
