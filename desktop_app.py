@@ -647,6 +647,8 @@ class DesktopTodoApp(ctk.CTk):
         self._sync_poll_after_id: str | None = None
         self._sync_poll_interval_ms = 2500
         self._sync_poll_inflight = False
+        self._last_sync_notify_fingerprint = ""
+        self._last_sync_notify_at: datetime | None = None
         self._build_layout()
         self._load_person_theme_settings()
         self.apply_theme(refresh=True)
@@ -909,17 +911,36 @@ class DesktopTodoApp(ctk.CTk):
         self.after(0, finish)
 
     def _notify_sync_changes(self, sync_result: dict[str, object]) -> None:
-        changed_profiles = sync_result.get("changed_profiles")
-        profiles = [str(profile) for profile in changed_profiles] if isinstance(changed_profiles, list) else []
-        has_family_updates = bool(sync_result.get("family_changed"))
-        details: list[str] = []
-        if profiles:
-            details.append(f"профили: {', '.join(profiles)}")
-        if has_family_updates:
-            details.append("семейные дела")
-        message = "Получены изменения из backend"
-        if details:
-            message = f"{message} ({'; '.join(details)})"
+        events_raw = sync_result.get("events")
+        events = events_raw if isinstance(events_raw, list) else []
+        if not events:
+            return
+        rendered: list[str] = []
+        for event in events[:4]:
+            if not isinstance(event, dict):
+                continue
+            owner = str(event.get("owner_key") or "")
+            title = str(event.get("title") or "без названия")
+            kind = str(event.get("kind") or "update")
+            prefix = "Семейная" if bool(event.get("is_family")) else owner
+            if kind == "add":
+                rendered.append(f"{prefix}: добавлена «{title}»")
+            elif kind == "delete":
+                rendered.append(f"{prefix}: удалена «{title}»")
+            else:
+                rendered.append(f"{prefix}: изменена «{title}»")
+        if not rendered:
+            return
+        if len(events) > 4:
+            rendered.append(f"и еще {len(events) - 4}")
+        message = "\n".join(rendered)
+        fingerprint = "|".join(rendered)
+        now = datetime.now()
+        if self._last_sync_notify_fingerprint == fingerprint and self._last_sync_notify_at is not None:
+            if (now - self._last_sync_notify_at).total_seconds() < 45:
+                return
+        self._last_sync_notify_fingerprint = fingerprint
+        self._last_sync_notify_at = now
         self._append_log(message)
         try:
             from notifier import desktop_notify

@@ -70,6 +70,12 @@ class SyncStabilityTests(unittest.TestCase):
         self.assertIn("ft.pull_backend_snapshot_to_local()", source)
         self.assertIn("self._invalidate_cache()", source)
 
+    def test_sync_pull_uses_actor_filter_for_mobile(self) -> None:
+        source = Path("backend_api/public/index.php").read_text(encoding="utf-8")
+        self.assertIn("require_api_key($config);", source)
+        self.assertIn("actor_profile", source)
+        self.assertIn("changed_tasks_since_for_actor", source)
+
 
 if __name__ == "__main__":
     unittest.main()

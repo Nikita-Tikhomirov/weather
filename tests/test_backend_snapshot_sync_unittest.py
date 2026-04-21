@@ -39,6 +39,8 @@ class BackendSnapshotSyncTests(unittest.TestCase):
         self.assertIn("nik", result["changed_profiles"])
         self.assertIn("misha", result["changed_profiles"])
         self.assertTrue(result["family_changed"])
+        self.assertTrue(isinstance(result.get("events"), list))
+        self.assertGreaterEqual(len(result.get("events", [])), 3)
 
         nik = next(p for p in ft.PEOPLE if p.key == "nik")
         misha = next(p for p in ft.PEOPLE if p.key == "misha")

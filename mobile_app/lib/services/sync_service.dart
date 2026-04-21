@@ -10,7 +10,9 @@ class SyncService {
     required this.db,
     required this.api,
     required this.actorProfile,
-  });
+  }) {
+    api.setActorProfileForPull(actorProfile);
+  }
 
   final LocalDb db;
   final ApiClient api;

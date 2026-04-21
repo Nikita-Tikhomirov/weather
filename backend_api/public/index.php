@@ -91,10 +91,17 @@ try {
     }
 
     if ($method === 'GET' && $path === '/sync/pull') {
+        require_api_key($config);
         $since = (string)($_GET['since'] ?? '1970-01-01T00:00:00');
+        $actorRaw = trim((string)($_GET['actor_profile'] ?? ''));
+        $tasks = changed_tasks_since($db, $since);
+        if ($actorRaw !== '') {
+            $actor = ensure_actor($actorRaw);
+            $tasks = changed_tasks_since_for_actor($db, $since, $actor);
+        }
         json_response(200, [
             'ok' => true,
-            'tasks' => changed_tasks_since($db, $since),
+            'tasks' => $tasks,
             'family_tasks' => changed_family_tasks_since($db, $since),
             'server_time' => iso_now(),
         ]);
@@ -227,4 +234,3 @@ try {
 } catch (Throwable $exc) {
     json_response(500, ['ok' => false, 'error' => $exc->getMessage()]);
 }
-

@@ -366,6 +366,67 @@ def _backend_pull_snapshot() -> dict | None:
     return None
 
 
+def _stable_items(items: list[dict]) -> list[dict]:
+    normalized = [item for item in items if isinstance(item, dict)]
+    normalized.sort(
+        key=lambda item: (
+            str(item.get("owner_key") or ""),
+            str(item.get("id") or ""),
+            str(item.get("due_date") or ""),
+            str(item.get("time") or ""),
+        )
+    )
+    return normalized
+
+
+def _diff_events(before: list[dict], after: list[dict], *, owner_key: str, is_family: bool) -> list[dict]:
+    before_by_id = {str(item.get("id") or ""): item for item in before if str(item.get("id") or "")}
+    after_by_id = {str(item.get("id") or ""): item for item in after if str(item.get("id") or "")}
+    events: list[dict] = []
+
+    added_ids = sorted(set(after_by_id.keys()) - set(before_by_id.keys()))
+    removed_ids = sorted(set(before_by_id.keys()) - set(after_by_id.keys()))
+    common_ids = sorted(set(before_by_id.keys()) & set(after_by_id.keys()))
+
+    for item_id in added_ids:
+        item = after_by_id[item_id]
+        events.append(
+            {
+                "kind": "add",
+                "owner_key": owner_key,
+                "is_family": is_family,
+                "id": item_id,
+                "title": str(item.get("title") or item.get("text") or "без названия"),
+            }
+        )
+    for item_id in removed_ids:
+        item = before_by_id[item_id]
+        events.append(
+            {
+                "kind": "delete",
+                "owner_key": owner_key,
+                "is_family": is_family,
+                "id": item_id,
+                "title": str(item.get("title") or item.get("text") or "без названия"),
+            }
+        )
+    for item_id in common_ids:
+        prev = before_by_id[item_id]
+        cur = after_by_id[item_id]
+        if prev == cur:
+            continue
+        events.append(
+            {
+                "kind": "update",
+                "owner_key": owner_key,
+                "is_family": is_family,
+                "id": item_id,
+                "title": str(cur.get("title") or cur.get("text") or "без названия"),
+            }
+        )
+    return events
+
+
 def pull_backend_snapshot_to_local() -> dict[str, object]:
     """Sync full backend snapshot into local files for all profiles."""
     if not _backend_enabled():
@@ -375,7 +436,7 @@ def pull_backend_snapshot_to_local() -> dict[str, object]:
         return {"ok": False, "reason": "pull_failed"}
 
     raw_tasks = remote.get("tasks")
-    tasks = raw_tasks if isinstance(raw_tasks, list) else []
+    tasks = _stable_items(raw_tasks if isinstance(raw_tasks, list) else [])
     by_owner: dict[str, list[dict]] = {person.key: [] for person in PEOPLE}
     for item in tasks:
         if not isinstance(item, dict):
@@ -385,28 +446,46 @@ def pull_backend_snapshot_to_local() -> dict[str, object]:
             by_owner[owner].append(item)
 
     changed_profiles: list[str] = []
+    change_events: list[dict] = []
     for person in PEOPLE:
         target_path = todos_path(person)
-        snapshot = by_owner.get(person.key, [])
+        snapshot = _stable_items(by_owner.get(person.key, []))
         current = read_json(target_path, [])
-        current_items = current if isinstance(current, list) else []
+        current_items = _stable_items(current if isinstance(current, list) else [])
         if current_items != snapshot:
             write_json(target_path, snapshot)
             changed_profiles.append(person.key)
+            change_events.extend(
+                _diff_events(
+                    current_items,
+                    snapshot,
+                    owner_key=person.key,
+                    is_family=False,
+                )
+            )
 
     raw_family = remote.get("family_tasks")
-    family_items = raw_family if isinstance(raw_family, list) else []
+    family_items = _stable_items(raw_family if isinstance(raw_family, list) else [])
     current_family = read_json(FAMILY_TASKS_PATH, [])
-    current_family_items = current_family if isinstance(current_family, list) else []
+    current_family_items = _stable_items(current_family if isinstance(current_family, list) else [])
     family_changed = current_family_items != family_items
     if family_changed:
         write_json(FAMILY_TASKS_PATH, family_items)
+        change_events.extend(
+            _diff_events(
+                current_family_items,
+                family_items,
+                owner_key="family",
+                is_family=True,
+            )
+        )
 
     return {
         "ok": True,
         "changed_profiles": changed_profiles,
         "family_changed": family_changed,
         "changed": bool(changed_profiles or family_changed),
+        "events": change_events,
     }
 
 

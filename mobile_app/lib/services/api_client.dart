@@ -59,7 +59,7 @@ class ApiClient {
     for (final path in paths) {
       final uri = Uri.parse('$baseUrl$path').replace(queryParameters: query);
       try {
-        final response = await http.get(uri);
+        final response = await http.get(uri, headers: _headers);
         if (response.statusCode >= 200 && response.statusCode < 300) {
           return response;
         }
@@ -99,9 +99,13 @@ class ApiClient {
   }
 
   Future<PullSnapshot> pull({required String since}) async {
+    final query = <String, String>{'since': since};
+    if (_actorProfileForPull.isNotEmpty) {
+      query['actor_profile'] = _actorProfileForPull;
+    }
     final response = await _getWithFallback(
       paths: const ['/sync_pull.php', '/sync/pull'],
-      query: {'since': since},
+      query: query,
     );
     final body = jsonDecode(response.body) as Map<String, dynamic>;
     final tasks = (body['tasks'] as List? ?? const [])
@@ -119,6 +123,12 @@ class ApiClient {
         .toList();
     final serverTime = (body['server_time'] ?? DateTime.now().toIso8601String()).toString();
     return PullSnapshot(tasks: tasks, familyTasks: familyTasks, serverTime: serverTime);
+  }
+
+  String _actorProfileForPull = '';
+
+  void setActorProfileForPull(String actorProfile) {
+    _actorProfileForPull = actorProfile.trim();
   }
 
   Future<void> registerDeviceToken({

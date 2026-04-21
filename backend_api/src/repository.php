@@ -197,6 +197,38 @@ function changed_tasks_since(PDO $db, string $since): array
     return $out;
 }
 
+function changed_tasks_since_for_actor(PDO $db, string $since, string $actor): array
+{
+    $stmt = $db->prepare(
+        'SELECT * FROM tasks WHERE updated_at >= :since AND is_family = 0 AND owner_key = :owner_key ORDER BY updated_at, id'
+    );
+    $stmt->execute([
+        'since' => $since,
+        'owner_key' => $actor,
+    ]);
+    $rows = $stmt->fetchAll();
+    $out = [];
+    foreach ($rows as $row) {
+        $out[] = [
+            'id' => (string)$row['id'],
+            'owner_key' => (string)$row['owner_key'],
+            'is_family' => (bool)$row['is_family'],
+            'title' => (string)$row['title'],
+            'details' => (string)$row['details'],
+            'due_date' => (string)$row['due_date'],
+            'time' => (string)$row['time_value'],
+            'workflow_status' => (string)$row['workflow_status'],
+            'priority' => (string)$row['priority'],
+            'tags' => json_decode((string)$row['tags_json'], true) ?: [],
+            'participants' => json_decode((string)$row['participants_json'], true) ?: [],
+            'duration_minutes' => (int)$row['duration_minutes'],
+            'updated_at' => (string)$row['updated_at'],
+            'version' => (int)$row['version'],
+        ];
+    }
+    return $out;
+}
+
 function changed_family_tasks_since(PDO $db, string $since): array
 {
     $stmt = $db->prepare('SELECT * FROM family_tasks WHERE updated_at >= :since ORDER BY updated_at, id');
