@@ -71,6 +71,43 @@ class LocalDb {
     });
   }
 
+  Future<void> replacePersonalTasks({
+    required String ownerKey,
+    required List<TaskItem> items,
+  }) async {
+    await _db.transaction((txn) async {
+      await txn.delete(
+        'tasks',
+        where: 'is_family = 0 AND owner_key = ?',
+        whereArgs: [ownerKey],
+      );
+      for (final item in items.where((t) => !t.isFamily)) {
+        await txn.insert('tasks', item.toDbRow(), conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    });
+  }
+
+  Future<void> reconcileFamilyTasks(List<TaskItem> items) async {
+    final familyItems = items.where((t) => t.isFamily).toList();
+    await _db.transaction((txn) async {
+      for (final item in familyItems) {
+        await txn.insert('tasks', item.toDbRow(), conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      final rows = await txn.query(
+        'tasks',
+        columns: const ['id'],
+        where: 'is_family = 1',
+      );
+      final remoteIds = familyItems.map((item) => item.id).toSet();
+      for (final row in rows) {
+        final id = (row['id'] ?? '').toString();
+        if (id.isNotEmpty && !remoteIds.contains(id)) {
+          await txn.delete('tasks', where: 'id = ?', whereArgs: [id]);
+        }
+      }
+    });
+  }
+
   Future<List<TaskItem>> readTasks({String? ownerKey, bool includeAll = false}) async {
     final rows = await _db.query(
       'tasks',

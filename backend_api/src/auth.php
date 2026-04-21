@@ -66,6 +66,28 @@ function ensure_family_permissions(string $actor): void
     }
 }
 
+function normalize_assignees(array $payload): array
+{
+    $source = $payload['assignees'] ?? null;
+    if (!is_array($source)) {
+        $source = $payload['participants'] ?? null;
+    }
+    if (!is_array($source)) {
+        $source = [];
+    }
+    $normalized = [];
+    foreach ($source as $item) {
+        $key = trim((string)$item);
+        if ($key === '' || !in_array($key, ALLOWED_PROFILES, true)) {
+            continue;
+        }
+        if (!in_array($key, $normalized, true)) {
+            $normalized[] = $key;
+        }
+    }
+    return $normalized;
+}
+
 function actor_display_name(string $actor): string
 {
     return match ($actor) {

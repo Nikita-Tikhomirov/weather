@@ -12,7 +12,7 @@ class TaskItem {
     required this.workflowStatus,
     required this.priority,
     required this.tags,
-    required this.participants,
+    required this.assignees,
     required this.durationMinutes,
     required this.updatedAt,
     required this.version,
@@ -28,7 +28,9 @@ class TaskItem {
   final String workflowStatus;
   final String priority;
   final List<String> tags;
-  final List<String> participants;
+  final List<String> assignees;
+  List<String> get participants => assignees;
+
   final int durationMinutes;
   final String updatedAt;
   final int version;
@@ -47,9 +49,11 @@ class TaskItem {
       tags: (json['tags'] is List)
           ? (json['tags'] as List).map((v) => v.toString()).toList()
           : const [],
-      participants: (json['participants'] is List)
-          ? (json['participants'] as List).map((v) => v.toString()).toList()
-          : const [],
+      assignees: (json['assignees'] is List)
+          ? (json['assignees'] as List).map((v) => v.toString()).toList()
+          : (json['participants'] is List)
+              ? (json['participants'] as List).map((v) => v.toString()).toList()
+              : const [],
       durationMinutes: int.tryParse((json['duration_minutes'] ?? 0).toString()) ?? 0,
       updatedAt: (json['updated_at'] ?? '').toString(),
       version: int.tryParse((json['version'] ?? 1).toString()) ?? 1,
@@ -68,7 +72,8 @@ class TaskItem {
       'workflow_status': workflowStatus,
       'priority': priority,
       'tags': tags,
-      'participants': participants,
+      'assignees': assignees,
+      'participants': assignees,
       'duration_minutes': durationMinutes,
       'updated_at': updatedAt,
       'version': version,
@@ -87,7 +92,7 @@ class TaskItem {
       'workflow_status': workflowStatus,
       'priority': priority,
       'tags_json': jsonEncode(tags),
-      'participants_json': jsonEncode(participants),
+      'participants_json': jsonEncode(assignees),
       'duration_minutes': durationMinutes,
       'updated_at': updatedAt,
       'version': version,
@@ -106,7 +111,7 @@ class TaskItem {
       workflowStatus: (row['workflow_status'] ?? 'todo').toString(),
       priority: (row['priority'] ?? 'medium').toString(),
       tags: _decodeStringList(row['tags_json']),
-      participants: _decodeStringList(row['participants_json']),
+      assignees: _decodeStringList(row['participants_json']),
       durationMinutes: int.tryParse((row['duration_minutes'] ?? 0).toString()) ?? 0,
       updatedAt: (row['updated_at'] ?? '').toString(),
       version: int.tryParse((row['version'] ?? 1).toString()) ?? 1,
@@ -123,7 +128,7 @@ class TaskItem {
     String? workflowStatus,
     String? priority,
     List<String>? tags,
-    List<String>? participants,
+    List<String>? assignees,
     int? durationMinutes,
     String? updatedAt,
     int? version,
@@ -139,7 +144,7 @@ class TaskItem {
       workflowStatus: workflowStatus ?? this.workflowStatus,
       priority: priority ?? this.priority,
       tags: tags ?? this.tags,
-      participants: participants ?? this.participants,
+      assignees: assignees ?? this.assignees,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       updatedAt: updatedAt ?? this.updatedAt,
       version: version ?? this.version,

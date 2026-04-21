@@ -50,7 +50,10 @@ function task_external_id(string $ownerKey, string $storedId, bool $isFamily): s
 
 function normalize_family_task(array $item): array
 {
-    $participants = $item['participants'] ?? [];
+    $assignees = normalize_assignees($item);
+    if (count($assignees) === 0) {
+        throw new InvalidArgumentException('assignees must contain at least one allowed profile');
+    }
     return [
         'id' => (string)($item['id'] ?? ''),
         'title' => trim((string)($item['title'] ?? '')),
@@ -58,7 +61,9 @@ function normalize_family_task(array $item): array
         'due_date' => (string)($item['due_date'] ?? ''),
         'time' => (string)($item['time'] ?? ''),
         'workflow_status' => ensure_workflow((string)($item['workflow_status'] ?? 'todo')),
-        'participants' => is_array($participants) ? array_values($participants) : [],
+        'assignees' => $assignees,
+        // Legacy read/write compatibility for old clients.
+        'participants' => $assignees,
         'duration_minutes' => (int)($item['duration_minutes'] ?? 0),
         'updated_at' => (string)($item['updated_at'] ?? iso_now()),
         'version' => (int)($item['version'] ?? 1),
@@ -183,7 +188,7 @@ SQL;
         'due_date' => $item['due_date'],
         'time_value' => $item['time'],
         'workflow_status' => $item['workflow_status'],
-        'participants_json' => json_encode($item['participants'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'participants_json' => json_encode($item['assignees'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         'duration_minutes' => $item['duration_minutes'],
         'updated_at' => $item['updated_at'],
         'version' => $item['version'],
@@ -277,6 +282,7 @@ function changed_family_tasks_since(PDO $db, string $since): array
     $rows = $stmt->fetchAll();
     $out = [];
     foreach ($rows as $row) {
+        $assignees = json_decode((string)$row['participants_json'], true) ?: [];
         $out[] = [
             'id' => (string)$row['id'],
             'title' => (string)$row['title'],
@@ -284,7 +290,8 @@ function changed_family_tasks_since(PDO $db, string $since): array
             'due_date' => (string)$row['due_date'],
             'time' => (string)$row['time_value'],
             'workflow_status' => (string)$row['workflow_status'],
-            'participants' => json_decode((string)$row['participants_json'], true) ?: [],
+            'assignees' => $assignees,
+            'participants' => $assignees,
             'duration_minutes' => (int)$row['duration_minutes'],
             'updated_at' => (string)$row['updated_at'],
             'version' => (int)$row['version'],

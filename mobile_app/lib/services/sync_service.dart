@@ -29,7 +29,8 @@ class SyncService {
             'due_date': task.dueDate,
             'time': task.time,
             'workflow_status': task.workflowStatus,
-            'participants': task.participants,
+            'assignees': task.assignees,
+            'participants': task.assignees,
             'duration_minutes': task.durationMinutes,
             'updated_at': task.updatedAt,
             'version': task.version,
@@ -72,11 +73,12 @@ class SyncService {
       await db.removePending(pending.map((e) => e.eventId).toList());
     }
     final snapshot = await api.pull(since: '1970-01-01T00:00:00');
-    final merged = <TaskItem>[
-      ...snapshot.tasks.where((task) => !task.isFamily),
-      ...snapshot.familyTasks.map((task) => task.copyWith(isFamily: true, ownerKey: 'family')),
-    ];
-    await db.replaceTasks(merged);
+    final personal = snapshot.tasks.where((task) => !task.isFamily).toList();
+    final family = snapshot.familyTasks
+        .map((task) => task.copyWith(isFamily: true, ownerKey: 'family'))
+        .toList();
+    await db.replacePersonalTasks(ownerKey: actorProfile, items: personal);
+    await db.reconcileFamilyTasks(family);
     await db.writeSince(snapshot.serverTime);
   }
 

@@ -391,6 +391,14 @@ def _canonical_family_task(item: dict) -> dict:
     start_at = str(item.get("start_at") or "")
     if not start_at and due_date:
         start_at = f"{due_date}T{time_value or '19:00'}"
+    raw_assignees = item.get("assignees") if isinstance(item.get("assignees"), list) else item.get("participants", [])
+    assignees = sorted(
+        {
+            str(p)
+            for p in raw_assignees
+            if isinstance(p, (str, int, float)) and person_by_key(str(p))
+        }
+    )
     return {
         "id": str(item.get("id") or ""),
         "title": str(item.get("title") or item.get("text") or ""),
@@ -400,7 +408,8 @@ def _canonical_family_task(item: dict) -> dict:
         "time": time_value,
         "start_at": start_at,
         "workflow_status": str(item.get("workflow_status") or "todo"),
-        "participants": sorted([str(p) for p in item.get("participants", []) if isinstance(p, (str, int, float))]),
+        "assignees": assignees,
+        "participants": assignees,
         "duration_minutes": int(item.get("duration_minutes") or 0),
         "updated_at": str(item.get("updated_at") or ""),
         "version": int(item.get("version") or 1),
@@ -539,6 +548,55 @@ def pull_backend_snapshot_to_local() -> dict[str, object]:
     }
 
 
+def pull_backend_family_snapshot_to_local() -> dict[str, object]:
+    """Sync only family tasks from backend and apply pointwise diff by id/version/updated_at."""
+    if not _backend_enabled():
+        return {"ok": False, "reason": "backend_disabled"}
+    remote = _backend_pull_snapshot()
+    if not isinstance(remote, dict):
+        return {"ok": False, "reason": "pull_failed"}
+
+    raw_family = remote.get("family_tasks")
+    remote_items = _stable_items(raw_family if isinstance(raw_family, list) else [], is_family=True)
+    current_family = read_json(FAMILY_TASKS_PATH, [])
+    current_items = _stable_items(current_family if isinstance(current_family, list) else [], is_family=True)
+
+    remote_by_id = {str(item.get("id") or ""): item for item in remote_items if str(item.get("id") or "")}
+    local_by_id = {str(item.get("id") or ""): item for item in current_items if str(item.get("id") or "")}
+
+    merged: dict[str, dict] = dict(local_by_id)
+    changed = False
+    for item_id, remote_item in remote_by_id.items():
+        local_item = local_by_id.get(item_id)
+        if local_item is None:
+            merged[item_id] = remote_item
+            changed = True
+            continue
+        local_version = int(local_item.get("version") or 1)
+        remote_version = int(remote_item.get("version") or 1)
+        local_updated = str(local_item.get("updated_at") or "")
+        remote_updated = str(remote_item.get("updated_at") or "")
+        if remote_version > local_version or (remote_version == local_version and remote_updated >= local_updated):
+            if local_item != remote_item:
+                merged[item_id] = remote_item
+                changed = True
+
+    remote_ids = set(remote_by_id.keys())
+    for item_id in list(merged.keys()):
+        if item_id not in remote_ids:
+            merged.pop(item_id, None)
+            changed = True
+
+    if not changed:
+        return {"ok": True, "family_changed": False, "changed": False, "events": []}
+
+    merged_items = list(merged.values())
+    merged_items.sort(key=lambda x: (str(x.get("start_at") or ""), str(x.get("id") or "")))
+    write_json(FAMILY_TASKS_PATH, merged_items)
+    events = _diff_events(current_items, _stable_items(merged_items, is_family=True), owner_key="family", is_family=True)
+    return {"ok": True, "family_changed": True, "changed": True, "events": events}
+
+
 def _push_snapshot_event(actor_profile: str, event: dict) -> bool:
     if not _backend_enabled():
         return False
@@ -573,12 +631,21 @@ def load_family_tasks(*, pull_remote: bool = False) -> list[dict]:
             changed = True
             continue
         raw_id = item.get("id")
-        item_id = int(raw_id) if isinstance(raw_id, int) else max_id + 1
-        max_id = max(max_id, item_id)
-        participants_raw = item.get("participants")
-        participants = [str(p) for p in participants_raw] if isinstance(participants_raw, list) else []
-        participants = sorted({p for p in participants if person_by_key(p)})
-        if not participants:
+        if isinstance(raw_id, int):
+            item_id = str(raw_id)
+            max_id = max(max_id, raw_id)
+        elif isinstance(raw_id, str) and raw_id.strip():
+            item_id = raw_id.strip()
+            if item_id.isdigit():
+                max_id = max(max_id, int(item_id))
+        else:
+            item_id = str(max_id + 1)
+            max_id += 1
+            changed = True
+        assignees_raw = item.get("assignees") if isinstance(item.get("assignees"), list) else item.get("participants")
+        assignees = [str(p) for p in assignees_raw] if isinstance(assignees_raw, list) else []
+        assignees = sorted({p for p in assignees if person_by_key(p)})
+        if not assignees:
             changed = True
             continue
         workflow = str(item.get("workflow_status") or "todo")
@@ -605,20 +672,21 @@ def load_family_tasks(*, pull_remote: bool = False) -> list[dict]:
                 "time": time_value,
                 "start_at": start_at,
                 "duration_minutes": duration,
-                "participants": participants,
+                "assignees": assignees,
+                "participants": assignees,
                 "is_family": True,
                 "workflow_status": workflow,
                 "status": "done" if workflow == "done" else "active",
                 "done": workflow == "done",
                 "done_at": item.get("done_at"),
                 "reminder_offsets": item.get("reminder_offsets") if isinstance(item.get("reminder_offsets"), list) else list(DEFAULT_REMINDER_OFFSETS),
-                "sort_order": int(item.get("sort_order") or item_id),
+                "sort_order": int(item.get("sort_order") or (int(item_id) if item_id.isdigit() else max_id + 1)),
                 "updated_at": item.get("updated_at"),
                 "created_at": str(item.get("created_at") or datetime.now().isoformat(timespec="seconds")),
                 "last_reminder_key": item.get("last_reminder_key"),
             }
         )
-    normalized.sort(key=lambda x: (str(x.get("start_at") or ""), int(x.get("id") or 0)))
+    normalized.sort(key=lambda x: (str(x.get("start_at") or ""), str(x.get("id") or "")))
     if changed:
         save_family_tasks(normalized, push_remote=False)
     return normalized
@@ -645,19 +713,21 @@ def create_family_task(
     details: str,
     start_at: str,
     duration_minutes: int,
-    participants: list[str],
+    assignees: list[str] | None = None,
+    participants: list[str] | None = None,
 ) -> tuple[bool, str, dict | None]:
-    cleaned_participants = sorted({p for p in participants if person_by_key(p)})
-    if not cleaned_participants:
+    raw_assignees = assignees if assignees is not None else participants or []
+    cleaned_assignees = sorted({p for p in raw_assignees if person_by_key(p)})
+    if not cleaned_assignees:
         return False, "Не выбраны участники семейного дела.", None
     start_dt = parse_iso_datetime(start_at)
     if start_dt is None:
         return False, "Некорректная дата/время семейного дела.", None
     tasks = load_family_tasks()
-    next_id = max([int(t.get("id") or 0) for t in tasks], default=0) + 1
+    next_id = max([int(str(t.get("id") or "0")) for t in tasks if str(t.get("id") or "").isdigit()], default=0) + 1
     now_iso = datetime.now().isoformat(timespec="seconds")
     item = {
-        "id": next_id,
+        "id": str(next_id),
         "title": title.strip() or "семейное дело",
         "text": title.strip() or "семейное дело",
         "details": details.strip(),
@@ -665,7 +735,8 @@ def create_family_task(
         "time": start_dt.strftime("%H:%M"),
         "start_at": start_dt.isoformat(timespec="minutes"),
         "duration_minutes": max(0, int(duration_minutes or 0)),
-        "participants": cleaned_participants,
+        "assignees": cleaned_assignees,
+        "participants": cleaned_assignees,
         "is_family": True,
         "workflow_status": "todo",
         "status": "active",
@@ -681,17 +752,25 @@ def create_family_task(
     return True, "", item
 
 
-def update_family_task(task_id: int, payload: dict) -> tuple[bool, str, dict | None]:
+def update_family_task(task_id: str | int, payload: dict) -> tuple[bool, str, dict | None]:
     tasks = load_family_tasks()
+    task_id_value = str(task_id)
     for item in tasks:
-        if int(item.get("id") or 0) != task_id:
+        if str(item.get("id") or "") != task_id_value:
             continue
         item.update(payload)
         ensure_workflow_status(item)
         transition_task(item, str(item.get("workflow_status") or "todo"))
         item["is_family"] = True
-        item["participants"] = sorted({str(p) for p in item.get("participants", []) if person_by_key(str(p))})
-        if not item["participants"]:
+        if isinstance(payload.get("assignees"), list):
+            raw_assignees = payload.get("assignees")
+        elif isinstance(payload.get("participants"), list):
+            raw_assignees = payload.get("participants")
+        else:
+            raw_assignees = item.get("assignees") if isinstance(item.get("assignees"), list) else item.get("participants", [])
+        item["assignees"] = sorted({str(p) for p in raw_assignees if person_by_key(str(p))})
+        item["participants"] = list(item["assignees"])
+        if not item["assignees"]:
             return False, "Семейное дело должно иметь хотя бы одного участника.", None
         if not parse_iso_datetime(str(item.get("start_at") or "")):
             return False, "Некорректная дата/время семейного дела.", None
@@ -704,10 +783,11 @@ def update_family_task(task_id: int, payload: dict) -> tuple[bool, str, dict | N
     return False, "Семейное дело не найдено.", None
 
 
-def delete_family_task(task_id: int) -> dict | None:
+def delete_family_task(task_id: str | int) -> dict | None:
     tasks = load_family_tasks()
+    task_id_value = str(task_id)
     for idx, item in enumerate(tasks):
-        if int(item.get("id") or 0) == task_id:
+        if str(item.get("id") or "") == task_id_value:
             removed = tasks.pop(idx)
             save_family_tasks(tasks)
             return removed
@@ -722,7 +802,8 @@ def family_conflicts_for_person(person_key: str, due_date: str, time_value: str)
     candidate = (candidate_start, candidate_start + timedelta(minutes=1))
     conflicts: list[dict] = []
     for family_item in load_family_tasks():
-        if person_key not in family_item.get("participants", []):
+        assignees = family_item.get("assignees") if isinstance(family_item.get("assignees"), list) else family_item.get("participants", [])
+        if person_key not in assignees:
             continue
         if str(family_item.get("workflow_status") or "todo") == "done":
             continue
@@ -2056,8 +2137,8 @@ def process_global_reminders() -> None:
         if item.get("last_reminder_key") == reminder_key:
             continue
 
-        participants = [str(p) for p in item.get("participants") if person_by_key(str(p))]
-        participant_names = ", ".join([person_by_key(p).display_name for p in participants if person_by_key(p)])
+        assignees = [str(p) for p in item.get("assignees") if person_by_key(str(p))]
+        participant_names = ", ".join([person_by_key(p).display_name for p in assignees if person_by_key(p)])
         title = (item.get("title") or item.get("text") or "семейное дело").strip()
         details = str(item.get("details") or "").strip()
         text = (
@@ -2071,7 +2152,7 @@ def process_global_reminders() -> None:
         from notifier import desktop_notify, push_by_visibility
 
         desktop_notify(text, title="Семейное напоминание")
-        for participant in participants:
+        for participant in assignees:
             push_by_visibility(participant, text)
         speak(text)
         item["last_reminder_key"] = reminder_key

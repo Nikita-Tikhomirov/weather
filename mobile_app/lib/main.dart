@@ -17,7 +17,7 @@ class FamilyTodoApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Family ToDo',
+      title: 'Семейные задачи',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF118AB2)),
@@ -49,6 +49,12 @@ class _HomePageState extends State<HomePage> {
   int _pageIndex = 0;
 
   static const _profiles = ['nik', 'nastya', 'misha', 'arisha'];
+  static const _profileLabels = {
+    'nik': 'Ник',
+    'nastya': 'Настя',
+    'misha': 'Миша',
+    'arisha': 'Ариша',
+  };
   static const _adults = {'nik', 'nastya'};
   static const _statuses = ['todo', 'in_progress', 'in_review', 'done'];
 
@@ -165,8 +171,9 @@ class _HomePageState extends State<HomePage> {
     final durationCtl = TextEditingController(
       text: existing == null ? '' : existing.durationMinutes.toString(),
     );
-    final participantsCtl =
-        TextEditingController(text: (existing?.participants ?? const []).join(', '));
+    final selectedAssignees = <String>{
+      ...(existing?.assignees ?? const <String>[]),
+    };
 
     DateTime selected = existing == null
         ? _selectedDate
@@ -195,7 +202,7 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      existing == null ? 'Новая задача' : 'Редактировать задачу',
+                      existing == null ? 'Новая задача' : 'Редактирование задачи',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 12),
@@ -257,9 +264,9 @@ class _HomePageState extends State<HomePage> {
                       value: priority,
                       decoration: const InputDecoration(labelText: 'Приоритет'),
                       items: const [
-                        DropdownMenuItem(value: 'low', child: Text('Low')),
-                        DropdownMenuItem(value: 'medium', child: Text('Medium')),
-                        DropdownMenuItem(value: 'high', child: Text('High')),
+                        DropdownMenuItem(value: 'low', child: Text('Низкий')),
+                        DropdownMenuItem(value: 'medium', child: Text('Средний')),
+                        DropdownMenuItem(value: 'high', child: Text('Высокий')),
                       ],
                       onChanged: (v) => setModalState(() => priority = v ?? 'medium'),
                     ),
@@ -267,10 +274,10 @@ class _HomePageState extends State<HomePage> {
                       value: status,
                       decoration: const InputDecoration(labelText: 'Статус'),
                       items: const [
-                        DropdownMenuItem(value: 'todo', child: Text('Todo')),
-                        DropdownMenuItem(value: 'in_progress', child: Text('In progress')),
-                        DropdownMenuItem(value: 'in_review', child: Text('In review')),
-                        DropdownMenuItem(value: 'done', child: Text('Done')),
+                        DropdownMenuItem(value: 'todo', child: Text('К выполнению')),
+                        DropdownMenuItem(value: 'in_progress', child: Text('В работе')),
+                        DropdownMenuItem(value: 'in_review', child: Text('На проверке')),
+                        DropdownMenuItem(value: 'done', child: Text('Выполнено')),
                       ],
                       onChanged: (v) => setModalState(() => status = v ?? 'todo'),
                     ),
@@ -286,11 +293,27 @@ class _HomePageState extends State<HomePage> {
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(labelText: 'Длительность (мин)'),
                       ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: 'Участники (через запятую)',
-                        ),
-                        controller: participantsCtl,
+                      const SizedBox(height: 8),
+                      Text('Ответственные', style: Theme.of(context).textTheme.titleSmall),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _profiles.map((profile) {
+                          return FilterChip(
+                            label: Text(_profileLabels[profile] ?? profile),
+                            selected: selectedAssignees.contains(profile),
+                            onSelected: (selected) {
+                              setModalState(() {
+                                if (selected) {
+                                  selectedAssignees.add(profile);
+                                } else {
+                                  selectedAssignees.remove(profile);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
                       ),
                     ],
                     const SizedBox(height: 12),
@@ -311,11 +334,10 @@ class _HomePageState extends State<HomePage> {
                                 return;
                               }
                               final now = DateTime.now().toIso8601String();
-                              final participants = participantsCtl.text
-                                  .split(',')
-                                  .map((e) => e.trim())
-                                  .where((e) => e.isNotEmpty)
-                                  .toList();
+                              final assignees = selectedAssignees.toList()..sort();
+                              if (isFamily && assignees.isEmpty) {
+                                return;
+                              }
                               final task = (existing ??
                                       TaskItem(
                                         id: 'm-${DateTime.now().microsecondsSinceEpoch}',
@@ -328,7 +350,7 @@ class _HomePageState extends State<HomePage> {
                                         workflowStatus: status,
                                         priority: priority,
                                         tags: const [],
-                                        participants: participants,
+                                        assignees: assignees,
                                         durationMinutes: int.tryParse(durationCtl.text.trim()) ?? 0,
                                         updatedAt: now,
                                         version: 1,
@@ -341,7 +363,7 @@ class _HomePageState extends State<HomePage> {
                                 time: time,
                                 workflowStatus: status,
                                 priority: priority,
-                                participants: participants,
+                                assignees: assignees,
                                 durationMinutes: int.tryParse(durationCtl.text.trim()) ?? 0,
                                 updatedAt: now,
                                 version: (existing?.version ?? 0) + 1,
@@ -453,8 +475,6 @@ class _HomePageState extends State<HomePage> {
       default:
         return _FamilyView(
           familyTasks: _familyDateTasks,
-          personalTasks: _personalDateTasks,
-          showAllPersonal: _isAdult,
           onEdit: (t) => _openTaskEditor(existing: t),
           onDelete: _delete,
         );
@@ -466,7 +486,7 @@ class _HomePageState extends State<HomePage> {
     final selectedKey = _dateKey(_selectedDate);
     return Scaffold(
       appBar: AppBar(
-        title: Text('Family ToDo • $selectedKey'),
+        title: Text('Семейные задачи • $selectedKey'),
         actions: [
           PopupMenuButton<String>(
             initialValue: _owner,
@@ -474,7 +494,7 @@ class _HomePageState extends State<HomePage> {
             itemBuilder: (context) => _profiles
                 .map((profile) => PopupMenuItem<String>(
                       value: profile,
-                      child: Text(profile),
+                      child: Text(_profileLabels[profile] ?? profile),
                     ))
                 .toList(),
             child: Padding(
@@ -518,10 +538,10 @@ class _HomePageState extends State<HomePage> {
         selectedIndex: _pageIndex,
         onDestinationSelected: (i) => setState(() => _pageIndex = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
-          NavigationDestination(icon: Icon(Icons.view_kanban_outlined), label: 'Tasks'),
-          NavigationDestination(icon: Icon(Icons.calendar_month_outlined), label: 'Calendar'),
-          NavigationDestination(icon: Icon(Icons.family_restroom_outlined), label: 'Family'),
+          NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'Дашборд'),
+          NavigationDestination(icon: Icon(Icons.view_kanban_outlined), label: 'Задачи'),
+          NavigationDestination(icon: Icon(Icons.calendar_month_outlined), label: 'Календарь'),
+          NavigationDestination(icon: Icon(Icons.family_restroom_outlined), label: 'Семейные'),
         ],
       ),
     );
@@ -790,15 +810,11 @@ class _TasksBoard extends StatelessWidget {
 class _FamilyView extends StatelessWidget {
   const _FamilyView({
     required this.familyTasks,
-    required this.personalTasks,
-    required this.showAllPersonal,
     required this.onEdit,
     required this.onDelete,
   });
 
   final List<TaskItem> familyTasks;
-  final List<TaskItem> personalTasks;
-  final bool showAllPersonal;
   final Future<void> Function(TaskItem) onEdit;
   final Future<void> Function(TaskItem) onDelete;
 
@@ -812,14 +828,6 @@ class _FamilyView extends StatelessWidget {
         if (familyTasks.isEmpty)
           const Card(child: ListTile(title: Text('На эту дату семейных задач нет'))),
         for (final item in familyTasks)
-          _TaskCard(item: item, onEdit: () => onEdit(item), onDelete: () => onDelete(item), onDoneToggle: () async {}),
-        const SizedBox(height: 16),
-        Text(showAllPersonal ? 'Расписания всех' : 'Личные задачи',
-            style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
-        if (personalTasks.isEmpty)
-          const Card(child: ListTile(title: Text('На эту дату задач нет'))),
-        for (final item in personalTasks)
           _TaskCard(item: item, onEdit: () => onEdit(item), onDelete: () => onDelete(item), onDoneToggle: () async {}),
       ],
     );
@@ -843,10 +851,10 @@ class _TaskCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final subtitle = [
       '${item.dueDate} ${item.time}'.trim(),
-      if (item.isFamily && item.participants.isNotEmpty) 'Участники: ${item.participants.join(', ')}',
+      if (item.isFamily && item.assignees.isNotEmpty) 'Ответственные: ${item.assignees.join(', ')}',
       if (item.isFamily && item.durationMinutes > 0) 'Длительность: ${item.durationMinutes} мин',
       if (item.details.isNotEmpty) item.details,
-      'owner: ${item.ownerKey}',
+      'Владелец: ${item.ownerKey}',
     ].join('\n');
 
     return Card(
@@ -860,7 +868,7 @@ class _TaskCard extends StatelessWidget {
           spacing: 4,
           children: [
             IconButton(
-              tooltip: 'Done/Undo',
+              tooltip: 'Выполнить/отменить',
               icon: Icon(item.workflowStatus == 'done' ? Icons.undo : Icons.check_circle),
               onPressed: () => onDoneToggle(),
             ),

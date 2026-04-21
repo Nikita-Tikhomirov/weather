@@ -445,9 +445,10 @@ class FamilyTaskPopup(ctk.CTkToplevel):
         self.time_var = ctk.StringVar(value=start_dt.strftime("%H:%M"))
         self.duration_var = ctk.StringVar(value=str(src.get("duration_minutes") or 60))
         self.status_var = ctk.StringVar(value=WORKFLOW_KEY_TO_RU.get(str(src.get("workflow_status") or "todo"), "К выполнению"))
-        participants = src.get("participants") if isinstance(src.get("participants"), list) else []
+        assignees = src.get("assignees") if isinstance(src.get("assignees"), list) else src.get("participants")
+        assignees = assignees if isinstance(assignees, list) else []
         self.participant_vars: dict[str, ctk.BooleanVar] = {
-            person.key: ctk.BooleanVar(value=person.key in participants) for person in ft.PEOPLE
+            person.key: ctk.BooleanVar(value=person.key in assignees) for person in ft.PEOPLE
         }
         self._build()
 
@@ -475,7 +476,7 @@ class FamilyTaskPopup(ctk.CTkToplevel):
         ctk.CTkLabel(root, text="Статус").grid(row=5, column=0, sticky="w", pady=6, padx=(0, 8))
         ctk.CTkOptionMenu(root, variable=self.status_var, values=list(WORKFLOW_RU_TO_KEY.keys())).grid(row=5, column=1, sticky="ew", pady=6)
 
-        ctk.CTkLabel(root, text="Участники").grid(row=6, column=0, sticky="nw", pady=6, padx=(0, 8))
+        ctk.CTkLabel(root, text="Ответственные").grid(row=6, column=0, sticky="nw", pady=6, padx=(0, 8))
         users = ctk.CTkFrame(root, fg_color="transparent")
         users.grid(row=6, column=1, sticky="ew", pady=6)
         for idx, person in enumerate(ft.PEOPLE):
@@ -511,9 +512,9 @@ class FamilyTaskPopup(ctk.CTkToplevel):
         except ValueError:
             messagebox.showwarning("Семейное дело", "Длительность должна быть числом.")
             return
-        participants = [key for key, var in self.participant_vars.items() if var.get()]
-        if not participants:
-            messagebox.showwarning("Семейное дело", "Выберите хотя бы одного участника.")
+        assignees = [key for key, var in self.participant_vars.items() if var.get()]
+        if not assignees:
+            messagebox.showwarning("Семейное дело", "Выберите хотя бы одного ответственного.")
             return
         workflow_status = WORKFLOW_RU_TO_KEY.get(self.status_var.get(), "todo")
         payload = {
@@ -524,7 +525,8 @@ class FamilyTaskPopup(ctk.CTkToplevel):
             "due_date": due_date,
             "time": time_value,
             "duration_minutes": duration,
-            "participants": participants,
+            "assignees": assignees,
+            "participants": assignees,
             "is_family": True,
             "workflow_status": workflow_status,
             "updated_at": datetime.now().isoformat(timespec="seconds"),
@@ -645,7 +647,7 @@ class DesktopTodoApp(ctk.CTk):
         self._column_cards: dict[str, list[KanbanCard]] = {}
         self._kanban_render_token = 0
         self._sync_poll_after_id: str | None = None
-        self._sync_poll_interval_ms = 2500
+        self._sync_poll_interval_ms = 5000
         self._sync_poll_inflight = False
         self._last_sync_notify_fingerprint = ""
         self._last_sync_notify_at: datetime | None = None
@@ -892,7 +894,7 @@ class DesktopTodoApp(ctk.CTk):
         sync_result: dict[str, object] | None = None
         sync_error: Exception | None = None
         try:
-            sync_result = ft.pull_backend_snapshot_to_local()
+            sync_result = ft.pull_backend_family_snapshot_to_local()
         except Exception as exc:
             sync_error = exc
 
@@ -902,14 +904,9 @@ class DesktopTodoApp(ctk.CTk):
             if sync_error is not None:
                 self._append_log(f"Ошибка фоновой синхронизации: {sync_error}")
             elif isinstance(sync_result, dict) and bool(sync_result.get("changed")):
-                changed_profiles = sync_result.get("changed_profiles")
-                profiles = [str(profile) for profile in changed_profiles] if isinstance(changed_profiles, list) else []
-                current_person = self.get_person().key
                 family_changed = bool(sync_result.get("family_changed"))
-                should_refresh = current_person in profiles or family_changed
-                if should_refresh:
-                    self._invalidate_cache()
-                    self.refresh_all_views()
+                if family_changed:
+                    self.refresh_family_tasks()
                     self._notify_sync_changes(sync_result)
             self._sync_poll_inflight = False
             self._schedule_sync_poll()
@@ -1787,10 +1784,11 @@ class DesktopTodoApp(ctk.CTk):
             row.grid_columnconfigure(0, weight=1)
             title = str(item.get("title") or item.get("text") or "Семейное дело")
             ctk.CTkLabel(row, text=title, font=ctk.CTkFont(size=14, weight="bold"), anchor="w").grid(row=0, column=0, sticky="w", padx=8, pady=(8, 2))
-            participants = [ft.person_by_key(k).display_name for k in item.get("participants", []) if ft.person_by_key(k)]
+            raw_assignees = item.get("assignees") if isinstance(item.get("assignees"), list) else item.get("participants", [])
+            participants = [ft.person_by_key(k).display_name for k in raw_assignees if ft.person_by_key(k)]
             info = (
                 f"{item.get('start_at')} · {item.get('duration_minutes')} мин · "
-                f"участники: {', '.join(participants) if participants else '-'}"
+                f"ответственные: {', '.join(participants) if participants else '-'}"
             )
             ctk.CTkLabel(row, text=info, text_color=self._c("text_muted"), anchor="w").grid(row=1, column=0, sticky="w", padx=8, pady=(0, 8))
             ctk.CTkButton(row, text="Открыть", width=84, command=lambda t=item: self.open_family_task_editor(t)).grid(row=0, column=1, rowspan=2, padx=8, pady=8)
@@ -1800,14 +1798,14 @@ class DesktopTodoApp(ctk.CTk):
 
         def on_save(payload: dict) -> None:
             if task and task.get("id"):
-                ok, error, _updated = ft.update_family_task(int(task.get("id") or 0), payload)
+                ok, error, _updated = ft.update_family_task(str(task.get("id") or ""), payload)
             else:
                 ok, error, _created = ft.create_family_task(
                     title=str(payload.get("title") or ""),
                     details=str(payload.get("details") or ""),
                     start_at=str(payload.get("start_at") or ""),
                     duration_minutes=int(payload.get("duration_minutes") or 0),
-                    participants=list(payload.get("participants") or []),
+                    assignees=list(payload.get("assignees") or []),
                 )
             if not ok:
                 messagebox.showwarning("Семейное дело", error)
@@ -1817,7 +1815,7 @@ class DesktopTodoApp(ctk.CTk):
         def on_delete() -> None:
             if not task:
                 return
-            ft.delete_family_task(int(task.get("id") or 0))
+            ft.delete_family_task(str(task.get("id") or ""))
             self.refresh_family_tasks()
 
         FamilyTaskPopup(self, task, on_save, on_delete if task else None, theme_tokens=self._theme_tokens)
