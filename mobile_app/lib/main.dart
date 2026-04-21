@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models/task_item.dart';
@@ -59,6 +61,8 @@ class _HomePageState extends State<HomePage> {
   late final ApiClient _api;
   SyncService? _sync;
   FcmService? _fcm;
+  Timer? _deltaSyncTimer;
+  Timer? _fullSyncTimer;
 
   final _allTasks = <TaskItem>[];
   bool _loading = true;
@@ -89,7 +93,10 @@ class _HomePageState extends State<HomePage> {
         'API_BASE_URL',
         defaultValue: 'https://familly.nikportfolio.ru/backend_api/public',
       ),
-      apiKey: const String.fromEnvironment('API_KEY', defaultValue: 'dev-local-key'),
+      apiKey: const String.fromEnvironment(
+        'API_KEY',
+        defaultValue: 'dev-local-key',
+      ),
     );
 
     await _bindOwner();
@@ -99,10 +106,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _bindOwner() async {
+    _cancelSyncLoops();
     _sync = SyncService(db: _db, api: _api, actorProfile: _owner);
 
     await _refreshLocal();
-    await _safeSync();
+    await _safeSyncFull();
 
     _fcm = FcmService(
       api: _api,
@@ -111,32 +119,66 @@ class _HomePageState extends State<HomePage> {
         if (!mounted) {
           return;
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(text)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(text)));
       },
       onOpenPush: () async {
-        await _safeSync();
+        await _safeSyncDelta();
       },
     );
 
     try {
       await _fcm!.initialize();
     } catch (_) {}
+    _startSyncLoops();
   }
 
-  Future<void> _safeSync({bool showErrors = false}) async {
+  void _startSyncLoops() {
+    _cancelSyncLoops();
+    _deltaSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+      await _safeSyncDelta();
+    });
+    _fullSyncTimer = Timer.periodic(const Duration(minutes: 10), (_) async {
+      await _safeSyncFull();
+    });
+  }
+
+  void _cancelSyncLoops() {
+    _deltaSyncTimer?.cancel();
+    _deltaSyncTimer = null;
+    _fullSyncTimer?.cancel();
+    _fullSyncTimer = null;
+  }
+
+  Future<void> _safeSyncDelta({bool showErrors = false}) async {
     if (_sync == null) {
       return;
     }
     try {
-      await _sync!.sync();
+      await _sync!.syncDelta();
       await _refreshLocal();
     } catch (e) {
       if (showErrors && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка синхронизации: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Ошибка синхронизации: $e')));
+      }
+    }
+  }
+
+  Future<void> _safeSyncFull({bool showErrors = false}) async {
+    if (_sync == null) {
+      return;
+    }
+    try {
+      await _sync!.syncFull();
+      await _refreshLocal();
+    } catch (e) {
+      if (showErrors && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Ошибка синхронизации: $e')));
       }
     }
   }
@@ -145,6 +187,7 @@ class _HomePageState extends State<HomePage> {
     if (profile == _owner) {
       return;
     }
+    _cancelSyncLoops();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('actor_profile', profile);
 
@@ -162,10 +205,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _refreshLocal() async {
-    final tasks = await _db.readTasks(
-      ownerKey: _owner,
-      includeAll: false,
-    );
+    final tasks = await _db.readTasks(ownerKey: _owner, includeAll: false);
     setState(() {
       _allTasks
         ..clear()
@@ -181,7 +221,10 @@ class _HomePageState extends State<HomePage> {
 
   bool _isSameDate(String dueDate, DateTime d) => dueDate == _dateKey(d);
 
-  Future<void> _openTaskEditor({TaskItem? existing, bool forceFamily = false}) async {
+  Future<void> _openTaskEditor({
+    TaskItem? existing,
+    bool forceFamily = false,
+  }) async {
     final titleCtl = TextEditingController(text: existing?.title ?? '');
     final detailsCtl = TextEditingController(text: existing?.details ?? '');
     final durationCtl = TextEditingController(
@@ -218,7 +261,9 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      existing == null ? 'Новая задача' : 'Редактирование задачи',
+                      existing == null
+                          ? 'Новая задача'
+                          : 'Редактирование задачи',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 12),
@@ -260,7 +305,11 @@ class _HomePageState extends State<HomePage> {
                               final parts = time.split(':');
                               final initial = TimeOfDay(
                                 hour: int.tryParse(parts.first) ?? 19,
-                                minute: int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0,
+                                minute:
+                                    int.tryParse(
+                                      parts.length > 1 ? parts[1] : '0',
+                                    ) ??
+                                    0,
                               );
                               final picked = await showTimePicker(
                                 context: context,
@@ -268,7 +317,8 @@ class _HomePageState extends State<HomePage> {
                               );
                               if (picked != null) {
                                 setModalState(() {
-                                  time = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+                                  time =
+                                      '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
                                 });
                               }
                             },
@@ -281,36 +331,60 @@ class _HomePageState extends State<HomePage> {
                       decoration: const InputDecoration(labelText: 'Приоритет'),
                       items: const [
                         DropdownMenuItem(value: 'low', child: Text('Низкий')),
-                        DropdownMenuItem(value: 'medium', child: Text('Средний')),
+                        DropdownMenuItem(
+                          value: 'medium',
+                          child: Text('Средний'),
+                        ),
                         DropdownMenuItem(value: 'high', child: Text('Высокий')),
                       ],
-                      onChanged: (v) => setModalState(() => priority = v ?? 'medium'),
+                      onChanged: (v) =>
+                          setModalState(() => priority = v ?? 'medium'),
                     ),
                     DropdownButtonFormField<String>(
                       value: status,
                       decoration: const InputDecoration(labelText: 'Статус'),
                       items: const [
-                        DropdownMenuItem(value: 'todo', child: Text('К выполнению')),
-                        DropdownMenuItem(value: 'in_progress', child: Text('В работе')),
-                        DropdownMenuItem(value: 'in_review', child: Text('На проверке')),
-                        DropdownMenuItem(value: 'done', child: Text('Выполнено')),
+                        DropdownMenuItem(
+                          value: 'todo',
+                          child: Text('К выполнению'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'in_progress',
+                          child: Text('В работе'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'in_review',
+                          child: Text('На проверке'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'done',
+                          child: Text('Выполнено'),
+                        ),
                       ],
-                      onChanged: (v) => setModalState(() => status = v ?? 'todo'),
+                      onChanged: (v) =>
+                          setModalState(() => status = v ?? 'todo'),
                     ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Семейная задача'),
                       value: isFamily,
-                      onChanged: forceFamily ? null : (v) => setModalState(() => isFamily = v),
+                      onChanged: forceFamily
+                          ? null
+                          : (v) => setModalState(() => isFamily = v),
                     ),
                     if (isFamily) ...[
                       TextField(
                         controller: durationCtl,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Длительность (мин)'),
+                        decoration: const InputDecoration(
+                          labelText: 'Длительность (мин)',
+                        ),
                       ),
                       const SizedBox(height: 8),
-                      Text('Ответственные', style: Theme.of(context).textTheme.titleSmall),
+                      Text(
+                        'Ответственные',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
                       const SizedBox(height: 6),
                       Wrap(
                         spacing: 8,
@@ -350,7 +424,8 @@ class _HomePageState extends State<HomePage> {
                                 return;
                               }
                               final now = DateTime.now().toIso8601String();
-                              final assignees = selectedAssignees.toList()..sort();
+                              final assignees = selectedAssignees.toList()
+                                ..sort();
                               if (isFamily && !_isAdult) {
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -366,15 +441,41 @@ class _HomePageState extends State<HomePage> {
                               if (isFamily && assignees.isEmpty) {
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Выберите хотя бы одного ответственного.')),
+                                    const SnackBar(
+                                      content: Text(
+                                        'Выберите хотя бы одного ответственного.',
+                                      ),
+                                    ),
                                   );
                                 }
                                 return;
                               }
-                              final task = (existing ??
-                                      TaskItem(
-                                        id: 'm-${DateTime.now().microsecondsSinceEpoch}',
-                                        ownerKey: _owner,
+                              final task =
+                                  (existing ??
+                                          TaskItem(
+                                            id: 'm-${DateTime.now().microsecondsSinceEpoch}',
+                                            ownerKey: isFamily
+                                                ? 'family'
+                                                : _owner,
+                                            isFamily: isFamily,
+                                            title: title,
+                                            details: detailsCtl.text.trim(),
+                                            dueDate: _dateKey(selected),
+                                            time: time,
+                                            workflowStatus: status,
+                                            priority: priority,
+                                            tags: const [],
+                                            assignees: assignees,
+                                            durationMinutes:
+                                                int.tryParse(
+                                                  durationCtl.text.trim(),
+                                                ) ??
+                                                0,
+                                            updatedAt: now,
+                                            version: 1,
+                                          ))
+                                      .copyWith(
+                                        ownerKey: isFamily ? 'family' : _owner,
                                         isFamily: isFamily,
                                         title: title,
                                         details: detailsCtl.text.trim(),
@@ -382,32 +483,22 @@ class _HomePageState extends State<HomePage> {
                                         time: time,
                                         workflowStatus: status,
                                         priority: priority,
-                                        tags: const [],
                                         assignees: assignees,
-                                        durationMinutes: int.tryParse(durationCtl.text.trim()) ?? 0,
+                                        durationMinutes:
+                                            int.tryParse(
+                                              durationCtl.text.trim(),
+                                            ) ??
+                                            0,
                                         updatedAt: now,
-                                        version: 1,
-                                      ))
-                                  .copyWith(
-                                isFamily: isFamily,
-                                title: title,
-                                details: detailsCtl.text.trim(),
-                                dueDate: _dateKey(selected),
-                                time: time,
-                                workflowStatus: status,
-                                priority: priority,
-                                assignees: assignees,
-                                durationMinutes: int.tryParse(durationCtl.text.trim()) ?? 0,
-                                updatedAt: now,
-                                version: (existing?.version ?? 0) + 1,
-                              );
+                                        version: (existing?.version ?? 0) + 1,
+                                      );
 
                               await _sync!.enqueueUpsert(task);
                               await _refreshLocal();
                               if (mounted) {
                                 Navigator.pop(context);
                               }
-                              await _safeSync(showErrors: true);
+                              await _safeSyncDelta(showErrors: true);
                             },
                             child: const Text('Сохранить'),
                           ),
@@ -435,7 +526,7 @@ class _HomePageState extends State<HomePage> {
     );
     await _sync!.enqueueUpsert(changed);
     await _refreshLocal();
-    await _safeSync(showErrors: true);
+    await _safeSyncDelta(showErrors: true);
   }
 
   Future<void> _toggleDone(TaskItem item) async {
@@ -452,7 +543,7 @@ class _HomePageState extends State<HomePage> {
       isFamily: item.isFamily,
     );
     await _refreshLocal();
-    await _safeSync(showErrors: true);
+    await _safeSyncDelta(showErrors: true);
   }
 
   List<TaskItem> get _dateTasks =>
@@ -462,7 +553,8 @@ class _HomePageState extends State<HomePage> {
       .where((t) => t.isFamily && t.assignees.contains(_owner))
       .toList();
 
-  List<TaskItem> get _personalDateTasks => _dateTasks.where((t) => !t.isFamily).toList();
+  List<TaskItem> get _personalDateTasks =>
+      _dateTasks.where((t) => !t.isFamily).toList();
 
   Widget _buildBody() {
     if (_loading) {
@@ -521,26 +613,31 @@ class _HomePageState extends State<HomePage> {
     final selectedKey = _dateKey(_selectedDate);
     return Scaffold(
       appBar: AppBar(
-        title: Text('Семейные задачи • $selectedKey'),
+        title: Text('Family tasks - $selectedKey'),
         actions: [
           PopupMenuButton<String>(
             initialValue: _owner,
             onSelected: (value) async => _switchProfile(value),
             itemBuilder: (context) => _profiles
-                .map((profile) => PopupMenuItem<String>(
-                      value: profile,
-                      child: Text(_profileLabels[profile] ?? profile),
-                    ))
+                .map(
+                  (profile) => PopupMenuItem<String>(
+                    value: profile,
+                    child: Text(_profileLabels[profile] ?? profile),
+                  ),
+                )
                 .toList(),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Center(
-                child: Text(profileLabel(_owner), style: const TextStyle(fontWeight: FontWeight.w700)),
+                child: Text(
+                  profileLabel(_owner),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
               ),
             ),
           ),
           IconButton(
-            tooltip: 'Календарь',
+            tooltip: 'Calendar',
             icon: const Icon(Icons.calendar_month),
             onPressed: () async {
               final picked = await showDatePicker(
@@ -555,9 +652,9 @@ class _HomePageState extends State<HomePage> {
             },
           ),
           IconButton(
-            tooltip: 'Синхронизировать',
+            tooltip: 'Sync now',
             icon: const Icon(Icons.sync),
-            onPressed: () async => _safeSync(showErrors: true),
+            onPressed: () async => _safeSyncFull(showErrors: true),
           ),
         ],
       ),
@@ -566,20 +663,38 @@ class _HomePageState extends State<HomePage> {
           ? FloatingActionButton.extended(
               onPressed: () => _openTaskEditor(forceFamily: _pageIndex == 3),
               icon: const Icon(Icons.add),
-              label: Text(_pageIndex == 3 ? 'Сем. задача' : 'Задача'),
+              label: Text(_pageIndex == 3 ? 'Family task' : 'Task'),
             )
           : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _pageIndex,
         onDestinationSelected: (i) => setState(() => _pageIndex = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'Дашборд'),
-          NavigationDestination(icon: Icon(Icons.view_kanban_outlined), label: 'Задачи'),
-          NavigationDestination(icon: Icon(Icons.calendar_month_outlined), label: 'Календарь'),
-          NavigationDestination(icon: Icon(Icons.family_restroom_outlined), label: 'Семейные'),
+          NavigationDestination(
+            icon: Icon(Icons.dashboard_outlined),
+            label: 'Dashboard',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.view_kanban_outlined),
+            label: 'Tasks',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_month_outlined),
+            label: 'Calendar',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.family_restroom_outlined),
+            label: 'Family',
+          ),
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _cancelSyncLoops();
+    super.dispose();
   }
 }
 
@@ -607,10 +722,16 @@ class _DashboardView extends StatelessWidget {
     final doneToday = today.where((t) => t.workflowStatus == 'done').length;
     final familyToday = today.where((t) => t.isFamily).length;
     final overdue = allTasks
-        .where((t) => t.dueDate.compareTo(todayKey) < 0 && t.workflowStatus != 'done')
+        .where(
+          (t) =>
+              t.dueDate.compareTo(todayKey) < 0 && t.workflowStatus != 'done',
+        )
         .length;
     final upcoming = allTasks.toList()
-      ..sort((a, b) => ('${a.dueDate} ${a.time}').compareTo('${b.dueDate} ${b.time}'));
+      ..sort(
+        (a, b) =>
+            ('${a.dueDate} ${a.time}').compareTo('${b.dueDate} ${b.time}'),
+      );
 
     return ListView(
       padding: const EdgeInsets.all(12),
@@ -618,11 +739,19 @@ class _DashboardView extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _MetricCard(title: 'На дату', value: '${today.length}', hint: todayKey),
+              child: _MetricCard(
+                title: 'На дату',
+                value: '${today.length}',
+                hint: todayKey,
+              ),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: _MetricCard(title: 'Сделано', value: '$doneToday', hint: 'Выполнено'),
+              child: _MetricCard(
+                title: 'Сделано',
+                value: '$doneToday',
+                hint: 'Выполнено',
+              ),
             ),
           ],
         ),
@@ -630,11 +759,19 @@ class _DashboardView extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _MetricCard(title: 'Семейных', value: '$familyToday', hint: 'Семейные'),
+              child: _MetricCard(
+                title: 'Семейных',
+                value: '$familyToday',
+                hint: 'Семейные',
+              ),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: _MetricCard(title: 'Просрочено', value: '$overdue', hint: 'Просрочка'),
+              child: _MetricCard(
+                title: 'Просрочено',
+                value: '$overdue',
+                hint: 'Просрочка',
+              ),
             ),
           ],
         ),
@@ -652,7 +789,7 @@ class _DashboardView extends StatelessWidget {
             child: ListTile(
               title: Text(t.title),
               subtitle: Text(
-                '${t.dueDate} ${t.time} • ${profileLabel(t.ownerKey)} • ${workflowLabel(t.workflowStatus)}',
+                '${t.dueDate} ${t.time} - ${profileLabel(t.ownerKey)} - ${workflowLabel(t.workflowStatus)}',
               ),
               trailing: t.isFamily ? const Icon(Icons.family_restroom) : null,
             ),
@@ -724,12 +861,15 @@ class _CalendarView extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: 8),
             itemBuilder: (context, i) {
               final d = days[i];
-              final isCurrent = d.year == selectedDate.year &&
+              final isCurrent =
+                  d.year == selectedDate.year &&
                   d.month == selectedDate.month &&
                   d.day == selectedDate.day;
               return ChoiceChip(
                 selected: isCurrent,
-                label: Text('${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}'),
+                label: Text(
+                  '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}',
+                ),
                 onSelected: (_) => onDateChange(d),
               );
             },
@@ -740,7 +880,9 @@ class _CalendarView extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             children: [
               if (tasksForSelectedDate.isEmpty)
-                const Card(child: ListTile(title: Text('На выбранную дату задач нет'))),
+                const Card(
+                  child: ListTile(title: Text('На выбранную дату задач нет')),
+                ),
               for (final item in tasksForSelectedDate)
                 _TaskCard(
                   item: item,
@@ -804,10 +946,9 @@ class _TasksBoard extends StatelessWidget {
                   children: [
                     Text(
                       '${_titles[status]} (${items.length})',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     for (final item in items)
@@ -863,9 +1004,16 @@ class _FamilyView extends StatelessWidget {
         Text('Семейные задачи', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
         if (familyTasks.isEmpty)
-          const Card(child: ListTile(title: Text('На эту дату семейных задач нет'))),
+          const Card(
+            child: ListTile(title: Text('На эту дату семейных задач нет')),
+          ),
         for (final item in familyTasks)
-          _TaskCard(item: item, onEdit: () => onEdit(item), onDelete: () => onDelete(item), onDoneToggle: () async {}),
+          _TaskCard(
+            item: item,
+            onEdit: () => onEdit(item),
+            onDelete: () => onDelete(item),
+            onDoneToggle: () async {},
+          ),
       ],
     );
   }
@@ -890,8 +1038,10 @@ class _TaskCard extends StatelessWidget {
     final subtitle = [
       '${item.dueDate} ${item.time}'.trim(),
       'Статус: ${workflowLabel(item.workflowStatus)}',
-      if (item.isFamily && assigneeLabels.isNotEmpty) 'Ответственные: ${assigneeLabels.join(', ')}',
-      if (item.isFamily && item.durationMinutes > 0) 'Длительность: ${item.durationMinutes} мин',
+      if (item.isFamily && assigneeLabels.isNotEmpty)
+        'Ответственные: ${assigneeLabels.join(', ')}',
+      if (item.isFamily && item.durationMinutes > 0)
+        'Длительность: ${item.durationMinutes} мин',
       if (item.details.isNotEmpty) item.details,
       'Владелец: ${profileLabel(item.ownerKey)}',
     ].join('\n');
@@ -908,7 +1058,9 @@ class _TaskCard extends StatelessWidget {
           children: [
             IconButton(
               tooltip: 'Выполнить/отменить',
-              icon: Icon(item.workflowStatus == 'done' ? Icons.undo : Icons.check_circle),
+              icon: Icon(
+                item.workflowStatus == 'done' ? Icons.undo : Icons.check_circle,
+              ),
               onPressed: () => onDoneToggle(),
             ),
             IconButton(

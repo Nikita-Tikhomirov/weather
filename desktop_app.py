@@ -680,7 +680,10 @@ class DesktopTodoApp(ctk.CTk):
         self._column_cards: dict[str, list[KanbanCard]] = {}
         self._kanban_render_token = 0
         self._sync_poll_after_id: str | None = None
-        self._sync_poll_interval_ms = 2500
+        self._sync_poll_interval_ms = 15000
+        self._sync_full_interval_ms = 10 * 60 * 1000
+        self._sync_cursor = "1970-01-01T00:00:00"
+        self._last_full_sync_at: datetime | None = None
         self._sync_poll_inflight = False
         self._sync_notify_cooldown_seconds = 120
         self._sync_notify_history: dict[str, datetime] = {}
@@ -907,14 +910,14 @@ class DesktopTodoApp(ctk.CTk):
             self._cache_todos = ft.load_todos(person, pull_remote=False)
         return self._cache_todos
 
-    def _schedule_sync_poll(self, *, initial: bool = False) -> None:
+    def _schedule_sync_poll(self, *, initial: bool = False, delay_ms: int | None = None) -> None:
         if self._sync_poll_after_id is not None:
             try:
                 self.after_cancel(self._sync_poll_after_id)
             except Exception:
                 pass
             self._sync_poll_after_id = None
-        delay = 300 if initial else self._sync_poll_interval_ms
+        delay = 300 if initial else (delay_ms if delay_ms is not None else self._sync_poll_interval_ms)
         self._sync_poll_after_id = self.after(delay, self._run_sync_poll)
 
     def _run_sync_poll(self) -> None:
@@ -927,11 +930,41 @@ class DesktopTodoApp(ctk.CTk):
         worker = threading.Thread(target=self._sync_poll_worker, daemon=True)
         worker.start()
 
+    def _should_run_full_sync(self) -> bool:
+        if self._last_full_sync_at is None:
+            return True
+        elapsed_ms = int((datetime.now() - self._last_full_sync_at).total_seconds() * 1000)
+        return elapsed_ms >= self._sync_full_interval_ms
+
+    def _refresh_personal_views(self) -> None:
+        self.refresh_dashboard()
+        self.refresh_tasks_kanban()
+        self.refresh_calendar()
+
+    def _apply_sync_refresh(self, sync_result: dict[str, object]) -> None:
+        changed_profiles = sync_result.get("changed_profiles")
+        profiles = [str(profile) for profile in changed_profiles] if isinstance(changed_profiles, list) else []
+        current_person = self.get_person().key
+        family_changed = bool(sync_result.get("family_changed"))
+        personal_changed = current_person in profiles
+
+        if personal_changed:
+            self._invalidate_cache()
+            self._refresh_personal_views()
+        if family_changed:
+            self.refresh_family_tasks()
+        if personal_changed or family_changed:
+            self._notify_sync_changes(sync_result)
+
     def _sync_poll_worker(self) -> None:
         sync_result: dict[str, object] | None = None
         sync_error: Exception | None = None
+        used_full_sync = self._should_run_full_sync()
         try:
-            sync_result = ft.pull_backend_snapshot_to_local()
+            if used_full_sync:
+                sync_result = ft.pull_backend_snapshot_to_local()
+            else:
+                sync_result = ft.pull_backend_changes_since_cursor(self._sync_cursor)
         except Exception as exc:
             sync_error = exc
 
@@ -940,16 +973,14 @@ class DesktopTodoApp(ctk.CTk):
                 return
             if sync_error is not None:
                 self._append_log(f"Ошибка фоновой синхронизации: {sync_error}")
-            elif isinstance(sync_result, dict) and bool(sync_result.get("changed")):
-                changed_profiles = sync_result.get("changed_profiles")
-                profiles = [str(profile) for profile in changed_profiles] if isinstance(changed_profiles, list) else []
-                current_person = self.get_person().key
-                family_changed = bool(sync_result.get("family_changed"))
-                should_refresh = current_person in profiles or family_changed
-                if should_refresh:
-                    self._invalidate_cache()
-                    self.refresh_all_views()
-                    self._notify_sync_changes(sync_result)
+            elif isinstance(sync_result, dict):
+                next_cursor = str(sync_result.get("next_cursor") or "").strip()
+                if next_cursor:
+                    self._sync_cursor = next_cursor
+                if used_full_sync:
+                    self._last_full_sync_at = datetime.now()
+                if bool(sync_result.get("changed")):
+                    self._apply_sync_refresh(sync_result)
             self._sync_poll_inflight = False
             self._schedule_sync_poll()
 
@@ -1044,7 +1075,7 @@ class DesktopTodoApp(ctk.CTk):
         try:
             from notifier import desktop_notify
 
-            desktop_notify(message, title="Синхронизация")
+            desktop_notify(message, title="Изменения задач")
         except Exception:
             pass
 
@@ -1413,7 +1444,7 @@ class DesktopTodoApp(ctk.CTk):
         self.selected_ids.clear()
         self.selection_mode = False
         self._invalidate_cache()
-        self.refresh_all_views()
+        self._refresh_personal_views()
 
     def _run_todo_operation(
         self,
@@ -1427,7 +1458,7 @@ class DesktopTodoApp(ctk.CTk):
         self._save_todos(todos)
         if event_name:
             log_event(event_name, person=person.key, actor="desktop", **event_fields)
-        self.refresh_all_views()
+        self._refresh_personal_views()
         return True
 
     def open_task_editor(self, todo: dict | None) -> None:

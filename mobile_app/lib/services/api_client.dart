@@ -10,26 +10,27 @@ class PullSnapshot {
     required this.tasks,
     required this.familyTasks,
     required this.serverTime,
+    required this.nextCursor,
+    required this.isDelta,
   });
 
   final List<TaskItem> tasks;
   final List<TaskItem> familyTasks;
   final String serverTime;
+  final String nextCursor;
+  final bool isDelta;
 }
 
 class ApiClient {
-  ApiClient({
-    required this.baseUrl,
-    required this.apiKey,
-  });
+  ApiClient({required this.baseUrl, required this.apiKey});
 
   final String baseUrl;
   final String apiKey;
 
   Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        'X-Api-Key': apiKey,
-      };
+    'Content-Type': 'application/json',
+    'X-Api-Key': apiKey,
+  };
 
   Future<http.Response> _postWithFallback({
     required List<String> paths,
@@ -43,7 +44,9 @@ class ApiClient {
         if (response.statusCode >= 200 && response.statusCode < 300) {
           return response;
         }
-        lastError = StateError('Ошибка POST: ${response.statusCode} ${response.body}');
+        lastError = StateError(
+          'Ошибка POST: ${response.statusCode} ${response.body}',
+        );
       } catch (err) {
         lastError = err;
       }
@@ -63,7 +66,9 @@ class ApiClient {
         if (response.statusCode >= 200 && response.statusCode < 300) {
           return response;
         }
-        lastError = StateError('Ошибка GET: ${response.statusCode} ${response.body}');
+        lastError = StateError(
+          'Ошибка GET: ${response.statusCode} ${response.body}',
+        );
       } catch (err) {
         lastError = err;
       }
@@ -98,8 +103,16 @@ class ApiClient {
     );
   }
 
-  Future<PullSnapshot> pull({required String since}) async {
+  Future<PullSnapshot> pull({
+    required String since,
+    bool changesMode = false,
+    String? cursor,
+  }) async {
     final query = <String, String>{'since': since};
+    if (changesMode) {
+      query['mode'] = 'changes';
+      query['cursor'] = (cursor == null || cursor.isEmpty) ? since : cursor;
+    }
     if (_actorProfileForPull.isNotEmpty) {
       query['actor_profile'] = _actorProfileForPull;
     }
@@ -121,8 +134,17 @@ class ApiClient {
           return TaskItem.fromJson(source);
         })
         .toList();
-    final serverTime = (body['server_time'] ?? DateTime.now().toIso8601String()).toString();
-    return PullSnapshot(tasks: tasks, familyTasks: familyTasks, serverTime: serverTime);
+    final serverTime = (body['server_time'] ?? DateTime.now().toIso8601String())
+        .toString();
+    final nextCursor = (body['next_cursor'] ?? serverTime).toString();
+    final mode = (body['mode'] ?? '').toString();
+    return PullSnapshot(
+      tasks: tasks,
+      familyTasks: familyTasks,
+      serverTime: serverTime,
+      nextCursor: nextCursor,
+      isDelta: mode == 'changes' || changesMode,
+    );
   }
 
   String _actorProfileForPull = '';
@@ -155,10 +177,7 @@ class ApiClient {
     required String actorProfile,
     required String token,
   }) async {
-    final payload = {
-      'actor_profile': actorProfile,
-      'token': token,
-    };
+    final payload = {'actor_profile': actorProfile, 'token': token};
     await _postWithFallback(
       paths: const ['/devices_unregister.php', '/devices/unregister'],
       body: jsonEncode(payload),

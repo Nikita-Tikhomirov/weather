@@ -357,9 +357,20 @@ def _backend_request(
         return None
 
 
-def _backend_pull_snapshot() -> dict | None:
-    query = urllib.parse.urlencode({"since": "1970-01-01T00:00:00"})
-    for path in (f"/sync_pull.php?{query}", f"/sync/pull?{query}"):
+def _backend_pull_snapshot(
+    *,
+    since: str = "1970-01-01T00:00:00",
+    cursor: str | None = None,
+) -> dict | None:
+    query_payload = {"since": since}
+    if cursor:
+        query_payload["cursor"] = cursor
+        query_payload["mode"] = "changes"
+    query = urllib.parse.urlencode(query_payload)
+    paths = [f"/sync_pull.php?{query}", f"/sync/pull?{query}"]
+    if cursor:
+        paths = [f"/sync_changes.php?{query}", f"/sync/changes?{query}", *paths]
+    for path in paths:
         response = _backend_request("GET", path)
         if isinstance(response, dict):
             return response
@@ -401,6 +412,8 @@ def _canonical_family_task(item: dict) -> dict:
     )
     return {
         "id": str(item.get("id") or ""),
+        "owner_key": str(item.get("owner_key") or "family"),
+        "is_family": True,
         "title": str(item.get("title") or item.get("text") or ""),
         "text": str(item.get("title") or item.get("text") or ""),
         "details": str(item.get("details") or ""),
@@ -414,6 +427,85 @@ def _canonical_family_task(item: dict) -> dict:
         "updated_at": str(item.get("updated_at") or ""),
         "version": int(item.get("version") or 1),
     }
+
+
+def _item_diff_fingerprint(item: dict, *, is_family: bool) -> str:
+    canonical = _canonical_family_task(item) if is_family else _canonical_person_task(item)
+    canonical.pop("updated_at", None)
+    canonical.pop("version", None)
+    return json.dumps(canonical, sort_keys=True, ensure_ascii=False)
+
+
+def _pick_latest_metadata(prev_item: dict | None, cur_item: dict, *, now_iso: str) -> tuple[str, int]:
+    prev_updated = str(prev_item.get("updated_at") or "") if isinstance(prev_item, dict) else ""
+    cur_updated = str(cur_item.get("updated_at") or "").strip()
+    updated_at = cur_updated or prev_updated or now_iso
+
+    prev_version_raw = prev_item.get("version") if isinstance(prev_item, dict) else 1
+    cur_version_raw = cur_item.get("version")
+    try:
+        prev_version = int(prev_version_raw or 1)
+    except (TypeError, ValueError):
+        prev_version = 1
+    try:
+        cur_version = int(cur_version_raw or 1)
+    except (TypeError, ValueError):
+        cur_version = 1
+    prev_version = max(1, prev_version)
+    cur_version = max(1, cur_version)
+
+    if prev_item is None:
+        return updated_at, cur_version
+
+    changed = _item_diff_fingerprint(prev_item, is_family=bool(prev_item.get("is_family"))) != _item_diff_fingerprint(
+        cur_item,
+        is_family=bool(cur_item.get("is_family")),
+    )
+    if changed:
+        if cur_version <= prev_version:
+            cur_version = prev_version + 1
+        if updated_at <= prev_updated:
+            updated_at = now_iso
+    else:
+        cur_version = max(cur_version, prev_version)
+        if not cur_updated:
+            updated_at = prev_updated or now_iso
+    return updated_at, cur_version
+
+
+def _merge_remote_changes(
+    current_items: list[dict],
+    incoming_items: list[dict],
+    *,
+    is_family: bool,
+) -> tuple[list[dict], bool]:
+    current = _stable_items(current_items, is_family=is_family)
+    incoming = _stable_items(incoming_items, is_family=is_family)
+    merged_by_id = {str(item.get("id") or ""): item for item in current if str(item.get("id") or "")}
+    changed = False
+
+    for remote_item in incoming:
+        item_id = str(remote_item.get("id") or "")
+        if not item_id:
+            continue
+        local_item = merged_by_id.get(item_id)
+        if local_item is None:
+            merged_by_id[item_id] = remote_item
+            changed = True
+            continue
+
+        local_version = int(local_item.get("version") or 1)
+        remote_version = int(remote_item.get("version") or 1)
+        local_updated = str(local_item.get("updated_at") or "")
+        remote_updated = str(remote_item.get("updated_at") or "")
+        should_apply = remote_version > local_version or (remote_version == local_version and remote_updated > local_updated)
+        if should_apply and local_item != remote_item:
+            merged_by_id[item_id] = remote_item
+            changed = True
+
+    merged = list(merged_by_id.values())
+    merged = _stable_items(merged, is_family=is_family)
+    return merged, changed
 
 
 def _stable_items(items: list[dict], *, is_family: bool) -> list[dict]:
@@ -493,7 +585,7 @@ def pull_backend_snapshot_to_local() -> dict[str, object]:
     """Sync full backend snapshot into local files for all profiles."""
     if not _backend_enabled():
         return {"ok": False, "reason": "backend_disabled"}
-    remote = _backend_pull_snapshot()
+    remote = _backend_pull_snapshot(since="1970-01-01T00:00:00")
     if not isinstance(remote, dict):
         return {"ok": False, "reason": "pull_failed"}
 
@@ -548,6 +640,79 @@ def pull_backend_snapshot_to_local() -> dict[str, object]:
         "family_changed": family_changed,
         "changed": bool(changed_profiles or family_changed),
         "events": change_events,
+        "mode": "full",
+        "next_cursor": str(remote.get("next_cursor") or remote.get("server_time") or ""),
+    }
+
+
+def pull_backend_changes_since_cursor(cursor: str) -> dict[str, object]:
+    """Apply incremental backend changes since cursor (add/update only, deletions come from full sync)."""
+    if not _backend_enabled():
+        return {"ok": False, "reason": "backend_disabled"}
+    cursor_value = (cursor or "").strip() or "1970-01-01T00:00:00"
+    remote = _backend_pull_snapshot(since=cursor_value, cursor=cursor_value)
+    if not isinstance(remote, dict):
+        return {"ok": False, "reason": "pull_failed", "cursor": cursor_value}
+
+    raw_tasks = remote.get("tasks")
+    tasks = _stable_items(raw_tasks if isinstance(raw_tasks, list) else [], is_family=False)
+    by_owner: dict[str, list[dict]] = {person.key: [] for person in PEOPLE}
+    for item in tasks:
+        owner = str(item.get("owner_key") or "").strip()
+        if owner in by_owner:
+            by_owner[owner].append(item)
+
+    changed_profiles: list[str] = []
+    change_events: list[dict] = []
+    for person in PEOPLE:
+        incoming = _stable_items(by_owner.get(person.key, []), is_family=False)
+        if not incoming:
+            continue
+        target_path = todos_path(person)
+        current = read_json(target_path, [])
+        current_items = _stable_items(current if isinstance(current, list) else [], is_family=False)
+        merged_items, changed = _merge_remote_changes(current_items, incoming, is_family=False)
+        if not changed:
+            continue
+        write_json(target_path, merged_items)
+        changed_profiles.append(person.key)
+        change_events.extend(
+            _diff_events(
+                current_items,
+                merged_items,
+                owner_key=person.key,
+                is_family=False,
+            )
+        )
+
+    family_changed = False
+    raw_family = remote.get("family_tasks")
+    incoming_family = _stable_items(raw_family if isinstance(raw_family, list) else [], is_family=True)
+    if incoming_family:
+        current_family = read_json(FAMILY_TASKS_PATH, [])
+        current_family_items = _stable_items(current_family if isinstance(current_family, list) else [], is_family=True)
+        merged_family, family_changed = _merge_remote_changes(current_family_items, incoming_family, is_family=True)
+        if family_changed:
+            write_json(FAMILY_TASKS_PATH, merged_family)
+            change_events.extend(
+                _diff_events(
+                    current_family_items,
+                    merged_family,
+                    owner_key="family",
+                    is_family=True,
+                )
+            )
+
+    next_cursor = str(remote.get("next_cursor") or remote.get("server_time") or cursor_value)
+    return {
+        "ok": True,
+        "changed_profiles": changed_profiles,
+        "family_changed": family_changed,
+        "changed": bool(changed_profiles or family_changed),
+        "events": change_events,
+        "mode": "delta",
+        "cursor": cursor_value,
+        "next_cursor": next_cursor,
     }
 
 
@@ -663,11 +828,29 @@ def load_family_tasks(*, pull_remote: bool = False) -> list[dict]:
         if not parse_iso_datetime(start_at):
             changed = True
             continue
+        owner_key = str(item.get("owner_key") or "family").strip() or "family"
+        if owner_key != "family":
+            owner_key = "family"
+            changed = True
+        raw_updated = str(item.get("updated_at") or "").strip()
+        if not raw_updated:
+            raw_updated = datetime.now().isoformat(timespec="seconds")
+            changed = True
+        version_raw = item.get("version")
+        try:
+            version = int(version_raw or 1)
+        except (TypeError, ValueError):
+            version = 1
+            changed = True
+        if version < 1:
+            version = 1
+            changed = True
         due = start_at[:10]
         time_value = start_at[11:16]
         normalized.append(
             {
                 "id": item_id,
+                "owner_key": owner_key,
                 "title": str(item.get("title") or item.get("text") or "семейное дело").strip(),
                 "text": str(item.get("title") or item.get("text") or "семейное дело").strip(),
                 "details": str(item.get("details") or "").strip(),
@@ -684,7 +867,8 @@ def load_family_tasks(*, pull_remote: bool = False) -> list[dict]:
                 "done_at": item.get("done_at"),
                 "reminder_offsets": item.get("reminder_offsets") if isinstance(item.get("reminder_offsets"), list) else list(DEFAULT_REMINDER_OFFSETS),
                 "sort_order": int(item.get("sort_order") or (int(item_id) if item_id.isdigit() else max_id + 1)),
-                "updated_at": item.get("updated_at"),
+                "updated_at": raw_updated,
+                "version": version,
                 "created_at": str(item.get("created_at") or datetime.now().isoformat(timespec="seconds")),
                 "last_reminder_key": item.get("last_reminder_key"),
             }
@@ -695,8 +879,54 @@ def load_family_tasks(*, pull_remote: bool = False) -> list[dict]:
     return normalized
 
 
+def _normalize_family_tasks_for_storage(items: list[dict]) -> list[dict]:
+    now_iso = datetime.now().isoformat(timespec="seconds")
+    previous_raw = read_json(FAMILY_TASKS_PATH, [])
+    previous_items = _stable_items(previous_raw if isinstance(previous_raw, list) else [], is_family=True)
+    previous_by_id = {str(item.get("id") or ""): item for item in previous_items if str(item.get("id") or "")}
+    normalized: list[dict] = []
+    for raw_item in items:
+        if not isinstance(raw_item, dict):
+            continue
+        prepared = dict(raw_item)
+        prepared["owner_key"] = "family"
+        prepared["is_family"] = True
+        canonical = _canonical_family_task(prepared)
+        item_id = str(canonical.get("id") or "")
+        if not item_id:
+            continue
+        previous = previous_by_id.get(item_id)
+        updated_at, version = _pick_latest_metadata(previous, canonical, now_iso=now_iso)
+        status_key = str(canonical.get("workflow_status") or "todo")
+        assignees = list(canonical.get("assignees") or [])
+        normalized.append(
+            {
+                **prepared,
+                "owner_key": "family",
+                "is_family": True,
+                "title": str(canonical.get("title") or "семейное дело"),
+                "text": str(canonical.get("title") or "семейное дело"),
+                "details": str(canonical.get("details") or ""),
+                "due_date": str(canonical.get("due_date") or ""),
+                "time": str(canonical.get("time") or ""),
+                "start_at": str(canonical.get("start_at") or ""),
+                "workflow_status": status_key,
+                "status": "done" if status_key == "done" else "active",
+                "done": status_key == "done",
+                "assignees": assignees,
+                "participants": assignees,
+                "duration_minutes": int(canonical.get("duration_minutes") or 0),
+                "updated_at": updated_at,
+                "version": version,
+            }
+        )
+    normalized.sort(key=lambda x: (str(x.get("start_at") or ""), str(x.get("id") or "")))
+    return normalized
+
+
 def save_family_tasks(items: list[dict], *, push_remote: bool = True) -> None:
-    write_json(FAMILY_TASKS_PATH, items)
+    normalized = _normalize_family_tasks_for_storage(items)
+    write_json(FAMILY_TASKS_PATH, normalized)
     if push_remote and _backend_enabled():
         _push_snapshot_event(
             actor_profile="nik",
@@ -704,7 +934,7 @@ def save_family_tasks(items: list[dict], *, push_remote: bool = True) -> None:
                 "event_id": f"desktop-family-snapshot-{uuid.uuid4()}",
                 "entity": "family_task",
                 "action": "replace_family_tasks",
-                "payload": {"items": items},
+                "payload": {"items": normalized},
                 "happened_at": datetime.now().isoformat(timespec="seconds"),
             },
         )
@@ -731,6 +961,7 @@ def create_family_task(
     now_iso = datetime.now().isoformat(timespec="seconds")
     item = {
         "id": str(next_id),
+        "owner_key": "family",
         "title": title.strip() or "семейное дело",
         "text": title.strip() or "семейное дело",
         "details": details.strip(),
@@ -749,6 +980,7 @@ def create_family_task(
         "sort_order": next_id,
         "created_at": now_iso,
         "updated_at": now_iso,
+        "version": 1,
     }
     tasks.append(item)
     save_family_tasks(tasks)
@@ -761,9 +993,11 @@ def update_family_task(task_id: str | int, payload: dict) -> tuple[bool, str, di
     for item in tasks:
         if str(item.get("id") or "") != task_id_value:
             continue
+        current_version = int(item.get("version") or 1)
         item.update(payload)
         ensure_workflow_status(item)
         transition_task(item, str(item.get("workflow_status") or "todo"))
+        item["owner_key"] = "family"
         item["is_family"] = True
         if isinstance(payload.get("assignees"), list):
             raw_assignees = payload.get("assignees")
@@ -781,6 +1015,12 @@ def update_family_task(task_id: str | int, payload: dict) -> tuple[bool, str, di
         item["due_date"] = start_dt.date().isoformat() if start_dt else item.get("due_date")
         item["time"] = start_dt.strftime("%H:%M") if start_dt else item.get("time")
         item["duration_minutes"] = max(0, int(item.get("duration_minutes") or 0))
+        next_version_raw = item.get("version")
+        try:
+            next_version = int(next_version_raw or 1)
+        except (TypeError, ValueError):
+            next_version = 1
+        item["version"] = max(current_version + 1, next_version)
         save_family_tasks(tasks)
         return True, "", item
     return False, "Семейное дело не найдено.", None
@@ -944,7 +1184,11 @@ def load_todos(person: Person, *, pull_remote: bool = False) -> list[dict]:
         participants_raw = todo.get("participants")
         participants = [str(v) for v in participants_raw] if isinstance(participants_raw, list) else []
         participants = sorted({p for p in participants if person_by_key(p)})
-        is_family = bool(todo.get("is_family"))
+        if participants:
+            changed = True
+        is_family = False
+        if bool(todo.get("is_family")):
+            changed = True
         start_at = str(todo.get("start_at") or "").strip() or None
         duration_raw = todo.get("duration_minutes")
         duration_minutes = int(duration_raw) if isinstance(duration_raw, int) and duration_raw >= 0 else None
@@ -961,9 +1205,30 @@ def load_todos(person: Person, *, pull_remote: bool = False) -> list[dict]:
             series_id = f"series-{uuid.uuid4().hex[:12]}"
             changed = True
 
+        owner_key = str(todo.get("owner_key") or person.key).strip()
+        if owner_key != person.key:
+            changed = True
+            owner_key = person.key
+
+        raw_updated = str(todo.get("updated_at") or "").strip()
+        if not raw_updated:
+            raw_updated = datetime.now().isoformat(timespec="seconds")
+            changed = True
+
+        version_raw = todo.get("version")
+        try:
+            version = int(version_raw or 1)
+        except (TypeError, ValueError):
+            version = 1
+            changed = True
+        if version < 1:
+            version = 1
+            changed = True
+
         normalized.append(
             {
                 "id": item_id,
+                "owner_key": owner_key,
                 "title": title,
                 "text": title,
                 "details": str(todo.get("details") or "").strip(),
@@ -982,7 +1247,8 @@ def load_todos(person: Person, *, pull_remote: bool = False) -> list[dict]:
                 "start_at": start_at,
                 "duration_minutes": duration_minutes,
                 "created_at": str(todo.get("created_at") or datetime.now().isoformat(timespec="seconds")),
-                "updated_at": todo.get("updated_at"),
+                "updated_at": raw_updated,
+                "version": version,
                 "reminder_offsets": offsets,
                 "series_id": series_id,
                 "recurrence_rule": recurrence_rule or None,
@@ -1014,6 +1280,7 @@ def load_todos(person: Person, *, pull_remote: bool = False) -> list[dict]:
                     {
                         **template,
                         "id": new_id,
+                        "owner_key": person.key,
                         "due_date": cursor_iso,
                         "day": weekday_ru(cursor),
                         "status": "active",
@@ -1021,7 +1288,8 @@ def load_todos(person: Person, *, pull_remote: bool = False) -> list[dict]:
                         "workflow_status": "todo",
                         "sort_order": new_id,
                         "done_at": None,
-                        "updated_at": None,
+                        "updated_at": datetime.now().isoformat(timespec="seconds"),
+                        "version": int(template.get("version") or 1),
                         "generated_from_rule": True,
                     }
                 )
@@ -1044,8 +1312,44 @@ def load_todos(person: Person, *, pull_remote: bool = False) -> list[dict]:
     return normalized
 
 
+def _normalize_person_todos_for_storage(person: Person, todos: list[dict]) -> list[dict]:
+    now_iso = datetime.now().isoformat(timespec="seconds")
+    previous_raw = read_json(todos_path(person), [])
+    previous_items = _stable_items(previous_raw if isinstance(previous_raw, list) else [], is_family=False)
+    previous_by_id = {str(item.get("id") or ""): item for item in previous_items if str(item.get("id") or "")}
+    normalized: list[dict] = []
+    for raw_todo in todos:
+        if not isinstance(raw_todo, dict):
+            continue
+        prepared = dict(raw_todo)
+        prepared["owner_key"] = person.key
+        prepared["is_family"] = False
+        canonical = _canonical_person_task(prepared)
+        item_id = str(canonical.get("id") or "")
+        if not item_id:
+            continue
+        previous = previous_by_id.get(item_id)
+        updated_at, version = _pick_latest_metadata(previous, canonical, now_iso=now_iso)
+        title = str(canonical.get("title") or "без названия")
+        normalized.append(
+            {
+                **prepared,
+                "owner_key": person.key,
+                "is_family": False,
+                "title": title,
+                "text": title,
+                "tags": list(canonical.get("tags") or []),
+                "participants": [],
+                "updated_at": updated_at,
+                "version": version,
+            }
+        )
+    return normalized
+
+
 def save_todos(person: Person, todos: list[dict], *, push_remote: bool = True) -> None:
-    write_json(todos_path(person), todos)
+    normalized = _normalize_person_todos_for_storage(person, todos)
+    write_json(todos_path(person), normalized)
     if push_remote and _backend_enabled():
         _push_snapshot_event(
             actor_profile=person.key,
@@ -1053,7 +1357,7 @@ def save_todos(person: Person, todos: list[dict], *, push_remote: bool = True) -
                 "event_id": f"desktop-person-snapshot-{person.key}-{uuid.uuid4()}",
                 "entity": "task",
                 "action": "replace_person_tasks",
-                "payload": {"owner_key": person.key, "tasks": todos},
+                "payload": {"owner_key": person.key, "tasks": normalized},
                 "happened_at": datetime.now().isoformat(timespec="seconds"),
             },
         )
@@ -2269,6 +2573,7 @@ def add_todo(person: Person, initial_text: str | None = None) -> None:
         todos.append(
             {
                 "id": current_id,
+                "owner_key": person.key,
                 "title": title.strip(),
                 "text": title.strip(),  # backward compatibility
                 "details": (details or "").strip(),
@@ -2290,6 +2595,8 @@ def add_todo(person: Person, initial_text: str | None = None) -> None:
                 "generated_from_rule": bool(recurrence),
                 "reminder_offsets": reminder_offsets,
                 "created_at": datetime.now().isoformat(timespec="seconds"),
+                "updated_at": datetime.now().isoformat(timespec="seconds"),
+                "version": 1,
             }
         )
     save_todos(person, todos)

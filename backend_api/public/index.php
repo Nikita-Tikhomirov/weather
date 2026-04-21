@@ -81,6 +81,23 @@ function apply_event(PDO $db, array $event, string $actor, string $source): arra
     return ['status' => 'accepted'];
 }
 
+function next_sync_cursor(array $tasks, array $familyTasks, string $fallback): string
+{
+    $cursor = $fallback;
+    foreach ([$tasks, $familyTasks] as $bucket) {
+        foreach ($bucket as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $updatedAt = trim((string)($row['updated_at'] ?? ''));
+            if ($updatedAt !== '' && $updatedAt > $cursor) {
+                $cursor = $updatedAt;
+            }
+        }
+    }
+    return $cursor;
+}
+
 try {
     $config = load_config();
     $db = db_connect($config);
@@ -92,20 +109,30 @@ try {
         exit;
     }
 
-    if ($method === 'GET' && $path === '/sync/pull') {
+    if ($method === 'GET' && ($path === '/sync/pull' || $path === '/sync/changes')) {
         require_api_key($config);
-        $since = (string)($_GET['since'] ?? '1970-01-01T00:00:00');
+        $sinceInput = trim((string)($_GET['since'] ?? ''));
+        $cursorInput = trim((string)($_GET['cursor'] ?? ''));
+        $modeInput = trim((string)($_GET['mode'] ?? ''));
+        $isChangesMode = $path === '/sync/changes' || $modeInput === 'changes' || $cursorInput !== '';
+        $since = $isChangesMode ? ($cursorInput !== '' ? $cursorInput : ($sinceInput !== '' ? $sinceInput : '1970-01-01T00:00:00')) : ($sinceInput !== '' ? $sinceInput : '1970-01-01T00:00:00');
         $actorRaw = trim((string)($_GET['actor_profile'] ?? ''));
         $tasks = changed_tasks_since($db, $since);
         if ($actorRaw !== '') {
             $actor = ensure_actor($actorRaw);
             $tasks = changed_tasks_since_for_actor($db, $since, $actor);
         }
+        $familyTasks = changed_family_tasks_since($db, $since);
+        $serverTime = iso_now();
+        $nextCursor = next_sync_cursor($tasks, $familyTasks, $serverTime);
         json_response(200, [
             'ok' => true,
             'tasks' => $tasks,
-            'family_tasks' => changed_family_tasks_since($db, $since),
-            'server_time' => iso_now(),
+            'family_tasks' => $familyTasks,
+            'server_time' => $serverTime,
+            'cursor' => $since,
+            'next_cursor' => $nextCursor,
+            'mode' => $isChangesMode ? 'changes' : 'snapshot',
         ]);
         exit;
     }

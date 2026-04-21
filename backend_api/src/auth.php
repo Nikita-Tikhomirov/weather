@@ -107,7 +107,7 @@ function recipient_adults_except_actor(string $actor): array
 function recipients_for_push(string $actor, string $entity, string $action, array $payload): array
 {
     if ($entity === 'family_task') {
-        return normalize_assignees($payload);
+        return ALLOWED_PROFILES;
     }
 
     $owner = trim((string)($payload['owner_key'] ?? $actor));

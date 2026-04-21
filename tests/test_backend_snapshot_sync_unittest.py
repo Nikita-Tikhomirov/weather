@@ -22,13 +22,20 @@ class BackendSnapshotSyncTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_pull_backend_snapshot_updates_profiles_and_family(self) -> None:
-        ft._backend_pull_snapshot = lambda: {
+        ft._backend_pull_snapshot = lambda **_kwargs: {
             "tasks": [
                 {"id": "1", "owner_key": "nik", "title": "Nik task", "updated_at": "2026-04-21T10:00:00"},
                 {"id": "2", "owner_key": "misha", "title": "Misha task", "updated_at": "2026-04-21T10:00:00"},
             ],
             "family_tasks": [
-                {"id": "f-1", "title": "Family", "updated_at": "2026-04-21T10:00:00"},
+                {
+                    "id": "f-1",
+                    "owner_key": "family",
+                    "is_family": True,
+                    "title": "Family",
+                    "updated_at": "2026-04-21T10:00:00",
+                    "version": 3,
+                },
             ],
         }
 
@@ -44,9 +51,48 @@ class BackendSnapshotSyncTests(unittest.TestCase):
 
         nik = next(p for p in ft.PEOPLE if p.key == "nik")
         misha = next(p for p in ft.PEOPLE if p.key == "misha")
-        self.assertEqual(len(ft.read_json(ft.todos_path(nik), [])), 1)
+        nik_items = ft.read_json(ft.todos_path(nik), [])
+        self.assertEqual(len(nik_items), 1)
+        self.assertEqual(nik_items[0].get("owner_key"), "nik")
+        self.assertEqual(bool(nik_items[0].get("is_family")), False)
+        self.assertGreaterEqual(int(nik_items[0].get("version") or 0), 1)
         self.assertEqual(len(ft.read_json(ft.todos_path(misha), [])), 1)
-        self.assertEqual(len(ft.read_json(ft.FAMILY_TASKS_PATH, [])), 1)
+        family_items = ft.read_json(ft.FAMILY_TASKS_PATH, [])
+        self.assertEqual(len(family_items), 1)
+        self.assertEqual(family_items[0].get("owner_key"), "family")
+        self.assertEqual(bool(family_items[0].get("is_family")), True)
+        self.assertEqual(int(family_items[0].get("version") or 0), 3)
+
+    def test_repeated_same_snapshot_does_not_report_changed(self) -> None:
+        payload = {
+            "tasks": [
+                {
+                    "id": "1",
+                    "owner_key": "nik",
+                    "is_family": False,
+                    "title": "Nik task",
+                    "updated_at": "2026-04-21T10:00:00",
+                    "version": 2,
+                },
+            ],
+            "family_tasks": [
+                {
+                    "id": "f-1",
+                    "owner_key": "family",
+                    "is_family": True,
+                    "title": "Family",
+                    "updated_at": "2026-04-21T10:00:00",
+                    "version": 4,
+                    "assignees": ["nik"],
+                },
+            ],
+        }
+        ft._backend_pull_snapshot = lambda **_kwargs: payload
+        first = ft.pull_backend_snapshot_to_local()
+        second = ft.pull_backend_snapshot_to_local()
+
+        self.assertTrue(first.get("changed"))
+        self.assertFalse(second.get("changed"))
 
 
 if __name__ == "__main__":

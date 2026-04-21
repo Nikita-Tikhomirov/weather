@@ -36,6 +36,8 @@ class BackendFamilyContractTests(unittest.TestCase):
         )
         self.assertEqual(payload.get("assignees"), ["nik", "misha"])
         self.assertEqual(payload.get("participants"), ["nik", "misha"])
+        self.assertEqual(payload.get("owner_key"), "family")
+        self.assertEqual(payload.get("is_family"), True)
 
     @unittest.skipIf(shutil.which("php") is None, "php is not installed in test environment")
     def test_participants_payload_is_mapped_to_assignees(self) -> None:
@@ -49,6 +51,8 @@ class BackendFamilyContractTests(unittest.TestCase):
         )
         self.assertEqual(payload.get("assignees"), ["nastya", "arisha"])
         self.assertEqual(payload.get("participants"), ["nastya", "arisha"])
+        self.assertEqual(payload.get("owner_key"), "family")
+        self.assertEqual(payload.get("is_family"), True)
 
 
 if __name__ == "__main__":

@@ -53,11 +53,11 @@ class BackendPushRoutingTests(unittest.TestCase):
         self.assertEqual(set(recipients), {"nik", "nastya", "misha"})
 
     @unittest.skipIf(shutil.which("php") is None, "php is not installed in test environment")
-    def test_family_update_targets_both_adults(self) -> None:
+    def test_family_update_targets_all_profiles(self) -> None:
         recipients = _php_json(
             f"require '{AUTH_PATH}'; echo json_encode(recipients_for_push('nastya', 'family_task', 'upsert', ['assignees' => ['nastya', 'misha']]));"
         )
-        self.assertEqual(set(recipients), {"nastya", "misha"})
+        self.assertEqual(set(recipients), {"nik", "nastya", "misha", "arisha"})
 
     @unittest.skipIf(shutil.which("php") is None, "php is not installed in test environment")
     def test_push_dedup_signature_ignores_volatile_fields(self) -> None:

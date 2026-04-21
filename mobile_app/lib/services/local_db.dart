@@ -1,5 +1,9 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../models/pending_event.dart';
 import '../models/task_item.dart';
@@ -10,6 +14,11 @@ class LocalDb {
   final Database _db;
 
   static Future<LocalDb> open() async {
+    if (!kIsWeb &&
+        (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
     final basePath = await getDatabasesPath();
     final dbPath = p.join(basePath, 'family_todo_mobile.db');
     final db = await openDatabase(
@@ -55,7 +64,11 @@ class LocalDb {
   }
 
   Future<void> upsertTask(TaskItem item) async {
-    await _db.insert('tasks', item.toDbRow(), conflictAlgorithm: ConflictAlgorithm.replace);
+    await _db.insert(
+      'tasks',
+      item.toDbRow(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<void> deleteTask(String id) async {
@@ -66,7 +79,11 @@ class LocalDb {
     await _db.transaction((txn) async {
       await txn.delete('tasks');
       for (final item in items) {
-        await txn.insert('tasks', item.toDbRow(), conflictAlgorithm: ConflictAlgorithm.replace);
+        await txn.insert(
+          'tasks',
+          item.toDbRow(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
       }
     });
   }
@@ -82,7 +99,32 @@ class LocalDb {
         whereArgs: [ownerKey],
       );
       for (final item in items.where((t) => !t.isFamily)) {
-        await txn.insert('tasks', item.toDbRow(), conflictAlgorithm: ConflictAlgorithm.replace);
+        await txn.insert(
+          'tasks',
+          item.toDbRow(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
+  Future<void> mergePersonalTasks({
+    required String ownerKey,
+    required List<TaskItem> items,
+  }) async {
+    final personal = items
+        .where((t) => !t.isFamily && t.ownerKey == ownerKey)
+        .toList();
+    if (personal.isEmpty) {
+      return;
+    }
+    await _db.transaction((txn) async {
+      for (final item in personal) {
+        await txn.insert(
+          'tasks',
+          item.toDbRow(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
       }
     });
   }
@@ -91,7 +133,11 @@ class LocalDb {
     final familyItems = items.where((t) => t.isFamily).toList();
     await _db.transaction((txn) async {
       for (final item in familyItems) {
-        await txn.insert('tasks', item.toDbRow(), conflictAlgorithm: ConflictAlgorithm.replace);
+        await txn.insert(
+          'tasks',
+          item.toDbRow(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
       }
       final rows = await txn.query(
         'tasks',
@@ -108,10 +154,31 @@ class LocalDb {
     });
   }
 
-  Future<List<TaskItem>> readTasks({String? ownerKey, bool includeAll = false}) async {
+  Future<void> mergeFamilyTasks(List<TaskItem> items) async {
+    final familyItems = items.where((t) => t.isFamily).toList();
+    if (familyItems.isEmpty) {
+      return;
+    }
+    await _db.transaction((txn) async {
+      for (final item in familyItems) {
+        await txn.insert(
+          'tasks',
+          item.toDbRow(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
+  Future<List<TaskItem>> readTasks({
+    String? ownerKey,
+    bool includeAll = false,
+  }) async {
     final rows = await _db.query(
       'tasks',
-      where: includeAll || ownerKey == null ? null : '(owner_key = ? OR is_family = 1)',
+      where: includeAll || ownerKey == null
+          ? null
+          : '(owner_key = ? OR is_family = 1)',
       whereArgs: includeAll || ownerKey == null ? null : [ownerKey],
       orderBy: 'updated_at DESC',
     );
@@ -119,11 +186,19 @@ class LocalDb {
   }
 
   Future<void> putPending(PendingEvent event) async {
-    await _db.insert('pending_events', event.toDbRow(), conflictAlgorithm: ConflictAlgorithm.replace);
+    await _db.insert(
+      'pending_events',
+      event.toDbRow(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<List<PendingEvent>> readPending({int limit = 200}) async {
-    final rows = await _db.query('pending_events', orderBy: 'happened_at ASC', limit: limit);
+    final rows = await _db.query(
+      'pending_events',
+      orderBy: 'happened_at ASC',
+      limit: limit,
+    );
     return rows.map(PendingEvent.fromDbRow).toList();
   }
 
@@ -132,11 +207,20 @@ class LocalDb {
       return;
     }
     final placeholders = List.filled(eventIds.length, '?').join(',');
-    await _db.delete('pending_events', where: 'event_id IN ($placeholders)', whereArgs: eventIds);
+    await _db.delete(
+      'pending_events',
+      where: 'event_id IN ($placeholders)',
+      whereArgs: eventIds,
+    );
   }
 
   Future<String> readSince() async {
-    final rows = await _db.query('meta', where: 'k = ?', whereArgs: ['since'], limit: 1);
+    final rows = await _db.query(
+      'meta',
+      where: 'k = ?',
+      whereArgs: ['since'],
+      limit: 1,
+    );
     if (rows.isEmpty) {
       return '1970-01-01T00:00:00';
     }
@@ -144,6 +228,9 @@ class LocalDb {
   }
 
   Future<void> writeSince(String value) async {
-    await _db.insert('meta', {'k': 'since', 'v': value}, conflictAlgorithm: ConflictAlgorithm.replace);
+    await _db.insert('meta', {
+      'k': 'since',
+      'v': value,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 }

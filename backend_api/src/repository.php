@@ -56,6 +56,8 @@ function normalize_family_task(array $item): array
     }
     return [
         'id' => (string)($item['id'] ?? ''),
+        'owner_key' => 'family',
+        'is_family' => true,
         'title' => trim((string)($item['title'] ?? '')),
         'details' => trim((string)($item['details'] ?? '')),
         'due_date' => (string)($item['due_date'] ?? ''),
@@ -285,6 +287,8 @@ function changed_family_tasks_since(PDO $db, string $since): array
         $assignees = json_decode((string)$row['participants_json'], true) ?: [];
         $out[] = [
             'id' => (string)$row['id'],
+            'owner_key' => 'family',
+            'is_family' => true,
             'title' => (string)$row['title'],
             'details' => (string)$row['details'],
             'due_date' => (string)$row['due_date'],

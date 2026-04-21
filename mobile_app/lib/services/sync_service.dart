@@ -24,6 +24,8 @@ class SyncService {
     final payload = task.isFamily
         ? {
             'id': task.id,
+            'owner_key': 'family',
+            'is_family': true,
             'title': task.title,
             'details': task.details,
             'due_date': task.dueDate,
@@ -48,7 +50,11 @@ class SyncService {
     );
   }
 
-  Future<void> enqueueDelete(String id, {required String ownerKey, required bool isFamily}) async {
+  Future<void> enqueueDelete(
+    String id, {
+    required String ownerKey,
+    required bool isFamily,
+  }) async {
     final now = DateTime.now().toIso8601String();
     final entity = isFamily ? 'family_task' : 'task';
     final payload = isFamily
@@ -67,9 +73,42 @@ class SyncService {
   }
 
   Future<void> sync() async {
+    await syncFull();
+  }
+
+  Future<void> syncDelta() async {
     final pending = await db.readPending();
     if (pending.isNotEmpty) {
-      await api.push(actorProfile: actorProfile, events: pending, source: 'mobile');
+      await api.push(
+        actorProfile: actorProfile,
+        events: pending,
+        source: 'mobile',
+      );
+      await db.removePending(pending.map((e) => e.eventId).toList());
+    }
+    final since = await db.readSince();
+    final snapshot = await api.pull(
+      since: since,
+      changesMode: true,
+      cursor: since,
+    );
+    final personal = snapshot.tasks.where((task) => !task.isFamily).toList();
+    final family = snapshot.familyTasks
+        .map((task) => task.copyWith(isFamily: true, ownerKey: 'family'))
+        .toList();
+    await db.mergePersonalTasks(ownerKey: actorProfile, items: personal);
+    await db.mergeFamilyTasks(family);
+    await db.writeSince(snapshot.nextCursor);
+  }
+
+  Future<void> syncFull() async {
+    final pending = await db.readPending();
+    if (pending.isNotEmpty) {
+      await api.push(
+        actorProfile: actorProfile,
+        events: pending,
+        source: 'mobile',
+      );
       await db.removePending(pending.map((e) => e.eventId).toList());
     }
     final snapshot = await api.pull(since: '1970-01-01T00:00:00');
@@ -79,7 +118,7 @@ class SyncService {
         .toList();
     await db.replacePersonalTasks(ownerKey: actorProfile, items: personal);
     await db.reconcileFamilyTasks(family);
-    await db.writeSince(snapshot.serverTime);
+    await db.writeSince(snapshot.nextCursor);
   }
 
   String _eventId(String prefix) {

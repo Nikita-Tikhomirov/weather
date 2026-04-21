@@ -68,13 +68,17 @@ class SyncStabilityTests(unittest.TestCase):
         source = Path("desktop_app.py").read_text(encoding="utf-8")
         self.assertIn("_schedule_sync_poll(initial=True)", source)
         self.assertIn("ft.pull_backend_snapshot_to_local()", source)
-        self.assertIn("self.refresh_all_views()", source)
+        self.assertIn("ft.pull_backend_changes_since_cursor(self._sync_cursor)", source)
+        self.assertIn("self._sync_full_interval_ms = 10 * 60 * 1000", source)
+        self.assertIn("self._refresh_personal_views()", source)
 
     def test_sync_pull_uses_actor_filter_for_mobile(self) -> None:
         source = Path("backend_api/public/index.php").read_text(encoding="utf-8")
         self.assertIn("require_api_key($config);", source)
         self.assertIn("actor_profile", source)
         self.assertIn("changed_tasks_since_for_actor", source)
+        self.assertIn("/sync/changes", source)
+        self.assertIn("next_cursor", source)
 
 
 if __name__ == "__main__":

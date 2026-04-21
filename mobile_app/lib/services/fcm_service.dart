@@ -28,6 +28,9 @@ class FcmService {
   final Future<void> Function() onOpenPush;
 
   Future<void> initialize() async {
+    if (!(Platform.isAndroid || Platform.isIOS)) {
+      return;
+    }
     try {
       await Firebase.initializeApp();
     } catch (_) {}
@@ -69,7 +72,9 @@ class FcmService {
     await api.registerDeviceToken(
       actorProfile: actorProfile,
       token: token,
-      platform: Platform.isAndroid ? 'android' : 'other',
+      platform: Platform.isAndroid
+          ? 'android'
+          : (Platform.isIOS ? 'ios' : 'other'),
       appVersion: '0.1.0',
     );
   }

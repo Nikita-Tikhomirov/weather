@@ -300,7 +300,8 @@ $env:TODO_BACKEND_SOURCE='telegram'
 Что это дает:
 
 - desktop и Telegram-бот записывают изменения в backend;
-- мобильное Flutter-приложение (`mobile_app/`) синхронизируется через `/sync/push` и `/sync/pull`;
+- мобильное и desktop Flutter-приложения (`mobile_app/`) синхронизируются через `/sync/push`, `/sync/pull` и `/sync/changes`;
+- быстрые обновления идут через delta-режим `changes since cursor`, а полный snapshot используется как fallback раз в 10 минут;
 - outbox backend подавляет дубли одинаковых уведомлений (push/telegram) в коротком окне и при retry;
 - desktop агрегирует пачку sync-событий в один toast и подавляет повтор одинаковых событий по cooldown;
 - `telegram_bot.py` в режиме `--bot-only` работает как singleton (один активный процесс);
@@ -326,6 +327,7 @@ $env:TODO_BACKEND_URL='https://familly.nikportfolio.ru/backend_api/public'
 
 - `sync_push.php`
 - `sync_pull.php`
+- `sync_changes.php`
 - `devices_register.php`
 - `devices_unregister.php`
 - `telegram_outbox_retry.php`

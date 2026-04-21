@@ -14,6 +14,10 @@ class _DummyDesktop:
         self._sync_notify_flush_delay_ms = 1
         self.logged_messages: list[str] = []
         self._after_callback = None
+        self.cache_invalidations = 0
+        self.personal_refreshes = 0
+        self.family_refreshes = 0
+        self.notify_calls = 0
 
     def _append_log(self, message: str) -> None:
         self.logged_messages.append(message)
@@ -33,6 +37,21 @@ class _DummyDesktop:
 
     def _flush_sync_notify_events(self):
         return DesktopTodoApp._flush_sync_notify_events(self)
+
+    def get_person(self):
+        return type("Person", (), {"key": "nik"})()
+
+    def _invalidate_cache(self):
+        self.cache_invalidations += 1
+
+    def _refresh_personal_views(self):
+        self.personal_refreshes += 1
+
+    def refresh_family_tasks(self):
+        self.family_refreshes += 1
+
+    def _notify_sync_changes(self, _sync_result):
+        self.notify_calls += 1
 
 
 class DesktopSyncNotifyDedupTests(unittest.TestCase):
@@ -71,6 +90,34 @@ class DesktopSyncNotifyDedupTests(unittest.TestCase):
         self.assertIn("nik: удалена «старое»", message)
         self.assertEqual(self.app._sync_notify_flush_after_id, None)
         self.assertEqual(self.app._pending_sync_notify_events, [])
+
+    def test_sync_refresh_updates_only_current_person_views(self) -> None:
+        DesktopTodoApp._apply_sync_refresh(
+            self.app,
+            {
+                "changed_profiles": ["nik"],
+                "family_changed": False,
+                "events": [],
+            },
+        )
+        self.assertEqual(self.app.cache_invalidations, 1)
+        self.assertEqual(self.app.personal_refreshes, 1)
+        self.assertEqual(self.app.family_refreshes, 0)
+        self.assertEqual(self.app.notify_calls, 1)
+
+    def test_sync_refresh_skips_unrelated_personal_updates(self) -> None:
+        DesktopTodoApp._apply_sync_refresh(
+            self.app,
+            {
+                "changed_profiles": ["misha"],
+                "family_changed": False,
+                "events": [],
+            },
+        )
+        self.assertEqual(self.app.cache_invalidations, 0)
+        self.assertEqual(self.app.personal_refreshes, 0)
+        self.assertEqual(self.app.family_refreshes, 0)
+        self.assertEqual(self.app.notify_calls, 0)
 
 
 if __name__ == "__main__":

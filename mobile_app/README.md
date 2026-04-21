@@ -2,6 +2,22 @@
 
 Android-first Flutter app with offline sync, Telegram bridge, and FCM push.
 
+## Desktop (Windows) build
+
+The same Flutter client is used for desktop migration.
+
+```bash
+flutter config --enable-windows-desktop
+flutter create --platforms=windows .
+flutter pub get
+flutter build windows --release ^
+  --dart-define=API_BASE_URL=https://familly.nikportfolio.ru/backend_api/public ^
+  --dart-define=API_KEY=YOUR_API_KEY
+```
+
+Output executable:
+`build\windows\x64\runner\Release\family_todo_mobile.exe`
+
 ## Install for family (simple)
 
 1. Open the latest release link on phone.
