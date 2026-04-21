@@ -366,17 +366,67 @@ def _backend_pull_snapshot() -> dict | None:
     return None
 
 
-def _stable_items(items: list[dict]) -> list[dict]:
-    normalized = [item for item in items if isinstance(item, dict)]
-    normalized.sort(
+def _canonical_person_task(item: dict) -> dict:
+    return {
+        "id": str(item.get("id") or ""),
+        "owner_key": str(item.get("owner_key") or ""),
+        "is_family": False,
+        "title": str(item.get("title") or item.get("text") or ""),
+        "details": str(item.get("details") or ""),
+        "due_date": str(item.get("due_date") or ""),
+        "time": str(item.get("time") or ""),
+        "workflow_status": str(item.get("workflow_status") or "todo"),
+        "priority": str(item.get("priority") or "medium"),
+        "tags": sorted([str(tag) for tag in item.get("tags", []) if isinstance(tag, (str, int, float))]),
+        "participants": sorted([str(p) for p in item.get("participants", []) if isinstance(p, (str, int, float))]),
+        "duration_minutes": int(item.get("duration_minutes") or 0),
+        "updated_at": str(item.get("updated_at") or ""),
+        "version": int(item.get("version") or 1),
+    }
+
+
+def _canonical_family_task(item: dict) -> dict:
+    due_date = str(item.get("due_date") or "")
+    time_value = str(item.get("time") or "")
+    start_at = str(item.get("start_at") or "")
+    if not start_at and due_date:
+        start_at = f"{due_date}T{time_value or '19:00'}"
+    return {
+        "id": str(item.get("id") or ""),
+        "title": str(item.get("title") or item.get("text") or ""),
+        "text": str(item.get("title") or item.get("text") or ""),
+        "details": str(item.get("details") or ""),
+        "due_date": due_date,
+        "time": time_value,
+        "start_at": start_at,
+        "workflow_status": str(item.get("workflow_status") or "todo"),
+        "participants": sorted([str(p) for p in item.get("participants", []) if isinstance(p, (str, int, float))]),
+        "duration_minutes": int(item.get("duration_minutes") or 0),
+        "updated_at": str(item.get("updated_at") or ""),
+        "version": int(item.get("version") or 1),
+    }
+
+
+def _stable_items(items: list[dict], *, is_family: bool) -> list[dict]:
+    canonical_items: list[dict] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        canonical = _canonical_family_task(item) if is_family else _canonical_person_task(item)
+        if not str(canonical.get("id") or ""):
+            continue
+        canonical_items.append(canonical)
+    canonical_items.sort(
         key=lambda item: (
             str(item.get("owner_key") or ""),
             str(item.get("id") or ""),
             str(item.get("due_date") or ""),
             str(item.get("time") or ""),
+            str(item.get("updated_at") or ""),
+            int(item.get("version") or 1),
         )
     )
-    return normalized
+    return canonical_items
 
 
 def _diff_events(before: list[dict], after: list[dict], *, owner_key: str, is_family: bool) -> list[dict]:
@@ -436,7 +486,7 @@ def pull_backend_snapshot_to_local() -> dict[str, object]:
         return {"ok": False, "reason": "pull_failed"}
 
     raw_tasks = remote.get("tasks")
-    tasks = _stable_items(raw_tasks if isinstance(raw_tasks, list) else [])
+    tasks = _stable_items(raw_tasks if isinstance(raw_tasks, list) else [], is_family=False)
     by_owner: dict[str, list[dict]] = {person.key: [] for person in PEOPLE}
     for item in tasks:
         if not isinstance(item, dict):
@@ -449,9 +499,9 @@ def pull_backend_snapshot_to_local() -> dict[str, object]:
     change_events: list[dict] = []
     for person in PEOPLE:
         target_path = todos_path(person)
-        snapshot = _stable_items(by_owner.get(person.key, []))
+        snapshot = _stable_items(by_owner.get(person.key, []), is_family=False)
         current = read_json(target_path, [])
-        current_items = _stable_items(current if isinstance(current, list) else [])
+        current_items = _stable_items(current if isinstance(current, list) else [], is_family=False)
         if current_items != snapshot:
             write_json(target_path, snapshot)
             changed_profiles.append(person.key)
@@ -465,9 +515,9 @@ def pull_backend_snapshot_to_local() -> dict[str, object]:
             )
 
     raw_family = remote.get("family_tasks")
-    family_items = _stable_items(raw_family if isinstance(raw_family, list) else [])
+    family_items = _stable_items(raw_family if isinstance(raw_family, list) else [], is_family=True)
     current_family = read_json(FAMILY_TASKS_PATH, [])
-    current_family_items = _stable_items(current_family if isinstance(current_family, list) else [])
+    current_family_items = _stable_items(current_family if isinstance(current_family, list) else [], is_family=True)
     family_changed = current_family_items != family_items
     if family_changed:
         write_json(FAMILY_TASKS_PATH, family_items)
