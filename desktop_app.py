@@ -1762,7 +1762,14 @@ class DesktopTodoApp(ctk.CTk):
     def refresh_family_tasks(self) -> None:
         for child in self.family_list.winfo_children():
             child.destroy()
-        items = ft.load_family_tasks(pull_remote=False)
+        current_person_key = self.get_person().key
+        items = []
+        for item in ft.load_family_tasks(pull_remote=False):
+            assignees = item.get("assignees") if isinstance(item.get("assignees"), list) else item.get("participants", [])
+            assignee_keys = [str(value) for value in assignees] if isinstance(assignees, list) else []
+            if current_person_key not in assignee_keys:
+                continue
+            items.append(item)
         now = datetime.now()
         mode = self.family_filter_var.get()
         filtered: list[dict] = []

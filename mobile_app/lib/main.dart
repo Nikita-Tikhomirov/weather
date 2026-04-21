@@ -72,7 +72,10 @@ class _HomePageState extends State<HomePage> {
 
     _db = await LocalDb.open();
     _api = ApiClient(
-      baseUrl: const String.fromEnvironment('API_BASE_URL', defaultValue: 'https://example.com'),
+      baseUrl: const String.fromEnvironment(
+        'API_BASE_URL',
+        defaultValue: 'https://familly.nikportfolio.ru/backend_api/public',
+      ),
       apiKey: const String.fromEnvironment('API_KEY', defaultValue: 'dev-local-key'),
     );
 
@@ -335,7 +338,24 @@ class _HomePageState extends State<HomePage> {
                               }
                               final now = DateTime.now().toIso8601String();
                               final assignees = selectedAssignees.toList()..sort();
+                              if (isFamily && !_isAdult) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Семейные задачи можно создавать только из взрослого профиля (Ник/Настя).',
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return;
+                              }
                               if (isFamily && assignees.isEmpty) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Выберите хотя бы одного ответственного.')),
+                                  );
+                                }
                                 return;
                               }
                               final task = (existing ??
@@ -374,7 +394,7 @@ class _HomePageState extends State<HomePage> {
                               if (mounted) {
                                 Navigator.pop(context);
                               }
-                              await _safeSync();
+                              await _safeSync(showErrors: true);
                             },
                             child: const Text('Сохранить'),
                           ),
@@ -402,7 +422,7 @@ class _HomePageState extends State<HomePage> {
     );
     await _sync!.enqueueUpsert(changed);
     await _refreshLocal();
-    await _safeSync();
+    await _safeSync(showErrors: true);
   }
 
   Future<void> _toggleDone(TaskItem item) async {
@@ -419,13 +439,15 @@ class _HomePageState extends State<HomePage> {
       isFamily: item.isFamily,
     );
     await _refreshLocal();
-    await _safeSync();
+    await _safeSync(showErrors: true);
   }
 
   List<TaskItem> get _dateTasks =>
       _allTasks.where((t) => _isSameDate(t.dueDate, _selectedDate)).toList();
 
-  List<TaskItem> get _familyDateTasks => _dateTasks.where((t) => t.isFamily).toList();
+  List<TaskItem> get _familyDateTasks => _dateTasks
+      .where((t) => t.isFamily && t.assignees.contains(_owner))
+      .toList();
 
   List<TaskItem> get _personalDateTasks => _dateTasks.where((t) => !t.isFamily).toList();
 
