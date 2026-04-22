@@ -1,5 +1,5 @@
 param(
-    [string]$ApiBaseUrl = "https://familly.nikportfolio.ru/backend_api/public",
+    [string]$ApiBaseUrl = "http://31.129.97.211",
     [string]$ApiKey = "dev-local-key"
 )
 
