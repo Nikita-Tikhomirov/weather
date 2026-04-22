@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
@@ -28,9 +28,9 @@ class ApiClient {
   final String apiKey;
 
   Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-    'X-Api-Key': apiKey,
-  };
+        'Content-Type': 'application/json',
+        'X-Api-Key': apiKey,
+      };
 
   Future<http.Response> _postWithFallback({
     required List<String> paths,
@@ -45,13 +45,13 @@ class ApiClient {
           return response;
         }
         lastError = StateError(
-          'Ошибка POST: ${response.statusCode} ${response.body}',
+          'POST failed: ${response.statusCode} ${response.body}',
         );
       } catch (err) {
         lastError = err;
       }
     }
-    throw StateError('Не удалось выполнить POST-запрос: $lastError');
+    throw StateError('Unable to complete POST request: $lastError');
   }
 
   Future<http.Response> _getWithFallback({
@@ -67,13 +67,13 @@ class ApiClient {
           return response;
         }
         lastError = StateError(
-          'Ошибка GET: ${response.statusCode} ${response.body}',
+          'GET failed: ${response.statusCode} ${response.body}',
         );
       } catch (err) {
         lastError = err;
       }
     }
-    throw StateError('Не удалось выполнить GET-запрос: $lastError');
+    throw StateError('Unable to complete GET request: $lastError');
   }
 
   Future<void> push({
@@ -98,7 +98,12 @@ class ApiClient {
       }).toList(),
     };
     await _postWithFallback(
-      paths: const ['/sync_push.php', '/sync/push'],
+      paths: const [
+        '/sync_push.php',
+        '/sync_push.php/',
+        '/sync/push/',
+        '/sync/push',
+      ],
       body: jsonEncode(payload),
     );
   }
@@ -117,8 +122,22 @@ class ApiClient {
       query['actor_profile'] = _actorProfileForPull;
     }
     final paths = changesMode
-        ? const ['/sync_changes.php', '/sync/changes', '/sync_pull.php', '/sync/pull']
-        : const ['/sync_pull.php', '/sync/pull'];
+        ? const [
+            '/sync_changes.php',
+            '/sync_changes.php/',
+            '/sync_pull.php',
+            '/sync_pull.php/',
+            '/sync/changes/',
+            '/sync/changes',
+            '/sync/pull/',
+            '/sync/pull',
+          ]
+        : const [
+            '/sync_pull.php',
+            '/sync_pull.php/',
+            '/sync/pull/',
+            '/sync/pull',
+          ];
     final response = await _getWithFallback(
       paths: paths,
       query: query,
@@ -137,8 +156,8 @@ class ApiClient {
           return TaskItem.fromJson(source);
         })
         .toList();
-    final serverTime = (body['server_time'] ?? DateTime.now().toIso8601String())
-        .toString();
+    final serverTime =
+        (body['server_time'] ?? DateTime.now().toIso8601String()).toString();
     final nextCursor = (body['next_cursor'] ?? serverTime).toString();
     final mode = (body['mode'] ?? '').toString();
     return PullSnapshot(
@@ -171,7 +190,12 @@ class ApiClient {
       if (deviceId != null && deviceId.isNotEmpty) 'device_id': deviceId,
     };
     await _postWithFallback(
-      paths: const ['/devices_register.php', '/devices/register'],
+      paths: const [
+        '/devices_register.php',
+        '/devices_register.php/',
+        '/devices/register/',
+        '/devices/register',
+      ],
       body: jsonEncode(payload),
     );
   }
@@ -182,7 +206,12 @@ class ApiClient {
   }) async {
     final payload = {'actor_profile': actorProfile, 'token': token};
     await _postWithFallback(
-      paths: const ['/devices_unregister.php', '/devices/unregister'],
+      paths: const [
+        '/devices_unregister.php',
+        '/devices_unregister.php/',
+        '/devices/unregister/',
+        '/devices/unregister',
+      ],
       body: jsonEncode(payload),
     );
   }

@@ -367,9 +367,20 @@ def _backend_pull_snapshot(
         query_payload["cursor"] = cursor
         query_payload["mode"] = "changes"
     query = urllib.parse.urlencode(query_payload)
-    paths = [f"/sync_pull.php?{query}", f"/sync/pull?{query}"]
+    paths = [
+        f"/sync_pull.php?{query}",
+        f"/sync/pull?{query}",
+        f"/sync_pull.php/?{query}",
+        f"/sync/pull/?{query}",
+    ]
     if cursor:
-        paths = [f"/sync_changes.php?{query}", f"/sync/changes?{query}", *paths]
+        paths = [
+            f"/sync_changes.php?{query}",
+            f"/sync/changes?{query}",
+            f"/sync_changes.php/?{query}",
+            f"/sync/changes/?{query}",
+            *paths,
+        ]
     for path in paths:
         response = _backend_request("GET", path)
         if isinstance(response, dict):
@@ -774,7 +785,7 @@ def _push_snapshot_event(actor_profile: str, event: dict) -> bool:
         "source": runtime["backend_source"],
         "events": [event],
     }
-    for path in ("/sync_push.php", "/sync/push"):
+    for path in ("/sync_push.php", "/sync_push.php/", "/sync/push/", "/sync/push"):
         if isinstance(_backend_request("POST", path, payload=payload), dict):
             return True
     log_event(

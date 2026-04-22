@@ -1,5 +1,6 @@
 ﻿import json
 import os
+import sys
 import atexit
 import time
 from datetime import datetime, timedelta
@@ -948,22 +949,47 @@ def handle_update(update: dict, state: dict) -> None:
     send_main_menu(chat_id, state, "Используй кнопки меню и текст там, где бот попросит.")
 
 
+
+def _validate_bot_startup() -> tuple[bool, str, str]:
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    if not token:
+        return False, "invalid_token", "TELEGRAM_BOT_TOKEN is missing"
+
+    get_me_url = telegram_api("getMe")
+    try:
+        response = requests.get(get_me_url, timeout=10)
+    except requests.exceptions.Timeout:
+        return False, "telegram_timeout", "Telegram getMe timeout"
+    except requests.exceptions.ConnectionError:
+        return False, "network_unreachable", "Cannot connect to Telegram API"
+    except requests.RequestException as exc:
+        return False, "network_unreachable", f"Telegram API request failed: {exc}"
+
+    if response.status_code == 401:
+        return False, "invalid_token", "Telegram token is invalid (401)"
+    if response.status_code < 200 or response.status_code >= 300:
+        return False, "network_unreachable", f"Telegram getMe returned {response.status_code}"
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return False, "network_unreachable", "Telegram getMe returned non-JSON response"
+
+    if not isinstance(payload, dict) or not bool(payload.get("ok")):
+        return False, "network_unreachable", "Telegram getMe returned non-ok response"
+
+    return True, "", ""
+
 def main() -> None:
     os.environ.setdefault("TODO_BACKEND_SOURCE", "telegram")
     if not acquire_singleton_lock():
-        print("Telegram-бот уже запущен в другом процессе (--bot-only singleton).")
-        return
+        print("BOT_START_ERROR:process_exit_nonzero:Telegram bot is already running")
+        sys.exit(2)
     log_event("telegram_bot_singleton_acquired", pid=os.getpid())
-    token_ready = False
-    try:
-        telegram_api("getMe")
-        token_ready = True
-    except Exception:
-        token_ready = False
-
-    if not token_ready:
-        print("TELEGRAM_BOT_TOKEN не задан или недоступен. Бот не запущен.")
-        return
+    token_ok, error_code, error_message = _validate_bot_startup()
+    if not token_ok:
+        print(f"BOT_START_ERROR:{error_code}:{error_message}")
+        sys.exit(2)
 
     ft.bootstrap_data()
     state = read_state()
@@ -1000,3 +1026,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+
