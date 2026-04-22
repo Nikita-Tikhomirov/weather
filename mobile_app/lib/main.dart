@@ -275,8 +275,7 @@ class _HomePageState extends State<HomePage> {
                               final parts = time.split(':');
                               final initial = TimeOfDay(
                                 hour: int.tryParse(parts.first) ?? 19,
-                                minute:
-                                    int.tryParse(
+                                minute: int.tryParse(
                                       parts.length > 1 ? parts[1] : '0',
                                     ) ??
                                     0,
@@ -297,7 +296,7 @@ class _HomePageState extends State<HomePage> {
                       ],
                     ),
                     DropdownButtonFormField<String>(
-                      value: priority,
+                      initialValue: priority,
                       decoration: const InputDecoration(labelText: 'Приоритет'),
                       items: const [
                         DropdownMenuItem(value: 'low', child: Text('Низкий')),
@@ -311,7 +310,7 @@ class _HomePageState extends State<HomePage> {
                           setModalState(() => priority = value ?? 'medium'),
                     ),
                     DropdownButtonFormField<String>(
-                      value: status,
+                      initialValue: status,
                       decoration: const InputDecoration(labelText: 'Статус'),
                       items: const [
                         DropdownMenuItem(
@@ -401,20 +400,21 @@ class _HomePageState extends State<HomePage> {
                                 durationMinutes:
                                     int.tryParse(durationCtl.text.trim()) ?? 0,
                               );
+                              final messenger =
+                                  ScaffoldMessenger.of(this.context);
                               final error = await store.saveDraft(
                                 draft: draft,
                                 existing: existing,
                               );
                               if (error != null && mounted) {
-                                ScaffoldMessenger.of(
-                                  context,
-                                ).showSnackBar(SnackBar(content: Text(error)));
+                                messenger.showSnackBar(
+                                    SnackBar(content: Text(error)));
                                 return;
                               }
                               if (!mounted) {
                                 return;
                               }
-                              Navigator.pop(context);
+                              Navigator.of(this.context).pop();
                               await _safeSyncDelta(store, showErrors: true);
                             },
                             child: const Text('Сохранить'),
@@ -460,14 +460,14 @@ class _HomePageState extends State<HomePage> {
                             tooltip: 'Откатить последнее действие',
                             onPressed: canUndo
                                 ? () async {
+                                    final messenger =
+                                        ScaffoldMessenger.of(this.context);
                                     final ok = await store.undoLastAction();
                                     if (!mounted) {
                                       return;
                                     }
                                     if (ok) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
+                                      messenger.showSnackBar(
                                         const SnackBar(
                                           content: Text(
                                             'Последнее действие отменено',
@@ -563,8 +563,7 @@ class _HomePageState extends State<HomePage> {
                             }
                             if (page == 1) {
                               return ValueListenableBuilder<
-                                Map<String, List<TaskItem>>
-                              >(
+                                  Map<String, List<TaskItem>>>(
                                 valueListenable: store.personalByStatus,
                                 builder: (context, byStatus, _) {
                                   return ValueListenableBuilder<String>(
@@ -576,13 +575,14 @@ class _HomePageState extends State<HomePage> {
                                           return ValueListenableBuilder<bool>(
                                             valueListenable:
                                                 store.selectionMode,
-                                            builder: (context, selectionMode, ____) {
+                                            builder:
+                                                (context, selectionMode, ____) {
                                               return ValueListenableBuilder<
-                                                Set<String>
-                                              >(
+                                                  Set<String>>(
                                                 valueListenable:
                                                     store.selectedTaskIds,
-                                                builder: (context, selectedIds, _____) {
+                                                builder: (context, selectedIds,
+                                                    _____) {
                                                   return Column(
                                                     children: [
                                                       _TasksToolbar(
@@ -597,48 +597,50 @@ class _HomePageState extends State<HomePage> {
                                                         onPickDate: () async {
                                                           final picked =
                                                               await showDatePicker(
-                                                                context:
-                                                                    context,
-                                                                initialDate:
-                                                                    selectedDate,
-                                                                firstDate:
-                                                                    DateTime(
-                                                                      2024,
-                                                                    ),
-                                                                lastDate:
-                                                                    DateTime(
-                                                                      2035,
-                                                                    ),
-                                                              );
+                                                            context: context,
+                                                            initialDate:
+                                                                selectedDate,
+                                                            firstDate: DateTime(
+                                                              2024,
+                                                            ),
+                                                            lastDate: DateTime(
+                                                              2035,
+                                                            ),
+                                                          );
                                                           if (picked != null) {
                                                             store
                                                                 .setTasksDateFilter(
-                                                                  _dateKey(
-                                                                    picked,
-                                                                  ),
-                                                                );
+                                                              _dateKey(
+                                                                picked,
+                                                              ),
+                                                            );
                                                           }
                                                         },
                                                         onUseToday: () => store
                                                             .setTasksDateFilter(
-                                                              _dateKey(
-                                                                DateTime.now(),
-                                                              ),
-                                                            ),
+                                                          _dateKey(
+                                                            DateTime.now(),
+                                                          ),
+                                                        ),
                                                         onClearDate: store
                                                             .clearTasksDateFilter,
                                                         onToggleSelection: store
                                                             .toggleSelectionMode,
-                                                        onDeleteSelected: () async {
+                                                        onDeleteSelected:
+                                                            () async {
+                                                          final messenger =
+                                                              ScaffoldMessenger
+                                                                  .of(
+                                                            this.context,
+                                                          );
                                                           final count = await store
                                                               .deleteSelectedPersonalTasks();
                                                           if (!mounted ||
                                                               count <= 0) {
                                                             return;
                                                           }
-                                                          ScaffoldMessenger.of(
-                                                            context,
-                                                          ).showSnackBar(
+                                                          messenger
+                                                              .showSnackBar(
                                                             SnackBar(
                                                               content: Text(
                                                                 'Удалено задач: $count',
@@ -660,28 +662,26 @@ class _HomePageState extends State<HomePage> {
                                                               selectedIds,
                                                           onToggleSelect: store
                                                               .toggleTaskSelection,
-                                                          onDrop:
-                                                              (
-                                                                item,
-                                                                status,
-                                                              ) async {
-                                                                await store
-                                                                    .move(
-                                                                      item,
-                                                                      status,
-                                                                    );
-                                                                await _safeSyncDelta(
-                                                                  store,
-                                                                  showErrors:
-                                                                      true,
-                                                                );
-                                                              },
+                                                          onDrop: (
+                                                            item,
+                                                            status,
+                                                          ) async {
+                                                            await store.move(
+                                                              item,
+                                                              status,
+                                                            );
+                                                            await _safeSyncDelta(
+                                                              store,
+                                                              showErrors: true,
+                                                            );
+                                                          },
                                                           onEdit: (task) =>
                                                               _openTaskEditor(
-                                                                store,
-                                                                existing: task,
-                                                              ),
-                                                          onDelete: (task) async {
+                                                            store,
+                                                            existing: task,
+                                                          ),
+                                                          onDelete:
+                                                              (task) async {
                                                             await store.delete(
                                                               task,
                                                             );
@@ -692,16 +692,15 @@ class _HomePageState extends State<HomePage> {
                                                           },
                                                           onDoneToggle:
                                                               (task) async {
-                                                                await store
-                                                                    .toggleDone(
-                                                                      task,
-                                                                    );
-                                                                await _safeSyncDelta(
-                                                                  store,
-                                                                  showErrors:
-                                                                      true,
-                                                                );
-                                                              },
+                                                            await store
+                                                                .toggleDone(
+                                                              task,
+                                                            );
+                                                            await _safeSyncDelta(
+                                                              store,
+                                                              showErrors: true,
+                                                            );
+                                                          },
                                                         ),
                                                       ),
                                                     ],
@@ -887,9 +886,8 @@ class _TasksToolbar extends StatelessWidget {
               child: Text(selectionMode ? 'Выбор: выкл' : 'Выбрать'),
             ),
             FilledButton(
-              onPressed: selectionMode && selectedCount > 0
-                  ? onDeleteSelected
-                  : null,
+              onPressed:
+                  selectionMode && selectedCount > 0 ? onDeleteSelected : null,
               child: Text('Удалить выбранные ($selectedCount)'),
             ),
           ],
@@ -965,9 +963,8 @@ class _DashboardView extends StatelessWidget {
               subtitle: Text(
                 '${task.dueDate} ${task.time} - ${profileLabel(task.ownerKey)} - ${workflowLabel(task.workflowStatus)}',
               ),
-              trailing: task.isFamily
-                  ? const Icon(Icons.family_restroom)
-                  : null,
+              trailing:
+                  task.isFamily ? const Icon(Icons.family_restroom) : null,
             ),
           ),
       ],
@@ -1037,8 +1034,7 @@ class _CalendarView extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
               final date = days[index];
-              final isCurrent =
-                  date.year == selectedDate.year &&
+              final isCurrent = date.year == selectedDate.year &&
                   date.month == selectedDate.month &&
                   date.day == selectedDate.day;
               return ChoiceChip(
@@ -1129,8 +1125,8 @@ class _TasksBoard extends StatelessWidget {
                     Text(
                       '${_titles[status]} (${items.length})',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                            fontWeight: FontWeight.w700,
+                          ),
                     ),
                     const SizedBox(height: 8),
                     for (final item in items)

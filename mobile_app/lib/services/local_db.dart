@@ -2,7 +2,6 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path/path.dart' as p;
-import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../models/pending_event.dart';
@@ -112,9 +111,8 @@ class LocalDb {
     required String ownerKey,
     required List<TaskItem> items,
   }) async {
-    final personal = items
-        .where((t) => !t.isFamily && t.ownerKey == ownerKey)
-        .toList();
+    final personal =
+        items.where((t) => !t.isFamily && t.ownerKey == ownerKey).toList();
     if (personal.isEmpty) {
       return;
     }
@@ -228,9 +226,12 @@ class LocalDb {
   }
 
   Future<void> writeSince(String value) async {
-    await _db.insert('meta', {
-      'k': 'since',
-      'v': value,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await _db.insert(
+        'meta',
+        {
+          'k': 'since',
+          'v': value,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 }
