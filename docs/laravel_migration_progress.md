@@ -55,6 +55,14 @@ Last update: 2026-04-23 (Europe/Moscow)
      - `tests/Feature/SyncApiContractTest.php` (`PASS`, 3 tests / 28 assertions)
    - full file and command snapshot:
      `docs/laravel_phase3_server_checkpoint.md`
+7. Added automated parity harness in repo:
+   - `scripts/compare_backend_parity.py`
+   - output report:
+     - `docs/phase3_parity_report.json`
+     - `docs/laravel_phase3_parity_report.md`
+   - result:
+     - new Laravel backend contract: `PASS`
+     - old backend comparison: `old_unavailable` (DB access denied on old host)
 
 ## Known Constraints
 - IP mode currently uses HTTP (no TLS).
@@ -63,10 +71,11 @@ Last update: 2026-04-23 (Europe/Moscow)
 
 ## Next Step (Resume From Here)
 Implement Phase 3 (API compatibility layer) on server Laravel app:
-1. Add automated contract tests (golden JSON) comparing Laravel responses to expected v1 payload shape.
-2. Port/enable outbox processing behavior (Telegram/Push) behind feature flags, keeping current `disabled` contract safe by default.
-3. Run dual-run read validation against old `backend_api` for `pull/changes` parity on controlled dataset.
-4. Decide Phase 3 done criteria and switch status to complete after parity test report.
+1. Decide cutover policy with current blocker:
+   - restore old backend DB access and run full old-vs-new parity,
+   - or accept `contract-only + smoke` evidence and close Phase 3.
+2. Keep outbox behavior `disabled` for MVP sync-only scope (as agreed), or explicitly enable behind feature flag in a dedicated sub-phase.
+3. Start Phase 4 dual-run/cutover checklist after decision above.
 
 ## Quick Resume Prompt
 If context resets, start with:

@@ -1,0 +1,175 @@
+{
+  "timestamp_epoch": 1776896316,
+  "old_base": "https://familly.nikportfolio.ru/backend_api/public",
+  "new_base": "http://31.129.97.211",
+  "actor_profile": "nik",
+  "old_error": null,
+  "old_suite": {
+    "label": "old",
+    "base_url": "https://familly.nikportfolio.ru/backend_api/public",
+    "passed": false,
+    "cases": {
+      "health": {
+        "ok": false,
+        "status": 500,
+        "path_used": "/health.php",
+        "body_preview": "{\"ok\":false,\"error\":\"SQLSTATE[HY000] [1045] Access denied for user 'stitc994_familly'@'s18.link-host.net' (using password: YES)\"}",
+        "json_keys": [
+          "error",
+          "ok"
+        ],
+        "contract_ok": false,
+        "contract_errors": [
+          "status=500"
+        ]
+      },
+      "pull_snapshot": {
+        "ok": false,
+        "status": 500,
+        "path_used": "/sync_pull.php?since=1970-01-01T00%3A00%3A00&actor_profile=nik",
+        "body_preview": "{\"ok\":false,\"error\":\"SQLSTATE[HY000] [1045] Access denied for user 'stitc994_familly'@'s18.link-host.net' (using password: YES)\"}",
+        "json_keys": [
+          "error",
+          "ok"
+        ],
+        "contract_ok": false,
+        "contract_errors": [
+          "status=500"
+        ]
+      },
+      "push_upsert": {
+        "ok": false,
+        "status": 500,
+        "path_used": "/sync_push.php",
+        "body_preview": "{\"ok\":false,\"error\":\"SQLSTATE[HY000] [1045] Access denied for user 'stitc994_familly'@'s18.link-host.net' (using password: YES)\"}",
+        "json_keys": [
+          "error",
+          "ok"
+        ],
+        "contract_ok": false,
+        "contract_errors": [
+          "status=500"
+        ]
+      },
+      "pull_changes": {
+        "ok": false,
+        "status": 404,
+        "path_used": "/sync_changes.php?cursor=1970-01-01T00%3A00%3A00&actor_profile=nik",
+        "body_preview": "<html>\r\n<head><title>404 Not Found</title></head>\r\n<body>\r\n<center><h1>404 Not Found</h1></center>\r\n<hr><center>nginx/1.26.3</center>\r\n</body>\r\n</html>\r\n",
+        "json_keys": [],
+        "contract_ok": false,
+        "contract_errors": [
+          "status=404"
+        ]
+      },
+      "cleanup_delete": {
+        "ok": false,
+        "status": 500,
+        "path_used": "/sync_push.php",
+        "body_preview": "{\"ok\":false,\"error\":\"SQLSTATE[HY000] [1045] Access denied for user 'stitc994_familly'@'s18.link-host.net' (using password: YES)\"}",
+        "json_keys": [
+          "error",
+          "ok"
+        ],
+        "contract_ok": false,
+        "contract_errors": [
+          "status=500"
+        ]
+      }
+    }
+  },
+  "new_suite": {
+    "label": "new",
+    "base_url": "http://31.129.97.211",
+    "passed": true,
+    "cases": {
+      "health": {
+        "ok": true,
+        "status": 200,
+        "path_used": "/health",
+        "body_preview": "{\"ok\":true,\"time\":\"2026-04-22T22:18:35\"}",
+        "json_keys": [
+          "ok",
+          "time"
+        ],
+        "contract_ok": true,
+        "contract_errors": []
+      },
+      "pull_snapshot": {
+        "ok": true,
+        "status": 200,
+        "path_used": "/sync/pull?since=1970-01-01T00%3A00%3A00&actor_profile=nik",
+        "body_preview": "{\"ok\":true,\"tasks\":[],\"family_tasks\":[],\"server_time\":\"2026-04-22T22:18:35\",\"cursor\":\"1970-01-01T00:00:00\",\"next_cursor\":\"2026-04-22T22:18:35\",\"mode\":\"snapshot\",\"routing_contract\":{\"family_task_recipients\":[\"nik\",\"nastya\",\"misha\",\"arisha\"],\"personal_task_visibility\":\"role_based\"}}",
+        "json_keys": [
+          "cursor",
+          "family_tasks",
+          "mode",
+          "next_cursor",
+          "ok",
+          "routing_contract",
+          "server_time",
+          "tasks"
+        ],
+        "contract_ok": true,
+        "contract_errors": []
+      },
+      "push_upsert": {
+        "ok": true,
+        "status": 200,
+        "path_used": "/sync/push",
+        "body_preview": "{\"ok\":true,\"accepted\":1,\"duplicates\":0,\"telegram\":{\"disabled\":true},\"push\":{\"disabled\":true},\"server_time\":\"2026-04-22T22:18:35\"}",
+        "json_keys": [
+          "accepted",
+          "duplicates",
+          "ok",
+          "push",
+          "server_time",
+          "telegram"
+        ],
+        "contract_ok": true,
+        "contract_errors": []
+      },
+      "pull_changes": {
+        "ok": true,
+        "status": 200,
+        "path_used": "/sync/changes?cursor=1970-01-01T00%3A00%3A00&actor_profile=nik",
+        "body_preview": "{\"ok\":true,\"tasks\":[{\"id\":\"parity-1776896314-new\",\"owner_key\":\"nik\",\"is_family\":false,\"title\":\"Parity new\",\"details\":\"\",\"due_date\":\"2026-04-23\",\"time\":\"12:00\",\"workflow_status\":\"todo\",\"priority\":\"medium\",\"tags\":[],\"participants\":[],\"duration_minutes\":0,\"updated_at\":\"2026-04-23T12:00:00\",\"version\":1}],\"family_tasks\":[],",
+        "json_keys": [
+          "cursor",
+          "family_tasks",
+          "mode",
+          "next_cursor",
+          "ok",
+          "routing_contract",
+          "server_time",
+          "tasks"
+        ],
+        "contract_ok": true,
+        "contract_errors": []
+      },
+      "cleanup_delete": {
+        "ok": true,
+        "status": 200,
+        "path_used": "/sync/push",
+        "body_preview": "{\"ok\":true,\"accepted\":1,\"duplicates\":0,\"telegram\":{\"disabled\":true},\"push\":{\"disabled\":true},\"server_time\":\"2026-04-22T22:18:36\"}",
+        "json_keys": [
+          "accepted",
+          "duplicates",
+          "ok",
+          "push",
+          "server_time",
+          "telegram"
+        ],
+        "contract_ok": true,
+        "contract_errors": []
+      }
+    }
+  },
+  "comparison": {
+    "comparable": false,
+    "status": "old_unavailable",
+    "differences": [
+      "old suite returned no successful cases, likely infra/auth/database outage"
+    ]
+  }
+}
