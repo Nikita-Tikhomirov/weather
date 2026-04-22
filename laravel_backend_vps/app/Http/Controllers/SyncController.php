@@ -1,0 +1,270 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Domain\Sync\Cursor;
+use App\Domain\Sync\Profiles;
+use App\Domain\Sync\SyncRepository;
+use App\Domain\Sync\SyncRules;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use InvalidArgumentException;
+use Throwable;
+
+class SyncController extends Controller
+{
+    public function __construct(private readonly SyncRepository $repo)
+    {
+    }
+
+    public function health(): JsonResponse
+    {
+        return $this->json(200, [
+            'ok' => true,
+            'time' => $this->repo->nowIso(),
+        ]);
+    }
+
+    public function pull(Request $request): JsonResponse
+    {
+        try {
+            $sinceInput = trim((string)$request->query('since', ''));
+            $cursorInput = trim((string)$request->query('cursor', ''));
+            $modeInput = trim((string)$request->query('mode', ''));
+            $path = '/'.$request->path();
+
+            $isChangesMode = str_contains($path, '/sync/changes')
+                || str_contains($path, '/sync_changes.php')
+                || $modeInput === 'changes'
+                || $cursorInput !== '';
+
+            $since = $isChangesMode
+                ? ($cursorInput !== '' ? $cursorInput : ($sinceInput !== '' ? $sinceInput : '1970-01-01T00:00:00'))
+                : ($sinceInput !== '' ? $sinceInput : '1970-01-01T00:00:00');
+
+            $actorRaw = trim((string)$request->query('actor_profile', ''));
+            $actor = $actorRaw !== '' ? SyncRules::ensureActor($actorRaw) : null;
+
+            $tasks = $this->repo->changedTasks($since, $actor, $isChangesMode);
+            $familyTasks = $this->repo->changedFamilyTasks($since, $isChangesMode);
+            $serverTime = $this->repo->nowIso();
+            $cursorFallback = $isChangesMode ? $since : $serverTime;
+            $nextCursor = Cursor::nextSyncCursor($tasks, $familyTasks, $cursorFallback);
+
+            return $this->json(200, [
+                'ok' => true,
+                'tasks' => $tasks,
+                'family_tasks' => $familyTasks,
+                'server_time' => $serverTime,
+                'cursor' => $since,
+                'next_cursor' => $nextCursor,
+                'mode' => $isChangesMode ? 'changes' : 'snapshot',
+                'routing_contract' => [
+                    'family_task_recipients' => Profiles::ALLOWED,
+                    'personal_task_visibility' => 'role_based',
+                ],
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function push(Request $request): JsonResponse
+    {
+        try {
+            $actor = SyncRules::ensureActor((string)$request->input('actor_profile', ''));
+            $source = trim((string)$request->input('source', 'mobile')) ?: 'mobile';
+            $events = $request->input('events', []);
+            if (!is_array($events)) {
+                throw new InvalidArgumentException('events must be array');
+            }
+
+            $accepted = 0;
+            $duplicates = 0;
+
+            foreach ($events as $event) {
+                if (!is_array($event)) {
+                    continue;
+                }
+                $result = $this->applyEvent($event, $actor, $source);
+                if ($result === 'accepted') {
+                    $accepted++;
+                } elseif ($result === 'duplicate') {
+                    $duplicates++;
+                }
+            }
+
+            return $this->json(200, [
+                'ok' => true,
+                'accepted' => $accepted,
+                'duplicates' => $duplicates,
+                'telegram' => ['disabled' => true],
+                'push' => ['disabled' => true],
+                'server_time' => $this->repo->nowIso(),
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function telegramEvents(Request $request): JsonResponse
+    {
+        try {
+            $actor = SyncRules::ensureActor((string)$request->input('actor_profile', ''));
+            $events = $request->input('events', []);
+            if (!is_array($events)) {
+                throw new InvalidArgumentException('events must be array');
+            }
+
+            $accepted = 0;
+            $duplicates = 0;
+
+            foreach ($events as $event) {
+                if (!is_array($event)) {
+                    continue;
+                }
+                $result = $this->applyEvent($event, $actor, 'telegram');
+                if ($result === 'accepted') {
+                    $accepted++;
+                } elseif ($result === 'duplicate') {
+                    $duplicates++;
+                }
+            }
+
+            return $this->json(200, [
+                'ok' => true,
+                'accepted' => $accepted,
+                'duplicates' => $duplicates,
+                'telegram' => ['disabled' => true],
+                'push' => ['disabled' => true],
+                'server_time' => $this->repo->nowIso(),
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function registerDevice(Request $request): JsonResponse
+    {
+        try {
+            $actor = SyncRules::ensureActor((string)$request->input('actor_profile', ''));
+            $token = trim((string)$request->input('token', ''));
+            if ($token === '') {
+                throw new InvalidArgumentException('token is required');
+            }
+
+            $platform = trim((string)$request->input('platform', 'android')) ?: 'android';
+            $appVersion = trim((string)$request->input('app_version', ''));
+            $deviceId = trim((string)$request->input('device_id', ''));
+
+            $this->repo->upsertDeviceToken($token, $actor, $platform, $appVersion, $deviceId !== '' ? $deviceId : null);
+
+            return $this->json(200, ['ok' => true]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function unregisterDevice(Request $request): JsonResponse
+    {
+        try {
+            $actor = SyncRules::ensureActor((string)$request->input('actor_profile', ''));
+            $token = trim((string)$request->input('token', ''));
+            if ($token === '') {
+                throw new InvalidArgumentException('token is required');
+            }
+
+            $this->repo->deactivateDeviceToken($token, $actor);
+            return $this->json(200, ['ok' => true]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function telegramOutboxRetry(): JsonResponse
+    {
+        return $this->json(200, ['ok' => true, 'result' => ['disabled' => true]]);
+    }
+
+    public function pushOutboxRetry(): JsonResponse
+    {
+        return $this->json(200, ['ok' => true, 'result' => ['disabled' => true]]);
+    }
+
+    private function applyEvent(array $event, string $actor, string $source): string
+    {
+        $eventId = trim((string)($event['event_id'] ?? ''));
+        if ($eventId === '') {
+            return 'skip';
+        }
+
+        if ($this->repo->isDuplicateEvent($eventId)) {
+            return 'duplicate';
+        }
+
+        $entity = (string)($event['entity'] ?? 'task');
+        $action = (string)($event['action'] ?? 'upsert');
+        $payload = is_array($event['payload'] ?? null) ? $event['payload'] : [];
+
+        if ($entity === 'task') {
+            if ($action === 'delete') {
+                $taskId = trim((string)($payload['id'] ?? ''));
+                $owner = trim((string)($payload['owner_key'] ?? $actor));
+                if ($taskId !== '') {
+                    $this->repo->deleteTask($taskId, $owner);
+                }
+            } elseif ($action === 'replace_person_tasks') {
+                $owner = trim((string)($payload['owner_key'] ?? $actor));
+                if ($owner !== $actor) {
+                    throw new InvalidArgumentException('replace_person_tasks owner mismatch');
+                }
+                $items = $payload['tasks'] ?? [];
+                if (!is_array($items)) {
+                    throw new InvalidArgumentException('tasks must be array');
+                }
+                $this->repo->replacePersonTasks($owner, $items);
+            } else {
+                $task = $this->repo->normalizeTask($payload);
+                SyncRules::ensureTaskPermissions($actor, $task);
+                $this->repo->upsertTask($task);
+            }
+        } elseif ($entity === 'family_task') {
+            SyncRules::ensureFamilyPermissions($actor);
+            if ($action === 'delete') {
+                $id = trim((string)($payload['id'] ?? ''));
+                if ($id !== '') {
+                    $this->repo->deleteFamilyTask($id);
+                }
+            } elseif ($action === 'replace_family_tasks') {
+                $items = $payload['items'] ?? [];
+                if (!is_array($items)) {
+                    throw new InvalidArgumentException('items must be array');
+                }
+                $this->repo->replaceFamilyTasks($items);
+            } else {
+                $item = $this->repo->normalizeFamilyTask($payload);
+                $this->repo->upsertFamilyTask($item);
+            }
+        } else {
+            throw new InvalidArgumentException('Unsupported entity');
+        }
+
+        $this->repo->registerEvent($eventId, $source);
+        return 'accepted';
+    }
+
+    private function json(int $status, array $payload): JsonResponse
+    {
+        return response()->json($payload, $status, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+}

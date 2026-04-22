@@ -1,0 +1,39 @@
+<?php
+
+use App\Http\Controllers\SyncController;
+use Illuminate\Support\Facades\Route;
+
+Route::get('/health', [SyncController::class, 'health']);
+
+Route::middleware('sync.apikey')->group(function (): void {
+    Route::get('/sync/pull', [SyncController::class, 'pull']);
+    Route::get('/sync/changes', [SyncController::class, 'pull']);
+
+    Route::get('/sync_pull.php', [SyncController::class, 'pull']);
+    Route::get('/sync_changes.php', [SyncController::class, 'pull']);
+
+    Route::post('/sync/push', [SyncController::class, 'push']);
+    Route::post('/sync_push.php', [SyncController::class, 'push']);
+
+    Route::post('/telegram/events', [SyncController::class, 'telegramEvents']);
+    Route::post('/telegram_events.php', [SyncController::class, 'telegramEvents']);
+
+    Route::post('/devices/register', [SyncController::class, 'registerDevice']);
+    Route::post('/devices_register.php', [SyncController::class, 'registerDevice']);
+
+    Route::post('/devices/unregister', [SyncController::class, 'unregisterDevice']);
+    Route::post('/devices_unregister.php', [SyncController::class, 'unregisterDevice']);
+
+    Route::post('/telegram/outbox/retry', [SyncController::class, 'telegramOutboxRetry']);
+    Route::post('/telegram_outbox_retry.php', [SyncController::class, 'telegramOutboxRetry']);
+
+    Route::post('/push/outbox/retry', [SyncController::class, 'pushOutboxRetry']);
+    Route::post('/push_outbox_retry.php', [SyncController::class, 'pushOutboxRetry']);
+});
+
+Route::fallback(function () {
+    return response()->json([
+        'ok' => false,
+        'error' => 'Not found',
+    ], 404, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+});
