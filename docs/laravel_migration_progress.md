@@ -11,7 +11,7 @@ Last update: 2026-04-23 (Europe/Moscow)
 - [x] Phase 0: contract freeze + migration checklist approved
 - [x] Phase 1: VPS prepared, Laravel installed, nginx/php-fpm running on server
 - [x] Phase 2: data layer parity in Laravel (tables + domain rules)
-- [ ] Phase 3: API compatibility layer (`/sync_*` + `/sync/*`)
+- [~] Phase 3: API compatibility layer (`/sync_*` + `/sync/*`) in progress
 - [ ] Phase 4: dual-run verification + client cutover sequence
 
 ## Completed In This Checkpoint
@@ -35,6 +35,26 @@ Last update: 2026-04-23 (Europe/Moscow)
      `php artisan migrate --force` and `php artisan test ...` (9 tests passed)
    - file hashes and exact server snapshot:
      `docs/laravel_phase2_server_checkpoint.md`
+6. Implemented Phase 3 core API compatibility on server Laravel app:
+   - added API middleware alias `sync.apikey` (`X-Api-Key` validation with `dev-local-key` compatibility)
+   - added routes for both route styles:
+     `/sync/*`, `/telegram/*`, `/devices/*`, `/push/outbox/retry`
+     and legacy aliases:
+     `/sync_pull.php`, `/sync_push.php`, `/sync_changes.php`,
+     `/telegram_events.php`, `/telegram_outbox_retry.php`,
+     `/devices_register.php`, `/devices_unregister.php`, `/push_outbox_retry.php`
+   - added controller and repository for contract-compatible sync logic:
+     idempotency by `event_id`, actor permissions, pull modes (`snapshot/changes`), cursor/next_cursor
+   - nginx updated to rewrite legacy `*.php` aliases into Laravel router
+   - smoke validation passed:
+     - `GET /health`
+     - `GET /sync_pull.php` with key
+     - `POST /sync_push.php` upsert/delete
+     - `GET /sync/changes` and `GET /sync_changes.php`
+   - added automated Laravel feature contract tests:
+     - `tests/Feature/SyncApiContractTest.php` (`PASS`, 3 tests / 28 assertions)
+   - full file and command snapshot:
+     `docs/laravel_phase3_server_checkpoint.md`
 
 ## Known Constraints
 - IP mode currently uses HTTP (no TLS).
@@ -43,12 +63,11 @@ Last update: 2026-04-23 (Europe/Moscow)
 
 ## Next Step (Resume From Here)
 Implement Phase 3 (API compatibility layer) on server Laravel app:
-1. Add `/sync/push`, `/sync/pull`, `/sync/changes`, `/telegram/events`, `/devices/register`, `/devices/unregister`, retry endpoints.
-2. Add legacy-compatible routes (`/sync_push.php`, `/sync_pull.php`, `/sync_changes.php`, etc.) that map to same controllers.
-3. Preserve v1 contract:
-   `X-Api-Key`, `actor_profile`, idempotency by `event_id`, response fields `server_time/cursor/next_cursor/mode`.
-4. Add contract tests for JSON shape parity against current `backend_api`.
+1. Add automated contract tests (golden JSON) comparing Laravel responses to expected v1 payload shape.
+2. Port/enable outbox processing behavior (Telegram/Push) behind feature flags, keeping current `disabled` contract safe by default.
+3. Run dual-run read validation against old `backend_api` for `pull/changes` parity on controlled dataset.
+4. Decide Phase 3 done criteria and switch status to complete after parity test report.
 
 ## Quick Resume Prompt
 If context resets, start with:
-"Continue from `docs/laravel_migration_progress.md`, begin Phase 3 API compatibility implementation."
+"Continue from `docs/laravel_migration_progress.md`, continue Phase 3 parity tests and outbox behavior."
