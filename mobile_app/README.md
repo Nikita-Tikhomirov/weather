@@ -44,6 +44,8 @@ Workflow does:
 - builds release APK,
 - publishes APK to GitHub Release.
 
+Last CI trigger: 2026-04-22
+
 ## Local run (for development)
 
 ```bash
