@@ -146,6 +146,15 @@ python .\voice_trigger.py
 Результат:
 - `mobile_app\build\windows\x64\runner\Release\family_todo_mobile.exe`
 
+Сборка Flutter Android APK:
+
+```powershell
+.\mobile_flutter_build.ps1
+```
+
+Результат:
+- `mobile_app\build\app\outputs\flutter-apk\app-release.apk`
+
 ## 5. Как пользоваться (основной сценарий)
 
 1. Запускаете `voice_trigger.py`.
