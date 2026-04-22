@@ -109,8 +109,7 @@ function recipients_for_push(string $actor, string $entity, string $action, arra
 {
     // Notification contract:
     // - family_task CRUD routes to all 4 profiles (nik, nastya, misha, arisha)
-    // - personal task keeps role-based visibility:
-    //   owner for adult profiles; owner + all adults for child profiles
+    // - personal task routes only to task owner profile
     if ($entity === 'family_task') {
         return FAMILY_NOTIFICATION_PROFILES;
     }
@@ -119,11 +118,8 @@ function recipients_for_push(string $actor, string $entity, string $action, arra
     if ($owner === '') {
         $owner = $actor;
     }
-    if (in_array($owner, ADULTS, true)) {
-        return [$owner];
-    }
     if (in_array($owner, ALLOWED_PROFILES, true)) {
-        return array_values(array_unique(array_merge([$owner], ADULTS)));
+        return [$owner];
     }
     return [];
 }

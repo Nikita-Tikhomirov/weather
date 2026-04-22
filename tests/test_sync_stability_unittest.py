@@ -69,6 +69,7 @@ class SyncStabilityTests(unittest.TestCase):
         self.assertIn("_schedule_sync_poll(initial=True)", source)
         self.assertIn("ft.pull_backend_snapshot_to_local()", source)
         self.assertIn("ft.pull_backend_changes_since_cursor(self._sync_cursor)", source)
+        self.assertIn("self._sync_poll_interval_ms = 5000", source)
         self.assertIn("self._sync_full_interval_ms = 10 * 60 * 1000", source)
         self.assertIn("self._refresh_personal_views()", source)
 
@@ -86,6 +87,11 @@ class SyncStabilityTests(unittest.TestCase):
         source = Path("mobile_app/lib/services/api_client.dart").read_text(encoding="utf-8")
         self.assertIn("/sync_changes.php", source)
         self.assertIn("/sync/changes", source)
+
+    def test_backend_sync_push_processes_telegram_and_disables_push(self) -> None:
+        source = Path("backend_api/public/index.php").read_text(encoding="utf-8")
+        self.assertIn("process_outbox($db, $config, 200)", source)
+        self.assertIn("'push' => ['disabled' => true]", source)
 
 
 if __name__ == "__main__":

@@ -680,7 +680,7 @@ class DesktopTodoApp(ctk.CTk):
         self._column_cards: dict[str, list[KanbanCard]] = {}
         self._kanban_render_token = 0
         self._sync_poll_after_id: str | None = None
-        self._sync_poll_interval_ms = 15000
+        self._sync_poll_interval_ms = 5000
         self._sync_full_interval_ms = 10 * 60 * 1000
         self._sync_cursor = "1970-01-01T00:00:00"
         self._last_full_sync_at: datetime | None = None

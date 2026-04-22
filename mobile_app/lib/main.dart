@@ -642,7 +642,7 @@ class _HomePageState extends State<HomePage> {
 
   void _startSyncLoops(TaskStore store) {
     _cancelSyncLoops();
-    _deltaSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+    _deltaSyncTimer = Timer.periodic(const Duration(seconds: 8), (_) async {
       await _safeSyncDelta(store, showErrors: false);
     });
     _fullSyncTimer = Timer.periodic(const Duration(minutes: 10), (_) async {

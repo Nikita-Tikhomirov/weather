@@ -77,7 +77,7 @@ function apply_event(PDO $db, array $event, string $actor, string $source): arra
             'actor_profile' => $actor,
         ], $recipients);
     }
-    enqueue_push_notifications($db, $eventId, $actor, $entity, $action, $payload, $recipients);
+    // Delivery policy: Telegram messages only.
     return ['status' => 'accepted'];
 }
 
@@ -206,12 +206,13 @@ try {
             throw $inner;
         }
 
-        $pushResult = process_push_outbox($db, $config, 200);
+        $telegramResult = process_outbox($db, $config, 200);
         json_response(200, [
             'ok' => true,
             'accepted' => $accepted,
             'duplicates' => $duplicates,
-            'push' => $pushResult,
+            'telegram' => $telegramResult,
+            'push' => ['disabled' => true],
             'server_time' => iso_now(),
         ]);
         exit;
@@ -245,8 +246,14 @@ try {
             $db->rollBack();
             throw $inner;
         }
-        $pushResult = process_push_outbox($db, $config, 200);
-        json_response(200, ['ok' => true, 'accepted' => $accepted, 'duplicates' => $duplicates, 'push' => $pushResult]);
+        $telegramResult = process_outbox($db, $config, 200);
+        json_response(200, [
+            'ok' => true,
+            'accepted' => $accepted,
+            'duplicates' => $duplicates,
+            'telegram' => $telegramResult,
+            'push' => ['disabled' => true],
+        ]);
         exit;
     }
 
@@ -259,8 +266,7 @@ try {
 
     if ($method === 'POST' && $path === '/push/outbox/retry') {
         require_api_key($config);
-        $result = process_push_outbox($db, $config);
-        json_response(200, ['ok' => true, 'result' => $result]);
+        json_response(200, ['ok' => true, 'result' => ['disabled' => true]]);
         exit;
     }
 

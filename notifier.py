@@ -196,10 +196,8 @@ def _identity_chat_map() -> dict[str, list[int]]:
 
 
 def _recipients_for_owner(owner: str) -> set[str]:
-    if owner in ADULTS:
+    if owner in ADULTS or owner in CHILDREN:
         return {owner}
-    if owner in CHILDREN:
-        return {owner, "nik", "nastya"}
     return set()
 
 
