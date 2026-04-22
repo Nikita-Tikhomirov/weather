@@ -1,5 +1,5 @@
 {
-  "timestamp_epoch": 1776896316,
+  "timestamp_epoch": 1776896815,
   "old_base": "https://familly.nikportfolio.ru/backend_api/public",
   "new_base": "http://31.129.97.211",
   "actor_profile": "nik",
@@ -87,7 +87,7 @@
         "ok": true,
         "status": 200,
         "path_used": "/health",
-        "body_preview": "{\"ok\":true,\"time\":\"2026-04-22T22:18:35\"}",
+        "body_preview": "{\"ok\":true,\"time\":\"2026-04-22T22:26:55\"}",
         "json_keys": [
           "ok",
           "time"
@@ -99,7 +99,7 @@
         "ok": true,
         "status": 200,
         "path_used": "/sync/pull?since=1970-01-01T00%3A00%3A00&actor_profile=nik",
-        "body_preview": "{\"ok\":true,\"tasks\":[],\"family_tasks\":[],\"server_time\":\"2026-04-22T22:18:35\",\"cursor\":\"1970-01-01T00:00:00\",\"next_cursor\":\"2026-04-22T22:18:35\",\"mode\":\"snapshot\",\"routing_contract\":{\"family_task_recipients\":[\"nik\",\"nastya\",\"misha\",\"arisha\"],\"personal_task_visibility\":\"role_based\"}}",
+        "body_preview": "{\"ok\":true,\"tasks\":[],\"family_tasks\":[],\"server_time\":\"2026-04-22T22:26:55\",\"cursor\":\"1970-01-01T00:00:00\",\"next_cursor\":\"2026-04-22T22:26:55\",\"mode\":\"snapshot\",\"routing_contract\":{\"family_task_recipients\":[\"nik\",\"nastya\",\"misha\",\"arisha\"],\"personal_task_visibility\":\"role_based\"}}",
         "json_keys": [
           "cursor",
           "family_tasks",
@@ -117,7 +117,7 @@
         "ok": true,
         "status": 200,
         "path_used": "/sync/push",
-        "body_preview": "{\"ok\":true,\"accepted\":1,\"duplicates\":0,\"telegram\":{\"disabled\":true},\"push\":{\"disabled\":true},\"server_time\":\"2026-04-22T22:18:35\"}",
+        "body_preview": "{\"ok\":true,\"accepted\":1,\"duplicates\":0,\"telegram\":{\"disabled\":true},\"push\":{\"disabled\":true},\"server_time\":\"2026-04-22T22:26:55\"}",
         "json_keys": [
           "accepted",
           "duplicates",
@@ -133,7 +133,7 @@
         "ok": true,
         "status": 200,
         "path_used": "/sync/changes?cursor=1970-01-01T00%3A00%3A00&actor_profile=nik",
-        "body_preview": "{\"ok\":true,\"tasks\":[{\"id\":\"parity-1776896314-new\",\"owner_key\":\"nik\",\"is_family\":false,\"title\":\"Parity new\",\"details\":\"\",\"due_date\":\"2026-04-23\",\"time\":\"12:00\",\"workflow_status\":\"todo\",\"priority\":\"medium\",\"tags\":[],\"participants\":[],\"duration_minutes\":0,\"updated_at\":\"2026-04-23T12:00:00\",\"version\":1}],\"family_tasks\":[],",
+        "body_preview": "{\"ok\":true,\"tasks\":[{\"id\":\"parity-1776896814-new\",\"owner_key\":\"nik\",\"is_family\":false,\"title\":\"Parity new\",\"details\":\"\",\"due_date\":\"2026-04-23\",\"time\":\"12:00\",\"workflow_status\":\"todo\",\"priority\":\"medium\",\"tags\":[],\"participants\":[],\"duration_minutes\":0,\"updated_at\":\"2026-04-23T12:00:00\",\"version\":1}],\"family_tasks\":[],",
         "json_keys": [
           "cursor",
           "family_tasks",
@@ -151,7 +151,7 @@
         "ok": true,
         "status": 200,
         "path_used": "/sync/push",
-        "body_preview": "{\"ok\":true,\"accepted\":1,\"duplicates\":0,\"telegram\":{\"disabled\":true},\"push\":{\"disabled\":true},\"server_time\":\"2026-04-22T22:18:36\"}",
+        "body_preview": "{\"ok\":true,\"accepted\":1,\"duplicates\":0,\"telegram\":{\"disabled\":true},\"push\":{\"disabled\":true},\"server_time\":\"2026-04-22T22:26:56\"}",
         "json_keys": [
           "accepted",
           "duplicates",

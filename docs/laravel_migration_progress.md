@@ -6,6 +6,7 @@ Last update: 2026-04-23 (Europe/Moscow)
 - Deployment mode: IP-only (no domain)
 - Backend target: `http://31.129.97.211`
 - Strategy: phased migration, dual-run ready path
+- Runtime DB: MySQL on VPS (`DB_CONNECTION=mysql`)
 
 ## Phase Status
 - [x] Phase 0: contract freeze + migration checklist approved
@@ -63,6 +64,12 @@ Last update: 2026-04-23 (Europe/Moscow)
    - result:
      - new Laravel backend contract: `PASS`
      - old backend comparison: `old_unavailable` (DB access denied on old host)
+8. Switched Laravel runtime DB from SQLite to MySQL on VPS:
+   - installed `mariadb-server` + `php8.3-mysql`
+   - created MySQL database/user for app runtime
+   - updated Laravel `.env` on server to `DB_CONNECTION=mysql`
+   - ran `php artisan migrate --force` on MySQL (all migrations `Ran`)
+   - smoke verified after switch (`/health`, `/sync_push.php`, `/sync_changes.php`)
 
 ## Known Constraints
 - IP mode currently uses HTTP (no TLS).

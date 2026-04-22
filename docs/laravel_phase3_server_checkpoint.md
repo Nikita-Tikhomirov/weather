@@ -81,5 +81,22 @@ php artisan test tests/Feature/SyncApiContractTest.php --debug
   - enable full processing under feature flags.
 - Produce parity report vs old `backend_api` on controlled dataset.
 
+## Runtime DB Switch (Post-Phase-3 Hardening)
+- Installed on server:
+  - `mariadb-server`
+  - `php8.3-mysql`
+- Laravel `.env` switched to:
+  - `DB_CONNECTION=mysql`
+  - `DB_HOST=127.0.0.1`
+  - `DB_PORT=3306`
+  - dedicated app DB/user created on VPS
+- Re-applied migrations on MySQL:
+  - `php artisan migrate --force`
+  - migration status shows all migrations `Ran`.
+- Post-switch smoke:
+  - `GET /health` -> 200
+  - `POST /sync_push.php` -> accepted event
+  - `GET /sync_changes.php` -> returns pushed task + valid cursor contract
+
 ## Resume Marker
 Continue from `docs/laravel_migration_progress.md` and execute **Phase 3 parity tests/outbox decision**.
