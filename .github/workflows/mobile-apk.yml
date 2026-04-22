@@ -70,7 +70,7 @@ jobs:
 
       - name: Build release APK
         env:
-          API_BASE_URL: https://familly.nikportfolio.ru/backend_api/public
+          API_BASE_URL: http://31.129.97.211
           API_KEY: ${{ secrets.TODO_BACKEND_API_KEY }}
         run: |
           cd /tmp/family_todo_mobile
