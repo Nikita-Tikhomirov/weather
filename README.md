@@ -305,6 +305,19 @@ $env:TODO_BACKEND_API_KEY='YOUR_API_KEY'
 }
 ```
 
+Текущий режим миграции (без домена, по IP):
+
+```json
+{
+  "backend_url": "http://31.129.97.211",
+  "backend_api_key": "YOUR_API_KEY",
+  "backend_source": "desktop"
+}
+```
+
+Для Android в IP-режиме включен cleartext HTTP (`android:usesCleartextTraffic="true"` в `AndroidManifest.xml`).
+Прогресс по фазам Laravel-миграции фиксируется в `docs/laravel_migration_progress.md`.
+
 Для процесса Telegram-бота дополнительно:
 
 ```powershell

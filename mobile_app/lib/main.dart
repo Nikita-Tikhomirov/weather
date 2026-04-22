@@ -108,7 +108,7 @@ class _HomePageState extends State<HomePage> {
     final api = ApiClient(
       baseUrl: const String.fromEnvironment(
         'API_BASE_URL',
-        defaultValue: 'https://familly.nikportfolio.ru/backend_api/public',
+        defaultValue: 'http://31.129.97.211',
       ),
       apiKey: const String.fromEnvironment(
         'API_KEY',

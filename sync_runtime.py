@@ -8,7 +8,7 @@ SYNC_CONFIG_PATH = BASE_DIR / "sync_runtime.json"
 SYNC_CONFIG_LOCAL_PATH = BASE_DIR / "sync_runtime.local.json"
 
 DEFAULTS = {
-    "backend_url": "https://familly.nikportfolio.ru/backend_api/public",
+    "backend_url": "http://31.129.97.211",
     "backend_api_key": "dev-local-key",
     "backend_source": "desktop",
 }
