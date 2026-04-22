@@ -88,9 +88,9 @@ class SyncStabilityTests(unittest.TestCase):
         self.assertIn("/sync_changes.php", source)
         self.assertIn("/sync/changes", source)
 
-    def test_backend_sync_push_disables_server_delivery(self) -> None:
+    def test_backend_sync_push_processes_telegram_and_disables_push(self) -> None:
         source = Path("backend_api/public/index.php").read_text(encoding="utf-8")
-        self.assertIn("'telegram' => ['disabled' => true, 'message' => 'server delivery disabled']", source)
+        self.assertIn("process_outbox($db, $config, 200)", source)
         self.assertIn("'push' => ['disabled' => true]", source)
 
 
