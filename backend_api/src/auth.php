@@ -5,6 +5,7 @@ declare(strict_types=1);
 const ADULTS = ['nik', 'nastya'];
 const ALLOWED_PROFILES = ['nik', 'nastya', 'misha', 'arisha'];
 const ALLOWED_WORKFLOW = ['todo', 'in_progress', 'in_review', 'done'];
+const FAMILY_NOTIFICATION_PROFILES = ALLOWED_PROFILES;
 
 function require_api_key(array $config): void
 {
@@ -106,8 +107,12 @@ function recipient_adults_except_actor(string $actor): array
 
 function recipients_for_push(string $actor, string $entity, string $action, array $payload): array
 {
+    // Notification contract:
+    // - family_task CRUD routes to all 4 profiles (nik, nastya, misha, arisha)
+    // - personal task keeps role-based visibility:
+    //   owner for adult profiles; owner + all adults for child profiles
     if ($entity === 'family_task') {
-        return ALLOWED_PROFILES;
+        return FAMILY_NOTIFICATION_PROFILES;
     }
 
     $owner = trim((string)($payload['owner_key'] ?? $actor));

@@ -117,14 +117,19 @@ try {
         $isChangesMode = $path === '/sync/changes' || $modeInput === 'changes' || $cursorInput !== '';
         $since = $isChangesMode ? ($cursorInput !== '' ? $cursorInput : ($sinceInput !== '' ? $sinceInput : '1970-01-01T00:00:00')) : ($sinceInput !== '' ? $sinceInput : '1970-01-01T00:00:00');
         $actorRaw = trim((string)($_GET['actor_profile'] ?? ''));
-        $tasks = changed_tasks_since($db, $since);
+        $tasks = $isChangesMode ? changed_tasks_after_cursor($db, $since) : changed_tasks_since($db, $since);
         if ($actorRaw !== '') {
             $actor = ensure_actor($actorRaw);
-            $tasks = changed_tasks_since_for_actor($db, $since, $actor);
+            $tasks = $isChangesMode
+                ? changed_tasks_after_cursor_for_actor($db, $since, $actor)
+                : changed_tasks_since_for_actor($db, $since, $actor);
         }
-        $familyTasks = changed_family_tasks_since($db, $since);
+        $familyTasks = $isChangesMode
+            ? changed_family_tasks_after_cursor($db, $since)
+            : changed_family_tasks_since($db, $since);
         $serverTime = iso_now();
-        $nextCursor = next_sync_cursor($tasks, $familyTasks, $serverTime);
+        $cursorFallback = $isChangesMode ? $since : $serverTime;
+        $nextCursor = next_sync_cursor($tasks, $familyTasks, $cursorFallback);
         json_response(200, [
             'ok' => true,
             'tasks' => $tasks,
@@ -133,6 +138,10 @@ try {
             'cursor' => $since,
             'next_cursor' => $nextCursor,
             'mode' => $isChangesMode ? 'changes' : 'snapshot',
+            'routing_contract' => [
+                'family_task_recipients' => FAMILY_NOTIFICATION_PROFILES,
+                'personal_task_visibility' => 'role_based',
+            ],
         ]);
         exit;
     }

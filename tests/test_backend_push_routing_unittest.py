@@ -53,6 +53,13 @@ class BackendPushRoutingTests(unittest.TestCase):
         self.assertEqual(set(recipients), {"nik", "nastya", "misha"})
 
     @unittest.skipIf(shutil.which("php") is None, "php is not installed in test environment")
+    def test_personal_contract_for_child_owner_is_role_based(self) -> None:
+        recipients = _php_json(
+            f"require '{AUTH_PATH}'; echo json_encode(recipients_for_push('misha', 'task', 'upsert', ['owner_key' => 'misha', 'is_family' => false]));"
+        )
+        self.assertEqual(set(recipients), {"nik", "nastya", "misha"})
+
+    @unittest.skipIf(shutil.which("php") is None, "php is not installed in test environment")
     def test_family_update_targets_all_profiles(self) -> None:
         recipients = _php_json(
             f"require '{AUTH_PATH}'; echo json_encode(recipients_for_push('nastya', 'family_task', 'upsert', ['assignees' => ['nastya', 'misha']]));"

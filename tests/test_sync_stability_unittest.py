@@ -76,9 +76,16 @@ class SyncStabilityTests(unittest.TestCase):
         source = Path("backend_api/public/index.php").read_text(encoding="utf-8")
         self.assertIn("require_api_key($config);", source)
         self.assertIn("actor_profile", source)
-        self.assertIn("changed_tasks_since_for_actor", source)
+        self.assertIn("changed_tasks_after_cursor_for_actor", source)
+        self.assertIn("changed_family_tasks_after_cursor", source)
         self.assertIn("/sync/changes", source)
         self.assertIn("next_cursor", source)
+        self.assertIn("routing_contract", source)
+
+    def test_mobile_api_prefers_changes_endpoint_for_delta_mode(self) -> None:
+        source = Path("mobile_app/lib/services/api_client.dart").read_text(encoding="utf-8")
+        self.assertIn("/sync_changes.php", source)
+        self.assertIn("/sync/changes", source)
 
 
 if __name__ == "__main__":

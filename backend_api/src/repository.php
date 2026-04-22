@@ -242,6 +242,36 @@ function changed_tasks_since(PDO $db, string $since): array
     return $out;
 }
 
+function changed_tasks_after_cursor(PDO $db, string $cursor): array
+{
+    $stmt = $db->prepare('SELECT * FROM tasks WHERE updated_at > :cursor ORDER BY updated_at, id');
+    $stmt->execute(['cursor' => $cursor]);
+    $rows = $stmt->fetchAll();
+    $out = [];
+    foreach ($rows as $row) {
+        $owner = (string)$row['owner_key'];
+        $isFamily = (bool)$row['is_family'];
+        $storedId = (string)$row['id'];
+        $out[] = [
+            'id' => task_external_id($owner, $storedId, $isFamily),
+            'owner_key' => $owner,
+            'is_family' => $isFamily,
+            'title' => (string)$row['title'],
+            'details' => (string)$row['details'],
+            'due_date' => (string)$row['due_date'],
+            'time' => (string)$row['time_value'],
+            'workflow_status' => (string)$row['workflow_status'],
+            'priority' => (string)$row['priority'],
+            'tags' => json_decode((string)$row['tags_json'], true) ?: [],
+            'participants' => json_decode((string)$row['participants_json'], true) ?: [],
+            'duration_minutes' => (int)$row['duration_minutes'],
+            'updated_at' => (string)$row['updated_at'],
+            'version' => (int)$row['version'],
+        ];
+    }
+    return $out;
+}
+
 function changed_tasks_since_for_actor(PDO $db, string $since, string $actor): array
 {
     $stmt = $db->prepare(
@@ -277,10 +307,72 @@ function changed_tasks_since_for_actor(PDO $db, string $since, string $actor): a
     return $out;
 }
 
+function changed_tasks_after_cursor_for_actor(PDO $db, string $cursor, string $actor): array
+{
+    $stmt = $db->prepare(
+        'SELECT * FROM tasks WHERE updated_at > :cursor AND is_family = 0 AND owner_key = :owner_key ORDER BY updated_at, id'
+    );
+    $stmt->execute([
+        'cursor' => $cursor,
+        'owner_key' => $actor,
+    ]);
+    $rows = $stmt->fetchAll();
+    $out = [];
+    foreach ($rows as $row) {
+        $owner = (string)$row['owner_key'];
+        $isFamily = (bool)$row['is_family'];
+        $storedId = (string)$row['id'];
+        $out[] = [
+            'id' => task_external_id($owner, $storedId, $isFamily),
+            'owner_key' => $owner,
+            'is_family' => $isFamily,
+            'title' => (string)$row['title'],
+            'details' => (string)$row['details'],
+            'due_date' => (string)$row['due_date'],
+            'time' => (string)$row['time_value'],
+            'workflow_status' => (string)$row['workflow_status'],
+            'priority' => (string)$row['priority'],
+            'tags' => json_decode((string)$row['tags_json'], true) ?: [],
+            'participants' => json_decode((string)$row['participants_json'], true) ?: [],
+            'duration_minutes' => (int)$row['duration_minutes'],
+            'updated_at' => (string)$row['updated_at'],
+            'version' => (int)$row['version'],
+        ];
+    }
+    return $out;
+}
+
 function changed_family_tasks_since(PDO $db, string $since): array
 {
     $stmt = $db->prepare('SELECT * FROM family_tasks WHERE updated_at >= :since ORDER BY updated_at, id');
     $stmt->execute(['since' => $since]);
+    $rows = $stmt->fetchAll();
+    $out = [];
+    foreach ($rows as $row) {
+        $assignees = json_decode((string)$row['participants_json'], true) ?: [];
+        $out[] = [
+            'id' => (string)$row['id'],
+            'owner_key' => 'family',
+            'is_family' => true,
+            'title' => (string)$row['title'],
+            'details' => (string)$row['details'],
+            'due_date' => (string)$row['due_date'],
+            'time' => (string)$row['time_value'],
+            'workflow_status' => (string)$row['workflow_status'],
+            'assignees' => $assignees,
+            'participants' => $assignees,
+            'duration_minutes' => (int)$row['duration_minutes'],
+            'updated_at' => (string)$row['updated_at'],
+            'version' => (int)$row['version'],
+        ];
+    }
+    return $out;
+}
+
+function changed_family_tasks_after_cursor(PDO $db, string $cursor): array
+{
+    $stmt = $db->prepare('SELECT * FROM family_tasks WHERE updated_at > :cursor ORDER BY updated_at, id');
+    $stmt->execute(['cursor' => $cursor]);
     $rows = $stmt->fetchAll();
     $out = [];
     foreach ($rows as $row) {

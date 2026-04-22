@@ -116,8 +116,11 @@ class ApiClient {
     if (_actorProfileForPull.isNotEmpty) {
       query['actor_profile'] = _actorProfileForPull;
     }
+    final paths = changesMode
+        ? const ['/sync_changes.php', '/sync/changes', '/sync_pull.php', '/sync/pull']
+        : const ['/sync_pull.php', '/sync/pull'];
     final response = await _getWithFallback(
-      paths: const ['/sync_pull.php', '/sync/pull'],
+      paths: paths,
       query: query,
     );
     final body = jsonDecode(response.body) as Map<String, dynamic>;
