@@ -4,6 +4,7 @@ import '../domain/task_domain_service.dart';
 import '../domain/task_draft.dart';
 import '../models/task_item.dart';
 import '../repositories/task_repository.dart';
+import '../services/desktop_process_host_service.dart';
 
 class DashboardVm {
   const DashboardVm({
@@ -99,15 +100,43 @@ class TaskStore {
   );
   final ValueNotifier<Map<String, List<TaskItem>>> personalByStatus =
       ValueNotifier<Map<String, List<TaskItem>>>(const {
-        'todo': <TaskItem>[],
-        'in_progress': <TaskItem>[],
-        'in_review': <TaskItem>[],
-        'done': <TaskItem>[],
-      });
+    'todo': <TaskItem>[],
+    'in_progress': <TaskItem>[],
+    'in_review': <TaskItem>[],
+    'done': <TaskItem>[],
+  });
   final ValueNotifier<List<TaskItem>> tasksForSelectedDate =
       ValueNotifier<List<TaskItem>>(const <TaskItem>[]);
   final ValueNotifier<List<TaskItem>> familyTasksView =
       ValueNotifier<List<TaskItem>>(const <TaskItem>[]);
+  final ValueNotifier<List<TaskItem>> allTasksView =
+      ValueNotifier<List<TaskItem>>(
+    const <TaskItem>[],
+  );
+  final ValueNotifier<String> themeMode = ValueNotifier<String>('light');
+  final ValueNotifier<String> themeScheme = ValueNotifier<String>('Ocean');
+  final ValueNotifier<List<String>> availableSchemes =
+      ValueNotifier<List<String>>(const ['Ocean', 'Slate', 'Forest']);
+  final ValueNotifier<Map<String, String>> desktopThemeTokens =
+      ValueNotifier<Map<String, String>>(const <String, String>{});
+  final ValueNotifier<DesktopHostState> voiceHostState =
+      ValueNotifier<DesktopHostState>(
+    const DesktopHostState(
+      status: DesktopHostStatus.stopped,
+      lastMessage: 'voice stopped',
+    ),
+  );
+  final ValueNotifier<DesktopHostState> botHostState =
+      ValueNotifier<DesktopHostState>(
+    const DesktopHostState(
+      status: DesktopHostStatus.stopped,
+      lastMessage: 'bot stopped',
+    ),
+  );
+  final ValueNotifier<List<String>> desktopLogEntries =
+      ValueNotifier<List<String>>(
+    const <String>[],
+  );
 
   bool get isAdult => TaskDomainService.adults.contains(owner.value);
 
@@ -261,6 +290,20 @@ class TaskStore {
     await refreshLocal();
   }
 
+  Future<void> moveToDate(TaskItem item, String nextDate) async {
+    if (item.dueDate == nextDate) {
+      return;
+    }
+    final changed = item.copyWith(
+      dueDate: nextDate,
+      updatedAt: DateTime.now().toIso8601String(),
+      version: item.version + 1,
+    );
+    await repository.upsert(changed);
+    _rememberUndo(_UndoRestoreTask(item));
+    await refreshLocal();
+  }
+
   Future<void> toggleDone(TaskItem item) async {
     await move(item, item.workflowStatus == 'done' ? 'todo' : 'done');
   }
@@ -328,18 +371,47 @@ class TaskStore {
   }
 
   void _recomputeAllSlices() {
+    allTasksView.value = List<TaskItem>.from(_allTasks);
     _recomputeDashboardOnly();
     _recomputeKanbanOnly();
     _recomputeDateSlicesOnly();
     _recomputeFamilyOnly();
   }
 
+  void setDesktopTheme({
+    required String mode,
+    required String scheme,
+    required List<String> schemes,
+    required Map<String, String> tokens,
+  }) {
+    themeMode.value = mode;
+    themeScheme.value = scheme;
+    availableSchemes.value = List<String>.from(schemes);
+    desktopThemeTokens.value = Map<String, String>.from(tokens);
+  }
+
+  void setVoiceHostState(DesktopHostState state) {
+    voiceHostState.value = state;
+  }
+
+  void setBotHostState(DesktopHostState state) {
+    botHostState.value = state;
+  }
+
+  void appendDesktopLog(String entry) {
+    final next = List<String>.from(desktopLogEntries.value);
+    next.add(entry);
+    if (next.length > 120) {
+      next.removeRange(0, next.length - 120);
+    }
+    desktopLogEntries.value = next;
+  }
+
   void _recomputeDashboardOnly() {
     final dateKey = _dateKey(selectedDate.value);
     final today = _allTasks.where((task) => task.dueDate == dateKey).toList();
-    final doneToday = today
-        .where((task) => task.workflowStatus == 'done')
-        .length;
+    final doneToday =
+        today.where((task) => task.workflowStatus == 'done').length;
     final familyToday = today.where((task) => task.isFamily).length;
     final overdue = _allTasks
         .where(
@@ -371,15 +443,14 @@ class TaskStore {
     final personalTasks = _allTasks
         .where((task) => !task.isFamily && task.dueDate == filterDate)
         .where((task) {
-          if (query.isEmpty) {
-            return true;
-          }
-          final haystack =
-              '${task.title} ${task.details} ${task.dueDate} ${task.time}'
-                  .toLowerCase();
-          return haystack.contains(query);
-        })
-        .toList();
+      if (query.isEmpty) {
+        return true;
+      }
+      final haystack =
+          '${task.title} ${task.details} ${task.dueDate} ${task.time}'
+              .toLowerCase();
+      return haystack.contains(query);
+    }).toList();
 
     final visibleIds = personalTasks.map((task) => task.id).toSet();
     final trimmed = selectedTaskIds.value.where(visibleIds.contains).toSet();
@@ -388,42 +459,38 @@ class TaskStore {
     }
 
     personalByStatus.value = <String, List<TaskItem>>{
-      'todo': personalTasks
-          .where((task) => task.workflowStatus == 'todo')
-          .toList(),
+      'todo':
+          personalTasks.where((task) => task.workflowStatus == 'todo').toList(),
       'in_progress': personalTasks
           .where((task) => task.workflowStatus == 'in_progress')
           .toList(),
       'in_review': personalTasks
           .where((task) => task.workflowStatus == 'in_review')
           .toList(),
-      'done': personalTasks
-          .where((task) => task.workflowStatus == 'done')
-          .toList(),
+      'done':
+          personalTasks.where((task) => task.workflowStatus == 'done').toList(),
     };
   }
 
   void _recomputeDateSlicesOnly() {
     final dateKey = _dateKey(selectedDate.value);
-    tasksForSelectedDate.value = _allTasks
-        .where((task) => task.dueDate == dateKey)
-        .toList();
+    tasksForSelectedDate.value =
+        _allTasks.where((task) => task.dueDate == dateKey).toList();
     _recomputeDashboardOnly();
   }
 
   void _recomputeFamilyOnly() {
     final mode = familyFilter.value;
     final todayKey = _dateKey(DateTime.now());
-    final source =
-        _allTasks
-            .where(
-              (task) => task.isFamily && task.assignees.contains(owner.value),
-            )
-            .toList()
-          ..sort(
-            (a, b) =>
-                ('${a.dueDate} ${a.time}').compareTo('${b.dueDate} ${b.time}'),
-          );
+    final source = _allTasks
+        .where(
+          (task) => task.isFamily && task.assignees.contains(owner.value),
+        )
+        .toList()
+      ..sort(
+        (a, b) =>
+            ('${a.dueDate} ${a.time}').compareTo('${b.dueDate} ${b.time}'),
+      );
     List<TaskItem> filtered;
     if (mode == 'done') {
       filtered = source.where((task) => task.workflowStatus == 'done').toList();
@@ -470,5 +537,13 @@ class TaskStore {
     personalByStatus.dispose();
     tasksForSelectedDate.dispose();
     familyTasksView.dispose();
+    allTasksView.dispose();
+    themeMode.dispose();
+    themeScheme.dispose();
+    availableSchemes.dispose();
+    desktopThemeTokens.dispose();
+    voiceHostState.dispose();
+    botHostState.dispose();
+    desktopLogEntries.dispose();
   }
 }

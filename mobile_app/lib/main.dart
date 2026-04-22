@@ -1,11 +1,15 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'domain/task_draft.dart';
 import 'domain/task_domain_service.dart';
 import 'models/task_item.dart';
+import 'services/desktop_process_host_service.dart';
+import 'services/desktop_theme_service.dart';
 import 'repositories/task_repository.dart';
 import 'services/api_client.dart';
 import 'services/fcm_service.dart';
@@ -29,6 +33,22 @@ const kWorkflowLabels = {
 
 String profileLabel(String key) => kProfileLabels[key] ?? key;
 String workflowLabel(String key) => kWorkflowLabels[key] ?? key;
+
+const _monthNamesRu = [
+  'Январь',
+  'Февраль',
+  'Март',
+  'Апрель',
+  'Май',
+  'Июнь',
+  'Июль',
+  'Август',
+  'Сентябрь',
+  'Октябрь',
+  'Ноябрь',
+  'Декабрь',
+];
+const _weekDayNamesRu = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 void main() {
   runApp(const FamilyTodoApp());
@@ -64,8 +84,15 @@ class _HomePageState extends State<HomePage> {
 
   TaskStore? _store;
   FcmService? _fcm;
+  DesktopThemeService? _desktopThemeService;
+  DesktopProcessHostService? _desktopProcessHostService;
   Timer? _deltaSyncTimer;
   Timer? _fullSyncTimer;
+  bool _desktopLogExpanded = false;
+  DateTime _desktopMonth = DateTime(DateTime.now().year, DateTime.now().month);
+
+  bool get _isDesktopWindows =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
   @override
   void initState() {
@@ -93,6 +120,9 @@ class _HomePageState extends State<HomePage> {
       domainService: TaskDomainService(),
     );
     await store.initialize(initialOwner: owner);
+    if (_isDesktopWindows) {
+      await _initDesktopServices(store, owner);
+    }
     await _safeSyncFull(store, showErrors: false);
     _bindFcm(api: api, owner: owner);
     _startSyncLoops(store);
@@ -101,6 +131,490 @@ class _HomePageState extends State<HomePage> {
       return;
     }
     setState(() => _store = store);
+  }
+
+  Future<void> _initDesktopServices(TaskStore store, String owner) async {
+    final themeService = DesktopThemeService();
+    await themeService.initialize(initialProfile: owner);
+    store.setDesktopTheme(
+      mode: themeService.state.value.mode,
+      scheme: themeService.state.value.scheme,
+      schemes: themeService.state.value.availableSchemes,
+      tokens: themeService.state.value.tokens,
+    );
+    themeService.state.addListener(() {
+      final state = themeService.state.value;
+      store.setDesktopTheme(
+        mode: state.mode,
+        scheme: state.scheme,
+        schemes: state.availableSchemes,
+        tokens: state.tokens,
+      );
+    });
+    _desktopThemeService = themeService;
+
+    _desktopProcessHostService = DesktopProcessHostService(
+      workingDirectory: Directory.current.path,
+      onVoiceState: store.setVoiceHostState,
+      onBotState: store.setBotHostState,
+      onLog: (message, {isError = false}) {
+        final stamp = DateTime.now().toIso8601String().substring(11, 19);
+        final level = isError ? 'ERR' : 'INFO';
+        store.appendDesktopLog('[$stamp][$level] $message');
+      },
+    );
+  }
+
+  Widget _buildDesktopShell({
+    required TaskStore store,
+    required bool loading,
+    required String owner,
+    required DateTime selectedDate,
+    required String selectedDateKey,
+  }) {
+    return ValueListenableBuilder<Map<String, String>>(
+      valueListenable: store.desktopThemeTokens,
+      builder: (context, tokens, _) {
+        final bgApp = colorFromToken(tokens, 'bg_app', const Color(0xFFF1F5F9));
+        final bgPanel =
+            colorFromToken(tokens, 'bg_panel', const Color(0xFFFFFFFF));
+        final textPrimary =
+            colorFromToken(tokens, 'text_primary', const Color(0xFF0F172A));
+        final border =
+            colorFromToken(tokens, 'border', const Color(0xFFE2E8F0));
+        return Scaffold(
+          body: Container(
+            color: bgApp,
+            child: SafeArea(
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: bgPanel,
+                      border: Border(
+                        bottom: BorderSide(color: border),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Family tasks - $selectedDateKey',
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        ValueListenableBuilder<int>(
+                          valueListenable: store.pageIndex,
+                          builder: (context, page, __) {
+                            return SegmentedButton<int>(
+                              showSelectedIcon: false,
+                              segments: const [
+                                ButtonSegment(
+                                    value: 0, label: Text('Dashboard')),
+                                ButtonSegment(value: 1, label: Text('Kanban')),
+                                ButtonSegment(
+                                    value: 2, label: Text('Calendar')),
+                                ButtonSegment(value: 3, label: Text('Family')),
+                              ],
+                              selected: {page},
+                              onSelectionChanged: (value) =>
+                                  store.setPage(value.first),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 10),
+                        DropdownButton<String>(
+                          value: owner,
+                          onChanged: (value) async {
+                            if (value != null) {
+                              await _switchProfile(store, value);
+                            }
+                          },
+                          items: _profiles
+                              .map(
+                                (profile) => DropdownMenuItem<String>(
+                                  value: profile,
+                                  child: Text(profileLabel(profile)),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                        const SizedBox(width: 10),
+                        ValueListenableBuilder<String>(
+                          valueListenable: store.themeMode,
+                          builder: (context, mode, __) {
+                            return SegmentedButton<String>(
+                              showSelectedIcon: false,
+                              segments: const [
+                                ButtonSegment(
+                                    value: 'light', label: Text('Light')),
+                                ButtonSegment(
+                                    value: 'dark', label: Text('Dark')),
+                              ],
+                              selected: {mode},
+                              onSelectionChanged: (value) =>
+                                  _setDesktopThemeMode(value.first),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        ValueListenableBuilder<List<String>>(
+                          valueListenable: store.availableSchemes,
+                          builder: (context, schemes, __) {
+                            return ValueListenableBuilder<String>(
+                              valueListenable: store.themeScheme,
+                              builder: (context, scheme, ___) {
+                                final safeScheme = schemes.contains(scheme) &&
+                                        schemes.isNotEmpty
+                                    ? scheme
+                                    : (schemes.isEmpty ? '' : schemes.first);
+                                return DropdownButton<String>(
+                                  value: safeScheme.isEmpty ? null : safeScheme,
+                                  hint: const Text('Scheme'),
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      _setDesktopThemeScheme(value);
+                                    }
+                                  },
+                                  items: schemes
+                                      .map(
+                                        (item) => DropdownMenuItem<String>(
+                                          value: item,
+                                          child: Text(item),
+                                        ),
+                                      )
+                                      .toList(),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        ValueListenableBuilder<DesktopHostState>(
+                          valueListenable: store.voiceHostState,
+                          builder: (context, voiceState, __) {
+                            final enabled =
+                                voiceState.status == DesktopHostStatus.running;
+                            return Row(
+                              children: [
+                                const Text('Voice'),
+                                Switch(
+                                  value: enabled,
+                                  onChanged: (value) =>
+                                      _toggleVoiceHost(store, value),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 6),
+                        ValueListenableBuilder<DesktopHostState>(
+                          valueListenable: store.botHostState,
+                          builder: (context, botState, __) {
+                            final enabled =
+                                botState.status == DesktopHostStatus.running;
+                            return Row(
+                              children: [
+                                const Text('Bot'),
+                                Switch(
+                                  value: enabled,
+                                  onChanged: (value) =>
+                                      _toggleBotHost(store, value),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                        IconButton(
+                          tooltip: 'Sync',
+                          icon: const Icon(Icons.sync),
+                          onPressed: () =>
+                              _safeSyncFull(store, showErrors: true),
+                        ),
+                        ValueListenableBuilder<bool>(
+                          valueListenable: store.canUndo,
+                          builder: (context, canUndo, __) {
+                            return IconButton(
+                              tooltip: 'Undo',
+                              onPressed: canUndo
+                                  ? () async {
+                                      final ok = await store.undoLastAction();
+                                      if (ok) {
+                                        await _safeSyncDelta(
+                                          store,
+                                          showErrors: false,
+                                        );
+                                      }
+                                    }
+                                  : null,
+                              icon: const Icon(Icons.undo),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 6),
+                        FilledButton.icon(
+                          onPressed: () => _openTaskEditor(store),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Quick task'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: loading
+                        ? const Center(child: CircularProgressIndicator())
+                        : _buildDesktopPageContent(store, selectedDate),
+                  ),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    height: _desktopLogExpanded ? 150 : 44,
+                    decoration: BoxDecoration(
+                      color: bgPanel,
+                      border: Border(top: BorderSide(color: border)),
+                    ),
+                    child: Column(
+                      children: [
+                        InkWell(
+                          onTap: () => setState(
+                            () => _desktopLogExpanded = !_desktopLogExpanded,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _desktopLogExpanded
+                                      ? Icons.keyboard_arrow_down
+                                      : Icons.keyboard_arrow_up,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text('Desktop logs'),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (_desktopLogExpanded)
+                          Expanded(
+                            child: ValueListenableBuilder<List<String>>(
+                              valueListenable: store.desktopLogEntries,
+                              builder: (context, logs, __) {
+                                return ListView.builder(
+                                  reverse: true,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  itemCount: logs.length,
+                                  itemBuilder: (context, index) {
+                                    return Text(logs[logs.length - 1 - index]);
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDesktopPageContent(TaskStore store, DateTime selectedDate) {
+    return ValueListenableBuilder<int>(
+      valueListenable: store.pageIndex,
+      builder: (context, page, _) {
+        if (page == 0) {
+          return ValueListenableBuilder<DashboardVm>(
+            valueListenable: store.dashboard,
+            builder: (context, vm, __) {
+              return _DashboardView(
+                vm: vm,
+                onOpenCalendar: () async {
+                  store.setPage(2);
+                },
+              );
+            },
+          );
+        }
+        if (page == 1) {
+          return ValueListenableBuilder<Map<String, List<TaskItem>>>(
+            valueListenable: store.personalByStatus,
+            builder: (context, byStatus, __) {
+              return ValueListenableBuilder<String>(
+                valueListenable: store.searchQuery,
+                builder: (context, query, ___) {
+                  return ValueListenableBuilder<String>(
+                    valueListenable: store.tasksDateFilter,
+                    builder: (context, dateFilter, ____) {
+                      return ValueListenableBuilder<bool>(
+                        valueListenable: store.selectionMode,
+                        builder: (context, selectionMode, _____) {
+                          return ValueListenableBuilder<Set<String>>(
+                            valueListenable: store.selectedTaskIds,
+                            builder: (context, selectedIds, ______) {
+                              return Column(
+                                children: [
+                                  _TasksToolbar(
+                                    searchQuery: query,
+                                    dateFilter: dateFilter,
+                                    selectionMode: selectionMode,
+                                    selectedCount: selectedIds.length,
+                                    onSearchChanged: store.setSearchQuery,
+                                    onPickDate: () async {
+                                      final picked = await showDatePicker(
+                                        context: context,
+                                        initialDate: selectedDate,
+                                        firstDate: DateTime(2024),
+                                        lastDate: DateTime(2035),
+                                      );
+                                      if (picked != null) {
+                                        store.setTasksDateFilter(
+                                            _dateKey(picked));
+                                      }
+                                    },
+                                    onUseToday: () => store.setTasksDateFilter(
+                                      _dateKey(DateTime.now()),
+                                    ),
+                                    onClearDate: store.clearTasksDateFilter,
+                                    onToggleSelection:
+                                        store.toggleSelectionMode,
+                                    onDeleteSelected: () async {
+                                      await store.deleteSelectedPersonalTasks();
+                                      await _safeSyncDelta(
+                                        store,
+                                        showErrors: true,
+                                      );
+                                    },
+                                  ),
+                                  Expanded(
+                                    child: _DesktopTasksBoard(
+                                      byStatus: byStatus,
+                                      selectionMode: selectionMode,
+                                      selectedIds: selectedIds,
+                                      onToggleSelect: store.toggleTaskSelection,
+                                      onDropStatus: (item, status) async {
+                                        await store.move(item, status);
+                                        await _safeSyncDelta(
+                                          store,
+                                          showErrors: true,
+                                        );
+                                      },
+                                      onEdit: (task) => _openTaskEditor(store,
+                                          existing: task),
+                                      onDelete: (task) async {
+                                        await store.delete(task);
+                                        await _safeSyncDelta(
+                                          store,
+                                          showErrors: true,
+                                        );
+                                      },
+                                      onDoneToggle: (task) async {
+                                        await store.toggleDone(task);
+                                        await _safeSyncDelta(
+                                          store,
+                                          showErrors: true,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          );
+        }
+        if (page == 2) {
+          return ValueListenableBuilder<List<TaskItem>>(
+            valueListenable: store.allTasksView,
+            builder: (context, tasks, __) {
+              return _DesktopCalendarView(
+                month: _desktopMonth,
+                selectedDate: selectedDate,
+                allTasks: tasks,
+                monthGrid: _monthGrid(_desktopMonth),
+                onGoPrevMonth: () => setState(
+                  () => _desktopMonth = DateTime(
+                    _desktopMonth.year,
+                    _desktopMonth.month - 1,
+                  ),
+                ),
+                onGoNextMonth: () => setState(
+                  () => _desktopMonth = DateTime(
+                    _desktopMonth.year,
+                    _desktopMonth.month + 1,
+                  ),
+                ),
+                onGoToday: () => setState(() {
+                  final now = DateTime.now();
+                  _desktopMonth = DateTime(now.year, now.month);
+                  store.setSelectedDate(now);
+                }),
+                onSelectDate: (date) => store.setSelectedDate(date),
+                onDropToDay: (task, targetDay) =>
+                    _moveToDate(store, task, targetDay),
+                onDropToStatus: (task, status) async {
+                  await store.move(task, status);
+                  await _safeSyncDelta(store, showErrors: true);
+                },
+                onOpenEditor: (day, task) async {
+                  store.setSelectedDate(day);
+                  await _openTaskEditor(store, existing: task);
+                },
+                onDelete: (task) async {
+                  await store.delete(task);
+                  await _safeSyncDelta(store, showErrors: true);
+                },
+                onAddForDate: (day) async {
+                  store.setSelectedDate(day);
+                  await _openTaskEditor(store);
+                },
+              );
+            },
+          );
+        }
+        return ValueListenableBuilder<String>(
+          valueListenable: store.familyFilter,
+          builder: (context, familyFilter, _) {
+            return ValueListenableBuilder<List<TaskItem>>(
+              valueListenable: store.familyTasksView,
+              builder: (context, tasks, __) {
+                return _FamilyView(
+                  familyTasks: tasks,
+                  familyFilter: familyFilter,
+                  onFilterChanged: store.setFamilyFilter,
+                  onEdit: (task) => _openTaskEditor(store, existing: task),
+                  onDelete: (task) async {
+                    await store.delete(task);
+                    await _safeSyncDelta(store, showErrors: true);
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   void _bindFcm({required ApiClient api, required String owner}) {
@@ -181,6 +695,7 @@ class _HomePageState extends State<HomePage> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('actor_profile', profile);
     await store.switchOwner(profile);
+    await _desktopThemeService?.switchProfile(profile);
     _bindFcm(api: store.repository.api, owner: profile);
     _startSyncLoops(store);
   }
@@ -432,6 +947,67 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Future<void> _setDesktopThemeMode(String mode) async {
+    final service = _desktopThemeService;
+    if (service == null) {
+      return;
+    }
+    await service.setMode(mode);
+  }
+
+  Future<void> _setDesktopThemeScheme(String scheme) async {
+    final service = _desktopThemeService;
+    if (service == null) {
+      return;
+    }
+    await service.setScheme(scheme);
+  }
+
+  Future<void> _toggleVoiceHost(TaskStore store, bool enabled) async {
+    final host = _desktopProcessHostService;
+    if (host == null) {
+      return;
+    }
+    if (enabled) {
+      await host.startVoice();
+      return;
+    }
+    await host.stopVoice();
+  }
+
+  Future<void> _toggleBotHost(TaskStore store, bool enabled) async {
+    final host = _desktopProcessHostService;
+    if (host == null) {
+      return;
+    }
+    if (enabled) {
+      await host.startBot();
+      return;
+    }
+    await host.stopBot();
+  }
+
+  Future<void> _moveToDate(
+      TaskStore store, TaskItem item, DateTime target) async {
+    await store.moveToDate(item, _dateKey(target));
+    await _safeSyncDelta(store, showErrors: true);
+  }
+
+  DateTime _firstVisibleMonthDate(DateTime month) {
+    final first = DateTime(month.year, month.month, 1);
+    final weekday = first.weekday;
+    final shift = weekday - DateTime.monday;
+    return first.subtract(Duration(days: shift));
+  }
+
+  List<DateTime> _monthGrid(DateTime month) {
+    final start = _firstVisibleMonthDate(month);
+    return List<DateTime>.generate(
+      42,
+      (index) => start.add(Duration(days: index)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = _store;
@@ -449,6 +1025,15 @@ class _HomePageState extends State<HomePage> {
               valueListenable: store.selectedDate,
               builder: (context, selectedDate, ___) {
                 final selectedDateKey = _dateKey(selectedDate);
+                if (_isDesktopWindows) {
+                  return _buildDesktopShell(
+                    store: store,
+                    loading: loading,
+                    owner: owner,
+                    selectedDate: selectedDate,
+                    selectedDateKey: selectedDateKey,
+                  );
+                }
                 return Scaffold(
                   appBar: AppBar(
                     title: Text('Family tasks - $selectedDateKey'),
@@ -818,6 +1403,8 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _cancelSyncLoops();
+    unawaited(_desktopProcessHostService?.stopAll());
+    _desktopThemeService?.state.dispose();
     _store?.dispose();
     super.dispose();
   }
@@ -1162,6 +1749,395 @@ class _TasksBoard extends StatelessWidget {
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+class _DesktopTasksBoard extends StatelessWidget {
+  const _DesktopTasksBoard({
+    required this.byStatus,
+    required this.selectionMode,
+    required this.selectedIds,
+    required this.onToggleSelect,
+    required this.onDropStatus,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onDoneToggle,
+  });
+
+  final Map<String, List<TaskItem>> byStatus;
+  final bool selectionMode;
+  final Set<String> selectedIds;
+  final void Function(String) onToggleSelect;
+  final Future<void> Function(TaskItem, String) onDropStatus;
+  final Future<void> Function(TaskItem) onEdit;
+  final Future<void> Function(TaskItem) onDelete;
+  final Future<void> Function(TaskItem) onDoneToggle;
+
+  static const _titles = {
+    'todo': 'К выполнению',
+    'in_progress': 'В работе',
+    'in_review': 'На проверке',
+    'done': 'Выполнено',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          child: SizedBox(
+            width: 4 * 340,
+            height: constraints.maxHeight,
+            child: Row(
+              children: _titles.keys.map((status) {
+                final items = byStatus[status] ?? const <TaskItem>[];
+                return SizedBox(
+                  width: 330,
+                  child: Card(
+                    margin: const EdgeInsets.only(right: 10),
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${_titles[status]} (${items.length})',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Expanded(
+                            child: DragTarget<TaskItem>(
+                              onAcceptWithDetails: (details) =>
+                                  onDropStatus(details.data, status),
+                              builder: (context, _, __) {
+                                return ListView(
+                                  children: [
+                                    for (final item in items)
+                                      LongPressDraggable<TaskItem>(
+                                        data: item,
+                                        feedback: Material(
+                                          color: Colors.transparent,
+                                          child: SizedBox(
+                                            width: 280,
+                                            child: _TaskCard(
+                                              item: item,
+                                              onEdit: () async {},
+                                              onDelete: () async {},
+                                              onDoneToggle: () async {},
+                                            ),
+                                          ),
+                                        ),
+                                        childWhenDragging:
+                                            const SizedBox.shrink(),
+                                        child: _TaskCard(
+                                          item: item,
+                                          selectionMode: selectionMode,
+                                          selected:
+                                              selectedIds.contains(item.id),
+                                          onSelectionToggle: () =>
+                                              onToggleSelect(item.id),
+                                          onEdit: () => onEdit(item),
+                                          onDelete: () => onDelete(item),
+                                          onDoneToggle: () =>
+                                              onDoneToggle(item),
+                                        ),
+                                      ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DesktopCalendarView extends StatelessWidget {
+  const _DesktopCalendarView({
+    required this.month,
+    required this.selectedDate,
+    required this.allTasks,
+    required this.monthGrid,
+    required this.onGoPrevMonth,
+    required this.onGoNextMonth,
+    required this.onGoToday,
+    required this.onSelectDate,
+    required this.onDropToDay,
+    required this.onDropToStatus,
+    required this.onOpenEditor,
+    required this.onDelete,
+    required this.onAddForDate,
+  });
+
+  final DateTime month;
+  final DateTime selectedDate;
+  final List<TaskItem> allTasks;
+  final List<DateTime> monthGrid;
+  final VoidCallback onGoPrevMonth;
+  final VoidCallback onGoNextMonth;
+  final VoidCallback onGoToday;
+  final void Function(DateTime) onSelectDate;
+  final Future<void> Function(TaskItem, DateTime) onDropToDay;
+  final Future<void> Function(TaskItem, String) onDropToStatus;
+  final Future<void> Function(DateTime, TaskItem) onOpenEditor;
+  final Future<void> Function(TaskItem) onDelete;
+  final Future<void> Function(DateTime) onAddForDate;
+
+  static const _statusTitles = {
+    'todo': 'К выполнению',
+    'in_progress': 'В работе',
+    'in_review': 'На проверке',
+    'done': 'Выполнено',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final byDate = <String, List<TaskItem>>{};
+    for (final task in allTasks) {
+      byDate.putIfAbsent(task.dueDate, () => <TaskItem>[]).add(task);
+    }
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              IconButton(
+                onPressed: onGoPrevMonth,
+                icon: const Icon(Icons.chevron_left),
+              ),
+              Text(
+                '${_monthNamesRu[month.month - 1]} ${month.year}',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              IconButton(
+                onPressed: onGoNextMonth,
+                icon: const Icon(Icons.chevron_right),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                  onPressed: onGoToday, child: const Text('Сегодня')),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              for (final label in _weekDayNamesRu)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          Expanded(
+            child: GridView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 1.14,
+              ),
+              itemCount: monthGrid.length,
+              itemBuilder: (context, index) {
+                final day = monthGrid[index];
+                final key =
+                    '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+                final dayTasks = byDate[key] ?? const <TaskItem>[];
+                final isCurrentMonth = day.month == month.month;
+                final isSelected = day.year == selectedDate.year &&
+                    day.month == selectedDate.month &&
+                    day.day == selectedDate.day;
+                final visible = dayTasks.take(3).toList();
+                final overflow = dayTasks.length - visible.length;
+                return DragTarget<TaskItem>(
+                  onAcceptWithDetails: (details) =>
+                      onDropToDay(details.data, day),
+                  builder: (context, _, __) {
+                    return InkWell(
+                      onTap: () => onSelectDate(day),
+                      onDoubleTap: () async {
+                        await _openDayPopup(context, day, dayTasks);
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFFEAF2FF)
+                              : const Color(0xFFFFFFFF),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isCurrentMonth
+                                ? const Color(0xFFD9E2EF)
+                                : const Color(0xFFEDEFF3),
+                          ),
+                        ),
+                        padding: const EdgeInsets.all(6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${day.day}',
+                              style: TextStyle(
+                                color: isCurrentMonth
+                                    ? const Color(0xFF111827)
+                                    : const Color(0xFF9CA3AF),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            for (final item in visible)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 3),
+                                child: LongPressDraggable<TaskItem>(
+                                  data: item,
+                                  feedback: Material(
+                                    color: Colors.transparent,
+                                    child: Chip(label: Text(item.title)),
+                                  ),
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFDBEAFE),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      item.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 11),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (overflow > 0)
+                              TextButton(
+                                onPressed: () =>
+                                    _openDayPopup(context, day, dayTasks),
+                                child: Text('+$overflow еще'),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 58,
+            child: Row(
+              children: _statusTitles.keys.map((status) {
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: DragTarget<TaskItem>(
+                      onAcceptWithDetails: (details) =>
+                          onDropToStatus(details.data, status),
+                      builder: (context, _, __) {
+                        return DecoratedBox(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: const Color(0xFFD9E2EF)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Center(
+                            child: Text(_statusTitles[status]!),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openDayPopup(
+    BuildContext context,
+    DateTime day,
+    List<TaskItem> dayTasks,
+  ) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            '${day.day.toString().padLeft(2, '0')}.${day.month.toString().padLeft(2, '0')}.${day.year}',
+          ),
+          content: SizedBox(
+            width: 520,
+            child: dayTasks.isEmpty
+                ? const Text('На эту дату задач нет')
+                : ListView(
+                    shrinkWrap: true,
+                    children: [
+                      for (final task in dayTasks)
+                        ListTile(
+                          dense: true,
+                          title: Text(task.title),
+                          subtitle: Text(
+                            '${task.time} · ${workflowLabel(task.workflowStatus)}',
+                          ),
+                          trailing: Wrap(
+                            spacing: 4,
+                            children: [
+                              IconButton(
+                                onPressed: () => onOpenEditor(day, task),
+                                icon: const Icon(Icons.edit_outlined),
+                              ),
+                              IconButton(
+                                onPressed: () => onDelete(task),
+                                icon: const Icon(Icons.delete_outline),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Закрыть'),
+            ),
+            FilledButton.icon(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await onAddForDate(day);
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Добавить'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
