@@ -6,10 +6,6 @@ function db_connect(array $config): PDO
 {
     $db = $config['db'] ?? [];
     $host = (string)($db['host'] ?? '127.0.0.1');
-    // Shared hosting safeguard: force local socket host instead of public DB IP.
-    if ($host === '5.35.97.158' || $host === '127.0.0.1') {
-        $host = 'localhost';
-    }
     $port = (int)($db['port'] ?? 3306);
     $name = (string)($db['name'] ?? '');
     $user = (string)($db['user'] ?? '');
@@ -22,3 +18,4 @@ function db_connect(array $config): PDO
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
 }
+

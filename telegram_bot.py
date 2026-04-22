@@ -2,7 +2,6 @@
 import os
 import atexit
 import time
-import argparse
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -83,56 +82,6 @@ def release_singleton_lock() -> None:
         handle.close()
     except Exception:
         pass
-
-
-def validate_bot_startup(*, timeout_seconds: int = 12) -> tuple[bool, str, str]:
-    token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
-    if not token:
-        return False, "invalid_token", "TELEGRAM_BOT_TOKEN не задан"
-
-    try:
-        api_url = telegram_api("getMe")
-    except Exception:
-        return False, "invalid_token", "TELEGRAM_BOT_TOKEN невалиден"
-
-    try:
-        response = requests.get(api_url, timeout=timeout_seconds)
-    except requests.exceptions.Timeout:
-        return False, "telegram_timeout", "Таймаут при подключении к api.telegram.org"
-    except requests.exceptions.ConnectionError as exc:
-        return False, "network_unreachable", f"Сеть недоступна: {exc}"
-    except requests.exceptions.RequestException as exc:
-        return False, "telegram_unreachable", f"Telegram API недоступен: {exc}"
-
-    if response.status_code == 401:
-        return False, "invalid_token", "Telegram вернул 401 Unauthorized (проверь токен)"
-    if response.status_code >= 500:
-        return False, "telegram_unreachable", f"Telegram вернул HTTP {response.status_code}"
-    if response.status_code >= 400:
-        return False, "telegram_unreachable", f"Telegram вернул HTTP {response.status_code}"
-
-    try:
-        payload = response.json()
-    except ValueError:
-        return False, "telegram_unreachable", "Telegram вернул некорректный JSON"
-
-    if not payload.get("ok"):
-        description = str(payload.get("description") or "unknown telegram error")
-        if "unauthorized" in description.lower():
-            return False, "invalid_token", description
-        return False, "telegram_unreachable", description
-
-    result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
-    bot_name = str(result.get("username") or result.get("first_name") or "bot")
-    return True, "ok", f"Бот @{bot_name} доступен"
-
-
-def _bot_failure_event_code(code: str) -> str:
-    if code == "invalid_token":
-        return "bot_auth_failed"
-    if code in {"telegram_timeout", "network_unreachable"}:
-        return "bot_network_timeout"
-    return "bot_startup_failed"
 
 
 def read_state() -> dict:
@@ -999,26 +948,22 @@ def handle_update(update: dict, state: dict) -> None:
     send_main_menu(chat_id, state, "Используй кнопки меню и текст там, где бот попросит.")
 
 
-def main(*, validate_only: bool = False) -> int:
-    if validate_only:
-        ok, code, message = validate_bot_startup()
-        if ok:
-            print(f"BOT_VALIDATE_OK:{message}")
-            return 0
-        print(f"BOT_VALIDATE_FAIL:{code}:{message}")
-        return 2
-
+def main() -> None:
     os.environ.setdefault("TODO_BACKEND_SOURCE", "telegram")
     if not acquire_singleton_lock():
         print("Telegram-бот уже запущен в другом процессе (--bot-only singleton).")
-        return 3
+        return
     log_event("telegram_bot_singleton_acquired", pid=os.getpid())
-    ok, code, message = validate_bot_startup()
-    if not ok:
-        log_event(_bot_failure_event_code(code), code=code, message=message)
-        print(f"BOT_STARTUP_ERROR:{code}:{message}")
+    token_ready = False
+    try:
+        telegram_api("getMe")
+        token_ready = True
+    except Exception:
+        token_ready = False
+
+    if not token_ready:
         print("TELEGRAM_BOT_TOKEN не задан или недоступен. Бот не запущен.")
-        return 2
+        return
 
     ft.bootstrap_data()
     state = read_state()
@@ -1051,11 +996,7 @@ def main(*, validate_only: bool = False) -> int:
         except Exception as exc:
             log_exception("telegram_polling_failed", exc, offset=offset)
             time.sleep(2)
-    return 0
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--validate-only", action="store_true")
-    args, _ = parser.parse_known_args()
-    raise SystemExit(main(validate_only=bool(args.validate_only)))
+    main()
