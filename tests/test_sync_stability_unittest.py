@@ -93,6 +93,29 @@ class SyncStabilityTests(unittest.TestCase):
         self.assertIn("'telegram' => ['disabled' => true, 'message' => 'server delivery disabled']", source)
         self.assertIn("'push' => ['disabled' => true]", source)
 
+    def test_pull_failure_propagates_backend_diagnostics(self) -> None:
+        original_backend_enabled = ft._backend_enabled
+        original_backend_pull = ft._backend_pull_snapshot
+        original_last_error = dict(ft._BACKEND_LAST_ERROR)
+        ft._backend_enabled = lambda: True
+        ft._backend_pull_snapshot = lambda **_kwargs: None
+        ft._BACKEND_LAST_ERROR.clear()
+        ft._BACKEND_LAST_ERROR.update(
+            {
+                "kind": "sync_backend_db_error",
+                "message": "SQLSTATE[HY000] [1045]",
+            }
+        )
+        try:
+            result = ft.pull_backend_snapshot_to_local()
+        finally:
+            ft._backend_enabled = original_backend_enabled
+            ft._backend_pull_snapshot = original_backend_pull
+            ft._BACKEND_LAST_ERROR.clear()
+            ft._BACKEND_LAST_ERROR.update(original_last_error)
+        self.assertFalse(result.get("ok"))
+        self.assertEqual(result.get("error_kind"), "sync_backend_db_error")
+
 
 if __name__ == "__main__":
     unittest.main()

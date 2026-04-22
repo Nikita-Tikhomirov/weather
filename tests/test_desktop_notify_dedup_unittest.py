@@ -81,7 +81,9 @@ class DesktopSyncNotifyDedupTests(unittest.TestCase):
             {"event_key": "c", "line": "nik: удалена «старое»"},
         ]
 
-        with patch("notifier.desktop_notify", return_value=None):
+        with patch("notifier.desktop_notify", return_value=None), patch(
+            "notifier.push_by_visibility", return_value=None
+        ), patch("notifier.push_to_family", return_value=None):
             DesktopTodoApp._flush_sync_notify_events(self.app)
 
         self.assertEqual(len(self.app.logged_messages), 1)

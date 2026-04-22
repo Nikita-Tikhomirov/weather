@@ -7,10 +7,12 @@ class DesktopHostState {
   const DesktopHostState({
     required this.status,
     required this.lastMessage,
+    this.errorCode,
   });
 
   final DesktopHostStatus status;
   final String lastMessage;
+  final String? errorCode;
 }
 
 class DesktopProcessHostService {
@@ -94,9 +96,23 @@ class DesktopProcessHostService {
         const DesktopHostState(
           status: DesktopHostStatus.error,
           lastMessage: message,
+          errorCode: 'invalid_token',
         ),
       );
-      onLog(message, isError: true);
+      onLog('bot_auth_failed: $message', isError: true);
+      return;
+    }
+    final probe = await _validateBotStartup();
+    if (!probe.ok) {
+      onBotState(
+        DesktopHostState(
+          status: DesktopHostStatus.error,
+          lastMessage: probe.message,
+          errorCode: probe.errorCode,
+        ),
+      );
+      final diagnostic = _diagnosticForBotErrorCode(probe.errorCode);
+      onLog('$diagnostic: ${probe.message}', isError: true);
       return;
     }
     final result = await _startScript(
@@ -108,12 +124,30 @@ class DesktopProcessHostService {
         DesktopHostState(
           status: DesktopHostStatus.error,
           lastMessage: result.message,
+          errorCode: 'process_exit_nonzero',
         ),
       );
-      onLog(result.message, isError: true);
+      onLog('process_exit_nonzero: ${result.message}', isError: true);
       return;
     }
     _botProcess = result.process!;
+    final earlyExitCode = await _waitForEarlyExit(
+      _botProcess!,
+      const Duration(milliseconds: 900),
+    );
+    if (earlyExitCode != null) {
+      _botProcess = null;
+      final message = 'bot exited with code $earlyExitCode';
+      onBotState(
+        const DesktopHostState(
+          status: DesktopHostStatus.error,
+          lastMessage: 'bot exited early',
+          errorCode: 'process_exit_nonzero',
+        ),
+      );
+      onLog('process_exit_nonzero: $message', isError: true);
+      return;
+    }
     onBotState(
       const DesktopHostState(
         status: DesktopHostStatus.running,
@@ -187,11 +221,83 @@ class DesktopProcessHostService {
           DesktopHostState(
             status: DesktopHostStatus.error,
             lastMessage: 'bot exited with code $code',
+            errorCode: 'process_exit_nonzero',
           ),
         );
-        onLog('bot exited with code $code', isError: true);
+        onLog('process_exit_nonzero: bot exited with code $code',
+            isError: true);
       }
     }
+  }
+
+  Future<int?> _waitForEarlyExit(Process process, Duration grace) async {
+    try {
+      final code = await process.exitCode.timeout(grace);
+      return code;
+    } on TimeoutException {
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<_ProbeResult> _validateBotStartup() async {
+    final candidates = <String>[
+      'python',
+      r'C:\Users\user\AppData\Local\Programs\Python\Python310\python.exe',
+      r'C:\Users\user\AppData\Local\Programs\Python\Python311\python.exe',
+    ];
+    for (final executable in candidates) {
+      try {
+        final env = Map<String, String>.from(Platform.environment);
+        final result = await Process.run(
+          executable,
+          ['desktop_app.py', '--bot-validate'],
+          workingDirectory: workingDirectory,
+          environment: env,
+          runInShell: true,
+        );
+        final output =
+            '${result.stdout ?? ''}\n${result.stderr ?? ''}'.trim();
+        if (result.exitCode == 0) {
+          return const _ProbeResult.ok();
+        }
+        final match = RegExp(r'BOT_VALIDATE_FAIL:([a-z_]+):(.*)')
+            .firstMatch(output.replaceAll('\r', ''));
+        if (match != null) {
+          final code = (match.group(1) ?? 'process_exit_nonzero').trim();
+          final message = (match.group(2) ?? '').trim();
+          return _ProbeResult.fail(
+            errorCode: code.isEmpty ? 'process_exit_nonzero' : code,
+            message: message.isEmpty
+                ? 'bot validation failed'
+                : message,
+          );
+        }
+        return _ProbeResult.fail(
+          errorCode: 'process_exit_nonzero',
+          message: output.isEmpty
+              ? 'bot validation failed'
+              : output,
+        );
+      } catch (_) {
+        continue;
+      }
+    }
+    return const _ProbeResult.fail(
+      errorCode: 'process_exit_nonzero',
+      message: 'python is not available or validation script not found',
+    );
+  }
+
+  String _diagnosticForBotErrorCode(String code) {
+    if (code == 'invalid_token') {
+      return 'bot_auth_failed';
+    }
+    if (code == 'telegram_timeout' || code == 'network_unreachable') {
+      return 'bot_network_timeout';
+    }
+    return 'bot_startup_failed';
   }
 
   Future<_StartResult> _startScript(
@@ -254,5 +360,21 @@ class _StartResult {
 
   final bool ok;
   final Process? process;
+  final String message;
+}
+
+class _ProbeResult {
+  const _ProbeResult.ok()
+      : ok = true,
+        errorCode = 'ok',
+        message = '';
+
+  const _ProbeResult.fail({
+    required this.errorCode,
+    required this.message,
+  }) : ok = false;
+
+  final bool ok;
+  final String errorCode;
   final String message;
 }

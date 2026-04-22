@@ -42,6 +42,16 @@ FAMILY_TASKS_PATH = DATA_DIR / "family_tasks.json"
 BACKEND_URL = ""
 BACKEND_API_KEY = ""
 BACKEND_SOURCE = ""
+_BACKEND_LAST_ERROR: dict[str, str] = {}
+
+
+def _set_backend_last_error(kind: str, message: str) -> None:
+    _BACKEND_LAST_ERROR["kind"] = str(kind or "").strip()
+    _BACKEND_LAST_ERROR["message"] = str(message or "").strip()
+
+
+def _clear_backend_last_error() -> None:
+    _BACKEND_LAST_ERROR.clear()
 
 
 @dataclass(frozen=True)
@@ -312,6 +322,7 @@ def _backend_request(
 ) -> dict | None:
     if not _backend_enabled():
         return None
+    _clear_backend_last_error()
     runtime = _backend_runtime(default_source="desktop")
     base_url = runtime["backend_url"]
     api_key = runtime["backend_api_key"]
@@ -327,6 +338,7 @@ def _backend_request(
         with urllib.request.urlopen(req, timeout=10) as resp:
             raw = resp.read().decode("utf-8")
             parsed = json.loads(raw) if raw else {}
+            _clear_backend_last_error()
             return parsed if isinstance(parsed, dict) else None
     except urllib.error.HTTPError as exc:
         response_body = ""
@@ -342,6 +354,12 @@ def _backend_request(
             status=getattr(exc, "code", None),
             response=response_body,
         )
+        status_code = int(getattr(exc, "code", 0) or 0)
+        response_lc = response_body.lower()
+        if status_code == 500 and "sqlstate[hy000] [1045]" in response_lc:
+            _set_backend_last_error("sync_backend_db_error", response_body)
+        else:
+            _set_backend_last_error("backend_http_error", response_body or str(exc))
         if raise_on_error:
             raise
         return None
@@ -352,6 +370,10 @@ def _backend_request(
             method=method.upper(),
             url=url,
         )
+        if isinstance(exc, TimeoutError):
+            _set_backend_last_error("backend_timeout", str(exc))
+        else:
+            _set_backend_last_error("backend_request_failed", str(exc))
         if raise_on_error:
             raise
         return None
@@ -370,10 +392,19 @@ def _backend_pull_snapshot(
     paths = [f"/sync_pull.php?{query}", f"/sync/pull?{query}"]
     if cursor:
         paths = [f"/sync_changes.php?{query}", f"/sync/changes?{query}", *paths]
+    preferred_error: dict[str, str] | None = None
     for path in paths:
         response = _backend_request("GET", path)
         if isinstance(response, dict):
             return response
+        if str(_BACKEND_LAST_ERROR.get("kind") or "") == "sync_backend_db_error":
+            preferred_error = {
+                "kind": "sync_backend_db_error",
+                "message": str(_BACKEND_LAST_ERROR.get("message") or ""),
+            }
+    if preferred_error is not None:
+        _BACKEND_LAST_ERROR.clear()
+        _BACKEND_LAST_ERROR.update(preferred_error)
     return None
 
 
@@ -587,7 +618,12 @@ def pull_backend_snapshot_to_local() -> dict[str, object]:
         return {"ok": False, "reason": "backend_disabled"}
     remote = _backend_pull_snapshot(since="1970-01-01T00:00:00")
     if not isinstance(remote, dict):
-        return {"ok": False, "reason": "pull_failed"}
+        return {
+            "ok": False,
+            "reason": "pull_failed",
+            "error_kind": str(_BACKEND_LAST_ERROR.get("kind") or ""),
+            "error_message": str(_BACKEND_LAST_ERROR.get("message") or ""),
+        }
 
     raw_tasks = remote.get("tasks")
     tasks = _stable_items(raw_tasks if isinstance(raw_tasks, list) else [], is_family=False)
@@ -652,7 +688,13 @@ def pull_backend_changes_since_cursor(cursor: str) -> dict[str, object]:
     cursor_value = (cursor or "").strip() or "1970-01-01T00:00:00"
     remote = _backend_pull_snapshot(since=cursor_value, cursor=cursor_value)
     if not isinstance(remote, dict):
-        return {"ok": False, "reason": "pull_failed", "cursor": cursor_value}
+        return {
+            "ok": False,
+            "reason": "pull_failed",
+            "cursor": cursor_value,
+            "error_kind": str(_BACKEND_LAST_ERROR.get("kind") or ""),
+            "error_message": str(_BACKEND_LAST_ERROR.get("message") or ""),
+        }
 
     raw_tasks = remote.get("tasks")
     tasks = _stable_items(raw_tasks if isinstance(raw_tasks, list) else [], is_family=False)
@@ -722,7 +764,12 @@ def pull_backend_family_snapshot_to_local() -> dict[str, object]:
         return {"ok": False, "reason": "backend_disabled"}
     remote = _backend_pull_snapshot()
     if not isinstance(remote, dict):
-        return {"ok": False, "reason": "pull_failed"}
+        return {
+            "ok": False,
+            "reason": "pull_failed",
+            "error_kind": str(_BACKEND_LAST_ERROR.get("kind") or ""),
+            "error_message": str(_BACKEND_LAST_ERROR.get("message") or ""),
+        }
 
     raw_family = remote.get("family_tasks")
     remote_items = _stable_items(raw_family if isinstance(raw_family, list) else [], is_family=True)

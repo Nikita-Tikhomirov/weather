@@ -2,6 +2,15 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/_route.php';
-dispatch_flat_route('POST', '/sync/push');
+require __DIR__ . '/sync_store.php';
 
+try {
+    $config = load_config();
+    sync_handle_push($config);
+} catch (UnexpectedValueException $exc) {
+    json_response(401, ['ok' => false, 'error' => $exc->getMessage()]);
+} catch (InvalidArgumentException $exc) {
+    json_response(400, ['ok' => false, 'error' => $exc->getMessage()]);
+} catch (Throwable $exc) {
+    json_response(500, ['ok' => false, 'error' => $exc->getMessage()]);
+}

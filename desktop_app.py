@@ -253,6 +253,15 @@ class BotProcessHost:
     def start(self) -> bool:
         if self.is_running():
             return True
+        check_ok, check_code, check_message = self._validate_startup()
+        if not check_ok:
+            if check_code == "invalid_token":
+                self._on_log(f"bot_auth_failed: {check_message}")
+            elif check_code in {"telegram_timeout", "network_unreachable"}:
+                self._on_log(f"bot_network_timeout: {check_message}")
+            else:
+                self._on_log(f"bot_startup_failed: {check_message}")
+            return False
         if getattr(sys, "frozen", False):
             cmd = [sys.executable, "--bot-only"]
         else:
@@ -265,7 +274,7 @@ class BotProcessHost:
             if self._process.poll() is not None:
                 code = self._process.returncode
                 self._on_log(
-                    f"Встроенный Telegram-бот не удержал запуск (код {code}). "
+                    f"process_exit_nonzero: встроенный Telegram-бот завершился при старте (код {code}). "
                     "Возможен уже активный --bot-only процесс."
                 )
                 self._process = None
@@ -292,6 +301,43 @@ class BotProcessHost:
         finally:
             self._process = None
             self._on_log("Встроенный Telegram-бот остановлен")
+
+    def _validate_startup(self) -> tuple[bool, str, str]:
+        if getattr(sys, "frozen", False):
+            cmd = [sys.executable, "--bot-validate"]
+        else:
+            cmd = [sys.executable, str(Path(__file__).resolve()), "--bot-validate"]
+        try:
+            env = os.environ.copy()
+            completed = subprocess.run(
+                cmd,
+                cwd=str(Path(__file__).resolve().parent),
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=20,
+                check=False,
+            )
+        except Exception as exc:
+            return False, "process_exit_nonzero", f"Не удалось выполнить проверку бота: {exc}"
+
+        output = "\n".join(
+            part.strip()
+            for part in [completed.stdout or "", completed.stderr or ""]
+            if part and part.strip()
+        ).strip()
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
+        failure_line = next((line for line in lines if line.startswith("BOT_VALIDATE_FAIL:")), "")
+        success_line = next((line for line in lines if line.startswith("BOT_VALIDATE_OK:")), "")
+        if completed.returncode == 0 and success_line:
+            return True, "ok", success_line.removeprefix("BOT_VALIDATE_OK:")
+        if failure_line:
+            _, _, tail = failure_line.partition(":")
+            code, _, message = tail.partition(":")
+            code = (code or "process_exit_nonzero").strip()
+            message = (message or output or "Неизвестная ошибка проверки бота").strip()
+            return False, code, message
+        return False, "process_exit_nonzero", output or "Проверка бота завершилась с ошибкой"
 
 
 class DatePickerPopup(ctk.CTkToplevel):
@@ -690,6 +736,8 @@ class DesktopTodoApp(ctk.CTk):
         self._pending_sync_notify_events: list[dict[str, str]] = []
         self._sync_notify_flush_after_id: str | None = None
         self._sync_notify_flush_delay_ms = 1400
+        self._last_sync_diagnostic_key = ""
+        self._last_sync_diagnostic_at: datetime | None = None
         self._build_layout()
         self._load_person_theme_settings()
         self.apply_theme(refresh=True)
@@ -974,6 +1022,8 @@ class DesktopTodoApp(ctk.CTk):
             if sync_error is not None:
                 self._append_log(f"Ошибка фоновой синхронизации: {sync_error}")
             elif isinstance(sync_result, dict):
+                if not bool(sync_result.get("ok", True)):
+                    self._log_sync_diagnostic(sync_result)
                 next_cursor = str(sync_result.get("next_cursor") or "").strip()
                 if next_cursor:
                     self._sync_cursor = next_cursor
@@ -985,6 +1035,24 @@ class DesktopTodoApp(ctk.CTk):
             self._schedule_sync_poll()
 
         self.after(0, finish)
+
+    def _log_sync_diagnostic(self, sync_result: dict[str, object]) -> None:
+        now = datetime.now()
+        error_kind = str(sync_result.get("error_kind") or "").strip()
+        error_message = str(sync_result.get("error_message") or sync_result.get("reason") or "unknown").strip()
+        if error_kind == "sync_backend_db_error":
+            key = "sync_backend_db_error"
+            line = f"sync_backend_db_error: {error_message}"
+        else:
+            key = error_kind or "sync_pull_failed"
+            line = f"sync_pull_failed: {error_message}"
+        if self._last_sync_diagnostic_key == key and self._last_sync_diagnostic_at is not None:
+            elapsed = (now - self._last_sync_diagnostic_at).total_seconds()
+            if elapsed < 60:
+                return
+        self._last_sync_diagnostic_key = key
+        self._last_sync_diagnostic_at = now
+        self._append_log(line)
 
     def _notify_sync_changes(self, sync_result: dict[str, object]) -> None:
         events_raw = sync_result.get("events")
@@ -1017,7 +1085,16 @@ class DesktopTodoApp(ctk.CTk):
             if not line:
                 continue
             self._sync_notify_history[event_key] = now
-            self._pending_sync_notify_events.append({"event_key": event_key, "line": line})
+            self._pending_sync_notify_events.append(
+                {
+                    "event_key": event_key,
+                    "line": line,
+                    "owner_key": owner,
+                    "is_family": "1" if bool(event.get("is_family")) else "0",
+                    "title": title,
+                    "kind": kind,
+                }
+            )
             queued += 1
         if queued <= 0:
             return
@@ -1049,6 +1126,7 @@ class DesktopTodoApp(ctk.CTk):
         if not self._pending_sync_notify_events:
             return
 
+        events_to_push = list(self._pending_sync_notify_events)
         line_order: list[str] = []
         line_counts: dict[str, int] = {}
         for event in self._pending_sync_notify_events:
@@ -1076,6 +1154,21 @@ class DesktopTodoApp(ctk.CTk):
             from notifier import desktop_notify
 
             desktop_notify(message, title="Изменения задач")
+        except Exception:
+            pass
+        try:
+            from notifier import push_by_visibility, push_to_family
+
+            for event in events_to_push:
+                line = str(event.get("line") or "").strip()
+                if not line:
+                    continue
+                owner_key = str(event.get("owner_key") or "").strip()
+                is_family = str(event.get("is_family") or "") == "1"
+                if is_family:
+                    push_to_family(line, disable_notification=False)
+                elif owner_key:
+                    push_by_visibility(owner_key, line, disable_notification=False)
         except Exception:
             pass
 
@@ -2007,10 +2100,19 @@ class DesktopTodoApp(ctk.CTk):
 
 def run_bot_only() -> None:
     import telegram_bot
-    telegram_bot.main()
+    raise SystemExit(telegram_bot.main())
+
+
+def run_bot_validate() -> None:
+    import telegram_bot
+
+    raise SystemExit(telegram_bot.main(validate_only=True))
 
 
 def main() -> None:
+    if "--bot-validate" in sys.argv:
+        run_bot_validate()
+        return
     if "--bot-only" in sys.argv:
         run_bot_only()
         return
