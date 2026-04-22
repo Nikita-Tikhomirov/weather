@@ -6,7 +6,6 @@ require_once dirname(__DIR__) . '/src/bootstrap.php';
 require_once dirname(__DIR__) . '/src/db.php';
 require_once dirname(__DIR__) . '/src/auth.php';
 require_once dirname(__DIR__) . '/src/repository.php';
-require_once dirname(__DIR__) . '/src/telegram_outbox.php';
 require_once dirname(__DIR__) . '/src/push_outbox.php';
 
 function apply_event(PDO $db, array $event, string $actor, string $source): array
@@ -22,8 +21,6 @@ function apply_event(PDO $db, array $event, string $actor, string $source): arra
     $entity = (string)($event['entity'] ?? 'task');
     $action = (string)($event['action'] ?? 'upsert');
     $payload = is_array($event['payload'] ?? null) ? $event['payload'] : [];
-    $recipients = recipients_for_push($actor, $entity, $action, $payload);
-
     if ($entity === 'task') {
         if ($action === 'delete') {
             $taskId = trim((string)($payload['id'] ?? ''));
@@ -68,16 +65,7 @@ function apply_event(PDO $db, array $event, string $actor, string $source): arra
     }
 
     register_event($db, $eventId, $source);
-    if ($source !== 'telegram') {
-        enqueue_telegram_event($db, $eventId, [
-            'event_id' => $eventId,
-            'entity' => $entity,
-            'action' => $action,
-            'payload' => $payload,
-            'actor_profile' => $actor,
-        ], $recipients);
-    }
-    // Delivery policy: Telegram messages only.
+    // Delivery policy: server-side Telegram delivery disabled.
     return ['status' => 'accepted'];
 }
 
@@ -206,12 +194,11 @@ try {
             throw $inner;
         }
 
-        $telegramResult = process_outbox($db, $config, 200);
         json_response(200, [
             'ok' => true,
             'accepted' => $accepted,
             'duplicates' => $duplicates,
-            'telegram' => $telegramResult,
+            'telegram' => ['disabled' => true, 'message' => 'server delivery disabled'],
             'push' => ['disabled' => true],
             'server_time' => iso_now(),
         ]);
@@ -246,12 +233,11 @@ try {
             $db->rollBack();
             throw $inner;
         }
-        $telegramResult = process_outbox($db, $config, 200);
         json_response(200, [
             'ok' => true,
             'accepted' => $accepted,
             'duplicates' => $duplicates,
-            'telegram' => $telegramResult,
+            'telegram' => ['disabled' => true, 'message' => 'server delivery disabled'],
             'push' => ['disabled' => true],
         ]);
         exit;
@@ -259,8 +245,10 @@ try {
 
     if ($method === 'POST' && $path === '/telegram/outbox/retry') {
         require_api_key($config);
-        $result = process_outbox($db, $config);
-        json_response(200, ['ok' => true, 'result' => $result]);
+        json_response(200, [
+            'ok' => true,
+            'result' => ['disabled' => true, 'message' => 'server delivery disabled'],
+        ]);
         exit;
     }
 
