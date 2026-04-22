@@ -70,23 +70,30 @@ python .\voice_trigger.py
 
 ## 4.1 Desktop-приложение (GUI)
 
-В проект добавлен desktop-интерфейс:
-- `desktop_app.py` - окно управления ToDo + текстовые команды + переключатель голосового режима;
-- `desktop.bat` - быстрый запуск GUI.
+Сейчас поддерживаются два desktop-клиента:
+- новый Flutter Desktop (`mobile_app/`) — основной путь миграции;
+- legacy CTk (`desktop_app.py`) — fallback до полного завершения миграции.
 
-Запуск:
-
-```powershell
-python .\desktop_app.py
-```
-
-или:
+Быстрый запуск:
 
 ```powershell
 .\desktop.bat
 ```
 
-Что умеет GUI:
+`desktop.bat` сначала пытается запустить Flutter EXE:
+- `mobile_app\build\windows\x64\runner\Release\family_todo_mobile.exe`
+
+Если EXE еще не собран — автоматически запускается legacy CTk клиент:
+- `python .\desktop_app.py`
+
+Что уже умеет Flutter desktop GUI:
+- dashboard, kanban, calendar, family-экран;
+- offline-first CRUD + sync delta/full;
+- поиск задач, фильтр по дате, массовое удаление выбранных задач;
+- фильтры семейных задач (предстоящие/просроченные/выполненные/все);
+- откат последнего действия (undo).
+
+Что умеет legacy CTk GUI (fallback):
 - редактирование задач вручную (добавить/изменить/удалить/сделано);
 - Kanban-перетаскивание между колонками и reorder внутри колонки;
 - отдельная вкладка `Семейные дела` (участники, длительность, редактирование);
@@ -129,6 +136,15 @@ python .\desktop_app.py
 
 Если используете `onefile`-сборку, отдельный `python .\\telegram_bot.py` запускать не нужно:
 - desktop-приложение умеет поднимать встроенный Telegram-бот (переключатель в левом меню).
+
+Сборка Flutter desktop EXE:
+
+```powershell
+.\desktop_flutter_build.ps1
+```
+
+Результат:
+- `mobile_app\build\windows\x64\runner\Release\family_todo_mobile.exe`
 
 ## 5. Как пользоваться (основной сценарий)
 

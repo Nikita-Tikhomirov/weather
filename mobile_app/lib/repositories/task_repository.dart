@@ -4,10 +4,7 @@ import '../services/local_db.dart';
 import '../services/sync_service.dart';
 
 class TaskRepository {
-  TaskRepository({
-    required this.db,
-    required this.api,
-  });
+  TaskRepository({required this.db, required this.api});
 
   final LocalDb db;
   final ApiClient api;
@@ -18,11 +15,7 @@ class TaskRepository {
 
   Future<void> bindActor(String actorProfile) async {
     _actorProfile = actorProfile;
-    _syncService = SyncService(
-      db: db,
-      api: api,
-      actorProfile: _actorProfile,
-    );
+    _syncService = SyncService(db: db, api: api, actorProfile: _actorProfile);
   }
 
   Future<List<TaskItem>> readVisibleTasks() {

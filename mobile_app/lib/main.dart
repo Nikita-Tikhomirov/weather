@@ -88,9 +88,8 @@ class _HomePageState extends State<HomePage> {
         defaultValue: 'dev-local-key',
       ),
     );
-    final repository = TaskRepository(db: db, api: api);
     final store = TaskStore(
-      repository: repository,
+      repository: TaskRepository(db: db, api: api),
       domainService: TaskDomainService(),
     );
     await store.initialize(initialOwner: owner);
@@ -101,15 +100,10 @@ class _HomePageState extends State<HomePage> {
       store.dispose();
       return;
     }
-    setState(() {
-      _store = store;
-    });
+    setState(() => _store = store);
   }
 
-  void _bindFcm({
-    required ApiClient api,
-    required String owner,
-  }) {
+  void _bindFcm({required ApiClient api, required String owner}) {
     _fcm = FcmService(
       api: api,
       actorProfile: owner,
@@ -117,7 +111,9 @@ class _HomePageState extends State<HomePage> {
         if (!mounted) {
           return;
         }
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(text)));
       },
       onOpenPush: () async {
         final store = _store;
@@ -205,7 +201,9 @@ class _HomePageState extends State<HomePage> {
     final durationCtl = TextEditingController(
       text: existing == null ? '' : existing.durationMinutes.toString(),
     );
-    final selectedAssignees = <String>{...(existing?.assignees ?? const <String>[])};
+    final selectedAssignees = <String>{
+      ...(existing?.assignees ?? const <String>[]),
+    };
     DateTime selected = existing == null
         ? store.selectedDate.value
         : DateTime.tryParse(existing.dueDate) ?? store.selectedDate.value;
@@ -233,7 +231,9 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      existing == null ? 'Новая задача' : 'Редактирование задачи',
+                      existing == null
+                          ? 'Новая задача'
+                          : 'Редактирование задачи',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 12),
@@ -275,7 +275,11 @@ class _HomePageState extends State<HomePage> {
                               final parts = time.split(':');
                               final initial = TimeOfDay(
                                 hour: int.tryParse(parts.first) ?? 19,
-                                minute: int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0,
+                                minute:
+                                    int.tryParse(
+                                      parts.length > 1 ? parts[1] : '0',
+                                    ) ??
+                                    0,
                               );
                               final picked = await showTimePicker(
                                 context: context,
@@ -297,33 +301,54 @@ class _HomePageState extends State<HomePage> {
                       decoration: const InputDecoration(labelText: 'Приоритет'),
                       items: const [
                         DropdownMenuItem(value: 'low', child: Text('Низкий')),
-                        DropdownMenuItem(value: 'medium', child: Text('Средний')),
+                        DropdownMenuItem(
+                          value: 'medium',
+                          child: Text('Средний'),
+                        ),
                         DropdownMenuItem(value: 'high', child: Text('Высокий')),
                       ],
-                      onChanged: (value) => setModalState(() => priority = value ?? 'medium'),
+                      onChanged: (value) =>
+                          setModalState(() => priority = value ?? 'medium'),
                     ),
                     DropdownButtonFormField<String>(
                       value: status,
                       decoration: const InputDecoration(labelText: 'Статус'),
                       items: const [
-                        DropdownMenuItem(value: 'todo', child: Text('К выполнению')),
-                        DropdownMenuItem(value: 'in_progress', child: Text('В работе')),
-                        DropdownMenuItem(value: 'in_review', child: Text('На проверке')),
-                        DropdownMenuItem(value: 'done', child: Text('Выполнено')),
+                        DropdownMenuItem(
+                          value: 'todo',
+                          child: Text('К выполнению'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'in_progress',
+                          child: Text('В работе'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'in_review',
+                          child: Text('На проверке'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'done',
+                          child: Text('Выполнено'),
+                        ),
                       ],
-                      onChanged: (value) => setModalState(() => status = value ?? 'todo'),
+                      onChanged: (value) =>
+                          setModalState(() => status = value ?? 'todo'),
                     ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Семейная задача'),
                       value: isFamily,
-                      onChanged: forceFamily ? null : (value) => setModalState(() => isFamily = value),
+                      onChanged: forceFamily
+                          ? null
+                          : (value) => setModalState(() => isFamily = value),
                     ),
                     if (isFamily) ...[
                       TextField(
                         controller: durationCtl,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Длительность (мин)'),
+                        decoration: const InputDecoration(
+                          labelText: 'Длительность (мин)',
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -373,16 +398,17 @@ class _HomePageState extends State<HomePage> {
                                 workflowStatus: status,
                                 isFamily: isFamily,
                                 assignees: selectedAssignees.toList(),
-                                durationMinutes: int.tryParse(durationCtl.text.trim()) ?? 0,
+                                durationMinutes:
+                                    int.tryParse(durationCtl.text.trim()) ?? 0,
                               );
                               final error = await store.saveDraft(
                                 draft: draft,
                                 existing: existing,
                               );
                               if (error != null && mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(error)),
-                                );
+                                ScaffoldMessenger.of(
+                                  context,
+                                ).showSnackBar(SnackBar(content: Text(error)));
                                 return;
                               }
                               if (!mounted) {
@@ -427,9 +453,42 @@ class _HomePageState extends State<HomePage> {
                   appBar: AppBar(
                     title: Text('Family tasks - $selectedDateKey'),
                     actions: [
+                      ValueListenableBuilder<bool>(
+                        valueListenable: store.canUndo,
+                        builder: (context, canUndo, _) {
+                          return IconButton(
+                            tooltip: 'Откатить последнее действие',
+                            onPressed: canUndo
+                                ? () async {
+                                    final ok = await store.undoLastAction();
+                                    if (!mounted) {
+                                      return;
+                                    }
+                                    if (ok) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Последнее действие отменено',
+                                          ),
+                                        ),
+                                      );
+                                      await _safeSyncDelta(
+                                        store,
+                                        showErrors: false,
+                                      );
+                                    }
+                                  }
+                                : null,
+                            icon: const Icon(Icons.undo),
+                          );
+                        },
+                      ),
                       PopupMenuButton<String>(
                         initialValue: owner,
-                        onSelected: (value) async => _switchProfile(store, value),
+                        onSelected: (value) async =>
+                            _switchProfile(store, value),
                         itemBuilder: (context) => _profiles
                             .map(
                               (profile) => PopupMenuItem<String>(
@@ -439,17 +498,22 @@ class _HomePageState extends State<HomePage> {
                             )
                             .toList(),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
                           child: Center(
                             child: Text(
                               profileLabel(owner),
-                              style: const TextStyle(fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ),
                       ),
                       IconButton(
-                        tooltip: 'Calendar',
+                        tooltip: 'Календарь',
                         icon: const Icon(Icons.calendar_month),
                         onPressed: () async {
                           final picked = await showDatePicker(
@@ -464,9 +528,10 @@ class _HomePageState extends State<HomePage> {
                         },
                       ),
                       IconButton(
-                        tooltip: 'Sync now',
+                        tooltip: 'Синхронизировать',
                         icon: const Icon(Icons.sync),
-                        onPressed: () async => _safeSyncFull(store, showErrors: true),
+                        onPressed: () async =>
+                            _safeSyncFull(store, showErrors: true),
                       ),
                     ],
                   ),
@@ -497,23 +562,156 @@ class _HomePageState extends State<HomePage> {
                               );
                             }
                             if (page == 1) {
-                              return ValueListenableBuilder<Map<String, List<TaskItem>>>(
+                              return ValueListenableBuilder<
+                                Map<String, List<TaskItem>>
+                              >(
                                 valueListenable: store.personalByStatus,
                                 builder: (context, byStatus, _) {
-                                  return _TasksBoard(
-                                    byStatus: byStatus,
-                                    onDrop: (item, status) async {
-                                      await store.move(item, status);
-                                      await _safeSyncDelta(store, showErrors: true);
-                                    },
-                                    onEdit: (task) => _openTaskEditor(store, existing: task),
-                                    onDelete: (task) async {
-                                      await store.delete(task);
-                                      await _safeSyncDelta(store, showErrors: true);
-                                    },
-                                    onDoneToggle: (task) async {
-                                      await store.toggleDone(task);
-                                      await _safeSyncDelta(store, showErrors: true);
+                                  return ValueListenableBuilder<String>(
+                                    valueListenable: store.searchQuery,
+                                    builder: (context, query, __) {
+                                      return ValueListenableBuilder<String>(
+                                        valueListenable: store.tasksDateFilter,
+                                        builder: (context, dateFilter, ___) {
+                                          return ValueListenableBuilder<bool>(
+                                            valueListenable:
+                                                store.selectionMode,
+                                            builder: (context, selectionMode, ____) {
+                                              return ValueListenableBuilder<
+                                                Set<String>
+                                              >(
+                                                valueListenable:
+                                                    store.selectedTaskIds,
+                                                builder: (context, selectedIds, _____) {
+                                                  return Column(
+                                                    children: [
+                                                      _TasksToolbar(
+                                                        searchQuery: query,
+                                                        dateFilter: dateFilter,
+                                                        selectionMode:
+                                                            selectionMode,
+                                                        selectedCount:
+                                                            selectedIds.length,
+                                                        onSearchChanged: store
+                                                            .setSearchQuery,
+                                                        onPickDate: () async {
+                                                          final picked =
+                                                              await showDatePicker(
+                                                                context:
+                                                                    context,
+                                                                initialDate:
+                                                                    selectedDate,
+                                                                firstDate:
+                                                                    DateTime(
+                                                                      2024,
+                                                                    ),
+                                                                lastDate:
+                                                                    DateTime(
+                                                                      2035,
+                                                                    ),
+                                                              );
+                                                          if (picked != null) {
+                                                            store
+                                                                .setTasksDateFilter(
+                                                                  _dateKey(
+                                                                    picked,
+                                                                  ),
+                                                                );
+                                                          }
+                                                        },
+                                                        onUseToday: () => store
+                                                            .setTasksDateFilter(
+                                                              _dateKey(
+                                                                DateTime.now(),
+                                                              ),
+                                                            ),
+                                                        onClearDate: store
+                                                            .clearTasksDateFilter,
+                                                        onToggleSelection: store
+                                                            .toggleSelectionMode,
+                                                        onDeleteSelected: () async {
+                                                          final count = await store
+                                                              .deleteSelectedPersonalTasks();
+                                                          if (!mounted ||
+                                                              count <= 0) {
+                                                            return;
+                                                          }
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
+                                                            SnackBar(
+                                                              content: Text(
+                                                                'Удалено задач: $count',
+                                                              ),
+                                                            ),
+                                                          );
+                                                          await _safeSyncDelta(
+                                                            store,
+                                                            showErrors: true,
+                                                          );
+                                                        },
+                                                      ),
+                                                      Expanded(
+                                                        child: _TasksBoard(
+                                                          byStatus: byStatus,
+                                                          selectionMode:
+                                                              selectionMode,
+                                                          selectedIds:
+                                                              selectedIds,
+                                                          onToggleSelect: store
+                                                              .toggleTaskSelection,
+                                                          onDrop:
+                                                              (
+                                                                item,
+                                                                status,
+                                                              ) async {
+                                                                await store
+                                                                    .move(
+                                                                      item,
+                                                                      status,
+                                                                    );
+                                                                await _safeSyncDelta(
+                                                                  store,
+                                                                  showErrors:
+                                                                      true,
+                                                                );
+                                                              },
+                                                          onEdit: (task) =>
+                                                              _openTaskEditor(
+                                                                store,
+                                                                existing: task,
+                                                              ),
+                                                          onDelete: (task) async {
+                                                            await store.delete(
+                                                              task,
+                                                            );
+                                                            await _safeSyncDelta(
+                                                              store,
+                                                              showErrors: true,
+                                                            );
+                                                          },
+                                                          onDoneToggle:
+                                                              (task) async {
+                                                                await store
+                                                                    .toggleDone(
+                                                                      task,
+                                                                    );
+                                                                await _safeSyncDelta(
+                                                                  store,
+                                                                  showErrors:
+                                                                      true,
+                                                                );
+                                                              },
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
+                                              );
+                                            },
+                                          );
+                                        },
+                                      );
                                     },
                                   );
                                 },
@@ -527,24 +725,41 @@ class _HomePageState extends State<HomePage> {
                                     selectedDate: selectedDate,
                                     tasksForSelectedDate: tasks,
                                     onDateChange: store.setSelectedDate,
-                                    onEdit: (task) => _openTaskEditor(store, existing: task),
+                                    onEdit: (task) =>
+                                        _openTaskEditor(store, existing: task),
                                     onDelete: (task) async {
                                       await store.delete(task);
-                                      await _safeSyncDelta(store, showErrors: true);
+                                      await _safeSyncDelta(
+                                        store,
+                                        showErrors: true,
+                                      );
                                     },
                                   );
                                 },
                               );
                             }
-                            return ValueListenableBuilder<List<TaskItem>>(
-                              valueListenable: store.familyTasksForSelectedDate,
-                              builder: (context, tasks, _) {
-                                return _FamilyView(
-                                  familyTasks: tasks,
-                                  onEdit: (task) => _openTaskEditor(store, existing: task),
-                                  onDelete: (task) async {
-                                    await store.delete(task);
-                                    await _safeSyncDelta(store, showErrors: true);
+                            return ValueListenableBuilder<String>(
+                              valueListenable: store.familyFilter,
+                              builder: (context, familyFilter, _) {
+                                return ValueListenableBuilder<List<TaskItem>>(
+                                  valueListenable: store.familyTasksView,
+                                  builder: (context, tasks, __) {
+                                    return _FamilyView(
+                                      familyTasks: tasks,
+                                      familyFilter: familyFilter,
+                                      onFilterChanged: store.setFamilyFilter,
+                                      onEdit: (task) => _openTaskEditor(
+                                        store,
+                                        existing: task,
+                                      ),
+                                      onDelete: (task) async {
+                                        await store.delete(task);
+                                        await _safeSyncDelta(
+                                          store,
+                                          showErrors: true,
+                                        );
+                                      },
+                                    );
                                   },
                                 );
                               },
@@ -558,12 +773,10 @@ class _HomePageState extends State<HomePage> {
                         return const SizedBox.shrink();
                       }
                       return FloatingActionButton.extended(
-                        onPressed: () => _openTaskEditor(
-                          store,
-                          forceFamily: page == 3,
-                        ),
+                        onPressed: () =>
+                            _openTaskEditor(store, forceFamily: page == 3),
                         icon: const Icon(Icons.add),
-                        label: Text(page == 3 ? 'Family task' : 'Task'),
+                        label: Text(page == 3 ? 'Семейная задача' : 'Задача'),
                       );
                     },
                   ),
@@ -576,19 +789,19 @@ class _HomePageState extends State<HomePage> {
                         destinations: const [
                           NavigationDestination(
                             icon: Icon(Icons.dashboard_outlined),
-                            label: 'Dashboard',
+                            label: 'Дашборд',
                           ),
                           NavigationDestination(
                             icon: Icon(Icons.view_kanban_outlined),
-                            label: 'Tasks',
+                            label: 'Задачи',
                           ),
                           NavigationDestination(
                             icon: Icon(Icons.calendar_month_outlined),
-                            label: 'Calendar',
+                            label: 'Календарь',
                           ),
                           NavigationDestination(
                             icon: Icon(Icons.family_restroom_outlined),
-                            label: 'Family',
+                            label: 'Семейные',
                           ),
                         ],
                       );
@@ -611,11 +824,83 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _DashboardView extends StatelessWidget {
-  const _DashboardView({
-    required this.vm,
-    required this.onOpenCalendar,
+class _TasksToolbar extends StatelessWidget {
+  const _TasksToolbar({
+    required this.searchQuery,
+    required this.dateFilter,
+    required this.selectionMode,
+    required this.selectedCount,
+    required this.onSearchChanged,
+    required this.onPickDate,
+    required this.onUseToday,
+    required this.onClearDate,
+    required this.onToggleSelection,
+    required this.onDeleteSelected,
   });
+
+  final String searchQuery;
+  final String dateFilter;
+  final bool selectionMode;
+  final int selectedCount;
+  final void Function(String) onSearchChanged;
+  final Future<void> Function() onPickDate;
+  final VoidCallback onUseToday;
+  final VoidCallback onClearDate;
+  final VoidCallback onToggleSelection;
+  final Future<void> Function() onDeleteSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            SizedBox(
+              width: 260,
+              child: TextFormField(
+                initialValue: searchQuery,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  labelText: 'Поиск задач',
+                  isDense: true,
+                ),
+                onChanged: onSearchChanged,
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: onPickDate,
+              icon: const Icon(Icons.date_range),
+              label: Text(dateFilter.isEmpty ? 'Все даты' : dateFilter),
+            ),
+            OutlinedButton(onPressed: onUseToday, child: const Text('Сегодня')),
+            OutlinedButton(
+              onPressed: onClearDate,
+              child: const Text('Сброс даты'),
+            ),
+            FilledButton.tonal(
+              onPressed: onToggleSelection,
+              child: Text(selectionMode ? 'Выбор: выкл' : 'Выбрать'),
+            ),
+            FilledButton(
+              onPressed: selectionMode && selectedCount > 0
+                  ? onDeleteSelected
+                  : null,
+              child: Text('Удалить выбранные ($selectedCount)'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DashboardView extends StatelessWidget {
+  const _DashboardView({required this.vm, required this.onOpenCalendar});
 
   final DashboardVm vm;
   final Future<void> Function() onOpenCalendar;
@@ -680,7 +965,9 @@ class _DashboardView extends StatelessWidget {
               subtitle: Text(
                 '${task.dueDate} ${task.time} - ${profileLabel(task.ownerKey)} - ${workflowLabel(task.workflowStatus)}',
               ),
-              trailing: task.isFamily ? const Icon(Icons.family_restroom) : null,
+              trailing: task.isFamily
+                  ? const Icon(Icons.family_restroom)
+                  : null,
             ),
           ),
       ],
@@ -750,7 +1037,8 @@ class _CalendarView extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
               final date = days[index];
-              final isCurrent = date.year == selectedDate.year &&
+              final isCurrent =
+                  date.year == selectedDate.year &&
                   date.month == selectedDate.month &&
                   date.day == selectedDate.day;
               return ChoiceChip(
@@ -789,6 +1077,9 @@ class _CalendarView extends StatelessWidget {
 class _TasksBoard extends StatelessWidget {
   const _TasksBoard({
     required this.byStatus,
+    required this.selectionMode,
+    required this.selectedIds,
+    required this.onToggleSelect,
     required this.onDrop,
     required this.onEdit,
     required this.onDelete,
@@ -796,6 +1087,9 @@ class _TasksBoard extends StatelessWidget {
   });
 
   final Map<String, List<TaskItem>> byStatus;
+  final bool selectionMode;
+  final Set<String> selectedIds;
+  final void Function(String) onToggleSelect;
   final Future<void> Function(TaskItem, String) onDrop;
   final Future<void> Function(TaskItem) onEdit;
   final Future<void> Function(TaskItem) onDelete;
@@ -818,7 +1112,7 @@ class _TasksBoard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       children: _titles.keys.map((status) {
         final items = byStatus[status] ?? const <TaskItem>[];
         return Card(
@@ -845,7 +1139,7 @@ class _TasksBoard extends StatelessWidget {
                         feedback: Material(
                           color: Colors.transparent,
                           child: SizedBox(
-                            width: 250,
+                            width: 260,
                             child: _TaskCard(
                               item: item,
                               onEdit: () async {},
@@ -857,6 +1151,9 @@ class _TasksBoard extends StatelessWidget {
                         childWhenDragging: const SizedBox.shrink(),
                         child: _TaskCard(
                           item: item,
+                          selectionMode: selectionMode,
+                          selected: selectedIds.contains(item.id),
+                          onSelectionToggle: () => onToggleSelect(item.id),
                           onEdit: () => onEdit(item),
                           onDelete: () => onDelete(item),
                           onDoneToggle: () => onDoneToggle(item),
@@ -876,32 +1173,60 @@ class _TasksBoard extends StatelessWidget {
 class _FamilyView extends StatelessWidget {
   const _FamilyView({
     required this.familyTasks,
+    required this.familyFilter,
+    required this.onFilterChanged,
     required this.onEdit,
     required this.onDelete,
   });
 
   final List<TaskItem> familyTasks;
+  final String familyFilter;
+  final void Function(String) onFilterChanged;
   final Future<void> Function(TaskItem) onEdit;
   final Future<void> Function(TaskItem) onDelete;
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(12),
+    return Column(
       children: [
-        Text('Семейные задачи', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
-        if (familyTasks.isEmpty)
-          const Card(
-            child: ListTile(title: Text('На эту дату семейных задач нет')),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+          child: SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'upcoming', label: Text('Предстоящие')),
+              ButtonSegment(value: 'overdue', label: Text('Просроченные')),
+              ButtonSegment(value: 'done', label: Text('Выполненные')),
+              ButtonSegment(value: 'all', label: Text('Все')),
+            ],
+            selected: <String>{familyFilter},
+            onSelectionChanged: (values) => onFilterChanged(values.first),
           ),
-        for (final item in familyTasks)
-          _TaskCard(
-            item: item,
-            onEdit: () => onEdit(item),
-            onDelete: () => onDelete(item),
-            onDoneToggle: () async {},
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(12),
+            children: [
+              Text(
+                'Семейные задачи',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              if (familyTasks.isEmpty)
+                const Card(
+                  child: ListTile(
+                    title: Text('Под выбранный фильтр задач нет'),
+                  ),
+                ),
+              for (final item in familyTasks)
+                _TaskCard(
+                  item: item,
+                  onEdit: () => onEdit(item),
+                  onDelete: () => onDelete(item),
+                  onDoneToggle: () async {},
+                ),
+            ],
           ),
+        ),
       ],
     );
   }
@@ -913,9 +1238,15 @@ class _TaskCard extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onDoneToggle,
+    this.selectionMode = false,
+    this.selected = false,
+    this.onSelectionToggle,
   });
 
   final TaskItem item;
+  final bool selectionMode;
+  final bool selected;
+  final VoidCallback? onSelectionToggle;
   final Future<void> Function() onEdit;
   final Future<void> Function() onDelete;
   final Future<void> Function() onDoneToggle;
@@ -937,27 +1268,37 @@ class _TaskCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        onTap: () => onEdit(),
+        onTap: selectionMode ? onSelectionToggle : () => onEdit(),
+        leading: selectionMode
+            ? Checkbox(
+                value: selected,
+                onChanged: (_) => onSelectionToggle?.call(),
+              )
+            : null,
         title: Text(item.title),
         subtitle: Text(subtitle),
         isThreeLine: true,
-        trailing: Wrap(
-          spacing: 4,
-          children: [
-            IconButton(
-              tooltip: 'Выполнить/отменить',
-              icon: Icon(
-                item.workflowStatus == 'done' ? Icons.undo : Icons.check_circle,
+        trailing: selectionMode
+            ? null
+            : Wrap(
+                spacing: 4,
+                children: [
+                  IconButton(
+                    tooltip: 'Выполнить/отменить',
+                    icon: Icon(
+                      item.workflowStatus == 'done'
+                          ? Icons.undo
+                          : Icons.check_circle,
+                    ),
+                    onPressed: () => onDoneToggle(),
+                  ),
+                  IconButton(
+                    tooltip: 'Удалить',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => onDelete(),
+                  ),
+                ],
               ),
-              onPressed: () => onDoneToggle(),
-            ),
-            IconButton(
-              tooltip: 'Удалить',
-              icon: const Icon(Icons.delete_outline),
-              onPressed: () => onDelete(),
-            ),
-          ],
-        ),
       ),
     );
   }

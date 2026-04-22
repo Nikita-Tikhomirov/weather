@@ -2,6 +2,11 @@
 
 Android-first Flutter app with offline sync, Telegram bridge, and FCM push.
 
+Core client architecture is shared for mobile and desktop:
+- local DB as source of truth,
+- `SyncService` for push + pull snapshot/delta,
+- shared domain/repository/state layers (`lib/domain`, `lib/repositories`, `lib/state`).
+
 ## Desktop (Windows) build
 
 The same Flutter client is used for desktop migration.
