@@ -4,6 +4,7 @@ import 'dart:io' show Platform;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/services.dart';
 
 import 'api_client.dart';
 
@@ -15,6 +16,8 @@ const _appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '0.1.6')
 
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();
+const MethodChannel _firebaseInstallationsChannel =
+    MethodChannel('family_todo_mobile/firebase_installations');
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -218,6 +221,11 @@ class FcmService {
       } catch (_) {}
       try {
         await messaging.deleteToken();
+      } catch (_) {}
+      try {
+        await _firebaseInstallationsChannel.invokeMethod<bool>(
+          'deleteInstallation',
+        );
       } catch (_) {}
       await Future<void>.delayed(const Duration(milliseconds: 500));
       try {

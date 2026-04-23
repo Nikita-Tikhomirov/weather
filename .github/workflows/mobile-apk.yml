@@ -59,6 +59,13 @@ jobs:
           if [ -f mobile_app/android/app/src/main/AndroidManifest.xml ]; then
             cp mobile_app/android/app/src/main/AndroidManifest.xml "$APP_DIR/android/app/src/main/AndroidManifest.xml"
           fi
+          if [ -d mobile_app/android/app/src/main/kotlin ]; then
+            rm -rf "$APP_DIR/android/app/src/main/kotlin"
+            cp -R mobile_app/android/app/src/main/kotlin "$APP_DIR/android/app/src/main/kotlin"
+          fi
+          if [ -d mobile_app/android/app/src/main/java ]; then
+            cp -R mobile_app/android/app/src/main/java "$APP_DIR/android/app/src/main/java"
+          fi
 
       - name: Flutter pub get
         run: |
