@@ -70,9 +70,20 @@ jobs:
           API_KEY: ${{ secrets.TODO_BACKEND_API_KEY }}
         run: |
           cd /tmp/family_todo_mobile
+          set +e
           flutter build apk --release \
             --dart-define=API_BASE_URL="$API_BASE_URL" \
             --dart-define=API_KEY="${API_KEY:-dev-local-key}"
+          BUILD_EXIT=$?
+          set -e
+
+          APK_PATH="$(find /tmp/family_todo_mobile -type f \( -name 'app-release.apk' -o -name '*release*.apk' \) | head -n 1 || true)"
+          if [ -n "$APK_PATH" ]; then
+            mkdir -p /tmp/family_todo_mobile/build/app/outputs/flutter-apk
+            cp "$APK_PATH" /tmp/family_todo_mobile/build/app/outputs/flutter-apk/app-release.apk
+          elif [ "$BUILD_EXIT" -ne 0 ]; then
+            exit "$BUILD_EXIT"
+          fi
 
       - name: Rename artifact
         run: |
