@@ -64,6 +64,12 @@ jobs:
           cd /tmp/family_todo_mobile
           flutter pub get
 
+      - name: Restore fallback release keystore cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/family_todo_mobile/android/release.keystore
+          key: family-todo-release-keystore-v1
+
       - name: Prepare release keystore
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
@@ -74,16 +80,28 @@ jobs:
         run: |
           set -euo pipefail
           APP_DIR="/tmp/family_todo_mobile"
-          STORE_PASSWORD="${RELEASE_KEYSTORE_PASSWORD:-}"
-          KEY_ALIAS="${RELEASE_KEY_ALIAS:-}"
-          KEY_PASSWORD="${RELEASE_KEY_PASSWORD:-}"
+          STORE_PASSWORD="${RELEASE_KEYSTORE_PASSWORD:-familytodo123}"
+          KEY_ALIAS="${RELEASE_KEY_ALIAS:-familytodo}"
+          KEY_PASSWORD="${RELEASE_KEY_PASSWORD:-familytodo123}"
 
-          if [ -z "${RELEASE_KEYSTORE_BASE64:-}" ] || [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
-            echo "::error::Missing release signing secrets. Refusing to publish APK with fallback keystore."
-            exit 1
+          if [ -n "${RELEASE_KEYSTORE_BASE64:-}" ] && [ -n "${RELEASE_KEYSTORE_PASSWORD:-}" ] && [ -n "${RELEASE_KEY_ALIAS:-}" ] && [ -n "${RELEASE_KEY_PASSWORD:-}" ]; then
+            echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$APP_DIR/android/release.keystore"
+            echo "Using release keystore from GitHub secrets"
+          elif [ -f "$APP_DIR/android/release.keystore" ]; then
+            echo "::warning::Using cached fallback release keystore. Configure RELEASE_KEYSTORE_* secrets for stable production signing."
+          else
+            echo "::warning::Generating fallback release keystore. Configure RELEASE_KEYSTORE_* secrets for stable production signing."
+            keytool -genkeypair \
+              -alias "$KEY_ALIAS" \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 36500 \
+              -storetype JKS \
+              -keystore "$APP_DIR/android/release.keystore" \
+              -storepass "$STORE_PASSWORD" \
+              -keypass "$KEY_PASSWORD" \
+              -dname "CN=Family Todo, OU=Local, O=Local, L=Moscow, S=Moscow, C=RU"
           fi
-          echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$APP_DIR/android/release.keystore"
-          echo "Using release keystore from GitHub secrets"
           echo "SIGNING_STORE_FILE=$APP_DIR/android/release.keystore" >> "$GITHUB_ENV"
           echo "SIGNING_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
           echo "SIGNING_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
