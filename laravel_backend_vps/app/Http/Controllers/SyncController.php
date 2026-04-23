@@ -6,6 +6,7 @@ use App\Domain\Sync\Cursor;
 use App\Domain\Sync\Profiles;
 use App\Domain\Sync\SyncRepository;
 use App\Domain\Sync\SyncRules;
+use App\Services\Push\PushOutboxService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use InvalidArgumentException;
@@ -13,9 +14,10 @@ use Throwable;
 
 class SyncController extends Controller
 {
-    public function __construct(private readonly SyncRepository $repo)
-    {
-    }
+    public function __construct(
+        private readonly SyncRepository $repo,
+        private readonly PushOutboxService $pushOutbox,
+    ) {}
 
     public function health(): JsonResponse
     {
@@ -83,25 +85,30 @@ class SyncController extends Controller
 
             $accepted = 0;
             $duplicates = 0;
+            $queued = 0;
 
             foreach ($events as $event) {
                 if (!is_array($event)) {
                     continue;
                 }
                 $result = $this->applyEvent($event, $actor, $source);
-                if ($result === 'accepted') {
+                if ($result['status'] === 'accepted') {
                     $accepted++;
-                } elseif ($result === 'duplicate') {
+                    $queued += (int)($result['push_queued'] ?? 0);
+                } elseif ($result['status'] === 'duplicate') {
                     $duplicates++;
                 }
             }
+
+            $pushStats = $this->pushOutbox->retryDue();
+            $pushStats['queued'] = $queued;
 
             return $this->json(200, [
                 'ok' => true,
                 'accepted' => $accepted,
                 'duplicates' => $duplicates,
                 'telegram' => ['disabled' => true],
-                'push' => ['disabled' => true],
+                'push' => $pushStats,
                 'server_time' => $this->repo->nowIso(),
             ]);
         } catch (InvalidArgumentException $e) {
@@ -122,25 +129,30 @@ class SyncController extends Controller
 
             $accepted = 0;
             $duplicates = 0;
+            $queued = 0;
 
             foreach ($events as $event) {
                 if (!is_array($event)) {
                     continue;
                 }
                 $result = $this->applyEvent($event, $actor, 'telegram');
-                if ($result === 'accepted') {
+                if ($result['status'] === 'accepted') {
                     $accepted++;
-                } elseif ($result === 'duplicate') {
+                    $queued += (int)($result['push_queued'] ?? 0);
+                } elseif ($result['status'] === 'duplicate') {
                     $duplicates++;
                 }
             }
+
+            $pushStats = $this->pushOutbox->retryDue();
+            $pushStats['queued'] = $queued;
 
             return $this->json(200, [
                 'ok' => true,
                 'accepted' => $accepted,
                 'duplicates' => $duplicates,
                 'telegram' => ['disabled' => true],
-                'push' => ['disabled' => true],
+                'push' => $pushStats,
                 'server_time' => $this->repo->nowIso(),
             ]);
         } catch (InvalidArgumentException $e) {
@@ -198,18 +210,24 @@ class SyncController extends Controller
 
     public function pushOutboxRetry(): JsonResponse
     {
-        return $this->json(200, ['ok' => true, 'result' => ['disabled' => true]]);
+        return $this->json(200, [
+            'ok' => true,
+            'result' => $this->pushOutbox->retryDue(),
+        ]);
     }
 
-    private function applyEvent(array $event, string $actor, string $source): string
+    /**
+     * @return array{status:string,push_queued:int}
+     */
+    private function applyEvent(array $event, string $actor, string $source): array
     {
         $eventId = trim((string)($event['event_id'] ?? ''));
         if ($eventId === '') {
-            return 'skip';
+            return ['status' => 'skip', 'push_queued' => 0];
         }
 
         if ($this->repo->isDuplicateEvent($eventId)) {
-            return 'duplicate';
+            return ['status' => 'duplicate', 'push_queued' => 0];
         }
 
         $entity = (string)($event['entity'] ?? 'task');
@@ -260,7 +278,9 @@ class SyncController extends Controller
         }
 
         $this->repo->registerEvent($eventId, $source);
-        return 'accepted';
+        $queued = $this->pushOutbox->enqueueFromEvent($eventId, $actor, $entity, $action, $payload);
+
+        return ['status' => 'accepted', 'push_queued' => $queued];
     }
 
     private function json(int $status, array $payload): JsonResponse

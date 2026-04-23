@@ -12,7 +12,7 @@ Last update: 2026-04-23 (Europe/Moscow)
 - [x] Phase 0: contract freeze + migration checklist approved
 - [x] Phase 1: VPS prepared, Laravel installed, nginx/php-fpm running on server
 - [x] Phase 2: data layer parity in Laravel (tables + domain rules)
-- [~] Phase 3: API compatibility layer (`/sync_*` + `/sync/*`) in progress
+- [~] Phase 3: API compatibility layer (`/sync_*` + `/sync/*`) + push outbox wiring in progress
 - [ ] Phase 4: dual-run verification + client cutover sequence
 
 ## Completed In This Checkpoint
@@ -70,6 +70,24 @@ Last update: 2026-04-23 (Europe/Moscow)
    - updated Laravel `.env` on server to `DB_CONNECTION=mysql`
    - ran `php artisan migrate --force` on MySQL (all migrations `Ran`)
    - smoke verified after switch (`/health`, `/sync_push.php`, `/sync_changes.php`)
+9. Implemented server-side mobile push pipeline in Laravel (FCM-ready):
+   - added push config: `laravel_backend_vps/config/push.php`
+   - added push gateway contract + FCM HTTP v1 implementation:
+     - `App\Contracts\PushGateway`
+     - `App\Services\Push\FcmPushGateway`
+   - added message factory + outbox processor:
+     - `App\Services\Push\PushMessageFactory`
+     - `App\Services\Push\PushOutboxService`
+   - wired DI binding in `AppServiceProvider`
+   - updated `SyncController`:
+     - enqueue push records per accepted event
+     - process due push outbox items in `/sync_push.php`, `/telegram_events.php`
+     - enabled `/push_outbox_retry.php` handler with real processing response
+   - added tests:
+     - `tests/Unit/PushOutboxServiceTest.php`
+   - server verification:
+     - `php artisan test --testsuite=Unit,Feature` -> `PASS` (16 tests, 50 assertions)
+     - live smoke `/sync_push.php` and `/push_outbox_retry.php` -> push contract active, currently `disabled=true` until FCM credentials are set in `.env`
 
 ## Known Constraints
 - IP mode currently uses HTTP (no TLS).
@@ -77,13 +95,15 @@ Last update: 2026-04-23 (Europe/Moscow)
 - Domain + HTTPS can be added later without changing migration phases.
 
 ## Next Step (Resume From Here)
-Implement Phase 3 (API compatibility layer) on server Laravel app:
-1. Decide cutover policy with current blocker:
-   - restore old backend DB access and run full old-vs-new parity,
-   - or accept `contract-only + smoke` evidence and close Phase 3.
-2. Keep outbox behavior `disabled` for MVP sync-only scope (as agreed), or explicitly enable behind feature flag in a dedicated sub-phase.
-3. Start Phase 4 dual-run/cutover checklist after decision above.
+1. Set FCM credentials on VPS Laravel `.env`:
+   - `FCM_PROJECT_ID`
+   - `FCM_CLIENT_EMAIL`
+   - `FCM_PRIVATE_KEY` (escaped `\n`)
+2. Run:
+   - `php artisan optimize:clear`
+   - live test: register device token from app, push one event, verify `push.sent > 0`
+3. Then continue Phase 4 dual-run/cutover checklist.
 
 ## Quick Resume Prompt
 If context resets, start with:
-"Continue from `docs/laravel_migration_progress.md`, continue Phase 3 parity tests and outbox behavior."
+"Continue from `docs/laravel_migration_progress.md`, finish FCM env setup on VPS and verify mobile push delivery."

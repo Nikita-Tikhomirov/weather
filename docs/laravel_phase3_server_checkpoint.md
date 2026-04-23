@@ -98,5 +98,28 @@ php artisan test tests/Feature/SyncApiContractTest.php --debug
   - `POST /sync_push.php` -> accepted event
   - `GET /sync_changes.php` -> returns pushed task + valid cursor contract
 
+## Push Outbox Enablement (FCM Wiring)
+- Added server-side push components:
+  - `app/Contracts/PushGateway.php`
+  - `app/Services/Push/FcmPushGateway.php` (FCM HTTP v1 via service-account OAuth)
+  - `app/Services/Push/PushMessageFactory.php`
+  - `app/Services/Push/PushOutboxService.php`
+  - `config/push.php`
+- Updated:
+  - `app/Providers/AppServiceProvider.php` (DI binding for `PushGateway`)
+  - `app/Http/Controllers/SyncController.php`:
+    - enqueue push outbox on accepted events
+    - execute retry/send pipeline in `push`/`telegramEvents`
+    - `pushOutboxRetry` now executes real retry processor
+- Added unit tests:
+  - `tests/Unit/PushOutboxServiceTest.php`
+- Test result on VPS:
+  - `php artisan test --testsuite=Unit,Feature`
+  - `PASS` (16 tests, 50 assertions)
+- Live API smoke result:
+  - `POST /sync_push.php` returns `push` object with runtime counters (`sent/failed/pending/processed/queued`)
+  - `POST /push_outbox_retry.php` returns retry result object
+  - Current state is `disabled=true` until FCM env credentials are configured.
+
 ## Resume Marker
 Continue from `docs/laravel_migration_progress.md` and execute **Phase 3 parity tests/outbox decision**.
