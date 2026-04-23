@@ -11,7 +11,7 @@ const _notificationChannelId = 'family_updates';
 const _notificationChannelName = 'Семейные уведомления';
 const _notificationChannelDescription =
     'Пуш-уведомления о задачах и напоминаниях';
-const _appVersion = '0.1.3';
+const _appVersion = '0.1.4';
 
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();
