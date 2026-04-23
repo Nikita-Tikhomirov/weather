@@ -320,6 +320,20 @@ class _HomePageState extends State<HomePage> {
                             );
                           },
                         ),
+                        const SizedBox(width: 8),
+                        ValueListenableBuilder<int>(
+                          valueListenable: store.pageIndex,
+                          builder: (context, page, __) {
+                            return FilledButton.icon(
+                              onPressed: () => _openTaskEditor(
+                                store,
+                                forceFamily: page == 3,
+                              ),
+                              icon: const Icon(Icons.add),
+                              label: const Text('Добавить'),
+                            );
+                          },
+                        ),
                         IconButton(
                           tooltip: 'Синхронизация',
                           icon: const Icon(Icons.sync),
