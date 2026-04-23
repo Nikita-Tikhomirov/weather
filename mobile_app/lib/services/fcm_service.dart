@@ -53,6 +53,8 @@ class FcmService {
   String _lastTokenError = '';
   DateTime? _lastStatusReportedAt;
   String _lastStatusReportedKey = '';
+  DateTime? _lastFisRecoveryAt;
+  bool _isFisRecoveryInProgress = false;
 
   Future<void> initialize() async {
     if (!(Platform.isAndroid || Platform.isIOS)) {
@@ -134,6 +136,9 @@ class FcmService {
         await _reportStatus(tokenStatus: 'active', token: token, lastError: '');
         return true;
       }
+      if (_isFisAuthError(_lastTokenError)) {
+        await _recoverFromFisAuthError();
+      }
       await Future<void>.delayed(const Duration(seconds: 2));
     }
     return false;
@@ -144,6 +149,9 @@ class FcmService {
     _tokenRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
       final token = await _tryFetchToken(messaging);
       if (token == null || token.isEmpty) {
+        if (_isFisAuthError(_lastTokenError)) {
+          await _recoverFromFisAuthError();
+        }
         await _reportStatus(tokenStatus: 'token_unavailable');
         return;
       }
@@ -165,9 +173,70 @@ class FcmService {
       _lastTokenError = '';
       return token;
     } catch (error) {
-      _playServicesState = 'unavailable_or_restricted';
-      _lastTokenError = error.toString();
+      final errorText = error.toString();
+      _playServicesState = _detectPlayServicesState(errorText);
+      _lastTokenError = errorText;
       return null;
+    }
+  }
+
+  bool _isFisAuthError(String text) {
+    final lower = text.toLowerCase();
+    return lower.contains('fis_auth_error') ||
+        lower.contains('firebaseinstallations') ||
+        lower.contains('auth_error');
+  }
+
+  String _detectPlayServicesState(String errorText) {
+    final lower = errorText.toLowerCase();
+    if (lower.contains('fis_auth_error')) {
+      return 'fis_auth_error';
+    }
+    if (lower.contains('service_not_available') ||
+        lower.contains('google play services')) {
+      return 'unavailable_or_restricted';
+    }
+    return 'unknown_or_network';
+  }
+
+  Future<void> _recoverFromFisAuthError() async {
+    if (_isFisRecoveryInProgress) {
+      return;
+    }
+    final now = DateTime.now();
+    final last = _lastFisRecoveryAt;
+    if (last != null && now.difference(last) < const Duration(minutes: 3)) {
+      return;
+    }
+
+    _isFisRecoveryInProgress = true;
+    _lastFisRecoveryAt = now;
+    try {
+      final messaging = FirebaseMessaging.instance;
+      try {
+        await messaging.setAutoInitEnabled(false);
+      } catch (_) {}
+      try {
+        await messaging.deleteToken();
+      } catch (_) {}
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      try {
+        if (Firebase.apps.isNotEmpty) {
+          await Firebase.app().delete();
+        }
+      } catch (_) {}
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      try {
+        await Firebase.initializeApp(
+          options: _firebaseOptionsForCurrentPlatform(),
+        );
+      } catch (_) {}
+      try {
+        await FirebaseMessaging.instance.setAutoInitEnabled(true);
+      } catch (_) {}
+      await Future<void>.delayed(const Duration(seconds: 1));
+    } finally {
+      _isFisRecoveryInProgress = false;
     }
   }
 
