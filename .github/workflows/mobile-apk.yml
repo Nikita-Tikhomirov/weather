@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      EXPECTED_SIGN_SHA1: 80:67:ED:1E:B4:50:CD:96:42:13:30:E1:9B:C3:05:DD:3E:C5:53:F0
 
     steps:
       - name: Checkout
@@ -149,6 +150,23 @@ jobs:
       - name: Rename artifact
         run: |
           cp /tmp/family_todo_mobile/build/app/outputs/flutter-apk/app-release.apk /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk
+
+      - name: Verify APK signing fingerprint
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_PATH="/tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk"
+          ACTUAL_SHA1="$(keytool -printcert -jarfile "$APK_PATH" | sed -n 's/^SHA1:[[:space:]]*//p' | head -n1 | tr -d '\r')"
+          EXPECTED_SHA1="${EXPECTED_SIGN_SHA1}"
+          echo "APK signing SHA1: ${ACTUAL_SHA1}"
+          if [ -z "$ACTUAL_SHA1" ]; then
+            echo "::error::Failed to read APK signing SHA1 fingerprint."
+            exit 1
+          fi
+          if [ "$ACTUAL_SHA1" != "$EXPECTED_SHA1" ]; then
+            echo "::error::APK signing fingerprint mismatch. Expected ${EXPECTED_SHA1}, got ${ACTUAL_SHA1}."
+            exit 1
+          fi
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
