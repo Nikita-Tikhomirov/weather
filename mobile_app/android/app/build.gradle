@@ -9,6 +9,18 @@ android {
     namespace "com.example.family_todo_mobile"
     compileSdk 36
 
+    signingConfigs {
+        release {
+            def storeFileEnv = System.getenv("SIGNING_STORE_FILE")
+            if (storeFileEnv != null && !storeFileEnv.isEmpty()) {
+                storeFile file(storeFileEnv)
+            }
+            storePassword System.getenv("SIGNING_STORE_PASSWORD")
+            keyAlias System.getenv("SIGNING_KEY_ALIAS")
+            keyPassword System.getenv("SIGNING_KEY_PASSWORD")
+        }
+    }
+
     compileOptions {
         coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_17
@@ -21,6 +33,12 @@ android {
         targetSdk 36
         versionCode 1
         versionName "0.1.0"
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
     }
 }
 

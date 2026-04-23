@@ -64,10 +64,30 @@ jobs:
           cd /tmp/family_todo_mobile
           flutter pub get
 
+      - name: Prepare stable release keystore
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_DIR="/tmp/family_todo_mobile"
+          keytool -genkeypair \
+            -keystore "$APP_DIR/android/release.keystore" \
+            -storepass familytodo \
+            -keypass familytodo \
+            -alias familytodo \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Family Todo, OU=Mobile, O=Family, L=Moscow, S=Moscow, C=RU" \
+            -noprompt
+
       - name: Build release APK
         env:
           API_BASE_URL: http://31.129.97.211
           API_KEY: ${{ secrets.TODO_BACKEND_API_KEY }}
+          SIGNING_STORE_FILE: /tmp/family_todo_mobile/android/release.keystore
+          SIGNING_STORE_PASSWORD: familytodo
+          SIGNING_KEY_ALIAS: familytodo
+          SIGNING_KEY_PASSWORD: familytodo
         run: |
           cd /tmp/family_todo_mobile
           set +e
