@@ -452,33 +452,61 @@ class _HomePageState extends State<HomePage> {
           return ValueListenableBuilder<Map<String, List<TaskItem>>>(
             valueListenable: store.personalByStatus,
             builder: (context, byStatus, __) {
-              return _DesktopTasksBoard(
-                byStatus: byStatus,
-                selectionMode: false,
-                selectedIds: const <String>{},
-                onToggleSelect: (_) {},
-                onDropStatus: (item, status) async {
-                  await store.move(item, status);
-                  await _safeSyncDelta(
-                    store,
-                    showErrors: true,
-                  );
-                },
-                onEdit: (task) => _openTaskEditor(store, existing: task),
-                onDelete: (task) async {
-                  await store.delete(task);
-                  await _safeSyncDelta(
-                    store,
-                    showErrors: true,
-                  );
-                },
-                onDoneToggle: (task) async {
-                  await store.toggleDone(task);
-                  await _safeSyncDelta(
-                    store,
-                    showErrors: true,
-                  );
-                },
+              final selectedDateKey = _dateKey(selectedDate);
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: selectedDate,
+                            firstDate: DateTime(2024),
+                            lastDate: DateTime(2035),
+                          );
+                          if (picked != null) {
+                            store.setSelectedDate(picked);
+                          }
+                        },
+                        icon: const Icon(Icons.calendar_month),
+                        label: Text('Дата: $selectedDateKey'),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: _DesktopTasksBoard(
+                      byStatus: byStatus,
+                      selectionMode: false,
+                      selectedIds: const <String>{},
+                      onToggleSelect: (_) {},
+                      onDropStatus: (item, status) async {
+                        await store.move(item, status);
+                        await _safeSyncDelta(
+                          store,
+                          showErrors: true,
+                        );
+                      },
+                      onEdit: (task) => _openTaskEditor(store, existing: task),
+                      onDelete: (task) async {
+                        await store.delete(task);
+                        await _safeSyncDelta(
+                          store,
+                          showErrors: true,
+                        );
+                      },
+                      onDoneToggle: (task) async {
+                        await store.toggleDone(task);
+                        await _safeSyncDelta(
+                          store,
+                          showErrors: true,
+                        );
+                      },
+                    ),
+                  ),
+                ],
               );
             },
           );

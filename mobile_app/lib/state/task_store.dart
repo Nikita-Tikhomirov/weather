@@ -425,7 +425,10 @@ class TaskStore {
   }
 
   void _recomputeKanbanOnly() {
-    final personalTasks = _allTasks.where((task) => !task.isFamily).toList()
+    final selectedDateKey = _dateKey(selectedDate.value);
+    final personalTasks = _allTasks
+        .where((task) => !task.isFamily && task.dueDate == selectedDateKey)
+        .toList()
       ..sort(
         (a, b) =>
             ('${a.dueDate} ${a.time}').compareTo('${b.dueDate} ${b.time}'),
@@ -461,6 +464,7 @@ class TaskStore {
   void _recomputeFamilyOnly() {
     final mode = familyFilter.value;
     final todayKey = _dateKey(DateTime.now());
+    final selectedDateKey = _dateKey(selectedDate.value);
     final source = _allTasks
         .where(
           (task) => task.isFamily && task.assignees.contains(owner.value),
@@ -492,7 +496,8 @@ class TaskStore {
           )
           .toList();
     }
-    familyTasksView.value = filtered;
+    familyTasksView.value =
+        filtered.where((task) => task.dueDate == selectedDateKey).toList();
   }
 
   String _dateKey(DateTime value) {

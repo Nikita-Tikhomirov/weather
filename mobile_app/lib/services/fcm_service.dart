@@ -51,6 +51,8 @@ class FcmService {
   String _lastRegisteredToken = '';
   String _playServicesState = 'unknown';
   String _lastTokenError = '';
+  DateTime? _lastStatusReportedAt;
+  String _lastStatusReportedKey = '';
 
   Future<void> initialize() async {
     if (!(Platform.isAndroid || Platform.isIOS)) {
@@ -79,7 +81,6 @@ class FcmService {
       return;
     }
 
-    await _forceTokenRotation(messaging);
     final registered = await _registerTokenWithRetry(messaging);
     if (!registered) {
       await _reportStatus(tokenStatus: 'token_unavailable');
@@ -138,14 +139,6 @@ class FcmService {
     return false;
   }
 
-  Future<void> _forceTokenRotation(FirebaseMessaging messaging) async {
-    try {
-      await messaging.deleteToken();
-    } catch (_) {
-      // Ignore and continue; token refresh will retry below.
-    }
-  }
-
   void _startTokenRefreshLoop(FirebaseMessaging messaging) {
     _tokenRefreshTimer?.cancel();
     _tokenRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
@@ -165,11 +158,7 @@ class FcmService {
 
   Future<String?> _tryFetchToken(FirebaseMessaging messaging) async {
     try {
-      var token = await messaging.getToken();
-      if (token == null || token.isEmpty) {
-        await messaging.deleteToken();
-        token = await messaging.getToken();
-      }
+      final token = await messaging.getToken();
       if (token != null && token.isNotEmpty) {
         _playServicesState = 'available';
       }
@@ -201,6 +190,13 @@ class FcmService {
     String? token,
     String? lastError,
   }) async {
+    if (!_shouldSendStatus(
+      tokenStatus: tokenStatus,
+      token: token,
+      lastError: lastError,
+    )) {
+      return;
+    }
     final errorText = (lastError ?? _lastTokenError).trim();
     try {
       await api.reportDeviceStatus(
@@ -213,9 +209,56 @@ class FcmService {
         token: token,
         lastError: errorText,
       );
+      _rememberStatus(
+        tokenStatus: tokenStatus,
+        token: token,
+        lastError: lastError,
+      );
     } catch (_) {
       // Diagnostics must never break app behavior.
     }
+  }
+
+  bool _shouldSendStatus({
+    required String tokenStatus,
+    String? token,
+    String? lastError,
+  }) {
+    final now = DateTime.now();
+    final errorText = (lastError ?? _lastTokenError).trim();
+    final tokenHash = token == null || token.isEmpty
+        ? ''
+        : token.substring(0, token.length < 12 ? token.length : 12);
+    final key =
+        '$tokenStatus|$_playServicesState|$tokenHash|${errorText.substring(0, errorText.length < 80 ? errorText.length : 80)}';
+
+    if (_lastStatusReportedKey.isEmpty || _lastStatusReportedKey != key) {
+      return true;
+    }
+
+    final lastAt = _lastStatusReportedAt;
+    if (lastAt == null) {
+      return true;
+    }
+
+    final minGap = tokenStatus == 'active'
+        ? const Duration(minutes: 5)
+        : const Duration(minutes: 2);
+    return now.difference(lastAt) >= minGap;
+  }
+
+  void _rememberStatus({
+    required String tokenStatus,
+    String? token,
+    String? lastError,
+  }) {
+    final errorText = (lastError ?? _lastTokenError).trim();
+    final tokenHash = token == null || token.isEmpty
+        ? ''
+        : token.substring(0, token.length < 12 ? token.length : 12);
+    _lastStatusReportedKey =
+        '$tokenStatus|$_playServicesState|$tokenHash|${errorText.substring(0, errorText.length < 80 ? errorText.length : 80)}';
+    _lastStatusReportedAt = DateTime.now();
   }
 
   Future<bool> _initializeFirebaseSafely() async {
