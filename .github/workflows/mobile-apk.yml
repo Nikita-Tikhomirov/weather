@@ -40,6 +40,8 @@ jobs:
           APP_DIR="/tmp/family_todo_mobile"
           rm -rf "$APP_DIR"
           flutter create --platforms=android --project-name family_todo_mobile --org com.example "$APP_DIR"
+          rm -f "$APP_DIR/android/build.gradle.kts"
+          rm -f "$APP_DIR/android/app/build.gradle.kts"
 
           rm -rf "$APP_DIR/lib"
           cp -R mobile_app/lib "$APP_DIR/lib"
