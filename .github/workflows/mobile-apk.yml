@@ -113,13 +113,16 @@ jobs:
           API_BASE_URL: http://31.129.97.211
           API_KEY: ${{ secrets.TODO_BACKEND_API_KEY }}
           BUILD_NUMBER: ${{ github.run_number }}
+          APP_VERSION: 0.1.6
         run: |
           cd /tmp/family_todo_mobile
           set +e
           flutter build apk --release \
             --build-number="$BUILD_NUMBER" \
+            --build-name="$APP_VERSION" \
             --dart-define=API_BASE_URL="$API_BASE_URL" \
-            --dart-define=API_KEY="${API_KEY:-dev-local-key}"
+            --dart-define=API_KEY="${API_KEY:-dev-local-key}" \
+            --dart-define=APP_VERSION="$APP_VERSION"
           BUILD_EXIT=$?
           set -e
 

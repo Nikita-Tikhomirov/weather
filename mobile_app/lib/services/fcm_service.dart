@@ -11,7 +11,7 @@ const _notificationChannelId = 'family_updates';
 const _notificationChannelName = 'Семейные уведомления';
 const _notificationChannelDescription =
     'Пуш-уведомления о задачах и напоминаниях';
-const _appVersion = '0.1.5';
+const _appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '0.1.6');
 
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();
@@ -130,7 +130,7 @@ class FcmService {
 
   Future<bool> _registerTokenWithRetry(FirebaseMessaging messaging) async {
     for (var attempt = 0; attempt < 8; attempt++) {
-      final token = await _tryFetchToken(messaging);
+      final token = await _tryFetchToken(FirebaseMessaging.instance);
       if (token != null && token.isNotEmpty) {
         await _registerToken(token);
         await _reportStatus(tokenStatus: 'active', token: token, lastError: '');
@@ -147,7 +147,7 @@ class FcmService {
   void _startTokenRefreshLoop(FirebaseMessaging messaging) {
     _tokenRefreshTimer?.cancel();
     _tokenRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
-      final token = await _tryFetchToken(messaging);
+      final token = await _tryFetchToken(FirebaseMessaging.instance);
       if (token == null || token.isEmpty) {
         if (_isFisAuthError(_lastTokenError)) {
           await _recoverFromFisAuthError();

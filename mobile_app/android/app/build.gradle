@@ -5,6 +5,13 @@ plugins {
     id "com.google.gms.google-services"
 }
 
+def buildNumberEnv = System.getenv("BUILD_NUMBER")
+def releaseVersionCode = 1
+if (buildNumberEnv != null && buildNumberEnv ==~ /\d+/) {
+    releaseVersionCode = buildNumberEnv.toInteger()
+}
+def releaseVersionName = System.getenv("APP_VERSION") ?: "0.1.6"
+
 android {
     namespace "com.example.family_todo_mobile"
     compileSdk 36
@@ -31,8 +38,8 @@ android {
         applicationId "com.example.family_todo_mobile"
         minSdk 23
         targetSdk 36
-        versionCode 1
-        versionName "0.1.0"
+        versionCode releaseVersionCode
+        versionName releaseVersionName
     }
 
     buildTypes {
