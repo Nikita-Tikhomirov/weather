@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      ALLOWED_SIGN_SHA1: F7:A5:77:27:50:EC:49:71:DB:E1:4B:EE:B4:14:4E:58:95:DD:98:52,80:67:ED:1E:B4:50:CD:96:42:13:30:E1:9B:C3:05:DD:3E:C5:53:F0
+      ALLOWED_SIGN_SHA1_HEX: F7A5772750EC4971DBE14BEEB4144E5895DD9852,8067ED1EB450CD96421330E19BC305DD3EC553F0
 
     steps:
       - name: Checkout
@@ -161,14 +161,16 @@ jobs:
             echo "::error::Android apksigner was not found."
             exit 1
           fi
-          ACTUAL_SHA1="$("$APKSIGNER" verify --print-certs "$APK_PATH" | sed -n 's/^Signer #1 certificate SHA-1 digest:[[:space:]]*//p' | head -n1 | tr '[:lower:]' '[:upper:]' | sed 's/../&:/g;s/:$//' | tr -d '\r')"
-          echo "APK signing SHA1: ${ACTUAL_SHA1}"
+          CERT_OUTPUT="$("$APKSIGNER" verify --print-certs "$APK_PATH")"
+          echo "$CERT_OUTPUT"
+          ACTUAL_SHA1="$(printf '%s\n' "$CERT_OUTPUT" | sed -n 's/.*SHA-1 digest:[[:space:]]*//p' | head -n1 | tr -cd '[:xdigit:]' | tr '[:lower:]' '[:upper:]')"
+          echo "APK signing SHA1 hex: ${ACTUAL_SHA1}"
           if [ -z "$ACTUAL_SHA1" ]; then
             echo "::error::Failed to read APK signing SHA1 fingerprint."
             exit 1
           fi
-          if ! echo ",${ALLOWED_SIGN_SHA1}," | grep -Fq ",${ACTUAL_SHA1},"; then
-            echo "::error::APK signing fingerprint is not registered in Firebase. Got ${ACTUAL_SHA1}; allowed ${ALLOWED_SIGN_SHA1}."
+          if ! echo ",${ALLOWED_SIGN_SHA1_HEX}," | grep -Fq ",${ACTUAL_SHA1},"; then
+            echo "::error::APK signing fingerprint is not registered in Firebase. Got ${ACTUAL_SHA1}; allowed ${ALLOWED_SIGN_SHA1_HEX}."
             exit 1
           fi
 
