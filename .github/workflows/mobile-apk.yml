@@ -114,7 +114,6 @@ jobs:
           BUILD_NUMBER: ${{ github.run_number }}
         run: |
           cd /tmp/family_todo_mobile
-          flutter clean
           set +e
           flutter build apk --release \
             --build-number="$BUILD_NUMBER" \
@@ -125,17 +124,17 @@ jobs:
 
           APK_PATH="/tmp/family_todo_mobile/build/app/outputs/flutter-apk/app-release.apk"
           if [ ! -f "$APK_PATH" ]; then
-            APK_PATH="$(find /tmp/family_todo_mobile/build -type f \( -path '*/flutter-apk/*release*.apk' -o -path '*/outputs/apk/*release*.apk' \) 2>/dev/null | head -n 1 || true)"
+            APK_PATH="$(find /tmp/family_todo_mobile /tmp/family_todo_mobile/android/app/build -type f \( -path '*/flutter-apk/*release*.apk' -o -path '*/outputs/apk/*release*.apk' -o -name 'app-release.apk' \) 2>/dev/null | head -n 1 || true)"
           fi
 
           if [ -z "$APK_PATH" ]; then
             echo "No APK found after flutter build. Trying Gradle assembleRelease fallback..."
             (cd /tmp/family_todo_mobile/android && ./gradlew --no-daemon assembleRelease) || true
-            APK_PATH="$(find /tmp/family_todo_mobile/build -type f \( -path '*/flutter-apk/*release*.apk' -o -path '*/outputs/apk/*release*.apk' -o -name '*.apk' \) 2>/dev/null | head -n 1 || true)"
+            APK_PATH="$(find /tmp/family_todo_mobile /tmp/family_todo_mobile/android/app/build -type f \( -path '*/flutter-apk/*release*.apk' -o -path '*/outputs/apk/*release*.apk' -o -name '*.apk' \) 2>/dev/null | head -n 1 || true)"
           fi
 
           echo "Detected APK candidates:"
-          find /tmp/family_todo_mobile/build -type f -name '*.apk' 2>/dev/null || true
+          find /tmp/family_todo_mobile /tmp/family_todo_mobile/android/app/build -type f -name '*.apk' 2>/dev/null || true
 
           if [ -n "$APK_PATH" ]; then
             mkdir -p /tmp/family_todo_mobile/build/app/outputs/flutter-apk
