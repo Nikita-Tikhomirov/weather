@@ -618,6 +618,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _bindFcm({required ApiClient api, required String owner}) {
+    _fcm?.dispose();
     _fcm = FcmService(
       api: api,
       actorProfile: owner,
@@ -1405,6 +1406,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    _fcm?.dispose();
     _cancelSyncLoops();
     unawaited(_desktopProcessHostService?.stopAll());
     _desktopThemeService?.state.dispose();

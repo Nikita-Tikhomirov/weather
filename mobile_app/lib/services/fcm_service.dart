@@ -42,6 +42,12 @@ class FcmService {
   final void Function(String text) onForegroundText;
   final Future<void> Function() onOpenPush;
 
+  StreamSubscription<String>? _tokenRefreshSub;
+  StreamSubscription<RemoteMessage>? _onMessageSub;
+  StreamSubscription<RemoteMessage>? _onOpenSub;
+  Timer? _tokenRefreshTimer;
+  String _lastRegisteredToken = '';
+
   Future<void> initialize() async {
     if (!(Platform.isAndroid || Platform.isIOS)) {
       return;
@@ -68,23 +74,24 @@ class FcmService {
     }
 
     await _registerTokenWithRetry(messaging);
+    _startTokenRefreshLoop(messaging);
 
-    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+    _tokenRefreshSub = messaging.onTokenRefresh.listen((newToken) async {
       if (newToken.isEmpty) {
         return;
       }
       await _registerToken(newToken);
     });
 
-    FirebaseMessaging.onMessage.listen((RemoteMessage msg) async {
+    _onMessageSub = FirebaseMessaging.onMessage.listen((RemoteMessage msg) async {
       await onOpenPush();
-      final title = msg.notification?.title ?? 'Семейные задачи';
-      final body = msg.notification?.body ?? 'Есть новые изменения';
+      final title = msg.notification?.title ?? 'Family tasks';
+      final body = msg.notification?.body ?? 'New changes are available';
       await _showForegroundNotification(title: title, body: body);
       onForegroundText('$title: $body');
     });
 
-    FirebaseMessaging.onMessageOpenedApp.listen((_) async {
+    _onOpenSub = FirebaseMessaging.onMessageOpenedApp.listen((_) async {
       await onOpenPush();
     });
 
@@ -94,18 +101,53 @@ class FcmService {
     }
   }
 
+  void dispose() {
+    _tokenRefreshTimer?.cancel();
+    _tokenRefreshTimer = null;
+    _tokenRefreshSub?.cancel();
+    _tokenRefreshSub = null;
+    _onMessageSub?.cancel();
+    _onMessageSub = null;
+    _onOpenSub?.cancel();
+    _onOpenSub = null;
+  }
+
   Future<void> _registerTokenWithRetry(FirebaseMessaging messaging) async {
     for (var attempt = 0; attempt < 6; attempt++) {
-      try {
-        final token = await messaging.getToken();
-        if (token != null && token.isNotEmpty) {
-          await _registerToken(token);
-          return;
-        }
-      } catch (_) {
-        // Token may not be ready immediately on cold start.
+      final registered = await _tryFetchAndRegisterToken(messaging);
+      if (registered) {
+        return;
       }
       await Future<void>.delayed(const Duration(seconds: 2));
+    }
+  }
+
+  void _startTokenRefreshLoop(FirebaseMessaging messaging) {
+    _tokenRefreshTimer?.cancel();
+    _tokenRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+      await _tryFetchAndRegisterToken(messaging);
+    });
+  }
+
+  Future<bool> _tryFetchAndRegisterToken(FirebaseMessaging messaging) async {
+    try {
+      var token = await messaging.getToken();
+      if (token == null || token.isEmpty) {
+        // Some devices need one reset cycle before token becomes available.
+        await messaging.deleteToken();
+        token = await messaging.getToken();
+      }
+      if (token == null || token.isEmpty) {
+        return false;
+      }
+      if (token == _lastRegisteredToken) {
+        return true;
+      }
+      await _registerToken(token);
+      _lastRegisteredToken = token;
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -116,7 +158,7 @@ class FcmService {
       platform: Platform.isAndroid
           ? 'android'
           : (Platform.isIOS ? 'ios' : 'other'),
-      appVersion: '0.1.1',
+      appVersion: '0.1.2',
     );
   }
 
