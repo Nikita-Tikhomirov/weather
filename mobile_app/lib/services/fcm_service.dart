@@ -11,7 +11,11 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await Firebase.initializeApp();
   } catch (_) {
-    // Best-effort initialization for background delivery.
+    try {
+      await Firebase.initializeApp(options: _firebaseOptionsForCurrentPlatform());
+    } catch (_) {
+      // Best-effort initialization for background delivery.
+    }
   }
 }
 
@@ -32,9 +36,10 @@ class FcmService {
     if (!(Platform.isAndroid || Platform.isIOS)) {
       return;
     }
-    try {
-      await Firebase.initializeApp();
-    } catch (_) {}
+    final initialized = await _initializeFirebaseSafely();
+    if (!initialized) {
+      return;
+    }
 
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     final messaging = FirebaseMessaging.instance;
@@ -100,4 +105,61 @@ class FcmService {
       appVersion: '0.1.0',
     );
   }
+
+  Future<bool> _initializeFirebaseSafely() async {
+    try {
+      if (Firebase.apps.isNotEmpty) {
+        return true;
+      }
+      await Firebase.initializeApp();
+      return true;
+    } catch (_) {
+      try {
+        if (Firebase.apps.isNotEmpty) {
+          return true;
+        }
+        await Firebase.initializeApp(
+          options: _firebaseOptionsForCurrentPlatform(),
+        );
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+  }
+}
+
+FirebaseOptions _firebaseOptionsForCurrentPlatform() {
+  if (Platform.isAndroid) {
+    const appId = String.fromEnvironment(
+      'FIREBASE_APP_ID',
+      defaultValue: '1:223906415067:android:68a62bb31cc4471895a7fe',
+    );
+    const projectId = String.fromEnvironment(
+      'FIREBASE_PROJECT_ID',
+      defaultValue: 'famillytodo-2758f',
+    );
+    const senderId = String.fromEnvironment(
+      'FIREBASE_MESSAGING_SENDER_ID',
+      defaultValue: '223906415067',
+    );
+    const apiKey = String.fromEnvironment(
+      'FIREBASE_API_KEY',
+      defaultValue: 'AIzaSyBtO5Nbcb91lk3WViNIHzwYX_5yazfG6K8',
+    );
+    const storageBucket = String.fromEnvironment(
+      'FIREBASE_STORAGE_BUCKET',
+      defaultValue: 'famillytodo-2758f.firebasestorage.app',
+    );
+
+    return const FirebaseOptions(
+      apiKey: apiKey,
+      appId: appId,
+      messagingSenderId: senderId,
+      projectId: projectId,
+      storageBucket: storageBucket,
+    );
+  }
+
+  throw UnsupportedError('Firebase options are not configured for this platform');
 }

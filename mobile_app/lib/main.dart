@@ -637,7 +637,10 @@ class _HomePageState extends State<HomePage> {
         await _safeSyncDelta(store, showErrors: false);
       },
     );
-    _fcm!.initialize().catchError((_) {});
+    _fcm!.initialize().catchError((error, stackTrace) {
+      debugPrint('FCM initialization failed: $error');
+      debugPrint('$stackTrace');
+    });
   }
 
   void _startSyncLoops(TaskStore store) {
