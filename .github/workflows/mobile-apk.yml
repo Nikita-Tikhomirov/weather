@@ -67,31 +67,27 @@ jobs:
       - name: Prepare release keystore from secrets
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-          FALLBACK_KEYSTORE_PASSWORD: familytodo
-          FALLBACK_KEY_ALIAS: familytodo
         shell: bash
         run: |
           set -euo pipefail
           APP_DIR="/tmp/family_todo_mobile"
           if [ -z "${RELEASE_KEYSTORE_BASE64:-}" ]; then
-            echo "RELEASE_KEYSTORE_BASE64 is missing, using deterministic fallback key"
-            keytool -genkeypair \
-              -keystore "$APP_DIR/android/release.keystore" \
-              -storepass "$FALLBACK_KEYSTORE_PASSWORD" \
-              -keypass "$FALLBACK_KEYSTORE_PASSWORD" \
-              -alias "$FALLBACK_KEY_ALIAS" \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -dname "CN=Family Todo, OU=Mobile, O=Family, L=Moscow, S=Moscow, C=RU" \
-              -noprompt
-            echo "KEYSTORE_MODE=fallback" >> "$GITHUB_ENV"
-            echo "FALLBACK_KEYSTORE_PASSWORD=$FALLBACK_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-            echo "FALLBACK_KEY_ALIAS=$FALLBACK_KEY_ALIAS" >> "$GITHUB_ENV"
-            exit 0
+            echo "::error::Missing RELEASE_KEYSTORE_BASE64 secret. Refusing to build with fallback key."
+            exit 1
           fi
           echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$APP_DIR/android/release.keystore"
-          echo "KEYSTORE_MODE=secret" >> "$GITHUB_ENV"
+
+      - name: Validate signing secrets
+        env:
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -n "${RELEASE_KEYSTORE_PASSWORD:-}" ] || { echo "::error::Missing RELEASE_KEYSTORE_PASSWORD secret"; exit 1; }
+          [ -n "${RELEASE_KEY_ALIAS:-}" ] || { echo "::error::Missing RELEASE_KEY_ALIAS secret"; exit 1; }
+          [ -n "${RELEASE_KEY_PASSWORD:-}" ] || { echo "::error::Missing RELEASE_KEY_PASSWORD secret"; exit 1; }
 
       - name: Build release APK
         env:
@@ -104,15 +100,7 @@ jobs:
           SIGNING_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           cd /tmp/family_todo_mobile
-          if [ -z "${SIGNING_STORE_PASSWORD:-}" ]; then
-            export SIGNING_STORE_PASSWORD="${FALLBACK_KEYSTORE_PASSWORD:-familytodo}"
-          fi
-          if [ -z "${SIGNING_KEY_ALIAS:-}" ]; then
-            export SIGNING_KEY_ALIAS="${FALLBACK_KEY_ALIAS:-familytodo}"
-          fi
-          if [ -z "${SIGNING_KEY_PASSWORD:-}" ]; then
-            export SIGNING_KEY_PASSWORD="${FALLBACK_KEYSTORE_PASSWORD:-familytodo}"
-          fi
+          flutter clean
           set +e
           flutter build apk --release \
             --build-number="$BUILD_NUMBER" \
@@ -121,12 +109,18 @@ jobs:
           BUILD_EXIT=$?
           set -e
 
-          APK_PATH="$(find /tmp/family_todo_mobile -type f \( -name 'app-release.apk' -o -name '*release*.apk' \) | head -n 1 || true)"
+          APK_PATH="/tmp/family_todo_mobile/build/app/outputs/flutter-apk/app-release.apk"
+          if [ ! -f "$APK_PATH" ]; then
+            APK_PATH="$(find /tmp/family_todo_mobile/build/app/outputs/flutter-apk -type f -name '*release*.apk' 2>/dev/null | head -n 1 || true)"
+          fi
           if [ -n "$APK_PATH" ]; then
             mkdir -p /tmp/family_todo_mobile/build/app/outputs/flutter-apk
             cp "$APK_PATH" /tmp/family_todo_mobile/build/app/outputs/flutter-apk/app-release.apk
           elif [ "$BUILD_EXIT" -ne 0 ]; then
             exit "$BUILD_EXIT"
+          else
+            echo "::error::APK file was not produced."
+            exit 1
           fi
 
       - name: Rename artifact
