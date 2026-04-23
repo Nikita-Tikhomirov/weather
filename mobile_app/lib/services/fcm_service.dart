@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:firebase_core/firebase_core.dart';
@@ -37,12 +38,18 @@ class FcmService {
 
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     final messaging = FirebaseMessaging.instance;
-    await messaging.requestPermission(alert: true, badge: true, sound: true);
+    await messaging.setAutoInitEnabled(true);
+    final permission = await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
 
-    final token = await messaging.getToken();
-    if (token != null && token.isNotEmpty) {
-      await _registerToken(token);
+    if (permission.authorizationStatus == AuthorizationStatus.denied) {
+      return;
     }
+
+    await _registerTokenWithRetry(messaging);
 
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
       if (newToken.isEmpty) {
@@ -65,6 +72,21 @@ class FcmService {
     final initial = await messaging.getInitialMessage();
     if (initial != null) {
       await onOpenPush();
+    }
+  }
+
+  Future<void> _registerTokenWithRetry(FirebaseMessaging messaging) async {
+    for (var attempt = 0; attempt < 6; attempt++) {
+      try {
+        final token = await messaging.getToken();
+        if (token != null && token.isNotEmpty) {
+          await _registerToken(token);
+          return;
+        }
+      } catch (_) {
+        // Best-effort retry. Token may be unavailable right after startup.
+      }
+      await Future<void>.delayed(const Duration(seconds: 2));
     }
   }
 
