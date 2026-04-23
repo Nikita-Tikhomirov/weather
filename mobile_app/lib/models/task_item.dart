@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 class TaskItem {
   TaskItem({
@@ -13,6 +13,7 @@ class TaskItem {
     required this.priority,
     required this.tags,
     required this.assignees,
+    required this.reminderOffsetsMinutes,
     required this.durationMinutes,
     required this.updatedAt,
     required this.version,
@@ -29,6 +30,7 @@ class TaskItem {
   final String priority;
   final List<String> tags;
   final List<String> assignees;
+  final List<int> reminderOffsetsMinutes;
   List<String> get participants => assignees;
 
   final int durationMinutes;
@@ -54,7 +56,13 @@ class TaskItem {
           : (json['participants'] is List)
               ? (json['participants'] as List).map((v) => v.toString()).toList()
               : const [],
-      durationMinutes: int.tryParse((json['duration_minutes'] ?? 0).toString()) ?? 0,
+      reminderOffsetsMinutes: _normalizeReminderOffsets(
+        (json['reminder_offsets_minutes'] is List)
+            ? (json['reminder_offsets_minutes'] as List)
+            : const [],
+      ),
+      durationMinutes:
+          int.tryParse((json['duration_minutes'] ?? 0).toString()) ?? 0,
       updatedAt: (json['updated_at'] ?? '').toString(),
       version: int.tryParse((json['version'] ?? 1).toString()) ?? 1,
     );
@@ -74,6 +82,7 @@ class TaskItem {
       'tags': tags,
       'assignees': assignees,
       'participants': assignees,
+      'reminder_offsets_minutes': reminderOffsetsMinutes,
       'duration_minutes': durationMinutes,
       'updated_at': updatedAt,
       'version': version,
@@ -93,6 +102,7 @@ class TaskItem {
       'priority': priority,
       'tags_json': jsonEncode(tags),
       'participants_json': jsonEncode(assignees),
+      'reminder_offsets_json': jsonEncode(reminderOffsetsMinutes),
       'duration_minutes': durationMinutes,
       'updated_at': updatedAt,
       'version': version,
@@ -112,7 +122,11 @@ class TaskItem {
       priority: (row['priority'] ?? 'medium').toString(),
       tags: _decodeStringList(row['tags_json']),
       assignees: _decodeStringList(row['participants_json']),
-      durationMinutes: int.tryParse((row['duration_minutes'] ?? 0).toString()) ?? 0,
+      reminderOffsetsMinutes: _normalizeReminderOffsets(
+        _decodeDynamicList(row['reminder_offsets_json']),
+      ),
+      durationMinutes:
+          int.tryParse((row['duration_minutes'] ?? 0).toString()) ?? 0,
       updatedAt: (row['updated_at'] ?? '').toString(),
       version: int.tryParse((row['version'] ?? 1).toString()) ?? 1,
     );
@@ -129,6 +143,7 @@ class TaskItem {
     String? priority,
     List<String>? tags,
     List<String>? assignees,
+    List<int>? reminderOffsetsMinutes,
     int? durationMinutes,
     String? updatedAt,
     int? version,
@@ -145,6 +160,8 @@ class TaskItem {
       priority: priority ?? this.priority,
       tags: tags ?? this.tags,
       assignees: assignees ?? this.assignees,
+      reminderOffsetsMinutes:
+          reminderOffsetsMinutes ?? this.reminderOffsetsMinutes,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       updatedAt: updatedAt ?? this.updatedAt,
       version: version ?? this.version,
@@ -162,5 +179,34 @@ class TaskItem {
       }
     } catch (_) {}
     return const [];
+  }
+
+  static List<dynamic> _decodeDynamicList(Object? raw) {
+    if (raw == null) {
+      return const [];
+    }
+    try {
+      final parsed = jsonDecode(raw.toString());
+      if (parsed is List) {
+        return parsed;
+      }
+    } catch (_) {}
+    return const [];
+  }
+
+  static List<int> _normalizeReminderOffsets(List<dynamic> raw) {
+    const allowed = {1440, 180, 120, 60, 30};
+    final out = <int>[];
+    for (final item in raw) {
+      final value = int.tryParse(item.toString());
+      if (value == null || !allowed.contains(value)) {
+        continue;
+      }
+      if (!out.contains(value)) {
+        out.add(value);
+      }
+    }
+    out.sort((a, b) => b.compareTo(a));
+    return out;
   }
 }

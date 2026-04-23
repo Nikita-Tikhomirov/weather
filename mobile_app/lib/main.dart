@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -49,6 +49,13 @@ const _monthNamesRu = [
   'Декабрь',
 ];
 const _weekDayNamesRu = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const _reminderOptions = <int, String>{
+  1440: 'За 24 часа',
+  180: 'За 3 часа',
+  120: 'За 2 часа',
+  60: 'За 1 час',
+  30: 'За 30 минут',
+};
 
 void main() {
   runApp(const FamilyTodoApp());
@@ -156,7 +163,6 @@ class _HomePageState extends State<HomePage> {
     _desktopProcessHostService = DesktopProcessHostService(
       workingDirectory: Directory.current.path,
       onVoiceState: store.setVoiceHostState,
-      onBotState: store.setBotHostState,
       onLog: (message, {isError = false}) {
         final stamp = DateTime.now().toIso8601String().substring(11, 19);
         final level = isError ? 'ERR' : 'INFO';
@@ -203,7 +209,7 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         Expanded(
                           child: Text(
-                            'Family tasks - $selectedDateKey',
+                            'Семейные задачи - $selectedDateKey',
                             style: TextStyle(
                               color: textPrimary,
                               fontWeight: FontWeight.w700,
@@ -217,11 +223,11 @@ class _HomePageState extends State<HomePage> {
                               showSelectedIcon: false,
                               segments: const [
                                 ButtonSegment(
-                                    value: 0, label: Text('Dashboard')),
-                                ButtonSegment(value: 1, label: Text('Kanban')),
+                                    value: 0, label: Text('Сводка')),
+                                ButtonSegment(value: 1, label: Text('Задачи')),
                                 ButtonSegment(
-                                    value: 2, label: Text('Calendar')),
-                                ButtonSegment(value: 3, label: Text('Family')),
+                                    value: 2, label: Text('Календарь')),
+                                ButtonSegment(value: 3, label: Text('Семья')),
                               ],
                               selected: {page},
                               onSelectionChanged: (value) =>
@@ -254,9 +260,9 @@ class _HomePageState extends State<HomePage> {
                               showSelectedIcon: false,
                               segments: const [
                                 ButtonSegment(
-                                    value: 'light', label: Text('Light')),
+                                    value: 'light', label: Text('Свет')),
                                 ButtonSegment(
-                                    value: 'dark', label: Text('Dark')),
+                                    value: 'dark', label: Text('Тьма')),
                               ],
                               selected: {mode},
                               onSelectionChanged: (value) =>
@@ -277,7 +283,7 @@ class _HomePageState extends State<HomePage> {
                                     : (schemes.isEmpty ? '' : schemes.first);
                                 return DropdownButton<String>(
                                   value: safeScheme.isEmpty ? null : safeScheme,
-                                  hint: const Text('Scheme'),
+                                  hint: const Text('Тема'),
                                   onChanged: (value) {
                                     if (value != null) {
                                       _setDesktopThemeScheme(value);
@@ -304,7 +310,7 @@ class _HomePageState extends State<HomePage> {
                                 voiceState.status == DesktopHostStatus.running;
                             return Row(
                               children: [
-                                const Text('Voice'),
+                                const Text('Голос'),
                                 Switch(
                                   value: enabled,
                                   onChanged: (value) =>
@@ -314,26 +320,8 @@ class _HomePageState extends State<HomePage> {
                             );
                           },
                         ),
-                        const SizedBox(width: 6),
-                        ValueListenableBuilder<DesktopHostState>(
-                          valueListenable: store.botHostState,
-                          builder: (context, botState, __) {
-                            final enabled =
-                                botState.status == DesktopHostStatus.running;
-                            return Row(
-                              children: [
-                                const Text('Bot'),
-                                Switch(
-                                  value: enabled,
-                                  onChanged: (value) =>
-                                      _toggleBotHost(store, value),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
                         IconButton(
-                          tooltip: 'Sync',
+                          tooltip: 'Синхронизация',
                           icon: const Icon(Icons.sync),
                           onPressed: () =>
                               _safeSyncFull(store, showErrors: true),
@@ -342,7 +330,7 @@ class _HomePageState extends State<HomePage> {
                           valueListenable: store.canUndo,
                           builder: (context, canUndo, __) {
                             return IconButton(
-                              tooltip: 'Undo',
+                              tooltip: 'Отменить',
                               onPressed: canUndo
                                   ? () async {
                                       final ok = await store.undoLastAction();
@@ -357,12 +345,6 @@ class _HomePageState extends State<HomePage> {
                               icon: const Icon(Icons.undo),
                             );
                           },
-                        ),
-                        const SizedBox(width: 6),
-                        FilledButton.icon(
-                          onPressed: () => _openTaskEditor(store),
-                          icon: const Icon(Icons.add),
-                          label: const Text('Quick task'),
                         ),
                       ],
                     ),
@@ -454,90 +436,31 @@ class _HomePageState extends State<HomePage> {
           return ValueListenableBuilder<Map<String, List<TaskItem>>>(
             valueListenable: store.personalByStatus,
             builder: (context, byStatus, __) {
-              return ValueListenableBuilder<String>(
-                valueListenable: store.searchQuery,
-                builder: (context, query, ___) {
-                  return ValueListenableBuilder<String>(
-                    valueListenable: store.tasksDateFilter,
-                    builder: (context, dateFilter, ____) {
-                      return ValueListenableBuilder<bool>(
-                        valueListenable: store.selectionMode,
-                        builder: (context, selectionMode, _____) {
-                          return ValueListenableBuilder<Set<String>>(
-                            valueListenable: store.selectedTaskIds,
-                            builder: (context, selectedIds, ______) {
-                              return Column(
-                                children: [
-                                  _TasksToolbar(
-                                    searchQuery: query,
-                                    dateFilter: dateFilter,
-                                    selectionMode: selectionMode,
-                                    selectedCount: selectedIds.length,
-                                    onSearchChanged: store.setSearchQuery,
-                                    onPickDate: () async {
-                                      final picked = await showDatePicker(
-                                        context: context,
-                                        initialDate: selectedDate,
-                                        firstDate: DateTime(2024),
-                                        lastDate: DateTime(2035),
-                                      );
-                                      if (picked != null) {
-                                        store.setTasksDateFilter(
-                                            _dateKey(picked));
-                                      }
-                                    },
-                                    onUseToday: () => store.setTasksDateFilter(
-                                      _dateKey(DateTime.now()),
-                                    ),
-                                    onClearDate: store.clearTasksDateFilter,
-                                    onToggleSelection:
-                                        store.toggleSelectionMode,
-                                    onDeleteSelected: () async {
-                                      await store.deleteSelectedPersonalTasks();
-                                      await _safeSyncDelta(
-                                        store,
-                                        showErrors: true,
-                                      );
-                                    },
-                                  ),
-                                  Expanded(
-                                    child: _DesktopTasksBoard(
-                                      byStatus: byStatus,
-                                      selectionMode: selectionMode,
-                                      selectedIds: selectedIds,
-                                      onToggleSelect: store.toggleTaskSelection,
-                                      onDropStatus: (item, status) async {
-                                        await store.move(item, status);
-                                        await _safeSyncDelta(
-                                          store,
-                                          showErrors: true,
-                                        );
-                                      },
-                                      onEdit: (task) => _openTaskEditor(store,
-                                          existing: task),
-                                      onDelete: (task) async {
-                                        await store.delete(task);
-                                        await _safeSyncDelta(
-                                          store,
-                                          showErrors: true,
-                                        );
-                                      },
-                                      onDoneToggle: (task) async {
-                                        await store.toggleDone(task);
-                                        await _safeSyncDelta(
-                                          store,
-                                          showErrors: true,
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-                        },
-                      );
-                    },
+              return _DesktopTasksBoard(
+                byStatus: byStatus,
+                selectionMode: false,
+                selectedIds: const <String>{},
+                onToggleSelect: (_) {},
+                onDropStatus: (item, status) async {
+                  await store.move(item, status);
+                  await _safeSyncDelta(
+                    store,
+                    showErrors: true,
+                  );
+                },
+                onEdit: (task) => _openTaskEditor(store, existing: task),
+                onDelete: (task) async {
+                  await store.delete(task);
+                  await _safeSyncDelta(
+                    store,
+                    showErrors: true,
+                  );
+                },
+                onDoneToggle: (task) async {
+                  await store.toggleDone(task);
+                  await _safeSyncDelta(
+                    store,
+                    showErrors: true,
                   );
                 },
               );
@@ -730,6 +653,9 @@ class _HomePageState extends State<HomePage> {
     String priority = existing?.priority ?? 'medium';
     String status = existing?.workflowStatus ?? 'todo';
     bool isFamily = forceFamily || (existing?.isFamily ?? false);
+    final selectedReminderOffsets = <int>{
+      ...(existing?.reminderOffsetsMinutes ?? const <int>[]),
+    };
 
     await showModalBottomSheet<void>(
       context: context,
@@ -894,6 +820,32 @@ class _HomePageState extends State<HomePage> {
                         }).toList(),
                       ),
                     ],
+                    const SizedBox(height: 8),
+                    Text(
+                      'Напоминания',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _reminderOptions.entries.map((entry) {
+                        final offset = entry.key;
+                        return FilterChip(
+                          label: Text(entry.value),
+                          selected: selectedReminderOffsets.contains(offset),
+                          onSelected: (selected) {
+                            setModalState(() {
+                              if (selected) {
+                                selectedReminderOffsets.add(offset);
+                              } else {
+                                selectedReminderOffsets.remove(offset);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
                     const SizedBox(height: 12),
                     Row(
                       children: [
@@ -918,6 +870,8 @@ class _HomePageState extends State<HomePage> {
                                 assignees: selectedAssignees.toList(),
                                 durationMinutes:
                                     int.tryParse(durationCtl.text.trim()) ?? 0,
+                                reminderOffsetsMinutes:
+                                    selectedReminderOffsets.toList(),
                               );
                               final messenger =
                                   ScaffoldMessenger.of(this.context);
@@ -979,18 +933,6 @@ class _HomePageState extends State<HomePage> {
     await host.stopVoice();
   }
 
-  Future<void> _toggleBotHost(TaskStore store, bool enabled) async {
-    final host = _desktopProcessHostService;
-    if (host == null) {
-      return;
-    }
-    if (enabled) {
-      await host.startBot();
-      return;
-    }
-    await host.stopBot();
-  }
-
   Future<void> _moveToDate(
       TaskStore store, TaskItem item, DateTime target) async {
     await store.moveToDate(item, _dateKey(target));
@@ -1040,7 +982,7 @@ class _HomePageState extends State<HomePage> {
                 }
                 return Scaffold(
                   appBar: AppBar(
-                    title: Text('Family tasks - $selectedDateKey'),
+                    title: Text('Семейные задачи - $selectedDateKey'),
                     actions: [
                       ValueListenableBuilder<bool>(
                         valueListenable: store.canUndo,
@@ -1155,150 +1097,41 @@ class _HomePageState extends State<HomePage> {
                                   Map<String, List<TaskItem>>>(
                                 valueListenable: store.personalByStatus,
                                 builder: (context, byStatus, _) {
-                                  return ValueListenableBuilder<String>(
-                                    valueListenable: store.searchQuery,
-                                    builder: (context, query, __) {
-                                      return ValueListenableBuilder<String>(
-                                        valueListenable: store.tasksDateFilter,
-                                        builder: (context, dateFilter, ___) {
-                                          return ValueListenableBuilder<bool>(
-                                            valueListenable:
-                                                store.selectionMode,
-                                            builder:
-                                                (context, selectionMode, ____) {
-                                              return ValueListenableBuilder<
-                                                  Set<String>>(
-                                                valueListenable:
-                                                    store.selectedTaskIds,
-                                                builder: (context, selectedIds,
-                                                    _____) {
-                                                  return Column(
-                                                    children: [
-                                                      _TasksToolbar(
-                                                        searchQuery: query,
-                                                        dateFilter: dateFilter,
-                                                        selectionMode:
-                                                            selectionMode,
-                                                        selectedCount:
-                                                            selectedIds.length,
-                                                        onSearchChanged: store
-                                                            .setSearchQuery,
-                                                        onPickDate: () async {
-                                                          final picked =
-                                                              await showDatePicker(
-                                                            context: context,
-                                                            initialDate:
-                                                                selectedDate,
-                                                            firstDate: DateTime(
-                                                              2024,
-                                                            ),
-                                                            lastDate: DateTime(
-                                                              2035,
-                                                            ),
-                                                          );
-                                                          if (picked != null) {
-                                                            store
-                                                                .setTasksDateFilter(
-                                                              _dateKey(
-                                                                picked,
-                                                              ),
-                                                            );
-                                                          }
-                                                        },
-                                                        onUseToday: () => store
-                                                            .setTasksDateFilter(
-                                                          _dateKey(
-                                                            DateTime.now(),
-                                                          ),
-                                                        ),
-                                                        onClearDate: store
-                                                            .clearTasksDateFilter,
-                                                        onToggleSelection: store
-                                                            .toggleSelectionMode,
-                                                        onDeleteSelected:
-                                                            () async {
-                                                          final messenger =
-                                                              ScaffoldMessenger
-                                                                  .of(
-                                                            this.context,
-                                                          );
-                                                          final count = await store
-                                                              .deleteSelectedPersonalTasks();
-                                                          if (!mounted ||
-                                                              count <= 0) {
-                                                            return;
-                                                          }
-                                                          messenger
-                                                              .showSnackBar(
-                                                            SnackBar(
-                                                              content: Text(
-                                                                'Удалено задач: $count',
-                                                              ),
-                                                            ),
-                                                          );
-                                                          await _safeSyncDelta(
-                                                            store,
-                                                            showErrors: true,
-                                                          );
-                                                        },
-                                                      ),
-                                                      Expanded(
-                                                        child: _TasksBoard(
-                                                          byStatus: byStatus,
-                                                          selectionMode:
-                                                              selectionMode,
-                                                          selectedIds:
-                                                              selectedIds,
-                                                          onToggleSelect: store
-                                                              .toggleTaskSelection,
-                                                          onDrop: (
-                                                            item,
-                                                            status,
-                                                          ) async {
-                                                            await store.move(
-                                                              item,
-                                                              status,
-                                                            );
-                                                            await _safeSyncDelta(
-                                                              store,
-                                                              showErrors: true,
-                                                            );
-                                                          },
-                                                          onEdit: (task) =>
-                                                              _openTaskEditor(
-                                                            store,
-                                                            existing: task,
-                                                          ),
-                                                          onDelete:
-                                                              (task) async {
-                                                            await store.delete(
-                                                              task,
-                                                            );
-                                                            await _safeSyncDelta(
-                                                              store,
-                                                              showErrors: true,
-                                                            );
-                                                          },
-                                                          onDoneToggle:
-                                                              (task) async {
-                                                            await store
-                                                                .toggleDone(
-                                                              task,
-                                                            );
-                                                            await _safeSyncDelta(
-                                                              store,
-                                                              showErrors: true,
-                                                            );
-                                                          },
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  );
-                                                },
-                                              );
-                                            },
-                                          );
-                                        },
+                                  return _TasksBoard(
+                                    byStatus: byStatus,
+                                    selectionMode: false,
+                                    selectedIds: const <String>{},
+                                    onToggleSelect: (_) {},
+                                    onDrop: (item, status) async {
+                                      await store.move(
+                                        item,
+                                        status,
+                                      );
+                                      await _safeSyncDelta(
+                                        store,
+                                        showErrors: true,
+                                      );
+                                    },
+                                    onEdit: (task) => _openTaskEditor(
+                                      store,
+                                      existing: task,
+                                    ),
+                                    onDelete: (task) async {
+                                      await store.delete(
+                                        task,
+                                      );
+                                      await _safeSyncDelta(
+                                        store,
+                                        showErrors: true,
+                                      );
+                                    },
+                                    onDoneToggle: (task) async {
+                                      await store.toggleDone(
+                                        task,
+                                      );
+                                      await _safeSyncDelta(
+                                        store,
+                                        showErrors: true,
                                       );
                                     },
                                   );
@@ -1377,7 +1210,7 @@ class _HomePageState extends State<HomePage> {
                         destinations: const [
                           NavigationDestination(
                             icon: Icon(Icons.dashboard_outlined),
-                            label: 'Дашборд',
+                            label: 'Сводка',
                           ),
                           NavigationDestination(
                             icon: Icon(Icons.view_kanban_outlined),
@@ -1389,7 +1222,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           NavigationDestination(
                             icon: Icon(Icons.family_restroom_outlined),
-                            label: 'Семейные',
+                            label: 'Семья',
                           ),
                         ],
                       );
@@ -1412,80 +1245,6 @@ class _HomePageState extends State<HomePage> {
     _desktopThemeService?.state.dispose();
     _store?.dispose();
     super.dispose();
-  }
-}
-
-class _TasksToolbar extends StatelessWidget {
-  const _TasksToolbar({
-    required this.searchQuery,
-    required this.dateFilter,
-    required this.selectionMode,
-    required this.selectedCount,
-    required this.onSearchChanged,
-    required this.onPickDate,
-    required this.onUseToday,
-    required this.onClearDate,
-    required this.onToggleSelection,
-    required this.onDeleteSelected,
-  });
-
-  final String searchQuery;
-  final String dateFilter;
-  final bool selectionMode;
-  final int selectedCount;
-  final void Function(String) onSearchChanged;
-  final Future<void> Function() onPickDate;
-  final VoidCallback onUseToday;
-  final VoidCallback onClearDate;
-  final VoidCallback onToggleSelection;
-  final Future<void> Function() onDeleteSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            SizedBox(
-              width: 260,
-              child: TextFormField(
-                initialValue: searchQuery,
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search),
-                  labelText: 'Поиск задач',
-                  isDense: true,
-                ),
-                onChanged: onSearchChanged,
-              ),
-            ),
-            OutlinedButton.icon(
-              onPressed: onPickDate,
-              icon: const Icon(Icons.date_range),
-              label: Text(dateFilter.isEmpty ? 'Все даты' : dateFilter),
-            ),
-            OutlinedButton(onPressed: onUseToday, child: const Text('Сегодня')),
-            OutlinedButton(
-              onPressed: onClearDate,
-              child: const Text('Сброс даты'),
-            ),
-            FilledButton.tonal(
-              onPressed: onToggleSelection,
-              child: Text(selectionMode ? 'Выбор: выкл' : 'Выбрать'),
-            ),
-            FilledButton(
-              onPressed:
-                  selectionMode && selectedCount > 0 ? onDeleteSelected : null,
-              child: Text('Удалить выбранные ($selectedCount)'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
@@ -1954,7 +1713,6 @@ class _DesktopCalendarView extends StatelessWidget {
           ),
           Expanded(
             child: GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 7,
                 crossAxisSpacing: 8,
@@ -2280,3 +2038,4 @@ class _TaskCard extends StatelessWidget {
     );
   }
 }
+

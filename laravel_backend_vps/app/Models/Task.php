@@ -14,7 +14,7 @@ class Task extends Model
 
     protected $fillable = [
         'id', 'owner_key', 'is_family', 'title', 'details', 'due_date', 'time_value',
-        'workflow_status', 'priority', 'tags_json', 'participants_json',
+        'workflow_status', 'priority', 'tags_json', 'participants_json', 'reminder_offsets_json',
         'duration_minutes', 'updated_at', 'version',
     ];
 
@@ -22,6 +22,7 @@ class Task extends Model
         'is_family' => 'boolean',
         'tags_json' => 'array',
         'participants_json' => 'array',
+        'reminder_offsets_json' => 'array',
         'duration_minutes' => 'integer',
         'version' => 'integer',
     ];

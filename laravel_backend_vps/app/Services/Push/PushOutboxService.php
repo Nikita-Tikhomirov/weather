@@ -37,6 +37,26 @@ class PushOutboxService
             return 0;
         }
 
+        return $this->enqueueRawToRecipients(
+            $eventId,
+            $recipients,
+            (string) $message['title'],
+            (string) $message['body'],
+            is_array($message['data']) ? $message['data'] : [],
+        );
+    }
+
+    public function enqueueRawToRecipients(
+        string $eventId,
+        array $recipients,
+        string $title,
+        string $body,
+        array $data,
+    ): int {
+        if (!$this->isEnabled() || $recipients === []) {
+            return 0;
+        }
+
         $rows = DB::table('device_tokens')
             ->select('token', 'profile_key')
             ->whereIn('profile_key', $recipients)
@@ -63,9 +83,9 @@ class PushOutboxService
                 ],
                 [
                     'profile_key' => (string) $row->profile_key,
-                    'title' => $message['title'],
-                    'body_text' => $message['body'],
-                    'data_json' => json_encode($message['data'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    'title' => $title,
+                    'body_text' => $body,
+                    'data_json' => json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                     'status' => 'pending',
                     'retry_count' => 0,
                     'next_retry_at' => $now,

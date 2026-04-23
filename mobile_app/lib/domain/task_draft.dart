@@ -9,6 +9,7 @@ class TaskDraft {
     required this.isFamily,
     required this.assignees,
     required this.durationMinutes,
+    required this.reminderOffsetsMinutes,
   });
 
   final String title;
@@ -20,4 +21,5 @@ class TaskDraft {
   final bool isFamily;
   final List<String> assignees;
   final int durationMinutes;
+  final List<int> reminderOffsetsMinutes;
 }

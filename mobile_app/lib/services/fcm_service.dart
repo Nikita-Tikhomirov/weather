@@ -8,9 +8,9 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_client.dart';
 
 const _notificationChannelId = 'family_updates';
-const _notificationChannelName = 'Family updates';
+const _notificationChannelName = 'Семейные уведомления';
 const _notificationChannelDescription =
-    'Push notifications about family task changes';
+    'Пуш-уведомления о задачах и напоминаниях';
 const _appVersion = '0.1.3';
 
 final FlutterLocalNotificationsPlugin _localNotifications =
@@ -94,8 +94,8 @@ class FcmService {
 
     _onMessageSub = FirebaseMessaging.onMessage.listen((RemoteMessage msg) async {
       await onOpenPush();
-      final title = msg.notification?.title ?? 'Family tasks';
-      final body = msg.notification?.body ?? 'New changes are available';
+      final title = msg.notification?.title ?? 'Семейные задачи';
+      final body = msg.notification?.body ?? 'Появились новые изменения';
       await _showForegroundNotification(title: title, body: body);
       onForegroundText('$title: $body');
     });

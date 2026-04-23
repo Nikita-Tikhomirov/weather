@@ -33,6 +33,7 @@ class SyncService {
             'workflow_status': task.workflowStatus,
             'assignees': task.assignees,
             'participants': task.assignees,
+            'reminder_offsets_minutes': task.reminderOffsetsMinutes,
             'duration_minutes': task.durationMinutes,
             'updated_at': task.updatedAt,
             'version': task.version,

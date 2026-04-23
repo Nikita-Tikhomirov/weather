@@ -1,4 +1,4 @@
-import '../models/task_item.dart';
+﻿import '../models/task_item.dart';
 import 'task_draft.dart';
 
 class TaskDomainService {
@@ -10,6 +10,7 @@ class TaskDomainService {
     'done',
   };
   static const Set<String> allowedPriority = {'low', 'medium', 'high'};
+  static const Set<int> allowedReminderOffsets = {1440, 180, 120, 60, 30};
 
   String? validateDraft({
     required TaskDraft draft,
@@ -30,6 +31,14 @@ class TaskDomainService {
     if (!allowedPriority.contains(draft.priority)) {
       return 'Некорректный приоритет задачи.';
     }
+
+    final invalidOffsets = draft.reminderOffsetsMinutes
+        .where((offset) => !allowedReminderOffsets.contains(offset))
+        .toList();
+    if (invalidOffsets.isNotEmpty) {
+      return 'Некорректные интервалы напоминаний.';
+    }
+
     return null;
   }
 
@@ -41,6 +50,9 @@ class TaskDomainService {
   }) {
     final nowIso = now.toIso8601String();
     final assignees = draft.assignees.toList()..sort();
+    final reminders = draft.reminderOffsetsMinutes.toSet().toList()
+      ..sort((a, b) => b.compareTo(a));
+
     return (existing ??
             TaskItem(
               id: 'm-${now.microsecondsSinceEpoch}',
@@ -54,6 +66,7 @@ class TaskDomainService {
               priority: draft.priority,
               tags: const [],
               assignees: assignees,
+              reminderOffsetsMinutes: reminders,
               durationMinutes: draft.durationMinutes,
               updatedAt: nowIso,
               version: 1,
@@ -68,6 +81,7 @@ class TaskDomainService {
           workflowStatus: draft.workflowStatus,
           priority: draft.priority,
           assignees: assignees,
+          reminderOffsetsMinutes: reminders,
           durationMinutes: draft.durationMinutes,
           updatedAt: nowIso,
           version: (existing?.version ?? 0) + 1,

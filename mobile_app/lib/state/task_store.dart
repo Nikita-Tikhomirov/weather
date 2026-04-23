@@ -126,13 +126,6 @@ class TaskStore {
       lastMessage: 'voice stopped',
     ),
   );
-  final ValueNotifier<DesktopHostState> botHostState =
-      ValueNotifier<DesktopHostState>(
-    const DesktopHostState(
-      status: DesktopHostStatus.stopped,
-      lastMessage: 'bot stopped',
-    ),
-  );
   final ValueNotifier<List<String>> desktopLogEntries =
       ValueNotifier<List<String>>(
     const <String>[],
@@ -394,10 +387,6 @@ class TaskStore {
     voiceHostState.value = state;
   }
 
-  void setBotHostState(DesktopHostState state) {
-    botHostState.value = state;
-  }
-
   void appendDesktopLog(String entry) {
     final next = List<String>.from(desktopLogEntries.value);
     next.add(entry);
@@ -436,21 +425,11 @@ class TaskStore {
   }
 
   void _recomputeKanbanOnly() {
-    final filterDate = tasksDateFilter.value.isNotEmpty
-        ? tasksDateFilter.value
-        : _dateKey(selectedDate.value);
-    final query = searchQuery.value;
-    final personalTasks = _allTasks
-        .where((task) => !task.isFamily && task.dueDate == filterDate)
-        .where((task) {
-      if (query.isEmpty) {
-        return true;
-      }
-      final haystack =
-          '${task.title} ${task.details} ${task.dueDate} ${task.time}'
-              .toLowerCase();
-      return haystack.contains(query);
-    }).toList();
+    final personalTasks = _allTasks.where((task) => !task.isFamily).toList()
+      ..sort(
+        (a, b) =>
+            ('${a.dueDate} ${a.time}').compareTo('${b.dueDate} ${b.time}'),
+      );
 
     final visibleIds = personalTasks.map((task) => task.id).toSet();
     final trimmed = selectedTaskIds.value.where(visibleIds.contains).toSet();
@@ -543,7 +522,6 @@ class TaskStore {
     availableSchemes.dispose();
     desktopThemeTokens.dispose();
     voiceHostState.dispose();
-    botHostState.dispose();
     desktopLogEntries.dispose();
   }
 }

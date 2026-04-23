@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Domain\Sync;
 
@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\DB;
 
 final class SyncRepository
 {
+    private const ALLOWED_REMINDER_OFFSETS = [1440, 180, 120, 60, 30];
+
     public function nowIso(): string
     {
         return now()->format('Y-m-d\TH:i:s');
@@ -27,7 +29,7 @@ final class SyncRepository
     public function normalizeTask(array $task): array
     {
         $tags = $task['tags'] ?? [];
-        $participants = $task['participants'] ?? [];
+        $participants = $task['participants'] ?? $task['assignees'] ?? [];
 
         return [
             'id' => (string)($task['id'] ?? ''),
@@ -41,6 +43,7 @@ final class SyncRepository
             'priority' => (string)($task['priority'] ?? 'medium'),
             'tags' => is_array($tags) ? array_values($tags) : [],
             'participants' => is_array($participants) ? array_values($participants) : [],
+            'reminder_offsets_minutes' => $this->normalizeReminderOffsets($task['reminder_offsets_minutes'] ?? []),
             'duration_minutes' => (int)($task['duration_minutes'] ?? 0),
             'updated_at' => (string)($task['updated_at'] ?? $this->nowIso()),
             'version' => max(1, (int)($task['version'] ?? 1)),
@@ -62,6 +65,7 @@ final class SyncRepository
             'workflow_status' => SyncRules::ensureWorkflow((string)($item['workflow_status'] ?? 'todo')),
             'assignees' => $assignees,
             'participants' => $assignees,
+            'reminder_offsets_minutes' => $this->normalizeReminderOffsets($item['reminder_offsets_minutes'] ?? []),
             'duration_minutes' => (int)($item['duration_minutes'] ?? 0),
             'updated_at' => (string)($item['updated_at'] ?? $this->nowIso()),
             'version' => max(1, (int)($item['version'] ?? 1)),
@@ -114,6 +118,7 @@ final class SyncRepository
                 'priority' => $task['priority'],
                 'tags_json' => json_encode($task['tags'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'participants_json' => json_encode($task['participants'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'reminder_offsets_json' => json_encode($task['reminder_offsets_minutes'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'duration_minutes' => (int)$task['duration_minutes'],
                 'updated_at' => $task['updated_at'],
                 'version' => $nextVersion,
@@ -158,6 +163,7 @@ final class SyncRepository
                 'time_value' => $item['time'],
                 'workflow_status' => $item['workflow_status'],
                 'participants_json' => json_encode($item['assignees'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'reminder_offsets_json' => json_encode($item['reminder_offsets_minutes'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'duration_minutes' => (int)$item['duration_minutes'],
                 'updated_at' => $item['updated_at'],
                 'version' => $nextVersion,
@@ -207,6 +213,7 @@ final class SyncRepository
                 'priority' => (string)$row->priority,
                 'tags' => $this->decodeJsonArray($row->tags_json),
                 'participants' => $this->decodeJsonArray($row->participants_json),
+                'reminder_offsets_minutes' => $this->normalizeReminderOffsets($this->decodeJsonArray($row->reminder_offsets_json)),
                 'duration_minutes' => (int)$row->duration_minutes,
                 'updated_at' => (string)$row->updated_at,
                 'version' => (int)$row->version,
@@ -238,6 +245,7 @@ final class SyncRepository
                 'workflow_status' => (string)$row->workflow_status,
                 'participants' => $participants,
                 'assignees' => $participants,
+                'reminder_offsets_minutes' => $this->normalizeReminderOffsets($this->decodeJsonArray($row->reminder_offsets_json)),
                 'duration_minutes' => (int)$row->duration_minutes,
                 'updated_at' => (string)$row->updated_at,
                 'version' => (int)$row->version,
@@ -393,5 +401,26 @@ final class SyncRepository
         }
         $decoded = json_decode($value, true);
         return is_array($decoded) ? $decoded : [];
+    }
+
+    private function normalizeReminderOffsets(mixed $raw): array
+    {
+        if (!is_array($raw)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($raw as $value) {
+            $offset = (int) $value;
+            if (!in_array($offset, self::ALLOWED_REMINDER_OFFSETS, true)) {
+                continue;
+            }
+            if (!in_array($offset, $normalized, true)) {
+                $normalized[] = $offset;
+            }
+        }
+
+        rsort($normalized);
+        return $normalized;
     }
 }

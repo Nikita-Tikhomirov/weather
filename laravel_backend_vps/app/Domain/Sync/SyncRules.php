@@ -78,4 +78,14 @@ final class SyncRules
 
         return Profiles::isAllowed($owner) ? [$owner] : [];
     }
+
+    public static function recipientsForReminder(string $entity, array $payload): array
+    {
+        if ($entity === 'family_task') {
+            return self::normalizeAssignees($payload);
+        }
+
+        $owner = trim((string)($payload['owner_key'] ?? ''));
+        return Profiles::isAllowed($owner) ? [$owner] : [];
+    }
 }

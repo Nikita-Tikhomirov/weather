@@ -14,11 +14,12 @@ class FamilyTask extends Model
 
     protected $fillable = [
         'id', 'title', 'details', 'due_date', 'time_value', 'workflow_status',
-        'participants_json', 'duration_minutes', 'updated_at', 'version',
+        'participants_json', 'reminder_offsets_json', 'duration_minutes', 'updated_at', 'version',
     ];
 
     protected $casts = [
         'participants_json' => 'array',
+        'reminder_offsets_json' => 'array',
         'duration_minutes' => 'integer',
         'version' => 'integer',
     ];

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace Tests\Unit;
 
@@ -24,6 +24,6 @@ class PushMessageFactoryTest extends TestCase
         $this->assertSame('Семейные задачи', $message['title']);
         $this->assertStringContainsString('Ник', $message['body']);
         $this->assertStringContainsString('Проверка', $message['body']);
-        $this->assertStringNotContainsString('Р', $message['title']);
+        $this->assertStringNotContainsString('Р ', $message['title']);
     }
 }

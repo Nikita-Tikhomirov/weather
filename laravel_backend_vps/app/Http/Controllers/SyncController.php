@@ -7,6 +7,7 @@ use App\Domain\Sync\Profiles;
 use App\Domain\Sync\SyncRepository;
 use App\Domain\Sync\SyncRules;
 use App\Services\Push\PushOutboxService;
+use App\Services\Push\TaskReminderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use InvalidArgumentException;
@@ -17,6 +18,7 @@ class SyncController extends Controller
     public function __construct(
         private readonly SyncRepository $repo,
         private readonly PushOutboxService $pushOutbox,
+        private readonly TaskReminderService $taskReminders,
     ) {}
 
     public function health(): JsonResponse
@@ -308,45 +310,52 @@ class SyncController extends Controller
         $action = (string)($event['action'] ?? 'upsert');
         $payload = is_array($event['payload'] ?? null) ? $event['payload'] : [];
 
-        if ($entity === 'task') {
-            if ($action === 'delete') {
-                $taskId = trim((string)($payload['id'] ?? ''));
-                $owner = trim((string)($payload['owner_key'] ?? $actor));
-                if ($taskId !== '') {
-                    $this->repo->deleteTask($taskId, $owner);
-                }
-            } elseif ($action === 'replace_person_tasks') {
-                $owner = trim((string)($payload['owner_key'] ?? $actor));
-                if ($owner !== $actor) {
-                    throw new InvalidArgumentException('replace_person_tasks owner mismatch');
+            if ($entity === 'task') {
+                if ($action === 'delete') {
+                    $taskId = trim((string)($payload['id'] ?? ''));
+                    $owner = trim((string)($payload['owner_key'] ?? $actor));
+                    if ($taskId !== '') {
+                        $this->repo->deleteTask($taskId, $owner);
+                        $storedId = $this->repo->taskStorageId($owner, $taskId, false);
+                        $this->taskReminders->clearForTask('task', $storedId);
+                    }
+                } elseif ($action === 'replace_person_tasks') {
+                    $owner = trim((string)($payload['owner_key'] ?? $actor));
+                    if ($owner !== $actor) {
+                        throw new InvalidArgumentException('replace_person_tasks owner mismatch');
                 }
                 $items = $payload['tasks'] ?? [];
-                if (!is_array($items)) {
-                    throw new InvalidArgumentException('tasks must be array');
+                    if (!is_array($items)) {
+                        throw new InvalidArgumentException('tasks must be array');
+                    }
+                    $this->repo->replacePersonTasks($owner, $items);
+                    $this->taskReminders->rescheduleAllForOwner($owner);
+                } else {
+                    $task = $this->repo->normalizeTask($payload);
+                    SyncRules::ensureTaskPermissions($actor, $task);
+                    $this->repo->upsertTask($task);
+                    $this->taskReminders->rescheduleForTask($task);
                 }
-                $this->repo->replacePersonTasks($owner, $items);
-            } else {
-                $task = $this->repo->normalizeTask($payload);
-                SyncRules::ensureTaskPermissions($actor, $task);
-                $this->repo->upsertTask($task);
-            }
-        } elseif ($entity === 'family_task') {
-            SyncRules::ensureFamilyPermissions($actor);
-            if ($action === 'delete') {
-                $id = trim((string)($payload['id'] ?? ''));
-                if ($id !== '') {
-                    $this->repo->deleteFamilyTask($id);
+            } elseif ($entity === 'family_task') {
+                SyncRules::ensureFamilyPermissions($actor);
+                if ($action === 'delete') {
+                    $id = trim((string)($payload['id'] ?? ''));
+                    if ($id !== '') {
+                        $this->repo->deleteFamilyTask($id);
+                        $this->taskReminders->clearForTask('family_task', $id);
+                    }
+                } elseif ($action === 'replace_family_tasks') {
+                    $items = $payload['items'] ?? [];
+                    if (!is_array($items)) {
+                        throw new InvalidArgumentException('items must be array');
+                    }
+                    $this->repo->replaceFamilyTasks($items);
+                    $this->taskReminders->rescheduleAllFamily();
+                } else {
+                    $item = $this->repo->normalizeFamilyTask($payload);
+                    $this->repo->upsertFamilyTask($item);
+                    $this->taskReminders->rescheduleForFamilyTask($item);
                 }
-            } elseif ($action === 'replace_family_tasks') {
-                $items = $payload['items'] ?? [];
-                if (!is_array($items)) {
-                    throw new InvalidArgumentException('items must be array');
-                }
-                $this->repo->replaceFamilyTasks($items);
-            } else {
-                $item = $this->repo->normalizeFamilyTask($payload);
-                $this->repo->upsertFamilyTask($item);
-            }
         } else {
             throw new InvalidArgumentException('Unsupported entity');
         }

@@ -61,6 +61,26 @@ class SyncRulesTest extends TestCase
     }
 
     #[Test]
+    public function family_reminder_targets_assignees_only(): void
+    {
+        $targets = SyncRules::recipientsForReminder('family_task', [
+            'assignees' => ['nastya', 'misha', 'bad_profile', 'misha'],
+        ]);
+
+        $this->assertSame(['nastya', 'misha'], $targets);
+    }
+
+    #[Test]
+    public function personal_reminder_targets_owner_only(): void
+    {
+        $targets = SyncRules::recipientsForReminder('task', [
+            'owner_key' => 'nik',
+        ]);
+
+        $this->assertSame(['nik'], $targets);
+    }
+
+    #[Test]
     public function invalid_workflow_falls_back_to_todo(): void
     {
         $this->assertSame('todo', SyncRules::ensureWorkflow('invalid_status'));

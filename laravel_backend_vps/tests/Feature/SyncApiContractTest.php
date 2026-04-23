@@ -60,6 +60,7 @@ class SyncApiContractTest extends TestCase
                     'priority' => 'medium',
                     'tags' => [],
                     'participants' => [],
+                    'reminder_offsets_minutes' => [1440, 60, 30],
                     'duration_minutes' => 0,
                     'updated_at' => '2026-04-23T11:00:00',
                     'version' => 1,
@@ -102,6 +103,7 @@ class SyncApiContractTest extends TestCase
 
         $this->assertSame('feature-1', data_get($changes->json(), 'tasks.0.id'));
         $this->assertSame('nik', data_get($changes->json(), 'tasks.0.owner_key'));
+        $this->assertSame([1440, 60, 30], data_get($changes->json(), 'tasks.0.reminder_offsets_minutes'));
     }
 
     #[Test]

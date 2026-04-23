@@ -20,17 +20,14 @@ class DesktopProcessHostService {
   DesktopProcessHostService({
     required this.workingDirectory,
     required this.onVoiceState,
-    required this.onBotState,
     required this.onLog,
   });
 
   final String workingDirectory;
   final void Function(DesktopHostState state) onVoiceState;
-  final void Function(DesktopHostState state) onBotState;
   final void Function(String message, {bool isError}) onLog;
 
   Process? _voiceProcess;
-  Process? _botProcess;
   final Map<Process, _ProcessDiagnostics> _diagnosticsByProcess =
       <Process, _ProcessDiagnostics>{};
 
@@ -56,9 +53,10 @@ class DesktopProcessHostService {
       onLog(result.message, isError: true);
       return;
     }
+
     final process = result.process!;
     _diagnosticsByProcess[process] = _ProcessDiagnostics();
-    _attachProcessLogs(process: process, isBot: false);
+    _attachProcessLogs(process);
 
     final startup = await _waitForStartup(process);
     if (!startup.running) {
@@ -82,7 +80,7 @@ class DesktopProcessHostService {
       ),
     );
     onLog('voice started');
-    unawaited(_attachExitObserver(process, isVoice: true));
+    unawaited(_attachExitObserver(process));
   }
 
   Future<void> stopVoice() async {
@@ -101,98 +99,13 @@ class DesktopProcessHostService {
     );
   }
 
-  Future<void> startBot() async {
-    if (_isRunning(_botProcess)) {
-      onBotState(
-        const DesktopHostState(
-          status: DesktopHostStatus.running,
-          lastMessage: 'bot already running',
-        ),
-      );
-      return;
-    }
-    final token = Platform.environment['TELEGRAM_BOT_TOKEN'] ?? '';
-    if (token.trim().isEmpty) {
-      const message = 'TELEGRAM_BOT_TOKEN is missing';
-      onBotState(
-        const DesktopHostState(
-          status: DesktopHostStatus.error,
-          lastMessage: message,
-          errorCode: 'invalid_token',
-        ),
-      );
-      onLog(message, isError: true);
-      return;
-    }
-    final result = await _startScript(
-      ['desktop_app.py', '--bot-only'],
-      extraEnvironment: const {'TODO_BACKEND_SOURCE': 'telegram'},
-    );
-    if (!result.ok) {
-      onBotState(
-        DesktopHostState(
-          status: DesktopHostStatus.error,
-          lastMessage: result.message,
-          errorCode: 'process_exit_nonzero',
-        ),
-      );
-      onLog(result.message, isError: true);
-      return;
-    }
-
-    final process = result.process!;
-    _diagnosticsByProcess[process] = _ProcessDiagnostics();
-    _attachProcessLogs(process: process, isBot: true);
-
-    final startup = await _waitForStartup(process);
-    if (!startup.running) {
-      _botProcess = null;
-      onBotState(
-        DesktopHostState(
-          status: DesktopHostStatus.error,
-          lastMessage: startup.message,
-          errorCode: startup.errorCode,
-        ),
-      );
-      onLog(startup.message, isError: true);
-      return;
-    }
-
-    _botProcess = process;
-    onBotState(
-      const DesktopHostState(
-        status: DesktopHostStatus.running,
-        lastMessage: 'bot running',
-      ),
-    );
-    onLog('bot started');
-    unawaited(_attachExitObserver(process, isVoice: false));
-  }
-
-  Future<void> stopBot() async {
-    await _stopProcess(
-      process: _botProcess,
-      onStopped: () {
-        _botProcess = null;
-        onBotState(
-          const DesktopHostState(
-            status: DesktopHostStatus.stopped,
-            lastMessage: 'bot stopped',
-          ),
-        );
-        onLog('bot stopped');
-      },
-    );
-  }
-
   Future<void> stopAll() async {
     await stopVoice();
-    await stopBot();
   }
 
   bool _isRunning(Process? process) => process != null;
 
-  void _attachProcessLogs({required Process process, required bool isBot}) {
+  void _attachProcessLogs(Process process) {
     final diagnostics = _diagnosticsByProcess[process];
     if (diagnostics == null) {
       return;
@@ -206,9 +119,6 @@ class DesktopProcessHostService {
       if (trimmed.isEmpty) {
         return;
       }
-      if (isBot) {
-        _captureBotDiagnostic(diagnostics, trimmed);
-      }
       onLog(trimmed);
     });
 
@@ -221,23 +131,8 @@ class DesktopProcessHostService {
         return;
       }
       diagnostics.lastErrorLine = trimmed;
-      if (isBot) {
-        _captureBotDiagnostic(diagnostics, trimmed);
-      }
       onLog(trimmed, isError: true);
     });
-  }
-
-  void _captureBotDiagnostic(_ProcessDiagnostics diagnostics, String line) {
-    if (!line.startsWith('BOT_START_ERROR:')) {
-      return;
-    }
-    final parts = line.split(':');
-    if (parts.length < 3) {
-      return;
-    }
-    diagnostics.botErrorCode = parts[1].trim();
-    diagnostics.botErrorMessage = parts.sublist(2).join(':').trim();
   }
 
   Future<_StartupResult> _waitForStartup(Process process) async {
@@ -253,13 +148,10 @@ class DesktopProcessHostService {
           message: 'Process exited immediately with code 0',
         );
       }
-      final code = diagnostics?.botErrorCode ?? 'process_exit_nonzero';
-      final message = diagnostics?.botErrorMessage ??
-          diagnostics?.lastErrorLine ??
-          'Process exited with code $exit';
+      final message = diagnostics?.lastErrorLine ?? 'Process exited with code $exit';
       return _StartupResult(
         running: false,
-        errorCode: code,
+        errorCode: 'process_exit_nonzero',
         message: message,
       );
     } on TimeoutException {
@@ -271,57 +163,33 @@ class DesktopProcessHostService {
     }
   }
 
-  Future<void> _attachExitObserver(
-    Process process, {
-    required bool isVoice,
-  }) async {
+  Future<void> _attachExitObserver(Process process) async {
     final code = await process.exitCode;
     final diagnostics = _diagnosticsByProcess.remove(process);
-    if (isVoice && identical(process, _voiceProcess)) {
-      _voiceProcess = null;
-      if (code == 0) {
-        onVoiceState(
-          const DesktopHostState(
-            status: DesktopHostStatus.stopped,
-            lastMessage: 'voice exited',
-          ),
-        );
-        onLog('voice exited');
-      } else {
-        onVoiceState(
-          DesktopHostState(
-            status: DesktopHostStatus.error,
-            lastMessage:
-                diagnostics?.lastErrorLine ?? 'voice exited with code $code',
-            errorCode: 'process_exit_nonzero',
-          ),
-        );
-        onLog('voice exited with code $code', isError: true);
-      }
+    if (!identical(process, _voiceProcess)) {
+      return;
     }
-    if (!isVoice && identical(process, _botProcess)) {
-      _botProcess = null;
-      if (code == 0) {
-        onBotState(
-          const DesktopHostState(
-            status: DesktopHostStatus.stopped,
-            lastMessage: 'bot exited',
-          ),
-        );
-        onLog('bot exited');
-      } else {
-        onBotState(
-          DesktopHostState(
-            status: DesktopHostStatus.error,
-            lastMessage: diagnostics?.botErrorMessage ??
-                diagnostics?.lastErrorLine ??
-                'bot exited with code $code',
-            errorCode: diagnostics?.botErrorCode ?? 'process_exit_nonzero',
-          ),
-        );
-        onLog('bot exited with code $code', isError: true);
-      }
+
+    _voiceProcess = null;
+    if (code == 0) {
+      onVoiceState(
+        const DesktopHostState(
+          status: DesktopHostStatus.stopped,
+          lastMessage: 'voice exited',
+        ),
+      );
+      onLog('voice exited');
+      return;
     }
+
+    onVoiceState(
+      DesktopHostState(
+        status: DesktopHostStatus.error,
+        lastMessage: diagnostics?.lastErrorLine ?? 'voice exited with code $code',
+        errorCode: 'process_exit_nonzero',
+      ),
+    );
+    onLog('voice exited with code $code', isError: true);
   }
 
   Future<_StartResult> _startScript(
@@ -349,9 +217,7 @@ class DesktopProcessHostService {
         continue;
       }
     }
-    return const _StartResult.fail(
-      'python is not available or script not found',
-    );
+    return const _StartResult.fail('python is not available or script not found');
   }
 
   Future<void> _stopProcess({
@@ -403,6 +269,4 @@ class _StartupResult {
 
 class _ProcessDiagnostics {
   String? lastErrorLine;
-  String? botErrorCode;
-  String? botErrorMessage;
 }

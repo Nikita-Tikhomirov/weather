@@ -22,7 +22,7 @@ class LocalDb {
     final dbPath = p.join(basePath, 'family_todo_mobile.db');
     final db = await openDatabase(
       dbPath,
-      version: 1,
+      version: 2,
       onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE tasks(
@@ -37,6 +37,7 @@ class LocalDb {
             priority TEXT NOT NULL,
             tags_json TEXT NOT NULL,
             participants_json TEXT NOT NULL,
+            reminder_offsets_json TEXT NOT NULL DEFAULT '[]',
             duration_minutes INTEGER NOT NULL,
             updated_at TEXT NOT NULL,
             version INTEGER NOT NULL
@@ -57,6 +58,13 @@ class LocalDb {
             v TEXT NOT NULL
           );
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute(
+            "ALTER TABLE tasks ADD COLUMN reminder_offsets_json TEXT NOT NULL DEFAULT '[]'",
+          );
+        }
       },
     );
     return LocalDb._(db);
