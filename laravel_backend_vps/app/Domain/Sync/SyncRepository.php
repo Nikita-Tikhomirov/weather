@@ -247,9 +247,21 @@ final class SyncRepository
         return $out;
     }
 
-    public function upsertDeviceToken(string $token, string $actor, string $platform, string $appVersion, ?string $deviceId): void
+    public function upsertDeviceToken(
+        string $token,
+        string $actor,
+        string $platform,
+        string $appVersion,
+        ?string $deviceId,
+        string $playServices = 'unknown',
+        string $tokenStatus = 'active',
+        string $lastError = '',
+    ): void
     {
         $now = $this->nowIso();
+        $normalizedTokenStatus = trim($tokenStatus) !== '' ? trim($tokenStatus) : 'active';
+        $normalizedPlayServices = trim($playServices) !== '' ? trim($playServices) : 'unknown';
+        $normalizedLastError = trim($lastError);
         DB::table('device_tokens')->updateOrInsert(
             ['token' => $token],
             [
@@ -258,6 +270,10 @@ final class SyncRepository
                 'app_version' => $appVersion,
                 'device_id' => $deviceId,
                 'is_active' => 1,
+                'token_status' => $normalizedTokenStatus,
+                'play_services' => $normalizedPlayServices,
+                'last_error' => $normalizedLastError,
+                'registered_at' => $now,
                 'last_seen_at' => $now,
                 'created_at' => $now,
                 'updated_at' => $now,
@@ -272,8 +288,99 @@ final class SyncRepository
             ->where('profile_key', $actor)
             ->update([
                 'is_active' => 0,
+                'token_status' => 'inactive',
                 'updated_at' => $this->nowIso(),
             ]);
+    }
+
+    public function markDeviceTokenFailure(string $token, string $error, bool $permanent): void
+    {
+        $status = $permanent ? 'unregistered' : 'retry';
+        $trimmedError = substr(trim($error), 0, 500);
+        DB::table('device_tokens')
+            ->where('token', $token)
+            ->update([
+                'is_active' => $permanent ? 0 : 1,
+                'token_status' => $status,
+                'last_error' => $trimmedError,
+                'updated_at' => $this->nowIso(),
+            ]);
+    }
+
+    public function upsertDeviceStatus(
+        string $actor,
+        string $platform,
+        string $tokenStatus,
+        string $playServices,
+        string $appVersion,
+        string $deviceId,
+        string $lastError,
+        string $token = '',
+    ): void {
+        $now = $this->nowIso();
+        $record = [
+            'profile_key' => trim($actor),
+            'platform' => trim($platform) !== '' ? trim($platform) : 'android',
+            'token_status' => trim($tokenStatus) !== '' ? trim($tokenStatus) : 'unknown',
+            'play_services' => trim($playServices) !== '' ? trim($playServices) : 'unknown',
+            'last_error' => substr(trim($lastError), 0, 500),
+            'app_version' => trim($appVersion),
+            'device_id' => trim($deviceId),
+            'token' => trim($token),
+            'updated_at' => $now,
+            'created_at' => $now,
+        ];
+
+        DB::table('device_status')->insert($record);
+    }
+
+    public function latestDeviceStatusForActor(string $actor): array
+    {
+        $row = DB::table('device_status')
+            ->where('profile_key', $actor)
+            ->orderByDesc('id')
+            ->first();
+
+        $tokens = DB::table('device_tokens')
+            ->where('profile_key', $actor)
+            ->orderByDesc('updated_at')
+            ->limit(3)
+            ->get(['token', 'token_status', 'play_services', 'last_error', 'last_seen_at', 'is_active'])
+            ->map(function ($item): array {
+                return [
+                    'token' => (string) $item->token,
+                    'token_status' => (string) ($item->token_status ?? ''),
+                    'play_services' => (string) ($item->play_services ?? ''),
+                    'last_error' => (string) ($item->last_error ?? ''),
+                    'last_seen_at' => (string) ($item->last_seen_at ?? ''),
+                    'is_active' => (bool) ($item->is_active ?? false),
+                ];
+            })
+            ->values()
+            ->all();
+
+        if ($row === null) {
+            return [
+                'actor_profile' => $actor,
+                'status' => null,
+                'tokens' => $tokens,
+            ];
+        }
+
+        return [
+            'actor_profile' => $actor,
+            'status' => [
+                'platform' => (string) $row->platform,
+                'token_status' => (string) $row->token_status,
+                'play_services' => (string) $row->play_services,
+                'last_error' => (string) $row->last_error,
+                'app_version' => (string) $row->app_version,
+                'device_id' => (string) $row->device_id,
+                'token' => (string) $row->token,
+                'updated_at' => (string) $row->updated_at,
+            ],
+            'tokens' => $tokens,
+        ];
     }
 
     private function decodeJsonArray(mixed $value): array

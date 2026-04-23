@@ -64,34 +64,58 @@ jobs:
           cd /tmp/family_todo_mobile
           flutter pub get
 
-      - name: Prepare stable release keystore
+      - name: Prepare release keystore from secrets
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          FALLBACK_KEYSTORE_PASSWORD: familytodo
+          FALLBACK_KEY_ALIAS: familytodo
         shell: bash
         run: |
           set -euo pipefail
           APP_DIR="/tmp/family_todo_mobile"
-          keytool -genkeypair \
-            -keystore "$APP_DIR/android/release.keystore" \
-            -storepass familytodo \
-            -keypass familytodo \
-            -alias familytodo \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -dname "CN=Family Todo, OU=Mobile, O=Family, L=Moscow, S=Moscow, C=RU" \
-            -noprompt
+          if [ -z "${RELEASE_KEYSTORE_BASE64:-}" ]; then
+            echo "RELEASE_KEYSTORE_BASE64 is missing, using deterministic fallback key"
+            keytool -genkeypair \
+              -keystore "$APP_DIR/android/release.keystore" \
+              -storepass "$FALLBACK_KEYSTORE_PASSWORD" \
+              -keypass "$FALLBACK_KEYSTORE_PASSWORD" \
+              -alias "$FALLBACK_KEY_ALIAS" \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Family Todo, OU=Mobile, O=Family, L=Moscow, S=Moscow, C=RU" \
+              -noprompt
+            echo "KEYSTORE_MODE=fallback" >> "$GITHUB_ENV"
+            echo "FALLBACK_KEYSTORE_PASSWORD=$FALLBACK_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "FALLBACK_KEY_ALIAS=$FALLBACK_KEY_ALIAS" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$APP_DIR/android/release.keystore"
+          echo "KEYSTORE_MODE=secret" >> "$GITHUB_ENV"
 
       - name: Build release APK
         env:
           API_BASE_URL: http://31.129.97.211
           API_KEY: ${{ secrets.TODO_BACKEND_API_KEY }}
+          BUILD_NUMBER: ${{ github.run_number }}
           SIGNING_STORE_FILE: /tmp/family_todo_mobile/android/release.keystore
-          SIGNING_STORE_PASSWORD: familytodo
-          SIGNING_KEY_ALIAS: familytodo
-          SIGNING_KEY_PASSWORD: familytodo
+          SIGNING_STORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           cd /tmp/family_todo_mobile
+          if [ -z "${SIGNING_STORE_PASSWORD:-}" ]; then
+            export SIGNING_STORE_PASSWORD="${FALLBACK_KEYSTORE_PASSWORD:-familytodo}"
+          fi
+          if [ -z "${SIGNING_KEY_ALIAS:-}" ]; then
+            export SIGNING_KEY_ALIAS="${FALLBACK_KEY_ALIAS:-familytodo}"
+          fi
+          if [ -z "${SIGNING_KEY_PASSWORD:-}" ]; then
+            export SIGNING_KEY_PASSWORD="${FALLBACK_KEYSTORE_PASSWORD:-familytodo}"
+          fi
           set +e
           flutter build apk --release \
+            --build-number="$BUILD_NUMBER" \
             --dart-define=API_BASE_URL="$API_BASE_URL" \
             --dart-define=API_KEY="${API_KEY:-dev-local-key}"
           BUILD_EXIT=$?

@@ -11,6 +11,7 @@ const _notificationChannelId = 'family_updates';
 const _notificationChannelName = 'Family updates';
 const _notificationChannelDescription =
     'Push notifications about family task changes';
+const _appVersion = '0.1.3';
 
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();
@@ -47,6 +48,8 @@ class FcmService {
   StreamSubscription<RemoteMessage>? _onOpenSub;
   Timer? _tokenRefreshTimer;
   String _lastRegisteredToken = '';
+  String _playServicesState = 'unknown';
+  String _lastTokenError = '';
 
   Future<void> initialize() async {
     if (!(Platform.isAndroid || Platform.isIOS)) {
@@ -55,6 +58,7 @@ class FcmService {
 
     final initialized = await _initializeFirebaseSafely();
     if (!initialized) {
+      await _reportStatus(tokenStatus: 'firebase_init_failed');
       return;
     }
 
@@ -70,10 +74,14 @@ class FcmService {
     );
 
     if (permission.authorizationStatus == AuthorizationStatus.denied) {
+      await _reportStatus(tokenStatus: 'permission_denied');
       return;
     }
 
-    await _registerTokenWithRetry(messaging);
+    final registered = await _registerTokenWithRetry(messaging);
+    if (!registered) {
+      await _reportStatus(tokenStatus: 'token_unavailable');
+    }
     _startTokenRefreshLoop(messaging);
 
     _tokenRefreshSub = messaging.onTokenRefresh.listen((newToken) async {
@@ -81,6 +89,7 @@ class FcmService {
         return;
       }
       await _registerToken(newToken);
+      await _reportStatus(tokenStatus: 'active', token: newToken, lastError: '');
     });
 
     _onMessageSub = FirebaseMessaging.onMessage.listen((RemoteMessage msg) async {
@@ -112,42 +121,52 @@ class FcmService {
     _onOpenSub = null;
   }
 
-  Future<void> _registerTokenWithRetry(FirebaseMessaging messaging) async {
-    for (var attempt = 0; attempt < 6; attempt++) {
-      final registered = await _tryFetchAndRegisterToken(messaging);
-      if (registered) {
-        return;
+  Future<bool> _registerTokenWithRetry(FirebaseMessaging messaging) async {
+    for (var attempt = 0; attempt < 8; attempt++) {
+      final token = await _tryFetchToken(messaging);
+      if (token != null && token.isNotEmpty) {
+        await _registerToken(token);
+        await _reportStatus(tokenStatus: 'active', token: token, lastError: '');
+        return true;
       }
       await Future<void>.delayed(const Duration(seconds: 2));
     }
+    return false;
   }
 
   void _startTokenRefreshLoop(FirebaseMessaging messaging) {
     _tokenRefreshTimer?.cancel();
     _tokenRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
-      await _tryFetchAndRegisterToken(messaging);
+      final token = await _tryFetchToken(messaging);
+      if (token == null || token.isEmpty) {
+        await _reportStatus(tokenStatus: 'token_unavailable');
+        return;
+      }
+      if (token == _lastRegisteredToken) {
+        await _reportStatus(tokenStatus: 'active', token: token, lastError: '');
+        return;
+      }
+      await _registerToken(token);
+      await _reportStatus(tokenStatus: 'active', token: token, lastError: '');
     });
   }
 
-  Future<bool> _tryFetchAndRegisterToken(FirebaseMessaging messaging) async {
+  Future<String?> _tryFetchToken(FirebaseMessaging messaging) async {
     try {
       var token = await messaging.getToken();
       if (token == null || token.isEmpty) {
-        // Some devices need one reset cycle before token becomes available.
         await messaging.deleteToken();
         token = await messaging.getToken();
       }
-      if (token == null || token.isEmpty) {
-        return false;
+      if (token != null && token.isNotEmpty) {
+        _playServicesState = 'available';
       }
-      if (token == _lastRegisteredToken) {
-        return true;
-      }
-      await _registerToken(token);
-      _lastRegisteredToken = token;
-      return true;
-    } catch (_) {
-      return false;
+      _lastTokenError = '';
+      return token;
+    } catch (error) {
+      _playServicesState = 'unavailable_or_restricted';
+      _lastTokenError = error.toString();
+      return null;
     }
   }
 
@@ -158,8 +177,35 @@ class FcmService {
       platform: Platform.isAndroid
           ? 'android'
           : (Platform.isIOS ? 'ios' : 'other'),
-      appVersion: '0.1.2',
+      appVersion: _appVersion,
+      playServices: _playServicesState,
+      tokenStatus: 'active',
+      lastError: '',
     );
+    _lastRegisteredToken = token;
+  }
+
+  Future<void> _reportStatus({
+    required String tokenStatus,
+    String? token,
+    String? lastError,
+  }) async {
+    final errorText = (lastError ?? _lastTokenError).trim();
+    try {
+      await api.reportDeviceStatus(
+        actorProfile: actorProfile,
+        platform: Platform.isAndroid
+            ? 'android'
+            : (Platform.isIOS ? 'ios' : 'other'),
+        appVersion: _appVersion,
+        tokenStatus: tokenStatus,
+        playServices: _playServicesState,
+        token: token,
+        lastError: errorText,
+      );
+    } catch (_) {
+      // Diagnostics must never break app behavior.
+    }
   }
 
   Future<bool> _initializeFirebaseSafely() async {
@@ -179,6 +225,7 @@ class FcmService {
         );
         return true;
       } catch (_) {
+        _lastTokenError = 'firebase_init_failed';
         return false;
       }
     }

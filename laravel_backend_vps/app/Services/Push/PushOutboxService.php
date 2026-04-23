@@ -3,6 +3,7 @@
 namespace App\Services\Push;
 
 use App\Contracts\PushGateway;
+use App\Domain\Sync\SyncRepository;
 use Illuminate\Support\Facades\DB;
 
 class PushOutboxService
@@ -10,6 +11,7 @@ class PushOutboxService
     public function __construct(
         private readonly PushGateway $gateway,
         private readonly PushMessageFactory $factory,
+        private readonly SyncRepository $repo,
     ) {
     }
 
@@ -125,6 +127,13 @@ class PushOutboxService
                         'last_error' => '',
                         'updated_at' => $this->nowIso(),
                     ]);
+                DB::table('device_tokens')
+                    ->where('token', $row->token)
+                    ->update([
+                        'token_status' => 'active',
+                        'last_error' => '',
+                        'updated_at' => $this->nowIso(),
+                    ]);
                 continue;
             }
 
@@ -150,14 +159,7 @@ class PushOutboxService
                     'updated_at' => $this->nowIso(),
                 ]);
 
-            if ($permanentFailure) {
-                DB::table('device_tokens')
-                    ->where('token', $row->token)
-                    ->update([
-                        'is_active' => 0,
-                        'updated_at' => $this->nowIso(),
-                    ]);
-            }
+            $this->repo->markDeviceTokenFailure((string) $row->token, $error, $permanentFailure);
         }
 
         $pending = (int) DB::table('push_outbox')->where('status', 'pending')->count();

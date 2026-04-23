@@ -174,10 +174,38 @@ class SyncController extends Controller
             $platform = trim((string)$request->input('platform', 'android')) ?: 'android';
             $appVersion = trim((string)$request->input('app_version', ''));
             $deviceId = trim((string)$request->input('device_id', ''));
+            $playServices = trim((string)$request->input('play_services', 'unknown')) ?: 'unknown';
+            $tokenStatus = trim((string)$request->input('token_status', 'active')) ?: 'active';
+            $lastError = trim((string)$request->input('last_error', ''));
 
-            $this->repo->upsertDeviceToken($token, $actor, $platform, $appVersion, $deviceId !== '' ? $deviceId : null);
+            $this->repo->upsertDeviceToken(
+                $token,
+                $actor,
+                $platform,
+                $appVersion,
+                $deviceId !== '' ? $deviceId : null,
+                $playServices,
+                $tokenStatus,
+                $lastError,
+            );
 
-            return $this->json(200, ['ok' => true]);
+            $this->repo->upsertDeviceStatus(
+                $actor,
+                $platform,
+                $tokenStatus,
+                $playServices,
+                $appVersion,
+                $deviceId,
+                $lastError,
+                $token,
+            );
+
+            return $this->json(200, [
+                'ok' => true,
+                'token_status' => $tokenStatus,
+                'play_services' => $playServices,
+                'registered_at' => $this->repo->nowIso(),
+            ]);
         } catch (InvalidArgumentException $e) {
             return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
         } catch (Throwable $e) {
@@ -196,6 +224,52 @@ class SyncController extends Controller
 
             $this->repo->deactivateDeviceToken($token, $actor);
             return $this->json(200, ['ok' => true]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function reportDeviceStatus(Request $request): JsonResponse
+    {
+        try {
+            $actor = SyncRules::ensureActor((string)$request->input('actor_profile', ''));
+            $platform = trim((string)$request->input('platform', 'android')) ?: 'android';
+            $tokenStatus = trim((string)$request->input('token_status', 'unknown')) ?: 'unknown';
+            $playServices = trim((string)$request->input('play_services', 'unknown')) ?: 'unknown';
+            $appVersion = trim((string)$request->input('app_version', ''));
+            $deviceId = trim((string)$request->input('device_id', ''));
+            $lastError = trim((string)$request->input('last_error', ''));
+            $token = trim((string)$request->input('token', ''));
+
+            $this->repo->upsertDeviceStatus(
+                $actor,
+                $platform,
+                $tokenStatus,
+                $playServices,
+                $appVersion,
+                $deviceId,
+                $lastError,
+                $token,
+            );
+
+            return $this->json(200, ['ok' => true]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function getDeviceStatus(Request $request): JsonResponse
+    {
+        try {
+            $actor = SyncRules::ensureActor((string)$request->query('actor_profile', ''));
+            return $this->json(200, [
+                'ok' => true,
+                'result' => $this->repo->latestDeviceStatusForActor($actor),
+            ]);
         } catch (InvalidArgumentException $e) {
             return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
         } catch (Throwable $e) {

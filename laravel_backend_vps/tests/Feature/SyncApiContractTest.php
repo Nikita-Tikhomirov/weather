@@ -103,4 +103,58 @@ class SyncApiContractTest extends TestCase
         $this->assertSame('feature-1', data_get($changes->json(), 'tasks.0.id'));
         $this->assertSame('nik', data_get($changes->json(), 'tasks.0.owner_key'));
     }
+
+    #[Test]
+    public function device_register_returns_debug_fields(): void
+    {
+        config(['sync.api_key' => 'prod-key']);
+
+        $response = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/devices_register.php', [
+                'actor_profile' => 'nik',
+                'token' => 'token-contract-1',
+                'platform' => 'android',
+                'app_version' => '0.1.3',
+                'play_services' => 'available',
+                'token_status' => 'active',
+                'last_error' => '',
+            ]);
+
+        $response
+            ->assertStatus(200)
+            ->assertJsonStructure(['ok', 'token_status', 'play_services', 'registered_at'])
+            ->assertJson([
+                'ok' => true,
+                'token_status' => 'active',
+                'play_services' => 'available',
+            ]);
+    }
+
+    #[Test]
+    public function push_device_status_endpoint_returns_latest_status_for_actor(): void
+    {
+        config(['sync.api_key' => 'prod-key']);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/devices_status.php', [
+                'actor_profile' => 'nik',
+                'platform' => 'android',
+                'token_status' => 'token_unavailable',
+                'play_services' => 'unavailable_or_restricted',
+                'last_error' => 'SERVICE_NOT_AVAILABLE',
+                'app_version' => '0.1.3',
+            ])
+            ->assertStatus(200)
+            ->assertJson(['ok' => true]);
+
+        $response = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/push/device_status?actor_profile=nik');
+
+        $response
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('result.actor_profile', 'nik')
+            ->assertJsonPath('result.status.token_status', 'token_unavailable')
+            ->assertJsonPath('result.status.play_services', 'unavailable_or_restricted');
+    }
 }

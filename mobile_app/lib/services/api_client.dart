@@ -181,12 +181,18 @@ class ApiClient {
     required String platform,
     required String appVersion,
     String? deviceId,
+    String playServices = 'unknown',
+    String tokenStatus = 'active',
+    String lastError = '',
   }) async {
     final payload = {
       'actor_profile': actorProfile,
       'token': token,
       'platform': platform,
       'app_version': appVersion,
+      'play_services': playServices,
+      'token_status': tokenStatus,
+      'last_error': lastError,
       if (deviceId != null && deviceId.isNotEmpty) 'device_id': deviceId,
     };
     await _postWithFallback(
@@ -195,6 +201,37 @@ class ApiClient {
         '/devices_register.php/',
         '/devices/register/',
         '/devices/register',
+      ],
+      body: jsonEncode(payload),
+    );
+  }
+
+  Future<void> reportDeviceStatus({
+    required String actorProfile,
+    required String platform,
+    required String appVersion,
+    required String tokenStatus,
+    required String playServices,
+    String? token,
+    String? deviceId,
+    String? lastError,
+  }) async {
+    final payload = {
+      'actor_profile': actorProfile,
+      'platform': platform,
+      'app_version': appVersion,
+      'token_status': tokenStatus,
+      'play_services': playServices,
+      'last_error': lastError ?? '',
+      if (token != null && token.isNotEmpty) 'token': token,
+      if (deviceId != null && deviceId.isNotEmpty) 'device_id': deviceId,
+    };
+    await _postWithFallback(
+      paths: const [
+        '/devices_status.php',
+        '/devices_status.php/',
+        '/devices/status/',
+        '/devices/status',
       ],
       body: jsonEncode(payload),
     );
