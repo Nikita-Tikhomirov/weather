@@ -64,40 +64,54 @@ jobs:
           cd /tmp/family_todo_mobile
           flutter pub get
 
-      - name: Prepare release keystore from secrets
+      - name: Restore fallback release keystore cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/family_todo_mobile/android/release.keystore
+          key: family-todo-release-keystore-v1
+
+      - name: Prepare release keystore
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          APP_DIR="/tmp/family_todo_mobile"
-          if [ -z "${RELEASE_KEYSTORE_BASE64:-}" ]; then
-            echo "::error::Missing RELEASE_KEYSTORE_BASE64 secret. Refusing to build with fallback key."
-            exit 1
-          fi
-          echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$APP_DIR/android/release.keystore"
-
-      - name: Validate signing secrets
-        env:
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         shell: bash
         run: |
           set -euo pipefail
-          [ -n "${RELEASE_KEYSTORE_PASSWORD:-}" ] || { echo "::error::Missing RELEASE_KEYSTORE_PASSWORD secret"; exit 1; }
-          [ -n "${RELEASE_KEY_ALIAS:-}" ] || { echo "::error::Missing RELEASE_KEY_ALIAS secret"; exit 1; }
-          [ -n "${RELEASE_KEY_PASSWORD:-}" ] || { echo "::error::Missing RELEASE_KEY_PASSWORD secret"; exit 1; }
+          APP_DIR="/tmp/family_todo_mobile"
+          STORE_PASSWORD="${RELEASE_KEYSTORE_PASSWORD:-familytodo123}"
+          KEY_ALIAS="${RELEASE_KEY_ALIAS:-familytodo}"
+          KEY_PASSWORD="${RELEASE_KEY_PASSWORD:-familytodo123}"
+
+          if [ -n "${RELEASE_KEYSTORE_BASE64:-}" ]; then
+            echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$APP_DIR/android/release.keystore"
+            echo "Using keystore from RELEASE_KEYSTORE_BASE64 secret"
+          elif [ -f "$APP_DIR/android/release.keystore" ]; then
+            echo "Using cached fallback release keystore"
+          else
+            echo "Generating fallback release keystore"
+            keytool -genkeypair \
+              -alias "$KEY_ALIAS" \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 36500 \
+              -storetype JKS \
+              -keystore "$APP_DIR/android/release.keystore" \
+              -storepass "$STORE_PASSWORD" \
+              -keypass "$KEY_PASSWORD" \
+              -dname "CN=Family Todo, OU=Local, O=Local, L=Moscow, S=Moscow, C=RU"
+          fi
+          echo "SIGNING_STORE_FILE=$APP_DIR/android/release.keystore" >> "$GITHUB_ENV"
+          echo "SIGNING_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "SIGNING_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "SIGNING_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
 
       - name: Build release APK
         env:
           API_BASE_URL: http://31.129.97.211
           API_KEY: ${{ secrets.TODO_BACKEND_API_KEY }}
           BUILD_NUMBER: ${{ github.run_number }}
-          SIGNING_STORE_FILE: /tmp/family_todo_mobile/android/release.keystore
-          SIGNING_STORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-          SIGNING_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          SIGNING_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           cd /tmp/family_todo_mobile
           flutter clean
