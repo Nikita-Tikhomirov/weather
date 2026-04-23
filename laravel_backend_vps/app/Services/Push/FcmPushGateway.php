@@ -55,6 +55,8 @@ class FcmPushGateway implements PushGateway
                     'priority' => 'high',
                     'notification' => [
                         'channel_id' => (string) config('push.fcm.android_channel_id', 'family_updates'),
+                        'sound' => 'default',
+                        'visibility' => 'PUBLIC',
                     ],
                 ],
             ],

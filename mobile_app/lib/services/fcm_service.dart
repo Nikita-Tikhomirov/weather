@@ -3,8 +3,17 @@ import 'dart:io' show Platform;
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'api_client.dart';
+
+const _notificationChannelId = 'family_updates';
+const _notificationChannelName = 'Family updates';
+const _notificationChannelDescription =
+    'Push notifications about family task changes';
+
+final FlutterLocalNotificationsPlugin _localNotifications =
+    FlutterLocalNotificationsPlugin();
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -14,9 +23,10 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     try {
       await Firebase.initializeApp(options: _firebaseOptionsForCurrentPlatform());
     } catch (_) {
-      // Best-effort initialization for background delivery.
+      return;
     }
   }
+  await _ensureNotificationChannel();
 }
 
 class FcmService {
@@ -36,12 +46,15 @@ class FcmService {
     if (!(Platform.isAndroid || Platform.isIOS)) {
       return;
     }
+
     final initialized = await _initializeFirebaseSafely();
     if (!initialized) {
       return;
     }
 
+    await _ensureNotificationChannel();
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
     final messaging = FirebaseMessaging.instance;
     await messaging.setAutoInitEnabled(true);
     final permission = await messaging.requestPermission(
@@ -67,6 +80,7 @@ class FcmService {
       await onOpenPush();
       final title = msg.notification?.title ?? 'Семейные задачи';
       final body = msg.notification?.body ?? 'Есть новые изменения';
+      await _showForegroundNotification(title: title, body: body);
       onForegroundText('$title: $body');
     });
 
@@ -89,7 +103,7 @@ class FcmService {
           return;
         }
       } catch (_) {
-        // Best-effort retry. Token may be unavailable right after startup.
+        // Token may not be ready immediately on cold start.
       }
       await Future<void>.delayed(const Duration(seconds: 2));
     }
@@ -127,6 +141,52 @@ class FcmService {
       }
     }
   }
+
+  Future<void> _showForegroundNotification({
+    required String title,
+    required String body,
+  }) async {
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _notificationChannelId,
+        _notificationChannelName,
+        channelDescription: _notificationChannelDescription,
+        importance: Importance.max,
+        priority: Priority.high,
+        visibility: NotificationVisibility.public,
+        icon: '@mipmap/ic_launcher',
+      ),
+    );
+
+    await _localNotifications.show(
+      DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      title,
+      body,
+      details,
+    );
+  }
+}
+
+Future<void> _ensureNotificationChannel() async {
+  const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+  const initializationSettings = InitializationSettings(
+    android: androidSettings,
+  );
+  await _localNotifications.initialize(initializationSettings);
+
+  const channel = AndroidNotificationChannel(
+    _notificationChannelId,
+    _notificationChannelName,
+    description: _notificationChannelDescription,
+    importance: Importance.max,
+    playSound: true,
+  );
+
+  await _localNotifications
+      .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >()
+      ?.createNotificationChannel(channel);
 }
 
 FirebaseOptions _firebaseOptionsForCurrentPlatform() {
