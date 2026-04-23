@@ -1,4 +1,4 @@
-﻿import '../models/task_item.dart';
+import '../models/task_item.dart';
 import 'task_draft.dart';
 
 class TaskDomainService {
@@ -10,7 +10,16 @@ class TaskDomainService {
     'done',
   };
   static const Set<String> allowedPriority = {'low', 'medium', 'high'};
-  static const Set<int> allowedReminderOffsets = {1440, 180, 120, 60, 30};
+  static const Set<int> allowedReminderOffsets = {
+    1440,
+    720,
+    180,
+    120,
+    60,
+    30,
+    15,
+    5,
+  };
 
   String? validateDraft({
     required TaskDraft draft,
@@ -72,19 +81,19 @@ class TaskDomainService {
               version: 1,
             ))
         .copyWith(
-          ownerKey: draft.isFamily ? 'family' : actorProfile,
-          isFamily: draft.isFamily,
-          title: draft.title.trim(),
-          details: draft.details.trim(),
-          dueDate: draft.dueDate,
-          time: draft.time,
-          workflowStatus: draft.workflowStatus,
-          priority: draft.priority,
-          assignees: assignees,
-          reminderOffsetsMinutes: reminders,
-          durationMinutes: draft.durationMinutes,
-          updatedAt: nowIso,
-          version: (existing?.version ?? 0) + 1,
-        );
+      ownerKey: draft.isFamily ? 'family' : actorProfile,
+      isFamily: draft.isFamily,
+      title: draft.title.trim(),
+      details: draft.details.trim(),
+      dueDate: draft.dueDate,
+      time: draft.time,
+      workflowStatus: draft.workflowStatus,
+      priority: draft.priority,
+      assignees: assignees,
+      reminderOffsetsMinutes: reminders,
+      durationMinutes: draft.durationMinutes,
+      updatedAt: nowIso,
+      version: (existing?.version ?? 0) + 1,
+    );
   }
 }

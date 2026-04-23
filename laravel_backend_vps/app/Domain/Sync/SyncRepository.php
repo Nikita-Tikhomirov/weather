@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 
 final class SyncRepository
 {
-    private const ALLOWED_REMINDER_OFFSETS = [1440, 180, 120, 60, 30];
+    private const ALLOWED_REMINDER_OFFSETS = [1440, 720, 180, 120, 60, 30, 15, 5];
 
     public function nowIso(): string
     {

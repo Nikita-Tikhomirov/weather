@@ -11,7 +11,7 @@ const _notificationChannelId = 'family_updates';
 const _notificationChannelName = 'Семейные уведомления';
 const _notificationChannelDescription =
     'Пуш-уведомления о задачах и напоминаниях';
-const _appVersion = '0.1.4';
+const _appVersion = '0.1.5';
 
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();
@@ -22,7 +22,8 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp();
   } catch (_) {
     try {
-      await Firebase.initializeApp(options: _firebaseOptionsForCurrentPlatform());
+      await Firebase.initializeApp(
+          options: _firebaseOptionsForCurrentPlatform());
     } catch (_) {
       return;
     }
@@ -78,6 +79,7 @@ class FcmService {
       return;
     }
 
+    await _forceTokenRotation(messaging);
     final registered = await _registerTokenWithRetry(messaging);
     if (!registered) {
       await _reportStatus(tokenStatus: 'token_unavailable');
@@ -89,10 +91,12 @@ class FcmService {
         return;
       }
       await _registerToken(newToken);
-      await _reportStatus(tokenStatus: 'active', token: newToken, lastError: '');
+      await _reportStatus(
+          tokenStatus: 'active', token: newToken, lastError: '');
     });
 
-    _onMessageSub = FirebaseMessaging.onMessage.listen((RemoteMessage msg) async {
+    _onMessageSub =
+        FirebaseMessaging.onMessage.listen((RemoteMessage msg) async {
       await onOpenPush();
       final title = msg.notification?.title ?? 'Семейные задачи';
       final body = msg.notification?.body ?? 'Появились новые изменения';
@@ -132,6 +136,14 @@ class FcmService {
       await Future<void>.delayed(const Duration(seconds: 2));
     }
     return false;
+  }
+
+  Future<void> _forceTokenRotation(FirebaseMessaging messaging) async {
+    try {
+      await messaging.deleteToken();
+    } catch (_) {
+      // Ignore and continue; token refresh will retry below.
+    }
   }
 
   void _startTokenRefreshLoop(FirebaseMessaging messaging) {
@@ -174,9 +186,8 @@ class FcmService {
     await api.registerDeviceToken(
       actorProfile: actorProfile,
       token: token,
-      platform: Platform.isAndroid
-          ? 'android'
-          : (Platform.isIOS ? 'ios' : 'other'),
+      platform:
+          Platform.isAndroid ? 'android' : (Platform.isIOS ? 'ios' : 'other'),
       appVersion: _appVersion,
       playServices: _playServicesState,
       tokenStatus: 'active',
@@ -194,9 +205,8 @@ class FcmService {
     try {
       await api.reportDeviceStatus(
         actorProfile: actorProfile,
-        platform: Platform.isAndroid
-            ? 'android'
-            : (Platform.isIOS ? 'ios' : 'other'),
+        platform:
+            Platform.isAndroid ? 'android' : (Platform.isIOS ? 'ios' : 'other'),
         appVersion: _appVersion,
         tokenStatus: tokenStatus,
         playServices: _playServicesState,
@@ -273,8 +283,7 @@ Future<void> _ensureNotificationChannel() async {
 
   await _localNotifications
       .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin
-      >()
+          AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(channel);
 }
 
@@ -310,5 +319,6 @@ FirebaseOptions _firebaseOptionsForCurrentPlatform() {
     );
   }
 
-  throw UnsupportedError('Firebase options are not configured for this platform');
+  throw UnsupportedError(
+      'Firebase options are not configured for this platform');
 }

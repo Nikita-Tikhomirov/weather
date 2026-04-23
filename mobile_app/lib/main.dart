@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -51,10 +51,13 @@ const _monthNamesRu = [
 const _weekDayNamesRu = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 const _reminderOptions = <int, String>{
   1440: 'За 24 часа',
+  720: 'За 12 часов',
   180: 'За 3 часа',
   120: 'За 2 часа',
   60: 'За 1 час',
   30: 'За 30 минут',
+  15: 'За 15 минут',
+  5: 'За 5 минут',
 };
 
 void main() {
@@ -222,8 +225,7 @@ class _HomePageState extends State<HomePage> {
                             return SegmentedButton<int>(
                               showSelectedIcon: false,
                               segments: const [
-                                ButtonSegment(
-                                    value: 0, label: Text('Сводка')),
+                                ButtonSegment(value: 0, label: Text('Сводка')),
                                 ButtonSegment(value: 1, label: Text('Задачи')),
                                 ButtonSegment(
                                     value: 2, label: Text('Календарь')),
@@ -2052,4 +2054,3 @@ class _TaskCard extends StatelessWidget {
     );
   }
 }
-

@@ -199,7 +199,7 @@ class TaskReminderService
             return [];
         }
 
-        $allowed = [1440, 180, 120, 60, 30];
+        $allowed = [1440, 720, 180, 120, 60, 30, 15, 5];
         $normalized = [];
         foreach ($raw as $value) {
             $offset = (int) $value;
@@ -243,10 +243,13 @@ class TaskReminderService
     {
         $offsetLabel = match ($offsetMinutes) {
             1440 => 'через 24 часа',
+            720 => 'через 12 часов',
             180 => 'через 3 часа',
             120 => 'через 2 часа',
             60 => 'через 1 час',
             30 => 'через 30 минут',
+            15 => 'через 15 минут',
+            5 => 'через 5 минут',
             default => 'скоро',
         };
 

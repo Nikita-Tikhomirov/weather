@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 class TaskItem {
   TaskItem({
@@ -195,7 +195,7 @@ class TaskItem {
   }
 
   static List<int> _normalizeReminderOffsets(List<dynamic> raw) {
-    const allowed = {1440, 180, 120, 60, 30};
+    const allowed = {1440, 720, 180, 120, 60, 30, 15, 5};
     final out = <int>[];
     for (final item in raw) {
       final value = int.tryParse(item.toString());
