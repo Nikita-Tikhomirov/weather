@@ -44,23 +44,17 @@ jobs:
           rm -rf "$APP_DIR/lib"
           cp -R mobile_app/lib "$APP_DIR/lib"
           cp mobile_app/pubspec.yaml "$APP_DIR/pubspec.yaml"
+          if [ -f mobile_app/android/build.gradle ]; then
+            cp mobile_app/android/build.gradle "$APP_DIR/android/build.gradle"
+          fi
+          if [ -f mobile_app/android/app/build.gradle ]; then
+            cp mobile_app/android/app/build.gradle "$APP_DIR/android/app/build.gradle"
+          fi
           if [ -f mobile_app/android/app/google-services.json ]; then
             cp mobile_app/android/app/google-services.json "$APP_DIR/android/app/google-services.json"
           fi
           if [ -f mobile_app/android/app/src/main/AndroidManifest.xml ]; then
             cp mobile_app/android/app/src/main/AndroidManifest.xml "$APP_DIR/android/app/src/main/AndroidManifest.xml"
-          fi
-
-          if [ -f "$APP_DIR/android/build.gradle" ]; then
-            if ! grep -q "com.google.gms:google-services" "$APP_DIR/android/build.gradle"; then
-              printf "\nbuildscript {\n    dependencies {\n        classpath 'com.google.gms:google-services:4.4.2'\n    }\n}\n" >> "$APP_DIR/android/build.gradle"
-            fi
-          fi
-
-          if [ -f "$APP_DIR/android/app/build.gradle" ]; then
-            if ! grep -q "com.google.gms.google-services" "$APP_DIR/android/app/build.gradle"; then
-              perl -0777 -i -pe "s/id \"dev.flutter.flutter-gradle-plugin\"/id \"dev.flutter.flutter-gradle-plugin\"\\n    id \"com.google.gms.google-services\"/g" "$APP_DIR/android/app/build.gradle"
-            fi
           fi
 
       - name: Flutter pub get
