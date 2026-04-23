@@ -102,7 +102,7 @@ class FcmService {
       platform: Platform.isAndroid
           ? 'android'
           : (Platform.isIOS ? 'ios' : 'other'),
-      appVersion: '0.1.0',
+      appVersion: '0.1.1',
     );
   }
 
