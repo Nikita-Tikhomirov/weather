@@ -100,6 +100,7 @@ class _HomePageState extends State<HomePage> {
   Timer? _fullSyncTimer;
   bool _desktopLogExpanded = false;
   DateTime _desktopMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  String _fcmDiagnostics = 'FCM: not initialized';
 
   bool get _isDesktopWindows =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
@@ -636,6 +637,11 @@ class _HomePageState extends State<HomePage> {
 
   void _bindFcm({required ApiClient api, required String owner}) {
     _fcm?.dispose();
+    if (mounted) {
+      setState(() {
+        _fcmDiagnostics = 'FCM: binding actor=$owner';
+      });
+    }
     _fcm = FcmService(
       api: api,
       actorProfile: owner,
@@ -646,6 +652,15 @@ class _HomePageState extends State<HomePage> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(text)));
+      },
+      onDiagnosticsChanged: (text) {
+        debugPrint('FCM diagnostics: $text');
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _fcmDiagnostics = text;
+        });
       },
       onOpenPush: () async {
         final store = _store;
@@ -659,6 +674,44 @@ class _HomePageState extends State<HomePage> {
       debugPrint('FCM initialization failed: $error');
       debugPrint('$stackTrace');
     });
+  }
+
+  void _showFcmDiagnosticsDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('FCM диагностика'),
+          content: SingleChildScrollView(
+            child: SelectableText(_fcmDiagnostics),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Закрыть'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildFcmDiagnosticsCard() {
+    final lines = _fcmDiagnostics.split('\n');
+    final preview = lines.length <= 4 ? _fcmDiagnostics : lines.take(4).join('\n');
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      color: const Color(0xFFFFF7E6),
+      child: ListTile(
+        leading: const Icon(Icons.bug_report_outlined),
+        title: const Text('FCM диагностика'),
+        subtitle: Text(preview),
+        trailing: TextButton(
+          onPressed: _showFcmDiagnosticsDialog,
+          child: const Text('Подробно'),
+        ),
+      ),
+    );
   }
 
   void _startSyncLoops(TaskStore store) {
@@ -1138,6 +1191,11 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       IconButton(
+                        tooltip: 'FCM диагностика',
+                        icon: const Icon(Icons.bug_report_outlined),
+                        onPressed: _showFcmDiagnosticsDialog,
+                      ),
+                      IconButton(
                         tooltip: 'Календарь',
                         icon: const Icon(Icons.calendar_month),
                         onPressed: () async {
@@ -1162,124 +1220,133 @@ class _HomePageState extends State<HomePage> {
                   ),
                   body: loading
                       ? const Center(child: CircularProgressIndicator())
-                      : ValueListenableBuilder<int>(
-                          valueListenable: store.pageIndex,
-                          builder: (context, page, ____) {
-                            if (page == 0) {
-                              return ValueListenableBuilder<DashboardVm>(
-                                valueListenable: store.dashboard,
-                                builder: (context, vm, _) {
-                                  return _DashboardView(
-                                    vm: vm,
-                                    onOpenCalendar: () async {
-                                      final picked = await showDatePicker(
-                                        context: context,
-                                        initialDate: selectedDate,
-                                        firstDate: DateTime(2024),
-                                        lastDate: DateTime(2035),
-                                      );
-                                      if (picked != null) {
-                                        store.setSelectedDate(picked);
-                                      }
-                                    },
-                                  );
-                                },
-                              );
-                            }
-                            if (page == 1) {
-                              return ValueListenableBuilder<
-                                  Map<String, List<TaskItem>>>(
-                                valueListenable: store.personalByStatus,
-                                builder: (context, byStatus, _) {
-                                  return _TasksBoard(
-                                    byStatus: byStatus,
-                                    selectionMode: false,
-                                    selectedIds: const <String>{},
-                                    onToggleSelect: (_) {},
-                                    onDrop: (item, status) async {
-                                      await store.move(
-                                        item,
-                                        status,
-                                      );
-                                      await _safeSyncDelta(
-                                        store,
-                                        showErrors: true,
-                                      );
-                                    },
-                                    onEdit: (task) => _openTaskEditor(
-                                      store,
-                                      existing: task,
-                                    ),
-                                    onDelete: (task) async {
-                                      await store.delete(
-                                        task,
-                                      );
-                                      await _safeSyncDelta(
-                                        store,
-                                        showErrors: true,
-                                      );
-                                    },
-                                    onDoneToggle: (task) async {
-                                      await store.toggleDone(
-                                        task,
-                                      );
-                                      await _safeSyncDelta(
-                                        store,
-                                        showErrors: true,
-                                      );
-                                    },
-                                  );
-                                },
-                              );
-                            }
-                            if (page == 2) {
-                              return ValueListenableBuilder<List<TaskItem>>(
-                                valueListenable: store.tasksForSelectedDate,
-                                builder: (context, tasks, _) {
-                                  return _CalendarView(
-                                    selectedDate: selectedDate,
-                                    tasksForSelectedDate: tasks,
-                                    onDateChange: store.setSelectedDate,
-                                    onEdit: (task) =>
-                                        _openTaskEditor(store, existing: task),
-                                    onDelete: (task) async {
-                                      await store.delete(task);
-                                      await _safeSyncDelta(
-                                        store,
-                                        showErrors: true,
-                                      );
-                                    },
-                                  );
-                                },
-                              );
-                            }
-                            return ValueListenableBuilder<String>(
-                              valueListenable: store.familyFilter,
-                              builder: (context, familyFilter, _) {
-                                return ValueListenableBuilder<List<TaskItem>>(
-                                  valueListenable: store.familyTasksView,
-                                  builder: (context, tasks, __) {
-                                    return _FamilyView(
-                                      familyTasks: tasks,
-                                      familyFilter: familyFilter,
-                                      onFilterChanged: store.setFamilyFilter,
-                                      onEdit: (task) => _openTaskEditor(
-                                        store,
-                                        existing: task,
-                                      ),
-                                      onDelete: (task) async {
-                                        await store.delete(task);
-                                        await _safeSyncDelta(
-                                          store,
-                                          showErrors: true,
+                      : Column(
+                          children: [
+                            _buildFcmDiagnosticsCard(),
+                            Expanded(
+                              child: ValueListenableBuilder<int>(
+                                valueListenable: store.pageIndex,
+                                builder: (context, page, ____) {
+                                  if (page == 0) {
+                                    return ValueListenableBuilder<DashboardVm>(
+                                      valueListenable: store.dashboard,
+                                      builder: (context, vm, _) {
+                                        return _DashboardView(
+                                          vm: vm,
+                                          onOpenCalendar: () async {
+                                            final picked = await showDatePicker(
+                                              context: context,
+                                              initialDate: selectedDate,
+                                              firstDate: DateTime(2024),
+                                              lastDate: DateTime(2035),
+                                            );
+                                            if (picked != null) {
+                                              store.setSelectedDate(picked);
+                                            }
+                                          },
                                         );
                                       },
                                     );
-                                  },
-                                );
-                              },
-                            );
-                          },
+                                  }
+                                  if (page == 1) {
+                                    return ValueListenableBuilder<
+                                        Map<String, List<TaskItem>>>(
+                                      valueListenable: store.personalByStatus,
+                                      builder: (context, byStatus, _) {
+                                        return _TasksBoard(
+                                          byStatus: byStatus,
+                                          selectionMode: false,
+                                          selectedIds: const <String>{},
+                                          onToggleSelect: (_) {},
+                                          onDrop: (item, status) async {
+                                            await store.move(
+                                              item,
+                                              status,
+                                            );
+                                            await _safeSyncDelta(
+                                              store,
+                                              showErrors: true,
+                                            );
+                                          },
+                                          onEdit: (task) => _openTaskEditor(
+                                            store,
+                                            existing: task,
+                                          ),
+                                          onDelete: (task) async {
+                                            await store.delete(
+                                              task,
+                                            );
+                                            await _safeSyncDelta(
+                                              store,
+                                              showErrors: true,
+                                            );
+                                          },
+                                          onDoneToggle: (task) async {
+                                            await store.toggleDone(
+                                              task,
+                                            );
+                                            await _safeSyncDelta(
+                                              store,
+                                              showErrors: true,
+                                            );
+                                          },
+                                        );
+                                      },
+                                    );
+                                  }
+                                  if (page == 2) {
+                                    return ValueListenableBuilder<List<TaskItem>>(
+                                      valueListenable: store.tasksForSelectedDate,
+                                      builder: (context, tasks, _) {
+                                        return _CalendarView(
+                                          selectedDate: selectedDate,
+                                          tasksForSelectedDate: tasks,
+                                          onDateChange: store.setSelectedDate,
+                                          onEdit: (task) => _openTaskEditor(
+                                            store,
+                                            existing: task,
+                                          ),
+                                          onDelete: (task) async {
+                                            await store.delete(task);
+                                            await _safeSyncDelta(
+                                              store,
+                                              showErrors: true,
+                                            );
+                                          },
+                                        );
+                                      },
+                                    );
+                                  }
+                                  return ValueListenableBuilder<String>(
+                                    valueListenable: store.familyFilter,
+                                    builder: (context, familyFilter, _) {
+                                      return ValueListenableBuilder<List<TaskItem>>(
+                                        valueListenable: store.familyTasksView,
+                                        builder: (context, tasks, __) {
+                                          return _FamilyView(
+                                            familyTasks: tasks,
+                                            familyFilter: familyFilter,
+                                            onFilterChanged: store.setFamilyFilter,
+                                            onEdit: (task) => _openTaskEditor(
+                                              store,
+                                              existing: task,
+                                            ),
+                                            onDelete: (task) async {
+                                              await store.delete(task);
+                                              await _safeSyncDelta(
+                                                store,
+                                                showErrors: true,
+                                              );
+                                            },
+                                          );
+                                        },
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                   floatingActionButton: ValueListenableBuilder<int>(
                     valueListenable: store.pageIndex,

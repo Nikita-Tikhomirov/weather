@@ -39,12 +39,14 @@ class FcmService {
     required this.api,
     required this.actorProfile,
     required this.onForegroundText,
+    required this.onDiagnosticsChanged,
     required this.onOpenPush,
   });
 
   final ApiClient api;
   final String actorProfile;
   final void Function(String text) onForegroundText;
+  final void Function(String text) onDiagnosticsChanged;
   final Future<void> Function() onOpenPush;
 
   StreamSubscription<String>? _tokenRefreshSub;
@@ -58,14 +60,23 @@ class FcmService {
   String _lastStatusReportedKey = '';
   DateTime? _lastFisRecoveryAt;
   bool _isFisRecoveryInProgress = false;
+  String _diagnosticsText = 'FCM: starting';
+  String _installationId = '';
+  String _packageName = '';
+  String _playServicesNativeStatus = '';
+  String _lastStep = 'created';
 
   Future<void> initialize() async {
     if (!(Platform.isAndroid || Platform.isIOS)) {
       return;
     }
 
+    _updateDiagnostics('initialize:start');
+    await _refreshNativeDiagnostics();
+
     final initialized = await _initializeFirebaseSafely();
     if (!initialized) {
+      _updateDiagnostics('initialize:firebase_init_failed');
       await _reportStatus(tokenStatus: 'firebase_init_failed');
       return;
     }
@@ -79,6 +90,10 @@ class FcmService {
       alert: true,
       badge: true,
       sound: true,
+    );
+
+    _updateDiagnostics(
+      'permission:${permission.authorizationStatus.name}',
     );
 
     if (permission.authorizationStatus == AuthorizationStatus.denied) {
@@ -133,17 +148,21 @@ class FcmService {
 
   Future<bool> _registerTokenWithRetry(FirebaseMessaging messaging) async {
     for (var attempt = 0; attempt < 8; attempt++) {
+      _updateDiagnostics('token:attempt_${attempt + 1}');
       final token = await _tryFetchToken(FirebaseMessaging.instance);
       if (token != null && token.isNotEmpty) {
         await _registerToken(token);
         await _reportStatus(tokenStatus: 'active', token: token, lastError: '');
+        _updateDiagnostics('token:active');
         return true;
       }
       if (_isFisAuthError(_lastTokenError)) {
+        _updateDiagnostics('token:fis_recovery');
         await _recoverFromFisAuthError();
       }
       await Future<void>.delayed(const Duration(seconds: 2));
     }
+    _updateDiagnostics('token:retry_exhausted');
     return false;
   }
 
@@ -169,16 +188,21 @@ class FcmService {
 
   Future<String?> _tryFetchToken(FirebaseMessaging messaging) async {
     try {
+      _updateDiagnostics('token:getToken');
       final token = await messaging.getToken();
       if (token != null && token.isNotEmpty) {
         _playServicesState = 'available';
       }
       _lastTokenError = '';
+      await _refreshNativeDiagnostics();
+      _updateDiagnostics('token:getToken_success', token: token);
       return token;
     } catch (error) {
       final errorText = error.toString();
       _playServicesState = _detectPlayServicesState(errorText);
       _lastTokenError = errorText;
+      await _refreshNativeDiagnostics();
+      _updateDiagnostics('token:getToken_error');
       return null;
     }
   }
@@ -215,6 +239,7 @@ class FcmService {
     _isFisRecoveryInProgress = true;
     _lastFisRecoveryAt = now;
     try {
+      _updateDiagnostics('recovery:start');
       final messaging = FirebaseMessaging.instance;
       try {
         await messaging.setAutoInitEnabled(false);
@@ -243,9 +268,79 @@ class FcmService {
         await FirebaseMessaging.instance.setAutoInitEnabled(true);
       } catch (_) {}
       await Future<void>.delayed(const Duration(seconds: 1));
+      await _refreshNativeDiagnostics();
+      _updateDiagnostics('recovery:done');
     } finally {
       _isFisRecoveryInProgress = false;
     }
+  }
+
+  Future<void> _refreshNativeDiagnostics() async {
+    if (!Platform.isAndroid) {
+      return;
+    }
+    try {
+      final raw = await _firebaseInstallationsChannel
+          .invokeMethod<Object?>('getPlayServicesStatus');
+      if (raw is Map) {
+        final data = Map<Object?, Object?>.from(raw);
+        _playServicesNativeStatus = (data['statusName'] ?? '').toString();
+        _packageName = (data['packageName'] ?? '').toString();
+      }
+    } catch (error) {
+      _playServicesNativeStatus = 'native_status_error';
+      _lastTokenError = _mergeErrors(_lastTokenError, 'play_services_status:$error');
+    }
+    try {
+      final installationId = await _firebaseInstallationsChannel
+          .invokeMethod<String>('getInstallationId');
+      _installationId = installationId?.trim() ?? '';
+    } catch (error) {
+      _lastTokenError = _mergeErrors(_lastTokenError, 'installation_id:$error');
+    }
+  }
+
+  void _updateDiagnostics(String step, {String? token}) {
+    _lastStep = step;
+    final tokenPrefix = token == null || token.isEmpty
+        ? ''
+        : token.substring(0, token.length < 16 ? token.length : 16);
+    final installationPrefix = _installationId.isEmpty
+        ? ''
+        : _installationId.substring(
+            0,
+            _installationId.length < 16 ? _installationId.length : 16,
+          );
+    final parts = <String>[
+      'step=$step',
+      'actor=$actorProfile',
+      'app=$_appVersion',
+      'platform=${Platform.isAndroid ? 'android' : (Platform.isIOS ? 'ios' : 'other')}',
+      'play=$_playServicesState',
+      if (_playServicesNativeStatus.isNotEmpty) 'playNative=$_playServicesNativeStatus',
+      if (_packageName.isNotEmpty) 'pkg=$_packageName',
+      'project=famillytodo-2758f',
+      'appId=1:223906415067:android:68a62bb31cc4471895a7fe',
+      'sender=223906415067',
+      if (installationPrefix.isNotEmpty) 'fis=$installationPrefix',
+      if (tokenPrefix.isNotEmpty) 'token=$tokenPrefix',
+      if (_lastTokenError.isNotEmpty)
+        'err=${_lastTokenError.substring(0, _lastTokenError.length < 220 ? _lastTokenError.length : 220)}',
+    ];
+    _diagnosticsText = parts.join('\n');
+    onDiagnosticsChanged(_diagnosticsText);
+  }
+
+  String _mergeErrors(String left, String right) {
+    final a = left.trim();
+    final b = right.trim();
+    if (a.isEmpty) {
+      return b;
+    }
+    if (b.isEmpty || a.contains(b)) {
+      return a;
+    }
+    return '$a | $b';
   }
 
   Future<void> _registerToken(String token) async {
@@ -284,7 +379,7 @@ class FcmService {
         tokenStatus: tokenStatus,
         playServices: _playServicesState,
         token: token,
-        lastError: errorText,
+        lastError: _buildReportedError(errorText),
       );
       _rememberStatus(
         tokenStatus: tokenStatus,
@@ -336,6 +431,19 @@ class FcmService {
     _lastStatusReportedKey =
         '$tokenStatus|$_playServicesState|$tokenHash|${errorText.substring(0, errorText.length < 80 ? errorText.length : 80)}';
     _lastStatusReportedAt = DateTime.now();
+  }
+
+  String _buildReportedError(String errorText) {
+    final parts = <String>[
+      errorText,
+      'step=$_lastStep',
+      if (_playServicesNativeStatus.isNotEmpty) 'play_native=$_playServicesNativeStatus',
+      if (_packageName.isNotEmpty) 'package=$_packageName',
+      if (_installationId.isNotEmpty)
+        'fis=${_installationId.substring(0, _installationId.length < 24 ? _installationId.length : 24)}',
+    ].where((part) => part.trim().isNotEmpty).toList();
+    final merged = parts.join(' | ');
+    return merged.length <= 500 ? merged : merged.substring(0, 500);
   }
 
   Future<bool> _initializeFirebaseSafely() async {
