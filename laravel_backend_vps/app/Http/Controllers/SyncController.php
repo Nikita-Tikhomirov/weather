@@ -10,6 +10,7 @@ use App\Services\Push\PushOutboxService;
 use App\Services\Push\TaskReminderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use Throwable;
 
@@ -271,6 +272,110 @@ class SyncController extends Controller
             return $this->json(200, [
                 'ok' => true,
                 'result' => $this->repo->latestDeviceStatusForActor($actor),
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function pushDiagnostics(Request $request): JsonResponse
+    {
+        try {
+            $actorRaw = trim((string)$request->query('actor_profile', ''));
+            $actor = $actorRaw !== '' ? SyncRules::ensureActor($actorRaw) : null;
+
+            $tokenQuery = DB::table('device_tokens')
+                ->select('profile_key', 'token', 'token_status', 'play_services', 'last_error', 'last_seen_at', 'registered_at', 'is_active')
+                ->orderByDesc('updated_at');
+            if ($actor !== null) {
+                $tokenQuery->where('profile_key', $actor);
+            }
+
+            $tokens = $tokenQuery
+                ->limit(10)
+                ->get()
+                ->map(function ($row): array {
+                    return [
+                        'profile_key' => (string) $row->profile_key,
+                        'token' => (string) $row->token,
+                        'token_status' => (string) ($row->token_status ?? ''),
+                        'play_services' => (string) ($row->play_services ?? ''),
+                        'last_error' => (string) ($row->last_error ?? ''),
+                        'last_seen_at' => (string) ($row->last_seen_at ?? ''),
+                        'registered_at' => (string) ($row->registered_at ?? ''),
+                        'is_active' => (bool) ($row->is_active ?? false),
+                    ];
+                })
+                ->values()
+                ->all();
+
+            $failedOutbox = DB::table('push_outbox')
+                ->select('id', 'event_id', 'profile_key', 'status', 'retry_count', 'last_error', 'updated_at')
+                ->where('status', 'failed')
+                ->orderByDesc('id')
+                ->limit(10)
+                ->get()
+                ->map(function ($row): array {
+                    return [
+                        'id' => (int) $row->id,
+                        'event_id' => (string) $row->event_id,
+                        'profile_key' => (string) $row->profile_key,
+                        'status' => (string) $row->status,
+                        'retry_count' => (int) $row->retry_count,
+                        'last_error' => (string) $row->last_error,
+                        'updated_at' => (string) $row->updated_at,
+                    ];
+                })
+                ->values()
+                ->all();
+
+            return $this->json(200, [
+                'ok' => true,
+                'push' => [
+                    'enabled' => $this->pushOutbox->isEnabled(),
+                    'configured' => $this->pushOutbox->isConfigured(),
+                    'pending_count' => (int) DB::table('push_outbox')->where('status', 'pending')->count(),
+                    'failed_count' => (int) DB::table('push_outbox')->where('status', 'failed')->count(),
+                    'sent_count' => (int) DB::table('push_outbox')->where('status', 'sent')->count(),
+                ],
+                'actor_profile' => $actor,
+                'device_status' => $actor !== null ? $this->repo->latestDeviceStatusForActor($actor) : null,
+                'tokens' => $tokens,
+                'failed_outbox' => $failedOutbox,
+                'time' => $this->repo->nowIso(),
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function pushTest(Request $request): JsonResponse
+    {
+        try {
+            $actor = SyncRules::ensureActor((string)$request->input('actor_profile', ''));
+            $title = trim((string)$request->input('title', 'Тест push')) ?: 'Тест push';
+            $body = trim((string)$request->input('body', 'Проверка доставки push-уведомления')) ?: 'Проверка доставки push-уведомления';
+            $data = $request->input('data', []);
+            if (!is_array($data)) {
+                $data = [];
+            }
+            $data['type'] = 'diagnostic_test';
+            $data['actor_profile'] = $actor;
+
+            $eventId = sprintf('diag-test-%s-%s', $actor, str_replace('.', '', uniqid('', true)));
+            $queued = $this->pushOutbox->enqueueRawToRecipients($eventId, [$actor], $title, $body, $data);
+            $result = $this->pushOutbox->retryDue(50);
+
+            return $this->json(200, [
+                'ok' => true,
+                'event_id' => $eventId,
+                'queued' => $queued,
+                'push' => $result,
+                'device_status' => $this->repo->latestDeviceStatusForActor($actor),
             ]);
         } catch (InvalidArgumentException $e) {
             return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);

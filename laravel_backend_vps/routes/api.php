@@ -19,11 +19,15 @@ Route::middleware('sync.apikey')->group(function (): void {
     Route::post('/telegram_events.php', [SyncController::class, 'telegramEvents']);
 
     Route::post('/devices/register', [SyncController::class, 'registerDevice']);
-    Route::post('/devices_register.php', [SyncController::class, 'registerDevice']);
+    Route::post('/devices_register.php', [SyncController::class, 'registerDevice']); 
     Route::post('/devices/status', [SyncController::class, 'reportDeviceStatus']);
     Route::post('/devices_status.php', [SyncController::class, 'reportDeviceStatus']);
     Route::get('/push/device_status', [SyncController::class, 'getDeviceStatus']);
     Route::get('/push_device_status.php', [SyncController::class, 'getDeviceStatus']);
+    Route::get('/push/diagnostics', [SyncController::class, 'pushDiagnostics']);
+    Route::get('/push_diagnostics.php', [SyncController::class, 'pushDiagnostics']);
+    Route::post('/push/test', [SyncController::class, 'pushTest']);
+    Route::post('/push_test.php', [SyncController::class, 'pushTest']);
 
     Route::post('/devices/unregister', [SyncController::class, 'unregisterDevice']);
     Route::post('/devices_unregister.php', [SyncController::class, 'unregisterDevice']);

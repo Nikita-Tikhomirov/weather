@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\PushGateway;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -158,5 +160,102 @@ class SyncApiContractTest extends TestCase
             ->assertJsonPath('result.actor_profile', 'nik')
             ->assertJsonPath('result.status.token_status', 'token_unavailable')
             ->assertJsonPath('result.status.play_services', 'unavailable_or_restricted');
+    }
+
+    #[Test]
+    public function push_diagnostics_endpoint_returns_configuration_and_token_state(): void
+    {
+        config(['sync.api_key' => 'prod-key']);
+        config(['push.enabled' => true]);
+
+        DB::table('device_tokens')->insert([
+            'token' => 'token-diag-1',
+            'profile_key' => 'nik',
+            'platform' => 'android',
+            'app_version' => '0.1.6',
+            'device_id' => 'device-diag-1',
+            'is_active' => 1,
+            'token_status' => 'active',
+            'play_services' => 'available',
+            'last_error' => '',
+            'registered_at' => now()->format('Y-m-d\TH:i:s'),
+            'last_seen_at' => now()->format('Y-m-d\TH:i:s'),
+            'created_at' => now()->format('Y-m-d\TH:i:s'),
+            'updated_at' => now()->format('Y-m-d\TH:i:s'),
+        ]);
+
+        DB::table('device_status')->insert([
+            'profile_key' => 'nik',
+            'platform' => 'android',
+            'token_status' => 'active',
+            'play_services' => 'available',
+            'last_error' => '',
+            'app_version' => '0.1.6',
+            'device_id' => 'device-diag-1',
+            'token' => 'token-diag-1',
+            'updated_at' => now()->format('Y-m-d\TH:i:s'),
+            'created_at' => now()->format('Y-m-d\TH:i:s'),
+        ]);
+
+        $response = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/push/diagnostics?actor_profile=nik');
+
+        $response
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('actor_profile', 'nik')
+            ->assertJsonPath('push.enabled', true)
+            ->assertJsonPath('device_status.actor_profile', 'nik')
+            ->assertJsonPath('tokens.0.profile_key', 'nik');
+    }
+
+    #[Test]
+    public function push_test_endpoint_queues_and_attempts_delivery_for_actor(): void
+    {
+        config(['sync.api_key' => 'prod-key']);
+        config(['push.enabled' => true]);
+
+        $gateway = new class implements PushGateway
+        {
+            public function isConfigured(): bool
+            {
+                return true;
+            }
+
+            public function sendToToken(string $token, string $title, string $body, array $data): array
+            {
+                return ['success' => true, 'permanent_failure' => false, 'error' => ''];
+            }
+        };
+        $this->app->instance(PushGateway::class, $gateway);
+
+        DB::table('device_tokens')->insert([
+            'token' => 'token-push-test-1',
+            'profile_key' => 'nik',
+            'platform' => 'android',
+            'app_version' => '0.1.6',
+            'device_id' => 'device-push-test-1',
+            'is_active' => 1,
+            'token_status' => 'active',
+            'play_services' => 'available',
+            'last_error' => '',
+            'registered_at' => now()->format('Y-m-d\TH:i:s'),
+            'last_seen_at' => now()->format('Y-m-d\TH:i:s'),
+            'created_at' => now()->format('Y-m-d\TH:i:s'),
+            'updated_at' => now()->format('Y-m-d\TH:i:s'),
+        ]);
+
+        $response = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/push/test', [
+                'actor_profile' => 'nik',
+                'title' => 'Diagnostic',
+                'body' => 'Push test',
+            ]);
+
+        $response
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('queued', 1)
+            ->assertJsonPath('push.sent', 1);
     }
 }

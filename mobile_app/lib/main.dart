@@ -112,7 +112,13 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _init() async {
     final prefs = await SharedPreferences.getInstance();
-    final owner = prefs.getString('actor_profile') ?? 'nik';
+    final savedOwner = prefs.getString('actor_profile')?.trim() ?? '';
+    final owner = savedOwner.isNotEmpty
+        ? savedOwner
+        : await _promptForInitialProfile();
+    if (!mounted || owner == null || owner.isEmpty) {
+      return;
+    }
 
     final db = await LocalDb.open();
     final api = ApiClient(
@@ -133,14 +139,58 @@ class _HomePageState extends State<HomePage> {
     if (_isDesktopWindows) {
       await _initDesktopServices(store, owner);
     }
-    await _safeSyncFull(store, showErrors: false);
     _bindFcm(api: api, owner: owner);
+    await _safeSyncFull(store, showErrors: false);
     _startSyncLoops(store);
     if (!mounted) {
       store.dispose();
       return;
     }
     setState(() => _store = store);
+  }
+
+  Future<String?> _promptForInitialProfile() async {
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) {
+      return null;
+    }
+    final selected = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Выберите профиль'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Пуши и синхронизация будут привязаны к выбранному профилю.',
+              ),
+              const SizedBox(height: 12),
+              ..._profiles.map(
+                (profile) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop(profile);
+                    },
+                    child: Text(profileLabel(profile)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (selected == null || selected.isEmpty) {
+      return null;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('actor_profile', selected);
+    return selected;
   }
 
   Future<void> _initDesktopServices(TaskStore store, String owner) async {
