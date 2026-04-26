@@ -12,6 +12,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: mobile-apk-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-android-apk:
     runs-on: ubuntu-latest
@@ -30,15 +34,16 @@ jobs:
           java-version: '17'
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
         timeout-minutes: 5
-        with:
-          channel: stable
-          flutter-version: '3.41.7'
-          cache: true
-
-      - name: Print Flutter version
-        run: flutter --version
+        shell: bash
+        run: |
+          set -euo pipefail
+          FLUTTER_DIR="$RUNNER_TEMP/flutter"
+          rm -rf "$FLUTTER_DIR"
+          git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$FLUTTER_DIR"
+          echo "$FLUTTER_DIR/bin" >> "$GITHUB_PATH"
+          "$FLUTTER_DIR/bin/flutter" --version
+          "$FLUTTER_DIR/bin/flutter" config --no-analytics
 
       - name: Prepare isolated Flutter project
         shell: bash
