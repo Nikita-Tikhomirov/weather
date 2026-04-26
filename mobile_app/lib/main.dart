@@ -811,7 +811,9 @@ class _HomePageState extends State<HomePage> {
       for (final conversation in bootstrap.conversations) {
         await db.upsertConversation(conversation);
       }
-      await db.replaceStickerPacks(bootstrap.stickerPacks);
+      await db.replaceStickerPacks(
+        _mergeBuiltInStickerPacks(bootstrap.stickerPacks),
+      );
 
       final conversations = await db.readConversations();
       final stickerPacks = await db.readStickerPacks();
@@ -1314,6 +1316,62 @@ class _HomePageState extends State<HomePage> {
       return 'Изображение';
     }
     return message.text;
+  }
+
+  List<StickerPack> _mergeBuiltInStickerPacks(List<StickerPack> packs) {
+    final merged = <String, StickerPack>{
+      for (final pack in packs) pack.packKey: pack,
+    };
+    for (final pack in _builtInStickerPacks()) {
+      merged[pack.packKey] = pack;
+    }
+    return merged.values.toList();
+  }
+
+  List<StickerPack> _builtInStickerPacks() {
+    StickerItem item(String id, String title, int sortOrder) {
+      return StickerItem(
+        stickerId: id,
+        title: title,
+        assetUrl: 'emoji://$id',
+        sortOrder: sortOrder,
+      );
+    }
+
+    return [
+      StickerPack(
+        packKey: 'emoji',
+        title: 'Эмодзи',
+        items: [
+          item('builtin-emoji-smile', '😀', 10),
+          item('builtin-emoji-laugh', '😂', 20),
+          item('builtin-emoji-heart-eyes', '😍', 30),
+          item('builtin-emoji-hug', '🤗', 40),
+          item('builtin-emoji-kiss', '😘', 50),
+          item('builtin-emoji-thumbs-up', '👍', 60),
+          item('builtin-emoji-fire', '🔥', 70),
+          item('builtin-emoji-party', '🥳', 80),
+          item('builtin-emoji-heart', '❤️', 90),
+          item('builtin-emoji-pray', '🙏', 100),
+        ],
+      ),
+      StickerPack(
+        packKey: 'funny',
+        title: 'Весёлые',
+        items: [
+          item('builtin-funny-cat', '😺', 10),
+          item('builtin-funny-monkey', '🙈', 20),
+          item('builtin-funny-clown', '🤡', 30),
+          item('builtin-funny-poop', '💩', 40),
+          item('builtin-funny-ghost', '👻', 50),
+          item('builtin-funny-alien', '👽', 60),
+          item('builtin-funny-robot', '🤖', 70),
+          item('builtin-funny-unicorn', '🦄', 80),
+          item('builtin-funny-dino', '🦖', 90),
+          item('builtin-funny-pizza', '🍕', 100),
+        ],
+      ),
+    ];
   }
 
   bool _sameMessages(List<ChatMessage> a, List<ChatMessage> b) {
