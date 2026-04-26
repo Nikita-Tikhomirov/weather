@@ -121,10 +121,12 @@ jobs:
           API_KEY: ${{ secrets.TODO_BACKEND_API_KEY }}
           BUILD_NUMBER: ${{ github.run_number }}
           APP_VERSION: 0.1.6
+        shell: bash
         run: |
+          set -o pipefail
           cd /tmp/family_todo_mobile
-          set +e
           rm -f /tmp/family_todo_mobile/flutter_build.log
+          set +e
           flutter build apk --release \
             --build-number="$BUILD_NUMBER" \
             --build-name="$APP_VERSION" \
@@ -142,7 +144,7 @@ jobs:
 
           if [ -z "$APK_PATH" ]; then
             echo "No APK found after flutter build. Trying Gradle assembleRelease fallback..."
-            (cd /tmp/family_todo_mobile/android && ./gradlew --no-daemon assembleRelease) || true
+            (cd /tmp/family_todo_mobile/android && ./gradlew --no-daemon assembleRelease) 2>&1 | tee -a /tmp/family_todo_mobile/flutter_build.log || true
             APK_PATH="$(find /tmp/family_todo_mobile /tmp/family_todo_mobile/android/app/build -type f \( -path '*/flutter-apk/*release*.apk' -o -path '*/outputs/apk/*release*.apk' -o -name '*.apk' \) 2>/dev/null | head -n 1 || true)"
           fi
 
