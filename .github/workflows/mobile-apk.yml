@@ -124,12 +124,14 @@ jobs:
         run: |
           cd /tmp/family_todo_mobile
           set +e
+          rm -f /tmp/family_todo_mobile/flutter_build.log
           flutter build apk --release \
             --build-number="$BUILD_NUMBER" \
             --build-name="$APP_VERSION" \
             --dart-define=API_BASE_URL="$API_BASE_URL" \
             --dart-define=API_KEY="${API_KEY:-dev-local-key}" \
-            --dart-define=APP_VERSION="$APP_VERSION"
+            --dart-define=APP_VERSION="$APP_VERSION" \
+            2>&1 | tee /tmp/family_todo_mobile/flutter_build.log
           BUILD_EXIT=$?
           set -e
 
@@ -146,6 +148,16 @@ jobs:
 
           echo "Detected APK candidates:"
           find /tmp/family_todo_mobile /tmp/family_todo_mobile/android/app/build -type f -name '*.apk' 2>/dev/null || true
+
+          if [ "$BUILD_EXIT" -ne 0 ]; then
+            echo "::group::Flutter build failure tail"
+            tail -n 120 /tmp/family_todo_mobile/flutter_build.log || true
+            echo "::endgroup::"
+            ERROR_TAIL="$(tail -n 20 /tmp/family_todo_mobile/flutter_build.log | tr '\n' ' ' | tr -s ' ')"
+            if [ -n "$ERROR_TAIL" ]; then
+              echo "::error::flutter build failed: $ERROR_TAIL"
+            fi
+          fi
 
           if [ -n "$APK_PATH" ]; then
             mkdir -p /tmp/family_todo_mobile/build/app/outputs/flutter-apk
