@@ -127,6 +127,7 @@ jobs:
           echo "SIGNING_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
 
       - name: Build release APK
+        timeout-minutes: 20
         env:
           API_BASE_URL: http://31.129.97.211
           API_KEY: ${{ secrets.TODO_BACKEND_API_KEY }}
@@ -138,7 +139,7 @@ jobs:
           cd /tmp/family_todo_mobile
           rm -f /tmp/family_todo_mobile/flutter_build.log
           set +e
-          flutter build apk --release \
+          timeout 18m flutter build apk --release \
             --build-number="$BUILD_NUMBER" \
             --build-name="$APP_VERSION" \
             --dart-define=API_BASE_URL="$API_BASE_URL" \
