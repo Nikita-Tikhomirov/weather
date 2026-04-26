@@ -1,7 +1,8 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../models/chat_models.dart';
 import '../models/pending_event.dart';
 import '../models/task_item.dart';
 
@@ -19,6 +20,40 @@ class PullSnapshot {
   final String serverTime;
   final String nextCursor;
   final bool isDelta;
+}
+
+class ChatBootstrapSnapshot {
+  ChatBootstrapSnapshot({
+    required this.contacts,
+    required this.groupConversationKey,
+    required this.conversations,
+    required this.stickerPacks,
+  });
+
+  final List<Map<String, String>> contacts;
+  final String groupConversationKey;
+  final List<ChatConversation> conversations;
+  final List<StickerPack> stickerPacks;
+}
+
+class ChatMessagesSnapshot {
+  ChatMessagesSnapshot({
+    required this.messages,
+    required this.nextCursor,
+  });
+
+  final List<ChatMessage> messages;
+  final String? nextCursor;
+}
+
+class ChatUploadResult {
+  ChatUploadResult({
+    required this.assetUrl,
+    required this.imageMeta,
+  });
+
+  final String assetUrl;
+  final Map<String, dynamic> imageMeta;
 }
 
 class ApiClient {
@@ -147,15 +182,13 @@ class ApiClient {
         .whereType<Map>()
         .map((row) => TaskItem.fromJson(Map<String, dynamic>.from(row)))
         .toList();
-    final familyTasks = (body['family_tasks'] as List? ?? const [])
-        .whereType<Map>()
-        .map((row) {
-          final source = Map<String, dynamic>.from(row);
-          source['owner_key'] = 'family';
-          source['is_family'] = true;
-          return TaskItem.fromJson(source);
-        })
-        .toList();
+    final familyTasks =
+        (body['family_tasks'] as List? ?? const []).whereType<Map>().map((row) {
+      final source = Map<String, dynamic>.from(row);
+      source['owner_key'] = 'family';
+      source['is_family'] = true;
+      return TaskItem.fromJson(source);
+    }).toList();
     final serverTime =
         (body['server_time'] ?? DateTime.now().toIso8601String()).toString();
     final nextCursor = (body['next_cursor'] ?? serverTime).toString();
@@ -251,5 +284,143 @@ class ApiClient {
       ],
       body: jsonEncode(payload),
     );
+  }
+
+  Future<ChatBootstrapSnapshot> chatBootstrap({
+    required String actorProfile,
+  }) async {
+    final response = await _getWithFallback(
+      paths: const ['/chat/bootstrap'],
+      query: {'actor_profile': actorProfile},
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+    final contacts = (body['contacts'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => {
+              'profile_key': (row['profile_key'] ?? '').toString(),
+              'conversation_key': (row['conversation_key'] ?? '').toString(),
+            })
+        .toList();
+
+    final conversations = (body['conversations'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => ChatConversation.fromJson(Map<String, dynamic>.from(row)))
+        .toList();
+
+    final packs = (body['sticker_packs'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => StickerPack.fromJson(Map<String, dynamic>.from(row)))
+        .toList();
+
+    return ChatBootstrapSnapshot(
+      contacts: contacts,
+      groupConversationKey:
+          (body['group'] as Map?)?['conversation_key']?.toString() ??
+              'group:common',
+      conversations: conversations,
+      stickerPacks: packs,
+    );
+  }
+
+  Future<ChatMessagesSnapshot> chatFetchMessages({
+    required String actorProfile,
+    required String conversationKey,
+    String? cursor,
+    int limit = 50,
+  }) async {
+    final query = <String, String>{
+      'actor_profile': actorProfile,
+      'conversation_key': conversationKey,
+      'limit': limit.toString(),
+    };
+    if (cursor != null && cursor.isNotEmpty) {
+      query['cursor'] = cursor;
+    }
+
+    final response = await _getWithFallback(
+      paths: const ['/chat/messages'],
+      query: query,
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+    final messages = (body['messages'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => ChatMessage.fromJson(Map<String, dynamic>.from(row)))
+        .toList();
+
+    final nextCursor = body['next_cursor']?.toString();
+    return ChatMessagesSnapshot(messages: messages, nextCursor: nextCursor);
+  }
+
+  Future<ChatMessage> chatSendMessage({
+    required String actorProfile,
+    required String conversationKey,
+    required String messageType,
+    String text = '',
+    String? stickerId,
+    String? imageUrl,
+    Map<String, dynamic>? imageMeta,
+    String? clientMessageId,
+  }) async {
+    final payload = {
+      'actor_profile': actorProfile,
+      'conversation_key': conversationKey,
+      'message_type': messageType,
+      'text': text,
+      if (stickerId != null && stickerId.isNotEmpty) 'sticker_id': stickerId,
+      if (imageUrl != null && imageUrl.isNotEmpty) 'image_url': imageUrl,
+      if (imageMeta != null) 'image_meta': imageMeta,
+      if (clientMessageId != null && clientMessageId.isNotEmpty)
+        'client_message_id': clientMessageId,
+    };
+
+    final response = await _postWithFallback(
+      paths: const ['/chat/messages/send'],
+      body: jsonEncode(payload),
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return ChatMessage.fromJson(
+      Map<String, dynamic>.from((body['message'] as Map?) ?? const {}),
+    );
+  }
+
+  Future<ChatUploadResult> chatUploadSticker({
+    required String actorProfile,
+    required List<int> bytes,
+    String filename = 'sticker.png',
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/chat/stickers/upload'),
+    );
+    request.headers['X-Api-Key'] = apiKey;
+    request.fields['actor_profile'] = actorProfile;
+    request.files.add(
+      http.MultipartFile.fromBytes('image', bytes, filename: filename),
+    );
+
+    final response = await request.send();
+    final text = await response.stream.bytesToString();
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Sticker upload failed: ${response.statusCode} $text');
+    }
+
+    final body = jsonDecode(text) as Map<String, dynamic>;
+    return ChatUploadResult(
+      assetUrl: (body['asset_url'] ?? '').toString(),
+      imageMeta:
+          (body['image_meta'] as Map?)?.cast<String, dynamic>() ?? const {},
+    );
+  }
+
+  Future<List<StickerPack>> chatStickerPacks() async {
+    final response =
+        await _getWithFallback(paths: const ['/chat/stickers/packs']);
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return (body['sticker_packs'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => StickerPack.fromJson(Map<String, dynamic>.from(row)))
+        .toList();
   }
 }

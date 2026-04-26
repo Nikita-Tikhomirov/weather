@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\SyncController;
+use App\Http\Controllers\ChatController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', [SyncController::class, 'health']);
@@ -37,6 +38,12 @@ Route::middleware('sync.apikey')->group(function (): void {
 
     Route::post('/push/outbox/retry', [SyncController::class, 'pushOutboxRetry']);
     Route::post('/push_outbox_retry.php', [SyncController::class, 'pushOutboxRetry']);
+
+    Route::get('/chat/bootstrap', [ChatController::class, 'bootstrap']);
+    Route::get('/chat/messages', [ChatController::class, 'messages']);
+    Route::post('/chat/messages/send', [ChatController::class, 'sendMessage']);
+    Route::post('/chat/stickers/upload', [ChatController::class, 'uploadSticker']);
+    Route::get('/chat/stickers/packs', [ChatController::class, 'stickerPacks']);
 });
 
 Route::fallback(function () {

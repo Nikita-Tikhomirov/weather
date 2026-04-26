@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -5,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../models/pending_event.dart';
+import '../models/chat_models.dart';
 import '../models/task_item.dart';
 
 class LocalDb {
@@ -22,7 +24,7 @@ class LocalDb {
     final dbPath = p.join(basePath, 'family_todo_mobile.db');
     final db = await openDatabase(
       dbPath,
-      version: 2,
+      version: 3,
       onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE tasks(
@@ -58,12 +60,16 @@ class LocalDb {
             v TEXT NOT NULL
           );
         ''');
+        await _createChatTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await db.execute(
             "ALTER TABLE tasks ADD COLUMN reminder_offsets_json TEXT NOT NULL DEFAULT '[]'",
           );
+        }
+        if (oldVersion < 3) {
+          await _createChatTables(db);
         }
       },
     );
@@ -241,5 +247,225 @@ class LocalDb {
           'v': value,
         },
         conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> upsertConversation(ChatConversation item) async {
+    await _db.insert(
+      'chat_conversations',
+      {
+        'conversation_key': item.conversationKey,
+        'kind': item.kind,
+        'title': item.title,
+        'members_json': jsonEncode(item.members),
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<ChatConversation>> readConversations() async {
+    final rows = await _db.query(
+      'chat_conversations',
+      orderBy: 'updated_at DESC, conversation_key ASC',
+    );
+    return rows.map((row) {
+      final payload = Map<String, dynamic>.from(row);
+      payload['members'] =
+          _decodeStringList((row['members_json'] ?? '').toString());
+      return ChatConversation.fromJson(payload);
+    }).toList();
+  }
+
+  Future<void> upsertMessages(List<ChatMessage> messages) async {
+    if (messages.isEmpty) {
+      return;
+    }
+    await _db.transaction((txn) async {
+      for (final item in messages) {
+        await txn.insert(
+          'chat_messages',
+          {
+            'id': item.id,
+            'conversation_key': item.conversationKey,
+            'sender_profile': item.senderProfile,
+            'message_type': item.messageType,
+            'text': item.text,
+            'sticker_id': item.stickerId,
+            'image_url': item.imageUrl,
+            'image_meta_json': jsonEncode(item.imageMeta),
+            'client_message_id': item.clientMessageId,
+            'created_at': item.createdAt,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
+  Future<List<ChatMessage>> readMessages({
+    required String conversationKey,
+    int limit = 100,
+  }) async {
+    final rows = await _db.query(
+      'chat_messages',
+      where: 'conversation_key = ?',
+      whereArgs: [conversationKey],
+      orderBy: 'created_at DESC, id DESC',
+      limit: limit,
+    );
+    return rows.reversed.map((row) {
+      final payload = Map<String, dynamic>.from(row);
+      payload['image_meta'] =
+          _decodeMap((row['image_meta_json'] ?? '').toString());
+      return ChatMessage.fromJson(payload);
+    }).toList();
+  }
+
+  Future<void> replaceStickerPacks(List<StickerPack> packs) async {
+    await _db.transaction((txn) async {
+      await txn.delete('chat_stickers');
+      for (final pack in packs) {
+        for (final item in pack.items) {
+          await txn.insert(
+            'chat_stickers',
+            {
+              'sticker_id': item.stickerId,
+              'pack_key': pack.packKey,
+              'title': item.title,
+              'asset_url': item.assetUrl,
+              'sort_order': item.sortOrder,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+      }
+    });
+  }
+
+  Future<List<StickerPack>> readStickerPacks() async {
+    final rows = await _db.query(
+      'chat_stickers',
+      orderBy: 'pack_key ASC, sort_order ASC, sticker_id ASC',
+    );
+
+    final grouped = <String, List<StickerItem>>{};
+    for (final row in rows) {
+      final packKey = (row['pack_key'] ?? '').toString();
+      grouped.putIfAbsent(packKey, () => []);
+      grouped[packKey]!.add(
+        StickerItem.fromJson(Map<String, dynamic>.from(row)),
+      );
+    }
+
+    return grouped.entries
+        .map(
+          (entry) => StickerPack(
+            packKey: entry.key,
+            title: entry.key,
+            items: entry.value,
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> saveChatCursor({
+    required String conversationKey,
+    required String cursor,
+  }) async {
+    await _db.insert(
+      'chat_meta',
+      {'k': 'cursor:$conversationKey', 'v': cursor},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<String?> readChatCursor(String conversationKey) async {
+    final rows = await _db.query(
+      'chat_meta',
+      where: 'k = ?',
+      whereArgs: ['cursor:$conversationKey'],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      return null;
+    }
+    return rows.first['v']?.toString();
+  }
+
+  static Future<void> _createChatTables(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS chat_conversations(
+        conversation_key TEXT PRIMARY KEY,
+        kind TEXT NOT NULL,
+        title TEXT NOT NULL,
+        members_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS chat_messages(
+        id TEXT PRIMARY KEY,
+        conversation_key TEXT NOT NULL,
+        sender_profile TEXT NOT NULL,
+        message_type TEXT NOT NULL,
+        text TEXT NOT NULL,
+        sticker_id TEXT,
+        image_url TEXT,
+        image_meta_json TEXT NOT NULL DEFAULT '{}',
+        client_message_id TEXT,
+        created_at TEXT NOT NULL
+      );
+    ''');
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_created
+      ON chat_messages(conversation_key, created_at);
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS chat_stickers(
+        sticker_id TEXT PRIMARY KEY,
+        pack_key TEXT NOT NULL,
+        title TEXT NOT NULL,
+        asset_url TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0
+      );
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS chat_outbox(
+        client_message_id TEXT PRIMARY KEY,
+        conversation_key TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        status TEXT NOT NULL,
+        retry_count INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL
+      );
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS chat_meta(
+        k TEXT PRIMARY KEY,
+        v TEXT NOT NULL
+      );
+    ''');
+  }
+
+  static List<String> _decodeStringList(String raw) {
+    if (raw.isEmpty) {
+      return const [];
+    }
+    final decoded = jsonDecode(raw);
+    if (decoded is! List) {
+      return const [];
+    }
+    return decoded.map((item) => item.toString()).toList();
+  }
+
+  static Map<String, dynamic> _decodeMap(String raw) {
+    if (raw.isEmpty) {
+      return const {};
+    }
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map) {
+      return const {};
+    }
+    return decoded.cast<String, dynamic>();
   }
 }

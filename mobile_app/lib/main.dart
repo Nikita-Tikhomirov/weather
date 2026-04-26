@@ -3,15 +3,18 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'domain/task_draft.dart';
 import 'domain/task_domain_service.dart';
+import 'models/chat_models.dart';
 import 'models/task_item.dart';
 import 'services/desktop_process_host_service.dart';
 import 'services/desktop_theme_service.dart';
 import 'repositories/task_repository.dart';
 import 'services/api_client.dart';
+import 'services/chat_realtime_service.dart';
 import 'services/fcm_service.dart';
 import 'services/local_db.dart';
 import 'state/task_store.dart';
@@ -101,6 +104,16 @@ class _HomePageState extends State<HomePage> {
   bool _desktopLogExpanded = false;
   DateTime _desktopMonth = DateTime(DateTime.now().year, DateTime.now().month);
   String _fcmDiagnostics = 'FCM: not initialized';
+  final TextEditingController _chatInputCtl = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
+  ChatRealtimeService? _chatRealtime;
+  bool _chatLoading = false;
+  List<Map<String, String>> _chatContacts = const <Map<String, String>>[];
+  List<ChatConversation> _chatConversations = const <ChatConversation>[];
+  List<StickerPack> _chatStickerPacks = const <StickerPack>[];
+  final Map<String, List<ChatMessage>> _chatMessagesByConversation =
+      <String, List<ChatMessage>>{};
+  String _activeConversationKey = 'group:common';
 
   bool get _isDesktopWindows =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
@@ -114,9 +127,8 @@ class _HomePageState extends State<HomePage> {
   Future<void> _init() async {
     final prefs = await SharedPreferences.getInstance();
     final savedOwner = prefs.getString('actor_profile')?.trim() ?? '';
-    final owner = savedOwner.isNotEmpty
-        ? savedOwner
-        : await _promptForInitialProfile();
+    final owner =
+        savedOwner.isNotEmpty ? savedOwner : await _promptForInitialProfile();
     if (!mounted || owner == null || owner.isEmpty) {
       return;
     }
@@ -142,6 +154,7 @@ class _HomePageState extends State<HomePage> {
     }
     _bindFcm(api: api, owner: owner);
     await _safeSyncFull(store, showErrors: false);
+    await _initChat(store);
     _startSyncLoops(store);
     if (!mounted) {
       store.dispose();
@@ -281,6 +294,8 @@ class _HomePageState extends State<HomePage> {
                                 ButtonSegment(
                                     value: 2, label: Text('Календарь')),
                                 ButtonSegment(value: 3, label: Text('Семья')),
+                                ButtonSegment(
+                                    value: 4, label: Text('Мессенджер')),
                               ],
                               selected: {page},
                               onSelectionChanged: (value) =>
@@ -611,26 +626,29 @@ class _HomePageState extends State<HomePage> {
             },
           );
         }
-        return ValueListenableBuilder<String>(
-          valueListenable: store.familyFilter,
-          builder: (context, familyFilter, _) {
-            return ValueListenableBuilder<List<TaskItem>>(
-              valueListenable: store.familyTasksView,
-              builder: (context, tasks, __) {
-                return _FamilyView(
-                  familyTasks: tasks,
-                  familyFilter: familyFilter,
-                  onFilterChanged: store.setFamilyFilter,
-                  onEdit: (task) => _openTaskEditor(store, existing: task),
-                  onDelete: (task) async {
-                    await store.delete(task);
-                    await _safeSyncDelta(store, showErrors: true);
-                  },
-                );
-              },
-            );
-          },
-        );
+        if (page == 3) {
+          return ValueListenableBuilder<String>(
+            valueListenable: store.familyFilter,
+            builder: (context, familyFilter, _) {
+              return ValueListenableBuilder<List<TaskItem>>(
+                valueListenable: store.familyTasksView,
+                builder: (context, tasks, __) {
+                  return _FamilyView(
+                    familyTasks: tasks,
+                    familyFilter: familyFilter,
+                    onFilterChanged: store.setFamilyFilter,
+                    onEdit: (task) => _openTaskEditor(store, existing: task),
+                    onDelete: (task) async {
+                      await store.delete(task);
+                      await _safeSyncDelta(store, showErrors: true);
+                    },
+                  );
+                },
+              );
+            },
+          );
+        }
+        return _buildMessengerPage(store, compact: false);
       },
     );
   }
@@ -668,6 +686,7 @@ class _HomePageState extends State<HomePage> {
           return;
         }
         await _safeSyncDelta(store, showErrors: false);
+        await _refreshActiveConversation(store, useNetwork: true, quiet: true);
       },
     );
     _fcm!.initialize().catchError((error, stackTrace) {
@@ -698,7 +717,8 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildFcmDiagnosticsCard() {
     final lines = _fcmDiagnostics.split('\n');
-    final preview = lines.length <= 4 ? _fcmDiagnostics : lines.take(4).join('\n');
+    final preview =
+        lines.length <= 4 ? _fcmDiagnostics : lines.take(4).join('\n');
     return Card(
       margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
       color: const Color(0xFFFFF7E6),
@@ -771,7 +791,519 @@ class _HomePageState extends State<HomePage> {
     await store.switchOwner(profile);
     await _desktopThemeService?.switchProfile(profile);
     _bindFcm(api: store.repository.api, owner: profile);
+    await _initChat(store);
     _startSyncLoops(store);
+  }
+
+  Future<void> _initChat(TaskStore store) async {
+    final api = store.repository.api;
+    final db = store.repository.db;
+    final actor = store.owner.value;
+
+    setState(() {
+      _chatLoading = true;
+      _chatMessagesByConversation.clear();
+      _activeConversationKey = 'group:common';
+    });
+
+    try {
+      final bootstrap = await api.chatBootstrap(actorProfile: actor);
+      for (final conversation in bootstrap.conversations) {
+        await db.upsertConversation(conversation);
+      }
+      await db.replaceStickerPacks(bootstrap.stickerPacks);
+
+      final conversations = await db.readConversations();
+      final stickerPacks = await db.readStickerPacks();
+
+      var active = bootstrap.groupConversationKey;
+      if (active.isEmpty) {
+        active = conversations.isEmpty
+            ? 'group:common'
+            : conversations.first.conversationKey;
+      }
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _chatContacts = bootstrap.contacts;
+        _chatConversations = conversations;
+        _chatStickerPacks = stickerPacks;
+        _activeConversationKey = active;
+      });
+
+      await _refreshActiveConversation(store, useNetwork: true, quiet: true);
+      await _chatRealtime?.stop();
+      _chatRealtime = ChatRealtimeService(
+        api: api,
+        actorProfile: actor,
+        activeConversationKey: () => _activeConversationKey,
+        onMessagesUpdated: (conversationKey) async {
+          await _refreshConversation(
+            store,
+            conversationKey,
+            useNetwork: true,
+            quiet: true,
+          );
+        },
+      )..start();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Чат недоступен: $error')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _chatLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _refreshActiveConversation(
+    TaskStore store, {
+    required bool useNetwork,
+    required bool quiet,
+  }) async {
+    if (_activeConversationKey.isEmpty) {
+      return;
+    }
+    await _refreshConversation(
+      store,
+      _activeConversationKey,
+      useNetwork: useNetwork,
+      quiet: quiet,
+    );
+  }
+
+  Future<void> _refreshConversation(
+    TaskStore store,
+    String conversationKey, {
+    required bool useNetwork,
+    required bool quiet,
+  }) async {
+    final db = store.repository.db;
+    final api = store.repository.api;
+    final actor = store.owner.value;
+
+    try {
+      final local = await db.readMessages(conversationKey: conversationKey);
+      if (mounted) {
+        setState(() {
+          _chatMessagesByConversation[conversationKey] = local;
+        });
+      }
+
+      if (!useNetwork) {
+        return;
+      }
+
+      final snapshot = await api.chatFetchMessages(
+        actorProfile: actor,
+        conversationKey: conversationKey,
+        limit: 100,
+      );
+      await db.upsertMessages(snapshot.messages);
+      if (snapshot.nextCursor != null && snapshot.nextCursor!.isNotEmpty) {
+        await db.saveChatCursor(
+          conversationKey: conversationKey,
+          cursor: snapshot.nextCursor!,
+        );
+      }
+
+      final merged = await db.readMessages(conversationKey: conversationKey);
+      if (mounted) {
+        setState(() {
+          _chatMessagesByConversation[conversationKey] = merged;
+        });
+      }
+    } catch (error) {
+      if (!quiet && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка обновления чата: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _openConversation(
+      TaskStore store, String conversationKey) async {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _activeConversationKey = conversationKey;
+    });
+    await _refreshConversation(
+      store,
+      conversationKey,
+      useNetwork: true,
+      quiet: true,
+    );
+    await _chatRealtime?.tick();
+  }
+
+  Future<void> _sendTextMessage(TaskStore store) async {
+    final text = _chatInputCtl.text.trim();
+    if (text.isEmpty) {
+      return;
+    }
+
+    final actor = store.owner.value;
+    final api = store.repository.api;
+    final db = store.repository.db;
+    final conversationKey = _activeConversationKey;
+    try {
+      final message = await api.chatSendMessage(
+        actorProfile: actor,
+        conversationKey: conversationKey,
+        messageType: 'text',
+        text: text,
+        clientMessageId: 'mobile-${DateTime.now().microsecondsSinceEpoch}',
+      );
+      await db.upsertMessages([message]);
+      _chatInputCtl.clear();
+      await _refreshConversation(
+        store,
+        conversationKey,
+        useNetwork: true,
+        quiet: true,
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка отправки: $error')),
+      );
+    }
+  }
+
+  Future<void> _sendBuiltInSticker(
+    TaskStore store,
+    StickerItem sticker,
+  ) async {
+    final actor = store.owner.value;
+    final api = store.repository.api;
+    final db = store.repository.db;
+    final conversationKey = _activeConversationKey;
+    try {
+      final message = await api.chatSendMessage(
+        actorProfile: actor,
+        conversationKey: conversationKey,
+        messageType: 'sticker',
+        stickerId: sticker.stickerId,
+        clientMessageId: 'st-${DateTime.now().microsecondsSinceEpoch}',
+      );
+      await db.upsertMessages([message]);
+      await _refreshConversation(
+        store,
+        conversationKey,
+        useNetwork: true,
+        quiet: true,
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка отправки стикера: $error')),
+      );
+    }
+  }
+
+  Future<void> _sendImageSticker(TaskStore store) async {
+    final picked = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 1200,
+    );
+    if (picked == null) {
+      return;
+    }
+
+    final actor = store.owner.value;
+    final api = store.repository.api;
+    final db = store.repository.db;
+    final conversationKey = _activeConversationKey;
+
+    try {
+      final bytes = await picked.readAsBytes();
+      final uploaded = await api.chatUploadSticker(
+        actorProfile: actor,
+        bytes: bytes,
+        filename: picked.name,
+      );
+      final message = await api.chatSendMessage(
+        actorProfile: actor,
+        conversationKey: conversationKey,
+        messageType: 'image',
+        imageUrl: uploaded.assetUrl,
+        imageMeta: uploaded.imageMeta,
+        clientMessageId: 'img-${DateTime.now().microsecondsSinceEpoch}',
+      );
+      await db.upsertMessages([message]);
+      await _refreshConversation(
+        store,
+        conversationKey,
+        useNetwork: true,
+        quiet: true,
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка отправки изображения: $error')),
+      );
+    }
+  }
+
+  Future<void> _openStickerSheet(TaskStore store) async {
+    if (!mounted) {
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Стикеры',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () async {
+                        Navigator.of(sheetContext).pop();
+                        await _sendImageSticker(store);
+                      },
+                      icon: const Icon(Icons.image_outlined),
+                      label: const Text('Мой стикер'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: ListView(
+                    children: [
+                      for (final pack in _chatStickerPacks) ...[
+                        Text(
+                          pack.title.isEmpty ? pack.packKey : pack.title,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final item in pack.items)
+                              OutlinedButton(
+                                onPressed: () async {
+                                  Navigator.of(sheetContext).pop();
+                                  await _sendBuiltInSticker(store, item);
+                                },
+                                child: Text(item.title),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMessengerPage(TaskStore store, {required bool compact}) {
+    final conversations = _chatConversations;
+    final messages = _chatMessagesByConversation[_activeConversationKey] ??
+        const <ChatMessage>[];
+
+    if (_chatLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 76,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            children: [
+              for (final conversation in conversations)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(
+                        _conversationLabel(conversation, store.owner.value)),
+                    selected:
+                        _activeConversationKey == conversation.conversationKey,
+                    onSelected: (_) =>
+                        _openConversation(store, conversation.conversationKey),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            itemCount: messages.length,
+            itemBuilder: (context, index) {
+              final message = messages[index];
+              final mine = message.senderProfile == store.owner.value;
+              final text = _chatMessageText(message);
+              return Align(
+                alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  constraints: BoxConstraints(
+                    maxWidth: compact ? 320 : 560,
+                  ),
+                  decoration: BoxDecoration(
+                    color: mine
+                        ? const Color(0xFFDDF4FF)
+                        : const Color(0xFFF2F4F8),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: mine
+                        ? CrossAxisAlignment.end
+                        : CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        profileLabel(message.senderProfile),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      if (message.messageType == 'image' &&
+                          (message.imageUrl ?? '').isNotEmpty)
+                        SelectableText(
+                          message.imageUrl!,
+                          style: const TextStyle(
+                            decoration: TextDecoration.underline,
+                          ),
+                        )
+                      else
+                        Text(text),
+                      const SizedBox(height: 4),
+                      Text(
+                        message.createdAt,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.black45,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+          child: Row(
+            children: [
+              IconButton(
+                tooltip: 'Стикеры',
+                icon: const Icon(Icons.emoji_emotions_outlined),
+                onPressed: () => _openStickerSheet(store),
+              ),
+              Expanded(
+                child: TextField(
+                  controller: _chatInputCtl,
+                  minLines: 1,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    hintText: 'Введите сообщение',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: () => _sendTextMessage(store),
+                icon: const Icon(Icons.send),
+                label: const Text('Отправить'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _conversationLabel(ChatConversation conversation, String actor) {
+    if (conversation.kind == 'group' ||
+        conversation.conversationKey == 'group:common') {
+      return 'Общий';
+    }
+    final peer = conversation.members.firstWhere(
+      (item) => item != actor,
+      orElse: () => '',
+    );
+    if (peer.isNotEmpty) {
+      return profileLabel(peer);
+    }
+
+    final fromContacts = _chatContacts.firstWhere(
+      (item) => item['conversation_key'] == conversation.conversationKey,
+      orElse: () => const {'profile_key': ''},
+    )['profile_key'];
+    if ((fromContacts ?? '').isNotEmpty) {
+      return profileLabel(fromContacts!);
+    }
+    return conversation.conversationKey;
+  }
+
+  String _chatMessageText(ChatMessage message) {
+    if (message.messageType == 'sticker') {
+      final id = message.stickerId ?? '';
+      if (id.isEmpty) {
+        return 'Стикер';
+      }
+      for (final pack in _chatStickerPacks) {
+        for (final item in pack.items) {
+          if (item.stickerId == id) {
+            return 'Стикер: ${item.title}';
+          }
+        }
+      }
+      return 'Стикер';
+    }
+    if (message.messageType == 'image') {
+      return 'Изображение';
+    }
+    return message.text;
   }
 
   String _dateKey(DateTime value) {
@@ -1295,8 +1827,10 @@ class _HomePageState extends State<HomePage> {
                                     );
                                   }
                                   if (page == 2) {
-                                    return ValueListenableBuilder<List<TaskItem>>(
-                                      valueListenable: store.tasksForSelectedDate,
+                                    return ValueListenableBuilder<
+                                        List<TaskItem>>(
+                                      valueListenable:
+                                          store.tasksForSelectedDate,
                                       builder: (context, tasks, _) {
                                         return _CalendarView(
                                           selectedDate: selectedDate,
@@ -1317,32 +1851,39 @@ class _HomePageState extends State<HomePage> {
                                       },
                                     );
                                   }
-                                  return ValueListenableBuilder<String>(
-                                    valueListenable: store.familyFilter,
-                                    builder: (context, familyFilter, _) {
-                                      return ValueListenableBuilder<List<TaskItem>>(
-                                        valueListenable: store.familyTasksView,
-                                        builder: (context, tasks, __) {
-                                          return _FamilyView(
-                                            familyTasks: tasks,
-                                            familyFilter: familyFilter,
-                                            onFilterChanged: store.setFamilyFilter,
-                                            onEdit: (task) => _openTaskEditor(
-                                              store,
-                                              existing: task,
-                                            ),
-                                            onDelete: (task) async {
-                                              await store.delete(task);
-                                              await _safeSyncDelta(
+                                  if (page == 3) {
+                                    return ValueListenableBuilder<String>(
+                                      valueListenable: store.familyFilter,
+                                      builder: (context, familyFilter, _) {
+                                        return ValueListenableBuilder<
+                                            List<TaskItem>>(
+                                          valueListenable:
+                                              store.familyTasksView,
+                                          builder: (context, tasks, __) {
+                                            return _FamilyView(
+                                              familyTasks: tasks,
+                                              familyFilter: familyFilter,
+                                              onFilterChanged:
+                                                  store.setFamilyFilter,
+                                              onEdit: (task) => _openTaskEditor(
                                                 store,
-                                                showErrors: true,
-                                              );
-                                            },
-                                          );
-                                        },
-                                      );
-                                    },
-                                  );
+                                                existing: task,
+                                              ),
+                                              onDelete: (task) async {
+                                                await store.delete(task);
+                                                await _safeSyncDelta(
+                                                  store,
+                                                  showErrors: true,
+                                                );
+                                              },
+                                            );
+                                          },
+                                        );
+                                      },
+                                    );
+                                  }
+                                  return _buildMessengerPage(store,
+                                      compact: true);
                                 },
                               ),
                             ),
@@ -1385,6 +1926,10 @@ class _HomePageState extends State<HomePage> {
                             icon: Icon(Icons.family_restroom_outlined),
                             label: 'Семья',
                           ),
+                          NavigationDestination(
+                            icon: Icon(Icons.forum_outlined),
+                            label: 'Мессенджер',
+                          ),
                         ],
                       );
                     },
@@ -1400,6 +1945,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    _chatRealtime?.stop();
+    _chatInputCtl.dispose();
     _fcm?.dispose();
     _cancelSyncLoops();
     unawaited(_desktopProcessHostService?.stopAll());
