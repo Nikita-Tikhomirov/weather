@@ -56,6 +56,8 @@ final class ChatRepository
 
     public function stickerPacks(): array
     {
+        $this->ensureDefaultStickerPacks();
+
         $rows = DB::table('chat_stickers')
             ->where('is_active', 1)
             ->orderBy('pack_key')
@@ -69,7 +71,7 @@ final class ChatRepository
             if (!array_key_exists($packKey, $packs)) {
                 $packs[$packKey] = [
                     'pack_key' => $packKey,
-                    'title' => ucfirst($packKey),
+                    'title' => $this->stickerPackTitle($packKey),
                     'items' => [],
                 ];
             }
@@ -302,6 +304,54 @@ final class ChatRepository
                 ['joined_at' => $now]
             );
         }
+    }
+
+    private function ensureDefaultStickerPacks(): void
+    {
+        $now = $this->nowIso();
+        $stickers = [
+            ['builtin-emoji-smile', 'emoji', '😀', 'emoji://grinning-face', 10],
+            ['builtin-emoji-laugh', 'emoji', '😂', 'emoji://face-with-tears-of-joy', 20],
+            ['builtin-emoji-heart-eyes', 'emoji', '😍', 'emoji://smiling-face-with-heart-eyes', 30],
+            ['builtin-emoji-hug', 'emoji', '🤗', 'emoji://hugging-face', 40],
+            ['builtin-emoji-kiss', 'emoji', '😘', 'emoji://face-blowing-a-kiss', 50],
+            ['builtin-emoji-thumbs-up', 'emoji', '👍', 'emoji://thumbs-up', 60],
+            ['builtin-emoji-fire', 'emoji', '🔥', 'emoji://fire', 70],
+            ['builtin-emoji-party', 'emoji', '🥳', 'emoji://partying-face', 80],
+            ['builtin-funny-cat', 'funny', '😺', 'emoji://grinning-cat', 10],
+            ['builtin-funny-monkey', 'funny', '🙈', 'emoji://see-no-evil-monkey', 20],
+            ['builtin-funny-clown', 'funny', '🤡', 'emoji://clown-face', 30],
+            ['builtin-funny-poop', 'funny', '💩', 'emoji://pile-of-poo', 40],
+            ['builtin-funny-ghost', 'funny', '👻', 'emoji://ghost', 50],
+            ['builtin-funny-alien', 'funny', '👽', 'emoji://alien', 60],
+            ['builtin-funny-robot', 'funny', '🤖', 'emoji://robot', 70],
+            ['builtin-funny-unicorn', 'funny', '🦄', 'emoji://unicorn', 80],
+        ];
+
+        foreach ($stickers as $item) {
+            DB::table('chat_stickers')->updateOrInsert(
+                ['sticker_id' => $item[0]],
+                [
+                    'pack_key' => $item[1],
+                    'title' => $item[2],
+                    'asset_url' => $item[3],
+                    'is_active' => 1,
+                    'sort_order' => $item[4],
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]
+            );
+        }
+    }
+
+    private function stickerPackTitle(string $packKey): string
+    {
+        return match ($packKey) {
+            'emoji' => 'Эмодзи',
+            'funny' => 'Весёлые',
+            'default' => 'Стандартные',
+            default => ucfirst($packKey),
+        };
     }
 
     private function directConversationKey(string $a, string $b): string

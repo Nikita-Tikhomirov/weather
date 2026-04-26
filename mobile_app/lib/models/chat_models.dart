@@ -60,6 +60,10 @@ class ChatMessage {
   final String? clientMessageId;
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
+    final rawImageMeta = json['image_meta'];
+    final imageMeta = rawImageMeta is Map
+        ? Map<String, dynamic>.from(rawImageMeta)
+        : const <String, dynamic>{};
     return ChatMessage(
       id: (json['id'] ?? '').toString(),
       conversationKey: (json['conversation_key'] ?? '').toString(),
@@ -69,8 +73,7 @@ class ChatMessage {
       createdAt: (json['created_at'] ?? '').toString(),
       stickerId: json['sticker_id']?.toString(),
       imageUrl: json['image_url']?.toString(),
-      imageMeta:
-          (json['image_meta'] as Map?)?.cast<String, dynamic>() ?? const {},
+      imageMeta: imageMeta,
       clientMessageId: json['client_message_id']?.toString(),
     );
   }

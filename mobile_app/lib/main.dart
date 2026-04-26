@@ -1208,7 +1208,12 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      if (message.messageType == 'image' &&
+                      if (message.messageType == 'sticker')
+                        Text(
+                          text,
+                          style: const TextStyle(fontSize: 34),
+                        )
+                      else if (message.messageType == 'image' &&
                           (message.imageUrl ?? '').isNotEmpty)
                         SelectableText(
                           message.imageUrl!,
@@ -1294,16 +1299,16 @@ class _HomePageState extends State<HomePage> {
     if (message.messageType == 'sticker') {
       final id = message.stickerId ?? '';
       if (id.isEmpty) {
-        return 'Стикер';
+        return '🙂';
       }
       for (final pack in _chatStickerPacks) {
         for (final item in pack.items) {
           if (item.stickerId == id) {
-            return 'Стикер: ${item.title}';
+            return item.title.isEmpty ? '🙂' : item.title;
           }
         }
       }
-      return 'Стикер';
+      return '🙂';
     }
     if (message.messageType == 'image') {
       return 'Изображение';
