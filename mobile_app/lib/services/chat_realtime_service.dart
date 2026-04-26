@@ -8,6 +8,7 @@ class ChatRealtimeService {
     required this.actorProfile,
     required this.activeConversationKey,
     required this.onMessagesUpdated,
+    this.shouldPoll,
     this.interval = const Duration(seconds: 2),
   });
 
@@ -15,6 +16,7 @@ class ChatRealtimeService {
   final String actorProfile;
   final String Function() activeConversationKey;
   final Future<void> Function(String conversationKey) onMessagesUpdated;
+  final bool Function()? shouldPoll;
   final Duration interval;
 
   Timer? _timer;
@@ -33,6 +35,10 @@ class ChatRealtimeService {
 
   Future<void> tick() async {
     if (!_running || _busy) {
+      return;
+    }
+    final canPoll = shouldPoll?.call() ?? true;
+    if (!canPoll) {
       return;
     }
     final conversationKey = activeConversationKey().trim();

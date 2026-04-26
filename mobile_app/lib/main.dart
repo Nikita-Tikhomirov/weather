@@ -839,6 +839,7 @@ class _HomePageState extends State<HomePage> {
         api: api,
         actorProfile: actor,
         activeConversationKey: () => _activeConversationKey,
+        shouldPoll: () => mounted && _store?.pageIndex.value == 4,
         onMessagesUpdated: (conversationKey) async {
           await _refreshConversation(
             store,
@@ -888,10 +889,12 @@ class _HomePageState extends State<HomePage> {
     final db = store.repository.db;
     final api = store.repository.api;
     final actor = store.owner.value;
+    final previous =
+        _chatMessagesByConversation[conversationKey] ?? const <ChatMessage>[];
 
     try {
       final local = await db.readMessages(conversationKey: conversationKey);
-      if (mounted) {
+      if (mounted && !_sameMessages(previous, local)) {
         setState(() {
           _chatMessagesByConversation[conversationKey] = local;
         });
@@ -915,7 +918,9 @@ class _HomePageState extends State<HomePage> {
       }
 
       final merged = await db.readMessages(conversationKey: conversationKey);
-      if (mounted) {
+      final beforeMerged =
+          _chatMessagesByConversation[conversationKey] ?? const <ChatMessage>[];
+      if (mounted && !_sameMessages(beforeMerged, merged)) {
         setState(() {
           _chatMessagesByConversation[conversationKey] = merged;
         });
@@ -1304,6 +1309,28 @@ class _HomePageState extends State<HomePage> {
       return 'Изображение';
     }
     return message.text;
+  }
+
+  bool _sameMessages(List<ChatMessage> a, List<ChatMessage> b) {
+    if (identical(a, b)) {
+      return true;
+    }
+    if (a.length != b.length) {
+      return false;
+    }
+    for (var i = 0; i < a.length; i++) {
+      final left = a[i];
+      final right = b[i];
+      if (left.id != right.id ||
+          left.createdAt != right.createdAt ||
+          left.messageType != right.messageType ||
+          left.text != right.text ||
+          left.imageUrl != right.imageUrl ||
+          left.stickerId != right.stickerId) {
+        return false;
+      }
+    }
+    return true;
   }
 
   String _dateKey(DateTime value) {
