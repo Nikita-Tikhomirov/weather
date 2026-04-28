@@ -89,6 +89,7 @@ final class ChatRepository
     public function listMessages(string $actor, string $conversationKey, ?string $cursor, int $limit): array
     {
         $conversation = $this->resolveConversationForActor($actor, $conversationKey);
+        $resolvedConversationKey = (string)$conversation->conversation_key;
 
         $query = DB::table('chat_messages')
             ->where('conversation_id', (int)$conversation->id)
@@ -103,7 +104,7 @@ final class ChatRepository
         $rows = $query->get();
         $mapped = [];
         foreach ($rows as $row) {
-            $mapped[] = $this->mapMessageRow($row, $conversationKey);
+            $mapped[] = $this->mapMessageRow($row, $resolvedConversationKey);
         }
 
         $mapped = array_reverse($mapped);
@@ -143,7 +144,7 @@ final class ChatRepository
                 ->where('client_message_id', $normalizedClientMessageId)
                 ->first();
             if ($existing !== null) {
-                return $this->mapMessageRow($existing, $conversationKey);
+                return $this->mapMessageRow($existing, (string)$conversation->conversation_key);
             }
         }
 
@@ -178,7 +179,7 @@ final class ChatRepository
             throw new InvalidArgumentException('Failed to persist chat message');
         }
 
-        return $this->mapMessageRow($row, $conversationKey);
+        return $this->mapMessageRow($row, (string)$conversation->conversation_key);
     }
 
     /**
@@ -287,6 +288,7 @@ final class ChatRepository
             if (!in_array($actor, $members, true)) {
                 throw new InvalidArgumentException('Actor is not a member of this conversation');
             }
+            $key = $this->directConversationKey($members[0], $members[1]);
             $this->ensureDirectConversation($members[0], $members[1]);
         }
 
@@ -451,10 +453,6 @@ final class ChatRepository
 
         $members = [$a, $b];
         sort($members);
-
-        if ($conversationKey !== sprintf('dm:%s:%s', $members[0], $members[1])) {
-            return null;
-        }
 
         return $members;
     }

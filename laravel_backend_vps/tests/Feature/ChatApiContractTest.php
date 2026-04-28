@@ -116,7 +116,11 @@ class ChatApiContractTest extends TestCase
         $response = $this->withHeaders(['X-Api-Key' => 'prod-key'])
             ->post('/chat/stickers/upload', [
                 'actor_profile' => 'nik',
-                'image' => UploadedFile::fake()->image('sticker.png', 256, 256),
+                'image' => UploadedFile::fake()->create(
+                    'sticker.png',
+                    16,
+                    'image/png'
+                ),
             ]);
 
         $response
