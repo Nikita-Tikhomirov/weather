@@ -46,6 +46,8 @@ class ChatMessage {
     this.imageUrl,
     this.imageMeta = const {},
     this.clientMessageId,
+    this.editedAt,
+    this.deletedAt,
   });
 
   final String id;
@@ -58,6 +60,10 @@ class ChatMessage {
   final String? imageUrl;
   final Map<String, dynamic> imageMeta;
   final String? clientMessageId;
+  final String? editedAt;
+  final String? deletedAt;
+
+  bool get isDeleted => deletedAt != null && deletedAt!.isNotEmpty;
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     final rawImageMeta = json['image_meta'];
@@ -75,6 +81,8 @@ class ChatMessage {
       imageUrl: json['image_url']?.toString(),
       imageMeta: imageMeta,
       clientMessageId: json['client_message_id']?.toString(),
+      editedAt: json['edited_at']?.toString(),
+      deletedAt: json['deleted_at']?.toString(),
     );
   }
 
@@ -90,6 +98,9 @@ class ChatMessage {
       'image_meta': imageMeta,
       'client_message_id': clientMessageId,
       'created_at': createdAt,
+      'edited_at': editedAt,
+      'deleted_at': deletedAt,
+      'is_deleted': isDeleted,
     };
   }
 }

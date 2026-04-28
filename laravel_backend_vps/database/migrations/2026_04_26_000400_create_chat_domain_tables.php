@@ -40,6 +40,8 @@ return new class extends Migration
             $table->json('image_meta_json')->nullable();
             $table->string('client_message_id', 96)->nullable();
             $table->string('created_at', 32);
+            $table->string('edited_at', 32)->nullable();
+            $table->string('deleted_at', 32)->nullable();
 
             $table->index(['conversation_id', 'created_at'], 'idx_chat_messages_conv_created');
             $table->index(['sender_profile', 'created_at'], 'idx_chat_messages_sender_created');

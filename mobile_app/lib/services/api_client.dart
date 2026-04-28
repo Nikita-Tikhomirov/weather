@@ -385,6 +385,42 @@ class ApiClient {
     );
   }
 
+  Future<ChatMessage> chatEditMessage({
+    required String actorProfile,
+    required String messageId,
+    required String text,
+  }) async {
+    final response = await _postWithFallback(
+      paths: const ['/chat/messages/edit'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'message_id': messageId,
+        'text': text,
+      }),
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return ChatMessage.fromJson(
+      Map<String, dynamic>.from((body['message'] as Map?) ?? const {}),
+    );
+  }
+
+  Future<ChatMessage> chatDeleteMessage({
+    required String actorProfile,
+    required String messageId,
+  }) async {
+    final response = await _postWithFallback(
+      paths: const ['/chat/messages/delete'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'message_id': messageId,
+      }),
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return ChatMessage.fromJson(
+      Map<String, dynamic>.from((body['message'] as Map?) ?? const {}),
+    );
+  }
+
   Future<ChatUploadResult> chatUploadSticker({
     required String actorProfile,
     required List<int> bytes,

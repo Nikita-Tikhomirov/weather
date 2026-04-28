@@ -196,6 +196,79 @@ final class ChatRepository
         return array_values(array_filter(array_map(static fn ($item) => trim((string)$item), $rows)));
     }
 
+    public function editMessage(string $actor, string $messageId, string $text): array
+    {
+        $this->ensureActor($actor);
+        $id = trim($messageId);
+        $normalizedText = trim($text);
+        if ($id === '') {
+            throw new InvalidArgumentException('message_id is required');
+        }
+        if ($normalizedText === '') {
+            throw new InvalidArgumentException('text is required');
+        }
+
+        $row = DB::table('chat_messages')->where('id', $id)->first();
+        if ($row === null) {
+            throw new InvalidArgumentException('Message not found');
+        }
+        if ((string)$row->sender_profile !== $actor) {
+            throw new InvalidArgumentException('Only sender can edit message');
+        }
+        if ((string)$row->message_type !== 'text') {
+            throw new InvalidArgumentException('Only text messages can be edited');
+        }
+        if (($row->deleted_at ?? null) !== null) {
+            throw new InvalidArgumentException('Deleted message cannot be edited');
+        }
+
+        $editedAt = $this->nowIso();
+        DB::table('chat_messages')
+            ->where('id', $id)
+            ->update([
+                'text' => $normalizedText,
+                'edited_at' => $editedAt,
+            ]);
+
+        $updated = DB::table('chat_messages')->where('id', $id)->first();
+        $conversationKey = $this->conversationKeyById((int)$row->conversation_id);
+
+        return $this->mapMessageRow($updated, $conversationKey);
+    }
+
+    public function deleteMessage(string $actor, string $messageId): array
+    {
+        $this->ensureActor($actor);
+        $id = trim($messageId);
+        if ($id === '') {
+            throw new InvalidArgumentException('message_id is required');
+        }
+
+        $row = DB::table('chat_messages')->where('id', $id)->first();
+        if ($row === null) {
+            throw new InvalidArgumentException('Message not found');
+        }
+        if ((string)$row->sender_profile !== $actor) {
+            throw new InvalidArgumentException('Only sender can delete message');
+        }
+
+        $deletedAt = $this->nowIso();
+        DB::table('chat_messages')
+            ->where('id', $id)
+            ->update([
+                'text' => null,
+                'sticker_id' => null,
+                'image_url' => null,
+                'image_meta_json' => null,
+                'deleted_at' => $deletedAt,
+            ]);
+
+        $updated = DB::table('chat_messages')->where('id', $id)->first();
+        $conversationKey = $this->conversationKeyById((int)$row->conversation_id);
+
+        return $this->mapMessageRow($updated, $conversationKey);
+    }
+
     private function resolveConversationForActor(string $actor, string $conversationKey): object
     {
         $this->ensureActor($actor);
@@ -407,7 +480,22 @@ final class ChatRepository
             'image_meta' => $meta,
             'client_message_id' => $row->client_message_id !== null ? (string)$row->client_message_id : null,
             'created_at' => (string)$row->created_at,
+            'edited_at' => ($row->edited_at ?? null) !== null ? (string)$row->edited_at : null,
+            'deleted_at' => ($row->deleted_at ?? null) !== null ? (string)$row->deleted_at : null,
+            'is_deleted' => ($row->deleted_at ?? null) !== null,
         ];
+    }
+
+    private function conversationKeyById(int $conversationId): string
+    {
+        $key = DB::table('chat_conversations')
+            ->where('id', $conversationId)
+            ->value('conversation_key');
+        if ($key === null) {
+            throw new InvalidArgumentException('Conversation not found');
+        }
+
+        return (string)$key;
     }
 
     private function normalizeMessageType(string $value): string

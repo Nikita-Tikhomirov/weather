@@ -108,6 +108,7 @@ class _HomePageState extends State<HomePage> {
   final ImagePicker _imagePicker = ImagePicker();
   ChatRealtimeService? _chatRealtime;
   bool _chatLoading = false;
+  String? _editingMessageId;
   List<Map<String, String>> _chatContacts = const <Map<String, String>>[];
   List<ChatConversation> _chatConversations = const <ChatConversation>[];
   List<StickerPack> _chatStickerPacks = const <StickerPack>[];
@@ -715,25 +716,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildFcmDiagnosticsCard() {
-    final lines = _fcmDiagnostics.split('\n');
-    final preview =
-        lines.length <= 4 ? _fcmDiagnostics : lines.take(4).join('\n');
-    return Card(
-      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-      color: const Color(0xFFFFF7E6),
-      child: ListTile(
-        leading: const Icon(Icons.bug_report_outlined),
-        title: const Text('FCM диагностика'),
-        subtitle: Text(preview),
-        trailing: TextButton(
-          onPressed: _showFcmDiagnosticsDialog,
-          child: const Text('Подробно'),
-        ),
-      ),
-    );
-  }
-
   void _startSyncLoops(TaskStore store) {
     _cancelSyncLoops();
     _deltaSyncTimer = Timer.periodic(const Duration(seconds: 8), (_) async {
@@ -811,9 +793,7 @@ class _HomePageState extends State<HomePage> {
       for (final conversation in bootstrap.conversations) {
         await db.upsertConversation(conversation);
       }
-      await db.replaceStickerPacks(
-        _mergeBuiltInStickerPacks(bootstrap.stickerPacks),
-      );
+      await db.replaceStickerPacks(bootstrap.stickerPacks);
 
       final conversations = await db.readConversations();
       final stickerPacks = await db.readStickerPacks();
@@ -964,15 +944,26 @@ class _HomePageState extends State<HomePage> {
     final db = store.repository.db;
     final conversationKey = _activeConversationKey;
     try {
-      final message = await api.chatSendMessage(
-        actorProfile: actor,
-        conversationKey: conversationKey,
-        messageType: 'text',
-        text: text,
-        clientMessageId: 'mobile-${DateTime.now().microsecondsSinceEpoch}',
-      );
+      final editingId = _editingMessageId;
+      final message = editingId == null
+          ? await api.chatSendMessage(
+              actorProfile: actor,
+              conversationKey: conversationKey,
+              messageType: 'text',
+              text: text,
+              clientMessageId:
+                  'mobile-${DateTime.now().microsecondsSinceEpoch}',
+            )
+          : await api.chatEditMessage(
+              actorProfile: actor,
+              messageId: editingId,
+              text: text,
+            );
       await db.upsertMessages([message]);
       _chatInputCtl.clear();
+      setState(() {
+        _editingMessageId = null;
+      });
       await _refreshConversation(
         store,
         conversationKey,
@@ -986,6 +977,100 @@ class _HomePageState extends State<HomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Ошибка отправки: $error')),
       );
+    }
+  }
+
+  Future<void> _editChatMessage(ChatMessage message) async {
+    setState(() {
+      _editingMessageId = message.id;
+      _chatInputCtl.text = message.text;
+      _chatInputCtl.selection = TextSelection.collapsed(
+        offset: _chatInputCtl.text.length,
+      );
+    });
+  }
+
+  Future<void> _deleteChatMessage(TaskStore store, ChatMessage message) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Удалить сообщение?'),
+          content: const Text('Сообщение будет удалено у всех участников.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Отмена'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Удалить'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      final updated = await store.repository.api.chatDeleteMessage(
+        actorProfile: store.owner.value,
+        messageId: message.id,
+      );
+      await store.repository.db.upsertMessages([updated]);
+      await _refreshConversation(
+        store,
+        message.conversationKey,
+        useNetwork: true,
+        quiet: true,
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка удаления: $error')),
+      );
+    }
+  }
+
+  Future<void> _openMessageActions(
+    TaskStore store,
+    ChatMessage message,
+  ) async {
+    if (message.senderProfile != store.owner.value || message.isDeleted) {
+      return;
+    }
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (message.messageType == 'text')
+                ListTile(
+                  leading: const Icon(Icons.edit_outlined),
+                  title: const Text('Редактировать'),
+                  onTap: () => Navigator.of(sheetContext).pop('edit'),
+                ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: const Text('Удалить'),
+                onTap: () => Navigator.of(sheetContext).pop('delete'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (action == 'edit') {
+      await _editChatMessage(message);
+    } else if (action == 'delete') {
+      await _deleteChatMessage(store, message);
     }
   }
 
@@ -1174,98 +1259,87 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            itemCount: messages.length,
-            itemBuilder: (context, index) {
-              final message = messages[index];
-              final mine = message.senderProfile == store.owner.value;
-              final text = _chatMessageText(message);
-              return Align(
-                alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  constraints: BoxConstraints(
-                    maxWidth: compact ? 320 : 560,
-                  ),
-                  decoration: BoxDecoration(
-                    color: mine
-                        ? const Color(0xFFDDF4FF)
-                        : const Color(0xFFF2F4F8),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: mine
-                        ? CrossAxisAlignment.end
-                        : CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        profileLabel(message.senderProfile),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black54,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      if (message.messageType == 'sticker')
-                        Text(
-                          text,
-                          style: const TextStyle(fontSize: 34),
-                        )
-                      else if (message.messageType == 'image' &&
-                          (message.imageUrl ?? '').isNotEmpty)
-                        SelectableText(
-                          message.imageUrl!,
-                          style: const TextStyle(
-                            decoration: TextDecoration.underline,
-                          ),
-                        )
-                      else
-                        Text(text),
-                      const SizedBox(height: 4),
-                      Text(
-                        message.createdAt,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.black45,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
+          child: _ChatMessagesList(
+            key: ValueKey(_activeConversationKey),
+            messages: messages,
+            owner: store.owner.value,
+            compact: compact,
+            textFor: _chatMessageText,
+            onLongPress: (message) => _openMessageActions(store, message),
           ),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                tooltip: 'Стикеры',
-                icon: const Icon(Icons.emoji_emotions_outlined),
-                onPressed: () => _openStickerSheet(store),
-              ),
-              Expanded(
-                child: TextField(
-                  controller: _chatInputCtl,
-                  minLines: 1,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    hintText: 'Введите сообщение',
-                    border: OutlineInputBorder(),
-                    isDense: true,
+              if (_editingMessageId != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.edit_outlined, size: 18),
+                      const SizedBox(width: 8),
+                      const Expanded(child: Text('Редактирование сообщения')),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _editingMessageId = null;
+                            _chatInputCtl.clear();
+                          });
+                        },
+                        child: const Text('Отмена'),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              FilledButton.icon(
-                onPressed: () => _sendTextMessage(store),
-                icon: const Icon(Icons.send),
-                label: const Text('Отправить'),
+              Row(
+                children: [
+                  IconButton(
+                    tooltip: 'Стикеры',
+                    icon: const Icon(Icons.emoji_emotions_outlined),
+                    onPressed: () => _openStickerSheet(store),
+                  ),
+                  IconButton(
+                    tooltip: 'Вложение',
+                    icon: const Icon(Icons.attach_file),
+                    onPressed: () => _sendImageSticker(store),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: _chatInputCtl,
+                      minLines: 1,
+                      maxLines: 4,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _sendTextMessage(store),
+                      decoration: InputDecoration(
+                        hintText: _editingMessageId == null
+                            ? 'Сообщение'
+                            : 'Изменить сообщение',
+                        border: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(24)),
+                        ),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Голосовое',
+                    icon: const Icon(Icons.mic_none),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Голосовые будут добавлены отдельно'),
+                        ),
+                      );
+                    },
+                  ),
+                  IconButton.filled(
+                    tooltip: 'Отправить',
+                    onPressed: () => _sendTextMessage(store),
+                    icon: const Icon(Icons.send),
+                  ),
+                ],
               ),
             ],
           ),
@@ -1298,6 +1372,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _chatMessageText(ChatMessage message) {
+    if (message.isDeleted) {
+      return 'Сообщение удалено';
+    }
     if (message.messageType == 'sticker') {
       final id = message.stickerId ?? '';
       if (id.isEmpty) {
@@ -1318,62 +1395,6 @@ class _HomePageState extends State<HomePage> {
     return message.text;
   }
 
-  List<StickerPack> _mergeBuiltInStickerPacks(List<StickerPack> packs) {
-    final merged = <String, StickerPack>{
-      for (final pack in packs) pack.packKey: pack,
-    };
-    for (final pack in _builtInStickerPacks()) {
-      merged[pack.packKey] = pack;
-    }
-    return merged.values.toList();
-  }
-
-  List<StickerPack> _builtInStickerPacks() {
-    StickerItem item(String id, String title, int sortOrder) {
-      return StickerItem(
-        stickerId: id,
-        title: title,
-        assetUrl: 'emoji://$id',
-        sortOrder: sortOrder,
-      );
-    }
-
-    return [
-      StickerPack(
-        packKey: 'emoji',
-        title: 'Эмодзи',
-        items: [
-          item('builtin-emoji-smile', '😀', 10),
-          item('builtin-emoji-laugh', '😂', 20),
-          item('builtin-emoji-heart-eyes', '😍', 30),
-          item('builtin-emoji-hug', '🤗', 40),
-          item('builtin-emoji-kiss', '😘', 50),
-          item('builtin-emoji-thumbs-up', '👍', 60),
-          item('builtin-emoji-fire', '🔥', 70),
-          item('builtin-emoji-party', '🥳', 80),
-          item('builtin-emoji-heart', '❤️', 90),
-          item('builtin-emoji-pray', '🙏', 100),
-        ],
-      ),
-      StickerPack(
-        packKey: 'funny',
-        title: 'Весёлые',
-        items: [
-          item('builtin-funny-cat', '😺', 10),
-          item('builtin-funny-monkey', '🙈', 20),
-          item('builtin-funny-clown', '🤡', 30),
-          item('builtin-funny-poop', '💩', 40),
-          item('builtin-funny-ghost', '👻', 50),
-          item('builtin-funny-alien', '👽', 60),
-          item('builtin-funny-robot', '🤖', 70),
-          item('builtin-funny-unicorn', '🦄', 80),
-          item('builtin-funny-dino', '🦖', 90),
-          item('builtin-funny-pizza', '🍕', 100),
-        ],
-      ),
-    ];
-  }
-
   bool _sameMessages(List<ChatMessage> a, List<ChatMessage> b) {
     if (identical(a, b)) {
       return true;
@@ -1389,7 +1410,9 @@ class _HomePageState extends State<HomePage> {
           left.messageType != right.messageType ||
           left.text != right.text ||
           left.imageUrl != right.imageUrl ||
-          left.stickerId != right.stickerId) {
+          left.stickerId != right.stickerId ||
+          left.editedAt != right.editedAt ||
+          left.deletedAt != right.deletedAt) {
         return false;
       }
     }
@@ -1844,7 +1867,6 @@ class _HomePageState extends State<HomePage> {
                       ? const Center(child: CircularProgressIndicator())
                       : Column(
                           children: [
-                            _buildFcmDiagnosticsCard(),
                             Expanded(
                               child: ValueListenableBuilder<int>(
                                 valueListenable: store.pageIndex,
@@ -2043,6 +2065,182 @@ class _HomePageState extends State<HomePage> {
     _desktopThemeService?.state.dispose();
     _store?.dispose();
     super.dispose();
+  }
+}
+
+class _ChatMessagesList extends StatefulWidget {
+  const _ChatMessagesList({
+    super.key,
+    required this.messages,
+    required this.owner,
+    required this.compact,
+    required this.textFor,
+    required this.onLongPress,
+  });
+
+  final List<ChatMessage> messages;
+  final String owner;
+  final bool compact;
+  final String Function(ChatMessage message) textFor;
+  final void Function(ChatMessage message) onLongPress;
+
+  @override
+  State<_ChatMessagesList> createState() => _ChatMessagesListState();
+}
+
+class _ChatMessagesListState extends State<_ChatMessagesList> {
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+  }
+
+  @override
+  void didUpdateWidget(covariant _ChatMessagesList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldLast = oldWidget.messages.isEmpty ? '' : oldWidget.messages.last.id;
+    final newLast = widget.messages.isEmpty ? '' : widget.messages.last.id;
+    if (oldLast != newLast || oldWidget.messages.length != widget.messages.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    if (!_controller.hasClients) {
+      return;
+    }
+    _controller.animateTo(
+      _controller.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      controller: _controller,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      itemCount: widget.messages.length,
+      itemBuilder: (context, index) {
+        final message = widget.messages[index];
+        final mine = message.senderProfile == widget.owner;
+        return _ChatMessageBubble(
+          key: ValueKey(message.id),
+          message: message,
+          mine: mine,
+          compact: widget.compact,
+          text: widget.textFor(message),
+          onLongPress: () => widget.onLongPress(message),
+        );
+      },
+    );
+  }
+}
+
+class _ChatMessageBubble extends StatelessWidget {
+  const _ChatMessageBubble({
+    super.key,
+    required this.message,
+    required this.mine,
+    required this.compact,
+    required this.text,
+    required this.onLongPress,
+  });
+
+  final ChatMessage message;
+  final bool mine;
+  final bool compact;
+  final String text;
+  final VoidCallback onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final deleted = message.isDeleted;
+    return Align(
+      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+      child: GestureDetector(
+        onLongPress: onLongPress,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          constraints: BoxConstraints(maxWidth: compact ? 320 : 560),
+          decoration: BoxDecoration(
+            color: deleted
+                ? const Color(0xFFE8EAED)
+                : mine
+                    ? const Color(0xFFDDF4FF)
+                    : const Color(0xFFF2F4F8),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            crossAxisAlignment:
+                mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              Text(
+                profileLabel(message.senderProfile),
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 4),
+              _buildContent(deleted),
+              const SizedBox(height: 4),
+              Text(
+                _messageFooter(),
+                style: const TextStyle(fontSize: 10, color: Colors.black45),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(bool deleted) {
+    if (deleted) {
+      return const Text(
+        'Сообщение удалено',
+        style: TextStyle(fontStyle: FontStyle.italic, color: Colors.black54),
+      );
+    }
+    if (message.messageType == 'sticker') {
+      return Text(text, style: const TextStyle(fontSize: 34));
+    }
+    if (message.messageType == 'image' && (message.imageUrl ?? '').isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          message.imageUrl!,
+          fit: BoxFit.cover,
+          width: compact ? 260 : 420,
+          errorBuilder: (context, error, stackTrace) {
+            return SelectableText(
+              message.imageUrl!,
+              style: const TextStyle(decoration: TextDecoration.underline),
+            );
+          },
+        ),
+      );
+    }
+    return Text(text);
+  }
+
+  String _messageFooter() {
+    if ((message.editedAt ?? '').isNotEmpty) {
+      return '${message.createdAt} · изменено';
+    }
+    return message.createdAt;
   }
 }
 

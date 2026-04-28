@@ -164,6 +164,43 @@ class ChatController extends Controller
         }
     }
 
+    public function editMessage(Request $request): JsonResponse
+    {
+        try {
+            $actor = trim((string)$request->input('actor_profile', ''));
+            $messageId = trim((string)$request->input('message_id', ''));
+            $text = (string)$request->input('text', '');
+            $message = $this->chat->editMessage($actor, $messageId, $text);
+
+            return $this->json(200, [
+                'ok' => true,
+                'message' => $message,
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function deleteMessage(Request $request): JsonResponse
+    {
+        try {
+            $actor = trim((string)$request->input('actor_profile', ''));
+            $messageId = trim((string)$request->input('message_id', ''));
+            $message = $this->chat->deleteMessage($actor, $messageId);
+
+            return $this->json(200, [
+                'ok' => true,
+                'message' => $message,
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
     public function stickerPacks(): JsonResponse
     {
         try {

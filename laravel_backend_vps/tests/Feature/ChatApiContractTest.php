@@ -145,4 +145,76 @@ class ChatApiContractTest extends TestCase
             ->assertJsonPath('message.message_type', 'sticker')
             ->assertJsonPath('message.sticker_id', 'builtin-party-cat');
     }
+
+    #[Test]
+    public function sender_can_edit_and_delete_own_text_message(): void
+    {
+        config(['sync.api_key' => 'prod-key']);
+
+        $send = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/messages/send', [
+                'actor_profile' => 'nik',
+                'conversation_key' => 'dm:nik:nastya',
+                'message_type' => 'text',
+                'text' => 'Первый текст',
+                'client_message_id' => 'edit-delete-1',
+            ])
+            ->assertStatus(200);
+
+        $messageId = data_get($send->json(), 'message.id');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/messages/edit', [
+                'actor_profile' => 'nik',
+                'message_id' => $messageId,
+                'text' => 'Исправленный текст',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('message.text', 'Исправленный текст')
+            ->assertJsonPath('message.is_deleted', false);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/messages/delete', [
+                'actor_profile' => 'nik',
+                'message_id' => $messageId,
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('message.text', '')
+            ->assertJsonPath('message.is_deleted', true);
+    }
+
+    #[Test]
+    public function actor_cannot_edit_or_delete_foreign_message(): void
+    {
+        config(['sync.api_key' => 'prod-key']);
+
+        $send = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/messages/send', [
+                'actor_profile' => 'nik',
+                'conversation_key' => 'dm:nik:nastya',
+                'message_type' => 'text',
+                'text' => 'Чужой текст',
+                'client_message_id' => 'foreign-1',
+            ])
+            ->assertStatus(200);
+
+        $messageId = data_get($send->json(), 'message.id');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/messages/edit', [
+                'actor_profile' => 'nastya',
+                'message_id' => $messageId,
+                'text' => 'Попытка правки',
+            ])
+            ->assertStatus(400)
+            ->assertJsonPath('ok', false);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/messages/delete', [
+                'actor_profile' => 'nastya',
+                'message_id' => $messageId,
+            ])
+            ->assertStatus(400)
+            ->assertJsonPath('ok', false);
+    }
 }

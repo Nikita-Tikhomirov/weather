@@ -24,7 +24,7 @@ class LocalDb {
     final dbPath = p.join(basePath, 'family_todo_mobile.db');
     final db = await openDatabase(
       dbPath,
-      version: 3,
+      version: 4,
       onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE tasks(
@@ -70,6 +70,10 @@ class LocalDb {
         }
         if (oldVersion < 3) {
           await _createChatTables(db);
+        }
+        if (oldVersion < 4) {
+          await _addColumnIfMissing(db, 'chat_messages', 'edited_at', 'TEXT');
+          await _addColumnIfMissing(db, 'chat_messages', 'deleted_at', 'TEXT');
         }
       },
     );
@@ -295,6 +299,8 @@ class LocalDb {
             'image_meta_json': jsonEncode(item.imageMeta),
             'client_message_id': item.clientMessageId,
             'created_at': item.createdAt,
+            'edited_at': item.editedAt,
+            'deleted_at': item.deletedAt,
           },
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
@@ -413,7 +419,9 @@ class LocalDb {
         image_url TEXT,
         image_meta_json TEXT NOT NULL DEFAULT '{}',
         client_message_id TEXT,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        edited_at TEXT,
+        deleted_at TEXT
       );
     ''');
     await db.execute('''
@@ -445,6 +453,19 @@ class LocalDb {
         v TEXT NOT NULL
       );
     ''');
+  }
+
+  static Future<void> _addColumnIfMissing(
+    DatabaseExecutor db,
+    String table,
+    String column,
+    String definition,
+  ) async {
+    final rows = await db.rawQuery('PRAGMA table_info($table)');
+    final exists = rows.any((row) => row['name'] == column);
+    if (!exists) {
+      await db.execute('ALTER TABLE $table ADD COLUMN $column $definition');
+    }
   }
 
   static List<String> _decodeStringList(String raw) {
