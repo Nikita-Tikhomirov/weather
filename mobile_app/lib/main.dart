@@ -1209,7 +1209,11 @@ class _HomePageState extends State<HomePage> {
                                   Navigator.of(sheetContext).pop();
                                   await _sendBuiltInSticker(store, item);
                                 },
-                                child: Text(item.title),
+                                child: SizedBox(
+                                  width: 64,
+                                  height: 64,
+                                  child: _stickerPreview(item),
+                                ),
                               ),
                           ],
                         ),
@@ -1265,6 +1269,7 @@ class _HomePageState extends State<HomePage> {
             owner: store.owner.value,
             compact: compact,
             textFor: _chatMessageText,
+            stickerAssetFor: _chatStickerAssetUrl,
             onLongPress: (message) => _openMessageActions(store, message),
           ),
         ),
@@ -1393,6 +1398,56 @@ class _HomePageState extends State<HomePage> {
       return 'Изображение';
     }
     return message.text;
+  }
+
+  String _chatStickerAssetUrl(ChatMessage message) {
+    if (message.messageType != 'sticker') {
+      return '';
+    }
+    final id = message.stickerId ?? '';
+    if (id.isEmpty) {
+      return '';
+    }
+    for (final pack in _chatStickerPacks) {
+      for (final item in pack.items) {
+        if (item.stickerId == id) {
+          return _absoluteAssetUrl(item.assetUrl);
+        }
+      }
+    }
+    return '';
+  }
+
+  Widget _stickerPreview(StickerItem item) {
+    final url = _absoluteAssetUrl(item.assetUrl);
+    if (url.isEmpty || url.startsWith('emoji://')) {
+      return Center(child: Text(item.title));
+    }
+    return Image.network(
+      url,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) => Center(
+        child: Text(
+          item.title.isEmpty ? '🙂' : item.title,
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+
+  String _absoluteAssetUrl(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty || value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
+    if (!value.startsWith('/')) {
+      return value;
+    }
+    final baseUrl = _store?.repository.api.baseUrl.trim() ?? '';
+    if (baseUrl.isEmpty) {
+      return value;
+    }
+    return '${baseUrl.replaceFirst(RegExp(r'/+$'), '')}$value';
   }
 
   bool _sameMessages(List<ChatMessage> a, List<ChatMessage> b) {
@@ -2075,6 +2130,7 @@ class _ChatMessagesList extends StatefulWidget {
     required this.owner,
     required this.compact,
     required this.textFor,
+    required this.stickerAssetFor,
     required this.onLongPress,
   });
 
@@ -2082,6 +2138,7 @@ class _ChatMessagesList extends StatefulWidget {
   final String owner;
   final bool compact;
   final String Function(ChatMessage message) textFor;
+  final String Function(ChatMessage message) stickerAssetFor;
   final void Function(ChatMessage message) onLongPress;
 
   @override
@@ -2139,6 +2196,7 @@ class _ChatMessagesListState extends State<_ChatMessagesList> {
           mine: mine,
           compact: widget.compact,
           text: widget.textFor(message),
+          stickerAssetUrl: widget.stickerAssetFor(message),
           onLongPress: () => widget.onLongPress(message),
         );
       },
@@ -2153,6 +2211,7 @@ class _ChatMessageBubble extends StatelessWidget {
     required this.mine,
     required this.compact,
     required this.text,
+    required this.stickerAssetUrl,
     required this.onLongPress,
   });
 
@@ -2160,6 +2219,7 @@ class _ChatMessageBubble extends StatelessWidget {
   final bool mine;
   final bool compact;
   final String text;
+  final String stickerAssetUrl;
   final VoidCallback onLongPress;
 
   @override
@@ -2215,6 +2275,17 @@ class _ChatMessageBubble extends StatelessWidget {
       );
     }
     if (message.messageType == 'sticker') {
+      if (stickerAssetUrl.isNotEmpty && !stickerAssetUrl.startsWith('emoji://')) {
+        return Image.network(
+          stickerAssetUrl,
+          fit: BoxFit.contain,
+          width: compact ? 160 : 220,
+          height: compact ? 160 : 220,
+          errorBuilder: (context, error, stackTrace) {
+            return Text(text, style: const TextStyle(fontSize: 34));
+          },
+        );
+      }
       return Text(text, style: const TextStyle(fontSize: 34));
     }
     if (message.messageType == 'image' && (message.imageUrl ?? '').isNotEmpty) {
