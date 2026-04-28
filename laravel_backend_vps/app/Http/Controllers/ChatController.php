@@ -139,13 +139,21 @@ class ChatController extends Controller
                 $ext = 'png';
             }
 
-            $name = sprintf('chat_stickers/%s.%s', Str::ulid(), $ext);
-            $path = Storage::disk('public')->putFileAs('chat_stickers', $upload, basename($name));
+            $filename = sprintf('%s.%s', Str::ulid(), $ext);
+            $path = Storage::disk('public')->putFileAs('chat_stickers', $upload, $filename);
             if ($path === false) {
                 throw new InvalidArgumentException('Failed to upload image');
             }
+            $publicDir = public_path('chat_stickers');
+            if (!is_dir($publicDir) && !mkdir($publicDir, 0755, true) && !is_dir($publicDir)) {
+                throw new InvalidArgumentException('Failed to prepare public image directory');
+            }
+            $publicPath = $publicDir . DIRECTORY_SEPARATOR . $filename;
+            if (!copy(Storage::disk('public')->path($path), $publicPath)) {
+                throw new InvalidArgumentException('Failed to publish uploaded image');
+            }
 
-            $url = Storage::disk('public')->url($path);
+            $url = sprintf('/chat_stickers/%s', $filename);
             $meta = [
                 'size_bytes' => (int)$upload->getSize(),
                 'mime_type' => (string)$upload->getMimeType(),

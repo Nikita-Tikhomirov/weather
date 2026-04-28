@@ -1270,6 +1270,7 @@ class _HomePageState extends State<HomePage> {
             compact: compact,
             textFor: _chatMessageText,
             stickerAssetFor: _chatStickerAssetUrl,
+            imageUrlFor: _chatImageUrl,
             onLongPress: (message) => _openMessageActions(store, message),
           ),
         ),
@@ -1416,6 +1417,13 @@ class _HomePageState extends State<HomePage> {
       }
     }
     return '';
+  }
+
+  String _chatImageUrl(ChatMessage message) {
+    if (message.messageType != 'image') {
+      return '';
+    }
+    return _absoluteAssetUrl(message.imageUrl ?? '');
   }
 
   Widget _stickerPreview(StickerItem item) {
@@ -2131,6 +2139,7 @@ class _ChatMessagesList extends StatefulWidget {
     required this.compact,
     required this.textFor,
     required this.stickerAssetFor,
+    required this.imageUrlFor,
     required this.onLongPress,
   });
 
@@ -2139,6 +2148,7 @@ class _ChatMessagesList extends StatefulWidget {
   final bool compact;
   final String Function(ChatMessage message) textFor;
   final String Function(ChatMessage message) stickerAssetFor;
+  final String Function(ChatMessage message) imageUrlFor;
   final void Function(ChatMessage message) onLongPress;
 
   @override
@@ -2197,6 +2207,7 @@ class _ChatMessagesListState extends State<_ChatMessagesList> {
           compact: widget.compact,
           text: widget.textFor(message),
           stickerAssetUrl: widget.stickerAssetFor(message),
+          imageUrl: widget.imageUrlFor(message),
           onLongPress: () => widget.onLongPress(message),
         );
       },
@@ -2212,6 +2223,7 @@ class _ChatMessageBubble extends StatelessWidget {
     required this.compact,
     required this.text,
     required this.stickerAssetUrl,
+    required this.imageUrl,
     required this.onLongPress,
   });
 
@@ -2220,6 +2232,7 @@ class _ChatMessageBubble extends StatelessWidget {
   final bool compact;
   final String text;
   final String stickerAssetUrl;
+  final String imageUrl;
   final VoidCallback onLongPress;
 
   @override
@@ -2288,16 +2301,16 @@ class _ChatMessageBubble extends StatelessWidget {
       }
       return Text(text, style: const TextStyle(fontSize: 34));
     }
-    if (message.messageType == 'image' && (message.imageUrl ?? '').isNotEmpty) {
+    if (message.messageType == 'image' && imageUrl.isNotEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Image.network(
-          message.imageUrl!,
+          imageUrl,
           fit: BoxFit.cover,
           width: compact ? 260 : 420,
           errorBuilder: (context, error, stackTrace) {
             return SelectableText(
-              message.imageUrl!,
+              imageUrl,
               style: const TextStyle(decoration: TextDecoration.underline),
             );
           },
