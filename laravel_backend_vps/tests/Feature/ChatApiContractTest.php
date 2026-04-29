@@ -108,6 +108,28 @@ class ChatApiContractTest extends TestCase
     }
 
     #[Test]
+    public function profile_ip_lock_blocks_actor_switch_from_locked_device(): void
+    {
+        config([
+            'sync.api_key' => 'prod-key',
+            'sync.profile_ip_locks' => 'misha=203.0.113.10',
+        ]);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
+            ->getJson('/chat/bootstrap?actor_profile=misha')
+            ->assertStatus(200)
+            ->assertJsonPath('actor_profile', 'misha');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
+            ->getJson('/chat/bootstrap?actor_profile=nik')
+            ->assertStatus(400)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'Profile is locked for this device');
+    }
+
+    #[Test]
     public function upload_sticker_endpoint_returns_asset_url_and_meta(): void
     {
         Storage::fake('public');

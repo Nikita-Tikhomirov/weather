@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Chat\ChatRepository;
-use App\Domain\Sync\SyncRules;
+use App\Domain\Sync\ProfileRequestGuard;
 use App\Services\Push\PushOutboxService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,7 +24,7 @@ class ChatController extends Controller
     public function bootstrap(Request $request): JsonResponse
     {
         try {
-            $actor = trim((string)$request->query('actor_profile', ''));
+            $actor = ProfileRequestGuard::ensureAllowed($request, (string)$request->query('actor_profile', ''));
             $payload = $this->chat->bootstrap($actor);
 
             return $this->json(200, [
@@ -45,7 +45,7 @@ class ChatController extends Controller
     public function messages(Request $request): JsonResponse
     {
         try {
-            $actor = trim((string)$request->query('actor_profile', ''));
+            $actor = ProfileRequestGuard::ensureAllowed($request, (string)$request->query('actor_profile', ''));
             $conversationKey = trim((string)$request->query('conversation_key', ''));
             $cursor = trim((string)$request->query('cursor', ''));
             $limitRaw = (int)$request->query('limit', 50);
@@ -74,7 +74,7 @@ class ChatController extends Controller
     public function sendMessage(Request $request): JsonResponse
     {
         try {
-            $actor = trim((string)$request->input('actor_profile', ''));
+            $actor = ProfileRequestGuard::ensureAllowed($request, (string)$request->input('actor_profile', ''));
             $conversationKey = trim((string)$request->input('conversation_key', ''));
             $messageType = trim((string)$request->input('message_type', 'text'));
             $text = (string)$request->input('text', '');
@@ -126,8 +126,7 @@ class ChatController extends Controller
     public function uploadSticker(Request $request): JsonResponse
     {
         try {
-            $actor = trim((string)$request->input('actor_profile', ''));
-            SyncRules::ensureActor($actor);
+            $actor = ProfileRequestGuard::ensureAllowed($request, (string)$request->input('actor_profile', ''));
 
             $upload = $request->file('image');
             if ($upload === null || !$upload->isValid()) {
@@ -175,7 +174,7 @@ class ChatController extends Controller
     public function editMessage(Request $request): JsonResponse
     {
         try {
-            $actor = trim((string)$request->input('actor_profile', ''));
+            $actor = ProfileRequestGuard::ensureAllowed($request, (string)$request->input('actor_profile', ''));
             $messageId = trim((string)$request->input('message_id', ''));
             $text = (string)$request->input('text', '');
             $message = $this->chat->editMessage($actor, $messageId, $text);
@@ -194,7 +193,7 @@ class ChatController extends Controller
     public function deleteMessage(Request $request): JsonResponse
     {
         try {
-            $actor = trim((string)$request->input('actor_profile', ''));
+            $actor = ProfileRequestGuard::ensureAllowed($request, (string)$request->input('actor_profile', ''));
             $messageId = trim((string)$request->input('message_id', ''));
             $message = $this->chat->deleteMessage($actor, $messageId);
 
