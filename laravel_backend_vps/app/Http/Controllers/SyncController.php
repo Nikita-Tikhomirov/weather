@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Sync\Cursor;
-use App\Domain\Sync\ProfileRequestGuard;
 use App\Domain\Sync\Profiles;
 use App\Domain\Sync\SyncRepository;
 use App\Domain\Sync\SyncRules;
@@ -49,7 +48,7 @@ class SyncController extends Controller
                 : ($sinceInput !== '' ? $sinceInput : '1970-01-01T00:00:00');
 
             $actorRaw = trim((string)$request->query('actor_profile', ''));
-            $actor = $actorRaw !== '' ? ProfileRequestGuard::ensureAllowed($request, $actorRaw) : null;
+            $actor = $actorRaw !== '' ? SyncRules::ensureActor($actorRaw) : null;
 
             $tasks = $this->repo->changedTasks($since, $actor, $isChangesMode);
             $familyTasks = $this->repo->changedFamilyTasks($since, $isChangesMode);
@@ -80,7 +79,7 @@ class SyncController extends Controller
     public function push(Request $request): JsonResponse
     {
         try {
-            $actor = ProfileRequestGuard::ensureAllowed($request, (string)$request->input('actor_profile', ''));
+            $actor = SyncRules::ensureActor((string)$request->input('actor_profile', ''));
             $source = trim((string)$request->input('source', 'mobile')) ?: 'mobile';
             $events = $request->input('events', []);
             if (!is_array($events)) {
@@ -125,7 +124,7 @@ class SyncController extends Controller
     public function telegramEvents(Request $request): JsonResponse
     {
         try {
-            $actor = ProfileRequestGuard::ensureAllowed($request, (string)$request->input('actor_profile', ''));
+            $actor = SyncRules::ensureActor((string)$request->input('actor_profile', ''));
             $events = $request->input('events', []);
             if (!is_array($events)) {
                 throw new InvalidArgumentException('events must be array');
@@ -169,7 +168,7 @@ class SyncController extends Controller
     public function registerDevice(Request $request): JsonResponse
     {
         try {
-            $actor = ProfileRequestGuard::ensureAllowed($request, (string)$request->input('actor_profile', ''));
+            $actor = SyncRules::ensureActor((string)$request->input('actor_profile', ''));
             $token = trim((string)$request->input('token', ''));
             if ($token === '') {
                 throw new InvalidArgumentException('token is required');
@@ -220,7 +219,7 @@ class SyncController extends Controller
     public function unregisterDevice(Request $request): JsonResponse
     {
         try {
-            $actor = ProfileRequestGuard::ensureAllowed($request, (string)$request->input('actor_profile', ''));
+            $actor = SyncRules::ensureActor((string)$request->input('actor_profile', ''));
             $token = trim((string)$request->input('token', ''));
             if ($token === '') {
                 throw new InvalidArgumentException('token is required');
@@ -238,7 +237,7 @@ class SyncController extends Controller
     public function reportDeviceStatus(Request $request): JsonResponse
     {
         try {
-            $actor = ProfileRequestGuard::ensureAllowed($request, (string)$request->input('actor_profile', ''));
+            $actor = SyncRules::ensureActor((string)$request->input('actor_profile', ''));
             $platform = trim((string)$request->input('platform', 'android')) ?: 'android';
             $tokenStatus = trim((string)$request->input('token_status', 'unknown')) ?: 'unknown';
             $playServices = trim((string)$request->input('play_services', 'unknown')) ?: 'unknown';
@@ -269,7 +268,7 @@ class SyncController extends Controller
     public function getDeviceStatus(Request $request): JsonResponse
     {
         try {
-            $actor = ProfileRequestGuard::ensureAllowed($request, (string)$request->query('actor_profile', ''));
+            $actor = SyncRules::ensureActor((string)$request->query('actor_profile', ''));
             return $this->json(200, [
                 'ok' => true,
                 'result' => $this->repo->latestDeviceStatusForActor($actor),
@@ -285,7 +284,7 @@ class SyncController extends Controller
     {
         try {
             $actorRaw = trim((string)$request->query('actor_profile', ''));
-            $actor = $actorRaw !== '' ? ProfileRequestGuard::ensureAllowed($request, $actorRaw) : null;
+            $actor = $actorRaw !== '' ? SyncRules::ensureActor($actorRaw) : null;
 
             $tokenQuery = DB::table('device_tokens')
                 ->select('profile_key', 'token', 'token_status', 'play_services', 'last_error', 'last_seen_at', 'registered_at', 'is_active')
@@ -357,7 +356,7 @@ class SyncController extends Controller
     public function pushTest(Request $request): JsonResponse
     {
         try {
-            $actor = ProfileRequestGuard::ensureAllowed($request, (string)$request->input('actor_profile', ''));
+            $actor = SyncRules::ensureActor((string)$request->input('actor_profile', ''));
             $title = trim((string)$request->input('title', 'Тест push')) ?: 'Тест push';
             $body = trim((string)$request->input('body', 'Проверка доставки push-уведомления')) ?: 'Проверка доставки push-уведомления';
             $data = $request->input('data', []);
