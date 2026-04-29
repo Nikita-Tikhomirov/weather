@@ -12,6 +12,12 @@ class ChatApiContractTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['sync.locked_actor_profile' => '']);
+    }
+
     #[Test]
     public function bootstrap_returns_contacts_group_and_sticker_packs(): void
     {
@@ -105,6 +111,26 @@ class ChatApiContractTest extends TestCase
         $response
             ->assertStatus(400)
             ->assertJsonPath('ok', false);
+    }
+
+    #[Test]
+    public function locked_actor_profile_rejects_chat_requests_for_other_profiles(): void
+    {
+        config([
+            'sync.api_key' => 'prod-key',
+            'sync.locked_actor_profile' => 'misha',
+        ]);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/chat/bootstrap?actor_profile=misha')
+            ->assertStatus(200)
+            ->assertJsonPath('actor_profile', 'misha');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/chat/bootstrap?actor_profile=nik')
+            ->assertStatus(400)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'Profile switching is disabled');
     }
 
     #[Test]
