@@ -71,6 +71,31 @@ class ChatController extends Controller
         }
     }
 
+    public function createConversation(Request $request): JsonResponse
+    {
+        try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
+            $members = $request->input('member_profiles', []);
+            if (!is_array($members)) {
+                throw new InvalidArgumentException('member_profiles must be array');
+            }
+            $conversation = $this->chat->createGroupConversation(
+                $actor,
+                (string)$request->input('title', ''),
+                $members,
+            );
+
+            return $this->json(200, [
+                'ok' => true,
+                'conversation' => $conversation,
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
     public function sendMessage(Request $request): JsonResponse
     {
         try {
@@ -81,6 +106,7 @@ class ChatController extends Controller
             $stickerId = $request->input('sticker_id');
             $imageUrl = $request->input('image_url');
             $imageMeta = $request->input('image_meta');
+            $attachments = $request->input('attachments');
             $clientMessageId = $request->input('client_message_id');
 
             $message = $this->chat->sendMessage(
@@ -91,6 +117,7 @@ class ChatController extends Controller
                 is_string($stickerId) ? $stickerId : null,
                 is_string($imageUrl) ? $imageUrl : null,
                 is_array($imageMeta) ? $imageMeta : null,
+                is_array($attachments) ? $attachments : null,
                 is_string($clientMessageId) ? $clientMessageId : null,
             );
 
@@ -111,6 +138,27 @@ class ChatController extends Controller
                 $this->pushOutbox->enqueueRawToRecipients($eventId, $recipients, $title, $body, $data);
                 $this->pushOutbox->retryDue();
             }
+
+            return $this->json(200, [
+                'ok' => true,
+                'message' => $message,
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function setReaction(Request $request): JsonResponse
+    {
+        try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
+            $message = $this->chat->setReaction(
+                $actor,
+                (string)$request->input('message_id', ''),
+                (string)$request->input('reaction', ''),
+            );
 
             return $this->json(200, [
                 'ok' => true,

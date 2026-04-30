@@ -1,12 +1,20 @@
 <?php
 
 use App\Http\Controllers\SyncController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\ContactController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', [SyncController::class, 'health']);
 
 Route::middleware('sync.apikey')->group(function (): void {
+    Route::post('/auth/device-start', [AuthController::class, 'deviceStart']);
+    Route::post('/contacts/resolve', [ContactController::class, 'resolve']);
+    Route::get('/family/members', [ContactController::class, 'familyMembers']);
+    Route::post('/family/members/add', [ContactController::class, 'addFamilyMembers']);
+    Route::post('/family/members/remove', [ContactController::class, 'removeFamilyMember']);
+
     Route::get('/sync/pull', [SyncController::class, 'pull']);
     Route::get('/sync/changes', [SyncController::class, 'pull']);
 
@@ -40,10 +48,12 @@ Route::middleware('sync.apikey')->group(function (): void {
     Route::post('/push_outbox_retry.php', [SyncController::class, 'pushOutboxRetry']);
 
     Route::get('/chat/bootstrap', [ChatController::class, 'bootstrap']);
+    Route::post('/chat/conversations', [ChatController::class, 'createConversation']);
     Route::get('/chat/messages', [ChatController::class, 'messages']);
     Route::post('/chat/messages/send', [ChatController::class, 'sendMessage']);
     Route::post('/chat/messages/edit', [ChatController::class, 'editMessage']);
     Route::post('/chat/messages/delete', [ChatController::class, 'deleteMessage']);
+    Route::post('/chat/messages/reaction', [ChatController::class, 'setReaction']);
     Route::post('/chat/stickers/upload', [ChatController::class, 'uploadSticker']);
     Route::get('/chat/stickers/packs', [ChatController::class, 'stickerPacks']);
 });

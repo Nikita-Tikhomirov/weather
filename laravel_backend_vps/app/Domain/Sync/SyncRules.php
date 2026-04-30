@@ -2,6 +2,7 @@
 
 namespace App\Domain\Sync;
 
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 final class SyncRules
@@ -9,7 +10,7 @@ final class SyncRules
     public static function ensureActor(string $actor): string
     {
         $actor = trim($actor);
-        if (!Profiles::isAllowed($actor)) {
+        if (!Profiles::isAllowed($actor) && !self::profileExists($actor)) {
             throw new InvalidArgumentException('Unknown actor_profile');
         }
 
@@ -29,7 +30,7 @@ final class SyncRules
         if ($owner === '') {
             throw new InvalidArgumentException('owner_key is required');
         }
-        if ($isFamily && !Profiles::isAdult($actor)) {
+        if ($isFamily && Profiles::isAllowed($actor) && !Profiles::isAdult($actor)) {
             throw new InvalidArgumentException('Only adults can edit family tasks');
         }
         if (!$isFamily && $owner !== $actor) {
@@ -39,7 +40,10 @@ final class SyncRules
 
     public static function ensureFamilyPermissions(string $actor): void
     {
-        if (!Profiles::isAdult($actor)) {
+        if (Profiles::isAllowed($actor) && !Profiles::isAdult($actor)) {
+            throw new InvalidArgumentException('Only adults can edit family tasks');
+        }
+        if (!Profiles::isAllowed($actor) && !self::profileExists($actor)) {
             throw new InvalidArgumentException('Only adults can edit family tasks');
         }
     }
@@ -54,7 +58,7 @@ final class SyncRules
         $normalized = [];
         foreach ($source as $item) {
             $key = trim((string)$item);
-            if ($key === '' || !Profiles::isAllowed($key)) {
+            if ($key === '' || (!Profiles::isAllowed($key) && !self::profileExists($key))) {
                 continue;
             }
             if (!in_array($key, $normalized, true)) {
@@ -76,7 +80,7 @@ final class SyncRules
             $owner = $actor;
         }
 
-        return Profiles::isAllowed($owner) ? [$owner] : [];
+        return (Profiles::isAllowed($owner) || self::profileExists($owner)) ? [$owner] : [];
     }
 
     public static function recipientsForReminder(string $entity, array $payload): array
@@ -86,6 +90,15 @@ final class SyncRules
         }
 
         $owner = trim((string)($payload['owner_key'] ?? ''));
-        return Profiles::isAllowed($owner) ? [$owner] : [];
+        return (Profiles::isAllowed($owner) || self::profileExists($owner)) ? [$owner] : [];
+    }
+
+    private static function profileExists(string $profile): bool
+    {
+        try {
+            return DB::table('messenger_users')->where('profile_key', trim($profile))->exists();
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }

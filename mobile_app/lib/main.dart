@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -93,8 +95,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  static const _profiles = ['nik', 'nastya', 'misha', 'arisha'];
-
   TaskStore? _store;
   FcmService? _fcm;
   DesktopThemeService? _desktopThemeService;
@@ -109,12 +109,14 @@ class _HomePageState extends State<HomePage> {
   ChatRealtimeService? _chatRealtime;
   bool _chatLoading = false;
   String? _editingMessageId;
-  List<Map<String, String>> _chatContacts = const <Map<String, String>>[];
+  List<ChatContact> _chatContacts = const <ChatContact>[];
+  List<ChatContact> _phoneContacts = const <ChatContact>[];
+  List<ChatContact> _familyMembers = const <ChatContact>[];
   List<ChatConversation> _chatConversations = const <ChatConversation>[];
   List<StickerPack> _chatStickerPacks = const <StickerPack>[];
   final Map<String, List<ChatMessage>> _chatMessagesByConversation =
       <String, List<ChatMessage>>{};
-  String _activeConversationKey = 'group:common';
+  String _activeConversationKey = '';
 
   bool get _isDesktopWindows =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
@@ -128,13 +130,6 @@ class _HomePageState extends State<HomePage> {
   Future<void> _init() async {
     final prefs = await SharedPreferences.getInstance();
     final savedOwner = prefs.getString('actor_profile')?.trim() ?? '';
-    final owner =
-        savedOwner.isNotEmpty ? savedOwner : await _promptForInitialProfile();
-    if (!mounted || owner == null || owner.isEmpty) {
-      return;
-    }
-
-    final db = await LocalDb.open();
     final api = ApiClient(
       baseUrl: const String.fromEnvironment(
         'API_BASE_URL',
@@ -145,6 +140,13 @@ class _HomePageState extends State<HomePage> {
         defaultValue: 'dev-local-key',
       ),
     );
+    final owner =
+        savedOwner.isNotEmpty ? savedOwner : await _promptForInitialProfile(api);
+    if (!mounted || owner == null || owner.isEmpty) {
+      return;
+    }
+
+    final db = await LocalDb.open();
     final store = TaskStore(
       repository: TaskRepository(db: db, api: api),
       domainService: TaskDomainService(),
@@ -164,11 +166,95 @@ class _HomePageState extends State<HomePage> {
     setState(() => _store = store);
   }
 
-  Future<String?> _promptForInitialProfile() async {
+  Future<String> _ensureDeviceId(SharedPreferences prefs) async {
+    final saved = prefs.getString('device_id')?.trim() ?? '';
+    if (saved.isNotEmpty) {
+      return saved;
+    }
+    final random = Random.secure().nextInt(1 << 32).toRadixString(16);
+    final value = 'dev-${DateTime.now().microsecondsSinceEpoch}-$random';
+    await prefs.setString('device_id', value);
+    return value;
+  }
+
+  Future<String?> _promptForInitialProfile(ApiClient api) async {
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) {
       return null;
     }
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) {
+      return null;
+    }
+    final phoneCtl = TextEditingController();
+    final nameCtl = TextEditingController();
+    String errorText = '';
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Вход по номеру телефона'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: phoneCtl,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                      labelText: 'Номер телефона',
+                      hintText: '+7 999 111 22 33',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: nameCtl,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(labelText: 'Имя'),
+                  ),
+                  if (errorText.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(errorText, style: const TextStyle(color: Colors.red)),
+                  ],
+                ],
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () async {
+                    try {
+                      final deviceId = await _ensureDeviceId(prefs);
+                      final session = await api.deviceStart(
+                        phone: phoneCtl.text,
+                        deviceId: deviceId,
+                        displayName: nameCtl.text,
+                      );
+                      await prefs.setString(
+                        'actor_profile',
+                        session.profileKey,
+                      );
+                      await prefs.setString('profile_phone', session.phone);
+                      await prefs.setString(
+                        'profile_display_name',
+                        session.displayName,
+                      );
+                      if (dialogContext.mounted) {
+                        Navigator.of(dialogContext).pop(session.profileKey);
+                      }
+                    } catch (error) {
+                      setDialogState(() => errorText = error.toString());
+                    }
+                  },
+                  child: const Text('Продолжить'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    /*
     final selected = await showDialog<String>(
       context: context,
       barrierDismissible: false,
@@ -206,6 +292,7 @@ class _HomePageState extends State<HomePage> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('actor_profile', selected);
     return selected;
+    */
   }
 
   Future<void> _initDesktopServices(TaskStore store, String owner) async {
@@ -303,23 +390,6 @@ class _HomePageState extends State<HomePage> {
                                   store.setPage(value.first),
                             );
                           },
-                        ),
-                        const SizedBox(width: 10),
-                        DropdownButton<String>(
-                          value: owner,
-                          onChanged: (value) async {
-                            if (value != null) {
-                              await _switchProfile(store, value);
-                            }
-                          },
-                          items: _profiles
-                              .map(
-                                (profile) => DropdownMenuItem<String>(
-                                  value: profile,
-                                  child: Text(profileLabel(profile)),
-                                ),
-                              )
-                              .toList(),
                         ),
                         const SizedBox(width: 10),
                         ValueListenableBuilder<String>(
@@ -763,20 +833,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _switchProfile(TaskStore store, String profile) async {
-    if (profile == store.owner.value) {
-      return;
-    }
-    _cancelSyncLoops();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('actor_profile', profile);
-    await store.switchOwner(profile);
-    await _desktopThemeService?.switchProfile(profile);
-    _bindFcm(api: store.repository.api, owner: profile);
-    await _initChat(store);
-    _startSyncLoops(store);
-  }
-
   Future<void> _initChat(TaskStore store) async {
     final api = store.repository.api;
     final db = store.repository.db;
@@ -785,7 +841,7 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _chatLoading = true;
       _chatMessagesByConversation.clear();
-      _activeConversationKey = 'group:common';
+      _activeConversationKey = '';
     });
 
     try {
@@ -798,13 +854,6 @@ class _HomePageState extends State<HomePage> {
       final conversations = await db.readConversations();
       final stickerPacks = await db.readStickerPacks();
 
-      var active = bootstrap.groupConversationKey;
-      if (active.isEmpty) {
-        active = conversations.isEmpty
-            ? 'group:common'
-            : conversations.first.conversationKey;
-      }
-
       if (!mounted) {
         return;
       }
@@ -812,10 +861,10 @@ class _HomePageState extends State<HomePage> {
         _chatContacts = bootstrap.contacts;
         _chatConversations = conversations;
         _chatStickerPacks = stickerPacks;
-        _activeConversationKey = active;
+        _activeConversationKey = '';
       });
 
-      await _refreshActiveConversation(store, useNetwork: true, quiet: true);
+      await _loadPhoneContacts(store);
       await _chatRealtime?.stop();
       _chatRealtime = ChatRealtimeService(
         api: api,
@@ -933,6 +982,161 @@ class _HomePageState extends State<HomePage> {
     await _chatRealtime?.tick();
   }
 
+  Future<void> _openDirectContact(TaskStore store, ChatContact contact) async {
+    var key = contact.conversationKey;
+    if (key.isEmpty) {
+      final members = [store.owner.value, contact.profileKey]..sort();
+      key = 'dm:${members[0]}:${members[1]}';
+    }
+    final existing = _chatConversations.any((item) => item.conversationKey == key);
+    if (!existing) {
+      setState(() {
+        _chatConversations = [
+          ..._chatConversations,
+          ChatConversation(
+            conversationKey: key,
+            kind: 'direct',
+            title: '',
+            members: [store.owner.value, contact.profileKey],
+          ),
+        ];
+      });
+    }
+    await _openConversation(store, key);
+  }
+
+  Future<void> _openCreateGroupSheet(TaskStore store) async {
+    final selected = <String>{};
+    final titleCtl = TextEditingController(text: 'Новая группа');
+    final contacts = _phoneContacts.isEmpty ? _chatContacts : _phoneContacts;
+    final created = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(builder: (context, setSheetState) {
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleCtl,
+                    decoration: const InputDecoration(labelText: 'Название'),
+                  ),
+                  const SizedBox(height: 8),
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: [
+                        for (final contact in contacts)
+                          CheckboxListTile(
+                            value: selected.contains(contact.profileKey),
+                            title: Text(_contactLabel(contact)),
+                            subtitle: Text(contact.phone),
+                            onChanged: (value) {
+                              setSheetState(() {
+                                if (value == true) {
+                                  selected.add(contact.profileKey);
+                                } else {
+                                  selected.remove(contact.profileKey);
+                                }
+                              });
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                  FilledButton.icon(
+                    onPressed: selected.isEmpty
+                        ? null
+                        : () => Navigator.of(sheetContext).pop(true),
+                    icon: const Icon(Icons.check),
+                    label: const Text('Создать'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        });
+      },
+    );
+    if (created != true || selected.isEmpty) {
+      return;
+    }
+    final conversation = await store.repository.api.chatCreateGroup(
+      actorProfile: store.owner.value,
+      title: titleCtl.text,
+      memberProfiles: selected.toList(),
+    );
+    await store.repository.db.upsertConversation(conversation);
+    setState(() {
+      _chatConversations = [..._chatConversations, conversation];
+      _activeConversationKey = conversation.conversationKey;
+    });
+  }
+
+  Future<void> _addContactToFamily(TaskStore store, ChatContact contact) async {
+    try {
+      final members = await store.repository.api.addFamilyMembers(
+        actorProfile: store.owner.value,
+        profiles: [contact.profileKey],
+      );
+      if (mounted) {
+        setState(() => _familyMembers = members);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${_contactLabel(contact)} добавлен в семью')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось добавить в семью: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _loadPhoneContacts(TaskStore store) async {
+    try {
+      final status =
+          await FlutterContacts.permissions.request(PermissionType.read);
+      var registered = _chatContacts;
+      if (status == PermissionStatus.granted) {
+        final contacts = await FlutterContacts.getAll(
+          properties: {ContactProperty.phone},
+        );
+        final phones = <String>[];
+        for (final contact in contacts) {
+          for (final phone in contact.phones) {
+            if (phone.number.trim().isNotEmpty) {
+              phones.add(phone.number);
+            }
+          }
+        }
+        registered = await store.repository.api.resolveContacts(
+          actorProfile: store.owner.value,
+          phones: phones,
+        );
+      }
+      final members = await store.repository.api.familyMembers(
+        actorProfile: store.owner.value,
+      );
+      if (mounted) {
+        setState(() {
+          _phoneContacts = registered;
+          _familyMembers = members;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _phoneContacts = _chatContacts;
+        });
+      }
+    }
+  }
+
   Future<void> _sendTextMessage(TaskStore store) async {
     final text = _chatInputCtl.text.trim();
     if (text.isEmpty) {
@@ -1040,7 +1244,7 @@ class _HomePageState extends State<HomePage> {
     TaskStore store,
     ChatMessage message,
   ) async {
-    if (message.senderProfile != store.owner.value || message.isDeleted) {
+    if (message.isDeleted) {
       return;
     }
     final action = await showModalBottomSheet<String>(
@@ -1051,6 +1255,22 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Wrap(
+                spacing: 8,
+                children: ['👍', '❤️', '😂', '🔥', '🙏'].map((reaction) {
+                  return ActionChip(
+                    label: Text(reaction),
+                    onPressed: () =>
+                        Navigator.of(sheetContext).pop('react:$reaction'),
+                  );
+                }).toList(),
+              ),
+              if (message.myReaction != null)
+                ListTile(
+                  leading: const Icon(Icons.close),
+                  title: const Text('Убрать реакцию'),
+                  onTap: () => Navigator.of(sheetContext).pop('react:'),
+                ),
               if (message.messageType == 'text')
                 ListTile(
                   leading: const Icon(Icons.edit_outlined),
@@ -1067,10 +1287,43 @@ class _HomePageState extends State<HomePage> {
         );
       },
     );
-    if (action == 'edit') {
+    if ((action ?? '').startsWith('react:')) {
+      await _setMessageReaction(
+        store,
+        message,
+        action!.substring('react:'.length),
+      );
+    } else if (action == 'edit') {
       await _editChatMessage(message);
     } else if (action == 'delete') {
       await _deleteChatMessage(store, message);
+    }
+  }
+
+  Future<void> _setMessageReaction(
+    TaskStore store,
+    ChatMessage message,
+    String reaction,
+  ) async {
+    try {
+      final updated = await store.repository.api.chatSetReaction(
+        actorProfile: store.owner.value,
+        messageId: message.id,
+        reaction: reaction,
+      );
+      await store.repository.db.upsertMessages([updated]);
+      await _refreshConversation(
+        store,
+        message.conversationKey,
+        useNetwork: true,
+        quiet: true,
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка реакции: $error')),
+        );
+      }
     }
   }
 
@@ -1107,13 +1360,27 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _sendImageSticker(TaskStore store) async {
-    final picked = await _imagePicker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-      maxWidth: 1200,
-    );
-    if (picked == null) {
+  Future<void> _sendPhotos(
+    TaskStore store, {
+    required ImageSource source,
+    bool allowMultiple = false,
+  }) async {
+    final picked = <XFile>[];
+    if (allowMultiple && source == ImageSource.gallery) {
+      picked.addAll(
+        await _imagePicker.pickMultiImage(imageQuality: 80, maxWidth: 1600),
+      );
+    } else {
+      final one = await _imagePicker.pickImage(
+        source: source,
+        imageQuality: 80,
+        maxWidth: 1600,
+      );
+      if (one != null) {
+        picked.add(one);
+      }
+    }
+    if (picked.isEmpty) {
       return;
     }
 
@@ -1123,18 +1390,29 @@ class _HomePageState extends State<HomePage> {
     final conversationKey = _activeConversationKey;
 
     try {
-      final bytes = await picked.readAsBytes();
-      final uploaded = await api.chatUploadSticker(
-        actorProfile: actor,
-        bytes: bytes,
-        filename: picked.name,
-      );
+      final attachments = <ChatAttachment>[];
+      for (var i = 0; i < picked.length; i++) {
+        final file = picked[i];
+        final bytes = await file.readAsBytes();
+        final uploaded = await api.chatUploadSticker(
+          actorProfile: actor,
+          bytes: bytes,
+          filename: file.name,
+        );
+        attachments.add(ChatAttachment(
+          kind: 'image',
+          assetUrl: uploaded.assetUrl,
+          imageMeta: uploaded.imageMeta,
+          sortOrder: i,
+        ));
+      }
       final message = await api.chatSendMessage(
         actorProfile: actor,
         conversationKey: conversationKey,
-        messageType: 'image',
-        imageUrl: uploaded.assetUrl,
-        imageMeta: uploaded.imageMeta,
+        messageType: attachments.length == 1 ? 'image' : 'image_group',
+        imageUrl: attachments.length == 1 ? attachments.first.assetUrl : null,
+        imageMeta: attachments.length == 1 ? attachments.first.imageMeta : null,
+        attachments: attachments,
         clientMessageId: 'img-${DateTime.now().microsecondsSinceEpoch}',
       );
       await db.upsertMessages([message]);
@@ -1182,7 +1460,11 @@ class _HomePageState extends State<HomePage> {
                     TextButton.icon(
                       onPressed: () async {
                         Navigator.of(sheetContext).pop();
-                        await _sendImageSticker(store);
+                        await _sendPhotos(
+                          store,
+                          source: ImageSource.gallery,
+                          allowMultiple: true,
+                        );
                       },
                       icon: const Icon(Icons.image_outlined),
                       label: const Text('Мой стикер'),
@@ -1239,6 +1521,61 @@ class _HomePageState extends State<HomePage> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    if (_activeConversationKey.isEmpty) {
+      final contacts = _phoneContacts.isEmpty ? _chatContacts : _phoneContacts;
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Контакты',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Обновить контакты',
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () => _loadPhoneContacts(store),
+                ),
+                IconButton.filled(
+                  tooltip: 'Создать группу',
+                  icon: const Icon(Icons.group_add_outlined),
+                  onPressed: () => _openCreateGroupSheet(store),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: contacts.isEmpty
+                ? const Center(
+                    child: Text('Нет зарегистрированных контактов из телефона'),
+                  )
+                : ListView.separated(
+                    itemCount: contacts.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final contact = contacts[index];
+                      return ListTile(
+                        leading: const CircleAvatar(child: Icon(Icons.person)),
+                        title: Text(_contactLabel(contact)),
+                        subtitle: Text(contact.phone),
+                        trailing: IconButton(
+                          tooltip: 'Добавить в семью',
+                          icon: const Icon(Icons.family_restroom_outlined),
+                          onPressed: () => _addContactToFamily(store, contact),
+                        ),
+                        onTap: () => _openDirectContact(store, contact),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       children: [
         SizedBox(
@@ -1247,6 +1584,16 @@ class _HomePageState extends State<HomePage> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ActionChip(
+                  avatar: const Icon(Icons.arrow_back, size: 18),
+                  label: const Text('Контакты'),
+                  onPressed: () {
+                    setState(() => _activeConversationKey = '');
+                  },
+                ),
+              ),
               for (final conversation in conversations)
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
@@ -1272,6 +1619,7 @@ class _HomePageState extends State<HomePage> {
             stickerAssetFor: _chatStickerAssetUrl,
             imageUrlFor: _chatImageUrl,
             onLongPress: (message) => _openMessageActions(store, message),
+            onImageTap: _openPhotoViewer,
           ),
         ),
         Padding(
@@ -1309,7 +1657,19 @@ class _HomePageState extends State<HomePage> {
                   IconButton(
                     tooltip: 'Вложение',
                     icon: const Icon(Icons.attach_file),
-                    onPressed: () => _sendImageSticker(store),
+                    onPressed: () => _sendPhotos(
+                      store,
+                      source: ImageSource.gallery,
+                      allowMultiple: true,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Камера',
+                    icon: const Icon(Icons.photo_camera_outlined),
+                    onPressed: () => _sendPhotos(
+                      store,
+                      source: ImageSource.camera,
+                    ),
                   ),
                   Expanded(
                     child: TextField(
@@ -1364,17 +1724,32 @@ class _HomePageState extends State<HomePage> {
       orElse: () => '',
     );
     if (peer.isNotEmpty) {
-      return profileLabel(peer);
+      return _profileLabel(peer);
     }
 
-    final fromContacts = _chatContacts.firstWhere(
-      (item) => item['conversation_key'] == conversation.conversationKey,
-      orElse: () => const {'profile_key': ''},
-    )['profile_key'];
-    if ((fromContacts ?? '').isNotEmpty) {
-      return profileLabel(fromContacts!);
+    final fromContacts = _chatContacts
+        .where((item) => item.conversationKey == conversation.conversationKey)
+        .toList();
+    if (fromContacts.isNotEmpty) {
+      return _contactLabel(fromContacts.first);
     }
     return conversation.conversationKey;
+  }
+
+  String _contactLabel(ChatContact contact) {
+    if (contact.displayName.trim().isNotEmpty) {
+      return contact.displayName.trim();
+    }
+    return _profileLabel(contact.profileKey);
+  }
+
+  String _profileLabel(String profile) {
+    for (final contact in [..._chatContacts, ..._phoneContacts, ..._familyMembers]) {
+      if (contact.profileKey == profile && contact.displayName.trim().isNotEmpty) {
+        return contact.displayName.trim();
+      }
+    }
+    return profileLabel(profile);
   }
 
   String _chatMessageText(ChatMessage message) {
@@ -1395,7 +1770,7 @@ class _HomePageState extends State<HomePage> {
       }
       return '🙂';
     }
-    if (message.messageType == 'image') {
+    if (message.messageType == 'image' || message.messageType == 'image_group') {
       return 'Изображение';
     }
     return message.text;
@@ -1424,6 +1799,58 @@ class _HomePageState extends State<HomePage> {
       return '';
     }
     return _absoluteAssetUrl(message.imageUrl ?? '');
+  }
+
+  void _openPhotoViewer(ChatMessage message, int initialIndex) {
+    final urls = _messageImageUrls(message);
+    if (urls.isEmpty) {
+      return;
+    }
+    final controller = PageController(initialPage: initialIndex);
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog.fullscreen(
+          backgroundColor: Colors.black,
+          child: Stack(
+            children: [
+              PageView.builder(
+                controller: controller,
+                itemCount: urls.length,
+                itemBuilder: (context, index) {
+                  return InteractiveViewer(
+                    child: Center(
+                      child: Image.network(urls[index], fit: BoxFit.contain),
+                    ),
+                  );
+                },
+              ),
+              Positioned(
+                top: 24,
+                right: 12,
+                child: IconButton.filled(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  List<String> _messageImageUrls(ChatMessage message) {
+    final attachments = message.attachments
+        .where((item) => item.kind == 'image' && item.assetUrl.isNotEmpty)
+        .map((item) => _absoluteAssetUrl(item.assetUrl))
+        .where((item) => item.isNotEmpty)
+        .toList();
+    if (attachments.isNotEmpty) {
+      return attachments;
+    }
+    final single = _chatImageUrl(message);
+    return single.isEmpty ? const [] : [single];
   }
 
   Widget _stickerPreview(StickerItem item) {
@@ -1474,6 +1901,9 @@ class _HomePageState extends State<HomePage> {
           left.text != right.text ||
           left.imageUrl != right.imageUrl ||
           left.stickerId != right.stickerId ||
+          left.attachments.length != right.attachments.length ||
+          left.reactions.length != right.reactions.length ||
+          left.myReaction != right.myReaction ||
           left.editedAt != right.editedAt ||
           left.deletedAt != right.deletedAt) {
         return false;
@@ -1658,9 +2088,20 @@ class _HomePageState extends State<HomePage> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: _profiles.map((profile) {
+                        children: (_familyMembers.isEmpty
+                                ? [
+                                    ChatContact(
+                                      profileKey: store.owner.value,
+                                      displayName: _profileLabel(store.owner.value),
+                                      phone: '',
+                                      conversationKey: '',
+                                    )
+                                  ]
+                                : _familyMembers)
+                            .map((member) {
+                          final profile = member.profileKey;
                           return FilterChip(
-                            label: Text(profileLabel(profile)),
+                            label: Text(_contactLabel(member)),
                             selected: selectedAssignees.contains(profile),
                             onSelected: (selected) {
                               setModalState(() {
@@ -1870,33 +2311,6 @@ class _HomePageState extends State<HomePage> {
                             icon: const Icon(Icons.undo),
                           );
                         },
-                      ),
-                      PopupMenuButton<String>(
-                        initialValue: owner,
-                        onSelected: (value) async =>
-                            _switchProfile(store, value),
-                        itemBuilder: (context) => _profiles
-                            .map(
-                              (profile) => PopupMenuItem<String>(
-                                value: profile,
-                                child: Text(profileLabel(profile)),
-                              ),
-                            )
-                            .toList(),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
-                          child: Center(
-                            child: Text(
-                              profileLabel(owner),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
                       ),
                       IconButton(
                         tooltip: 'FCM диагностика',
@@ -2141,6 +2555,7 @@ class _ChatMessagesList extends StatefulWidget {
     required this.stickerAssetFor,
     required this.imageUrlFor,
     required this.onLongPress,
+    required this.onImageTap,
   });
 
   final List<ChatMessage> messages;
@@ -2150,6 +2565,7 @@ class _ChatMessagesList extends StatefulWidget {
   final String Function(ChatMessage message) stickerAssetFor;
   final String Function(ChatMessage message) imageUrlFor;
   final void Function(ChatMessage message) onLongPress;
+  final void Function(ChatMessage message, int index) onImageTap;
 
   @override
   State<_ChatMessagesList> createState() => _ChatMessagesListState();
@@ -2184,11 +2600,20 @@ class _ChatMessagesListState extends State<_ChatMessagesList> {
     if (!_controller.hasClients) {
       return;
     }
-    _controller.animateTo(
-      _controller.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
-    );
+    void jump() {
+      if (!_controller.hasClients) {
+        return;
+      }
+      _controller.animateTo(
+        _controller.position.maxScrollExtent + 96,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+    }
+
+    jump();
+    Future<void>.delayed(const Duration(milliseconds: 300), jump);
+    Future<void>.delayed(const Duration(milliseconds: 900), jump);
   }
 
   @override
@@ -2209,6 +2634,7 @@ class _ChatMessagesListState extends State<_ChatMessagesList> {
           stickerAssetUrl: widget.stickerAssetFor(message),
           imageUrl: widget.imageUrlFor(message),
           onLongPress: () => widget.onLongPress(message),
+          onImageTap: (index) => widget.onImageTap(message, index),
         );
       },
     );
@@ -2225,6 +2651,7 @@ class _ChatMessageBubble extends StatelessWidget {
     required this.stickerAssetUrl,
     required this.imageUrl,
     required this.onLongPress,
+    required this.onImageTap,
   });
 
   final ChatMessage message;
@@ -2234,6 +2661,7 @@ class _ChatMessageBubble extends StatelessWidget {
   final String stickerAssetUrl;
   final String imageUrl;
   final VoidCallback onLongPress;
+  final void Function(int index) onImageTap;
 
   @override
   Widget build(BuildContext context) {
@@ -2302,22 +2730,91 @@ class _ChatMessageBubble extends StatelessWidget {
       return Text(text, style: const TextStyle(fontSize: 34));
     }
     if (message.messageType == 'image' && imageUrl.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.network(
-          imageUrl,
-          fit: BoxFit.cover,
-          width: compact ? 260 : 420,
-          errorBuilder: (context, error, stackTrace) {
-            return SelectableText(
-              imageUrl,
-              style: const TextStyle(decoration: TextDecoration.underline),
-            );
-          },
-        ),
+      final urls = message.attachments.isNotEmpty
+          ? message.attachments
+              .where((item) => item.kind == 'image')
+              .map((item) => item.assetUrl)
+              .where((item) => item.isNotEmpty)
+              .toList()
+          : [imageUrl];
+      return Wrap(
+        spacing: 4,
+        runSpacing: 4,
+        children: [
+          for (var i = 0; i < urls.length; i++)
+            GestureDetector(
+              onTap: () => onImageTap(i),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  _bubbleAssetUrl(urls[i]),
+                  fit: BoxFit.cover,
+                  width: urls.length == 1 ? (compact ? 260 : 420) : 132,
+                  height: urls.length == 1 ? null : 132,
+                  errorBuilder: (context, error, stackTrace) {
+                    return SelectableText(
+                      urls[i],
+                      style: const TextStyle(decoration: TextDecoration.underline),
+                    );
+                  },
+                ),
+              ),
+            ),
+        ],
+      );
+    }
+    if (message.messageType == 'image_group' && message.attachments.isNotEmpty) {
+      return Wrap(
+        spacing: 4,
+        runSpacing: 4,
+        children: [
+          for (var i = 0; i < message.attachments.length; i++)
+            GestureDetector(
+              onTap: () => onImageTap(i),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  _bubbleAssetUrl(message.attachments[i].assetUrl),
+                  fit: BoxFit.cover,
+                  width: 132,
+                  height: 132,
+                ),
+              ),
+            ),
+        ],
+      );
+    }
+    if (message.reactions.isNotEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(text),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 4,
+            children: [
+              for (final reaction in message.reactions)
+                Chip(
+                  visualDensity: VisualDensity.compact,
+                  label: Text('${reaction.reaction} ${reaction.count}'),
+                ),
+            ],
+          ),
+        ],
       );
     }
     return Text(text);
+  }
+
+  String _bubbleAssetUrl(String raw) {
+    final value = raw.trim();
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
+    if (value.startsWith('/')) {
+      return 'http://31.129.97.211$value';
+    }
+    return value;
   }
 
   String _messageFooter() {

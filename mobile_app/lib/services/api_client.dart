@@ -30,10 +30,26 @@ class ChatBootstrapSnapshot {
     required this.stickerPacks,
   });
 
-  final List<Map<String, String>> contacts;
+  final List<ChatContact> contacts;
   final String groupConversationKey;
   final List<ChatConversation> conversations;
   final List<StickerPack> stickerPacks;
+}
+
+class PhoneProfileSession {
+  PhoneProfileSession({
+    required this.profileKey,
+    required this.phone,
+    required this.displayName,
+    required this.deviceId,
+    required this.familyMembers,
+  });
+
+  final String profileKey;
+  final String phone;
+  final String displayName;
+  final String deviceId;
+  final List<ChatContact> familyMembers;
 }
 
 class ChatMessagesSnapshot {
@@ -297,10 +313,7 @@ class ApiClient {
 
     final contacts = (body['contacts'] as List? ?? const [])
         .whereType<Map>()
-        .map((row) => {
-              'profile_key': (row['profile_key'] ?? '').toString(),
-              'conversation_key': (row['conversation_key'] ?? '').toString(),
-            })
+        .map((row) => ChatContact.fromJson(Map<String, dynamic>.from(row)))
         .toList();
 
     final conversations = (body['conversations'] as List? ?? const [])
@@ -321,6 +334,79 @@ class ApiClient {
       conversations: conversations,
       stickerPacks: packs,
     );
+  }
+
+  Future<PhoneProfileSession> deviceStart({
+    required String phone,
+    required String deviceId,
+    String displayName = '',
+  }) async {
+    final response = await _postWithFallback(
+      paths: const ['/auth/device-start'],
+      body: jsonEncode({
+        'phone': phone,
+        'device_id': deviceId,
+        'display_name': displayName,
+        'platform': 'android',
+      }),
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final user = Map<String, dynamic>.from((body['user'] as Map?) ?? const {});
+    final members = (body['family_members'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => ChatContact.fromJson(Map<String, dynamic>.from(row)))
+        .toList();
+    return PhoneProfileSession(
+      profileKey: (user['profile_key'] ?? '').toString(),
+      phone: (user['phone'] ?? '').toString(),
+      displayName: (user['display_name'] ?? '').toString(),
+      deviceId: (user['device_id'] ?? deviceId).toString(),
+      familyMembers: members,
+    );
+  }
+
+  Future<List<ChatContact>> resolveContacts({
+    required String actorProfile,
+    required List<String> phones,
+  }) async {
+    final response = await _postWithFallback(
+      paths: const ['/contacts/resolve'],
+      body: jsonEncode({'actor_profile': actorProfile, 'phones': phones}),
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return (body['contacts'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => ChatContact.fromJson(Map<String, dynamic>.from(row)))
+        .toList();
+  }
+
+  Future<List<ChatContact>> familyMembers({
+    required String actorProfile,
+  }) async {
+    final response = await _getWithFallback(
+      paths: const ['/family/members'],
+      query: {'actor_profile': actorProfile},
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return (body['members'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => ChatContact.fromJson(Map<String, dynamic>.from(row)))
+        .toList();
+  }
+
+  Future<List<ChatContact>> addFamilyMembers({
+    required String actorProfile,
+    required List<String> profiles,
+  }) async {
+    final response = await _postWithFallback(
+      paths: const ['/family/members/add'],
+      body: jsonEncode({'actor_profile': actorProfile, 'profiles': profiles}),
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return (body['members'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => ChatContact.fromJson(Map<String, dynamic>.from(row)))
+        .toList();
   }
 
   Future<ChatMessagesSnapshot> chatFetchMessages({
@@ -361,6 +447,7 @@ class ApiClient {
     String? stickerId,
     String? imageUrl,
     Map<String, dynamic>? imageMeta,
+    List<ChatAttachment> attachments = const [],
     String? clientMessageId,
   }) async {
     final payload = {
@@ -371,6 +458,8 @@ class ApiClient {
       if (stickerId != null && stickerId.isNotEmpty) 'sticker_id': stickerId,
       if (imageUrl != null && imageUrl.isNotEmpty) 'image_url': imageUrl,
       if (imageMeta != null) 'image_meta': imageMeta,
+      if (attachments.isNotEmpty)
+        'attachments': attachments.map((item) => item.toJson()).toList(),
       if (clientMessageId != null && clientMessageId.isNotEmpty)
         'client_message_id': clientMessageId,
     };
@@ -378,6 +467,44 @@ class ApiClient {
     final response = await _postWithFallback(
       paths: const ['/chat/messages/send'],
       body: jsonEncode(payload),
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return ChatMessage.fromJson(
+      Map<String, dynamic>.from((body['message'] as Map?) ?? const {}),
+    );
+  }
+
+  Future<ChatConversation> chatCreateGroup({
+    required String actorProfile,
+    required String title,
+    required List<String> memberProfiles,
+  }) async {
+    final response = await _postWithFallback(
+      paths: const ['/chat/conversations'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'title': title,
+        'member_profiles': memberProfiles,
+      }),
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return ChatConversation.fromJson(
+      Map<String, dynamic>.from((body['conversation'] as Map?) ?? const {}),
+    );
+  }
+
+  Future<ChatMessage> chatSetReaction({
+    required String actorProfile,
+    required String messageId,
+    required String reaction,
+  }) async {
+    final response = await _postWithFallback(
+      paths: const ['/chat/messages/reaction'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'message_id': messageId,
+        'reaction': reaction,
+      }),
     );
     final body = jsonDecode(response.body) as Map<String, dynamic>;
     return ChatMessage.fromJson(

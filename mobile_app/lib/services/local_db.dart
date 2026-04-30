@@ -24,7 +24,7 @@ class LocalDb {
     final dbPath = p.join(basePath, 'family_todo_mobile.db');
     final db = await openDatabase(
       dbPath,
-      version: 4,
+      version: 5,
       onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE tasks(
@@ -74,6 +74,23 @@ class LocalDb {
         if (oldVersion < 4) {
           await _addColumnIfMissing(db, 'chat_messages', 'edited_at', 'TEXT');
           await _addColumnIfMissing(db, 'chat_messages', 'deleted_at', 'TEXT');
+        }
+        if (oldVersion < 5) {
+          await _addColumnIfMissing(
+            db,
+            'chat_messages',
+            'attachments_json',
+            "TEXT NOT NULL DEFAULT '[]'",
+          );
+          await _addColumnIfMissing(
+            db,
+            'chat_messages',
+            'reactions_json',
+            "TEXT NOT NULL DEFAULT '[]'",
+          );
+          await _addColumnIfMissing(db, 'chat_messages', 'my_reaction', 'TEXT');
+          await db.delete('chat_messages');
+          await db.delete('chat_conversations');
         }
       },
     );
@@ -297,6 +314,11 @@ class LocalDb {
             'sticker_id': item.stickerId,
             'image_url': item.imageUrl,
             'image_meta_json': jsonEncode(item.imageMeta),
+            'attachments_json':
+                jsonEncode(item.attachments.map((a) => a.toJson()).toList()),
+            'reactions_json':
+                jsonEncode(item.reactions.map((r) => r.toJson()).toList()),
+            'my_reaction': item.myReaction,
             'client_message_id': item.clientMessageId,
             'created_at': item.createdAt,
             'edited_at': item.editedAt,
@@ -323,6 +345,10 @@ class LocalDb {
       final payload = Map<String, dynamic>.from(row);
       payload['image_meta'] =
           _decodeMap((row['image_meta_json'] ?? '').toString());
+      payload['attachments'] =
+          _decodeDynamicList(row['attachments_json'] ?? '[]');
+      payload['reactions'] = _decodeDynamicList(row['reactions_json'] ?? '[]');
+      payload['my_reaction'] = row['my_reaction'];
       return ChatMessage.fromJson(payload);
     }).toList();
   }
@@ -418,6 +444,9 @@ class LocalDb {
         sticker_id TEXT,
         image_url TEXT,
         image_meta_json TEXT NOT NULL DEFAULT '{}',
+        attachments_json TEXT NOT NULL DEFAULT '[]',
+        reactions_json TEXT NOT NULL DEFAULT '[]',
+        my_reaction TEXT,
         client_message_id TEXT,
         created_at TEXT NOT NULL,
         edited_at TEXT,
@@ -488,5 +517,16 @@ class LocalDb {
       return const {};
     }
     return decoded.cast<String, dynamic>();
+  }
+
+  static List<dynamic> _decodeDynamicList(Object? raw) {
+    if (raw == null || raw.toString().isEmpty) {
+      return const [];
+    }
+    final decoded = jsonDecode(raw.toString());
+    if (decoded is! List) {
+      return const [];
+    }
+    return decoded;
   }
 }

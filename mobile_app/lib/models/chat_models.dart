@@ -34,6 +34,78 @@ class ChatConversation {
   }
 }
 
+class ChatContact {
+  ChatContact({
+    required this.profileKey,
+    required this.displayName,
+    required this.phone,
+    required this.conversationKey,
+  });
+
+  final String profileKey;
+  final String displayName;
+  final String phone;
+  final String conversationKey;
+
+  factory ChatContact.fromJson(Map<String, dynamic> json) {
+    return ChatContact(
+      profileKey: (json['profile_key'] ?? '').toString(),
+      displayName: (json['display_name'] ?? '').toString(),
+      phone: (json['phone'] ?? '').toString(),
+      conversationKey: (json['conversation_key'] ?? '').toString(),
+    );
+  }
+}
+
+class ChatAttachment {
+  ChatAttachment({
+    required this.kind,
+    required this.assetUrl,
+    required this.imageMeta,
+    required this.sortOrder,
+  });
+
+  final String kind;
+  final String assetUrl;
+  final Map<String, dynamic> imageMeta;
+  final int sortOrder;
+
+  factory ChatAttachment.fromJson(Map<String, dynamic> json) {
+    return ChatAttachment(
+      kind: (json['kind'] ?? 'image').toString(),
+      assetUrl: (json['asset_url'] ?? json['image_url'] ?? '').toString(),
+      imageMeta:
+          (json['image_meta'] as Map?)?.cast<String, dynamic>() ?? const {},
+      sortOrder: int.tryParse((json['sort_order'] ?? 0).toString()) ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'kind': kind,
+      'asset_url': assetUrl,
+      'image_meta': imageMeta,
+      'sort_order': sortOrder,
+    };
+  }
+}
+
+class ChatReaction {
+  ChatReaction({required this.reaction, required this.count});
+
+  final String reaction;
+  final int count;
+
+  factory ChatReaction.fromJson(Map<String, dynamic> json) {
+    return ChatReaction(
+      reaction: (json['reaction'] ?? '').toString(),
+      count: int.tryParse((json['count'] ?? 0).toString()) ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {'reaction': reaction, 'count': count};
+}
+
 class ChatMessage {
   ChatMessage({
     required this.id,
@@ -45,6 +117,9 @@ class ChatMessage {
     this.stickerId,
     this.imageUrl,
     this.imageMeta = const {},
+    this.attachments = const [],
+    this.reactions = const [],
+    this.myReaction,
     this.clientMessageId,
     this.editedAt,
     this.deletedAt,
@@ -59,6 +134,9 @@ class ChatMessage {
   final String? stickerId;
   final String? imageUrl;
   final Map<String, dynamic> imageMeta;
+  final List<ChatAttachment> attachments;
+  final List<ChatReaction> reactions;
+  final String? myReaction;
   final String? clientMessageId;
   final String? editedAt;
   final String? deletedAt;
@@ -70,6 +148,14 @@ class ChatMessage {
     final imageMeta = rawImageMeta is Map
         ? Map<String, dynamic>.from(rawImageMeta)
         : const <String, dynamic>{};
+    final attachments = (json['attachments'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => ChatAttachment.fromJson(Map<String, dynamic>.from(row)))
+        .toList();
+    final reactions = (json['reactions'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => ChatReaction.fromJson(Map<String, dynamic>.from(row)))
+        .toList();
     return ChatMessage(
       id: (json['id'] ?? '').toString(),
       conversationKey: (json['conversation_key'] ?? '').toString(),
@@ -80,6 +166,9 @@ class ChatMessage {
       stickerId: json['sticker_id']?.toString(),
       imageUrl: json['image_url']?.toString(),
       imageMeta: imageMeta,
+      attachments: attachments,
+      reactions: reactions,
+      myReaction: json['my_reaction']?.toString(),
       clientMessageId: json['client_message_id']?.toString(),
       editedAt: json['edited_at']?.toString(),
       deletedAt: json['deleted_at']?.toString(),
@@ -96,6 +185,9 @@ class ChatMessage {
       'sticker_id': stickerId,
       'image_url': imageUrl,
       'image_meta': imageMeta,
+      'attachments': attachments.map((item) => item.toJson()).toList(),
+      'reactions': reactions.map((item) => item.toJson()).toList(),
+      'my_reaction': myReaction,
       'client_message_id': clientMessageId,
       'created_at': createdAt,
       'edited_at': editedAt,

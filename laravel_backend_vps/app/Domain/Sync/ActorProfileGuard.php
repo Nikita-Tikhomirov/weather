@@ -2,13 +2,20 @@
 
 namespace App\Domain\Sync;
 
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 final class ActorProfileGuard
 {
     public static function ensureAllowed(string $actor): string
     {
-        $profile = SyncRules::ensureActor($actor);
+        $profile = trim($actor);
+        if ($profile === '') {
+            throw new InvalidArgumentException('Unknown actor_profile');
+        }
+        if (!Profiles::isAllowed($profile) && !self::dynamicProfileExists($profile)) {
+            throw new InvalidArgumentException('Unknown actor_profile');
+        }
         $locked = trim((string) config('sync.locked_actor_profile', ''));
         if ($locked === '') {
             return $profile;
@@ -21,5 +28,14 @@ final class ActorProfileGuard
         }
 
         return $profile;
+    }
+
+    private static function dynamicProfileExists(string $profile): bool
+    {
+        try {
+            return DB::table('messenger_users')->where('profile_key', $profile)->exists();
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }

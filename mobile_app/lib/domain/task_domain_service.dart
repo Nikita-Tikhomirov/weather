@@ -28,7 +28,7 @@ class TaskDomainService {
     if (draft.title.trim().isEmpty) {
       return 'Укажите название задачи.';
     }
-    if (draft.isFamily && !adults.contains(actorProfile)) {
+    if (draft.isFamily && actorProfile.isEmpty && !adults.contains(actorProfile)) {
       return 'Семейные задачи можно создавать только из профиля Ник/Настя.';
     }
     if (draft.isFamily && draft.assignees.isEmpty) {
