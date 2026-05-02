@@ -22,11 +22,14 @@ final class PhoneProfileRepository
             ->first();
 
         if ($existing !== null) {
-            if ((string)$existing->primary_device_id !== $normalizedDevice) {
+            $currentDevice = (string)$existing->primary_device_id;
+            $rebindPending = str_starts_with($currentDevice, 'rebind-pending:');
+            if ($currentDevice !== $normalizedDevice && !$rebindPending) {
                 throw new InvalidArgumentException('Phone is already linked to another device');
             }
             DB::table('messenger_users')->where('id', (int)$existing->id)->update([
                 'display_name' => trim($displayName) !== '' ? trim($displayName) : (string)$existing->display_name,
+                'primary_device_id' => $normalizedDevice,
                 'updated_at' => $now,
             ]);
             DB::table('messenger_devices')->updateOrInsert(
@@ -152,6 +155,33 @@ final class PhoneProfileRepository
     public function profileExists(string $profileKey): bool
     {
         return DB::table('messenger_users')->where('profile_key', trim($profileKey))->exists();
+    }
+
+    public function markDeviceRebindPending(string $phone): array
+    {
+        $normalizedPhone = $this->normalizePhone($phone);
+        $existing = DB::table('messenger_users')
+            ->where('phone_normalized', $normalizedPhone)
+            ->first();
+        if ($existing === null) {
+            throw new InvalidArgumentException('Phone profile not found');
+        }
+
+        $marker = 'rebind-pending:'.now()->format('YmdHis');
+        DB::table('messenger_users')
+            ->where('id', (int)$existing->id)
+            ->update([
+                'primary_device_id' => $marker,
+                'updated_at' => $this->nowIso(),
+            ]);
+        DB::table('messenger_devices')->where('user_id', (int)$existing->id)->delete();
+
+        return [
+            'profile_key' => (string)$existing->profile_key,
+            'phone' => (string)$existing->phone_normalized,
+            'previous_device_id' => (string)$existing->primary_device_id,
+            'rebind_marker' => $marker,
+        ];
     }
 
     public function normalizePhone(string $phone): string

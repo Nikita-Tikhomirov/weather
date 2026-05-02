@@ -65,6 +65,42 @@ class PhoneProfileMessengerTest extends TestCase
     }
 
     #[Test]
+    public function admin_rebind_marker_allows_existing_phone_on_new_device_once(): void
+    {
+        $first = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 999 111 22 33',
+                'device_id' => 'device-a',
+                'display_name' => 'Nikita',
+            ])
+            ->assertStatus(200)
+            ->json('user.profile_key');
+
+        $this->artisan('profile:reset-device', ['phone' => '+7 999 111 22 33'])
+            ->assertSuccessful();
+
+        $second = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 999 111 22 33',
+                'device_id' => 'device-b',
+                'display_name' => 'Nikita',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('user.device_id', 'device-b')
+            ->json('user.profile_key');
+
+        $this->assertSame($first, $second);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 999 111 22 33',
+                'device_id' => 'device-c',
+                'display_name' => 'Other',
+            ])
+            ->assertStatus(400);
+    }
+
+    #[Test]
     public function contacts_resolve_returns_only_registered_phone_contacts(): void
     {
         $nik = $this->withHeaders(['X-Api-Key' => 'prod-key'])
