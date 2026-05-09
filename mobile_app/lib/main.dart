@@ -757,6 +757,7 @@ class _HomePageState extends State<HomePage> {
           return;
         }
         await _safeSyncDelta(store, showErrors: false);
+        store.setPage(4); // Switch to Messenger tab
         await _refreshActiveConversation(store, useNetwork: true, quiet: true);
       },
     );
@@ -1384,6 +1385,37 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
+    // Optional photo caption
+    String caption = '';
+    if (mounted) {
+      final captionCtl = TextEditingController();
+      final result = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Подпись к фото'),
+          content: TextField(
+            controller: captionCtl,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: 'Добавить подпись (необязательно)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, ''),
+              child: const Text('Пропустить'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, captionCtl.text.trim()),
+              child: const Text('Готово'),
+            ),
+          ],
+        ),
+      );
+      if (result != null) caption = result;
+    }
+
     final actor = store.owner.value;
     final api = store.repository.api;
     final db = store.repository.db;
@@ -1410,8 +1442,9 @@ class _HomePageState extends State<HomePage> {
         actorProfile: actor,
         conversationKey: conversationKey,
         messageType: attachments.length == 1 ? 'image' : 'image_group',
-        imageUrl: attachments.length == 1 ? attachments.first.assetUrl : null,
-        imageMeta: attachments.length == 1 ? attachments.first.imageMeta : null,
+        text: caption,
+        imageUrl: null,
+        imageMeta: null,
         attachments: attachments,
         clientMessageId: 'img-${DateTime.now().microsecondsSinceEpoch}',
       );
@@ -1676,8 +1709,10 @@ class _HomePageState extends State<HomePage> {
                       controller: _chatInputCtl,
                       minLines: 1,
                       maxLines: 4,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendTextMessage(store),
+                      textInputAction: TextInputAction.newline,
+                      onSubmitted: _editingMessageId != null
+                          ? (_) => _sendTextMessage(store)
+                          : null,
                       decoration: InputDecoration(
                         hintText: _editingMessageId == null
                             ? 'Сообщение'
