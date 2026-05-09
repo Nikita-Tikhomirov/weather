@@ -1185,6 +1185,111 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _shareMessage(TaskStore store, ChatMessage message) async {
+    if (message.isDeleted) return;
+    final allContacts = _allKnownContacts(store);
+    // Build list of unique contacts excluding self
+    final targets = allContacts
+        .where((c) => c.profileKey != store.owner.value)
+        .toList();
+    if (targets.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Нет контактов для пересылки')),
+        );
+      }
+      return;
+    }
+    final selected = await showDialog<ChatContact>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Поделиться с...'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: targets.length,
+            itemBuilder: (_, i) {
+              final contact = targets[i];
+              return ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.person)),
+                title: Text(_contactLabel(contact)),
+                subtitle: contact.phone.isNotEmpty ? Text(contact.phone) : null,
+                onTap: () => Navigator.pop(ctx, contact),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Отмена'),
+          ),
+        ],
+      ),
+    );
+    if (selected == null) return;
+    // Open conversation with selected contact and forward message
+    var conversationKey = selected.conversationKey;
+    if (conversationKey.isEmpty) {
+      final members = [store.owner.value, selected.profileKey]..sort();
+      conversationKey = 'dm:${members[0]}:${members[1]}';
+    }
+    try {
+      final api = store.repository.api;
+      // Send as forwarded message
+      String shareText = '';
+      if (message.messageType == 'text') {
+        shareText = '↪ ${message.text}';
+      } else if (message.messageType == 'sticker') {
+        await api.chatSendMessage(
+          actorProfile: store.owner.value,
+          conversationKey: conversationKey,
+          messageType: 'sticker',
+          stickerId: message.stickerId ?? '',
+          text: '↪ Стикер',
+        );
+      } else if (message.messageType == 'image' || message.messageType == 'image_group') {
+        final atts = message.attachments.isNotEmpty
+            ? message.attachments
+            : (message.imageUrl != null && message.imageUrl!.isNotEmpty
+                ? [ChatAttachment(kind: 'image', assetUrl: message.imageUrl!, imageMeta: message.imageMeta, sortOrder: 0)]
+                : const <ChatAttachment>[]);
+        if (atts.isNotEmpty) {
+          await api.chatSendMessage(
+            actorProfile: store.owner.value,
+            conversationKey: conversationKey,
+            messageType: atts.length == 1 ? 'image' : 'image_group',
+            attachments: atts,
+            text: message.text.isNotEmpty ? '↪ ${message.text}' : '↪ Фото',
+          );
+        }
+      }
+      if (shareText.isNotEmpty) {
+        await api.chatSendMessage(
+          actorProfile: store.owner.value,
+          conversationKey: conversationKey,
+          messageType: 'text',
+          text: shareText,
+        );
+      }
+      // Navigate to the conversation
+      setState(() => _activeConversationKey = conversationKey);
+      await _refreshConversation(store, conversationKey, useNetwork: true, quiet: true);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Переслано → ${_contactLabel(selected)}')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка пересылки: $error')),
+        );
+      }
+    }
+  }
+
   Future<void> _editChatMessage(ChatMessage message) async {
     setState(() {
       _editingMessageId = message.id;
@@ -1279,6 +1384,11 @@ class _HomePageState extends State<HomePage> {
                   onTap: () => Navigator.of(sheetContext).pop('edit'),
                 ),
               ListTile(
+                leading: const Icon(Icons.share_outlined),
+                title: const Text('Поделиться'),
+                onTap: () => Navigator.of(sheetContext).pop('share'),
+              ),
+              ListTile(
                 leading: const Icon(Icons.delete_outline),
                 title: const Text('Удалить'),
                 onTap: () => Navigator.of(sheetContext).pop('delete'),
@@ -1296,6 +1406,8 @@ class _HomePageState extends State<HomePage> {
       );
     } else if (action == 'edit') {
       await _editChatMessage(message);
+    } else if (action == 'share') {
+      await _shareMessage(store, message);
     } else if (action == 'delete') {
       await _deleteChatMessage(store, message);
     }
