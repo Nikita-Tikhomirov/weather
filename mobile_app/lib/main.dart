@@ -2780,6 +2780,7 @@ class _ChatMessagesList extends StatefulWidget {
     required this.imageUrlFor,
     required this.onLongPress,
     required this.onImageTap,
+    this.onVoiceToggle,
   });
 
   final List<ChatMessage> messages;
@@ -2880,6 +2881,7 @@ class _ChatMessageBubble extends StatelessWidget {
     required this.imageUrl,
     required this.onLongPress,
     required this.onImageTap,
+    this.onVoiceToggle,
   });
 
   final ChatMessage message;
