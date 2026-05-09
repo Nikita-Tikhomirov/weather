@@ -1771,6 +1771,29 @@ class _HomePageState extends State<HomePage> {
     return conversation.conversationKey;
   }
 
+  List<ChatContact> _allKnownContacts(TaskStore store) {
+    final seen = <String>{};
+    final result = <ChatContact>[];
+    final self = ChatContact(
+      profileKey: store.owner.value,
+      displayName: _profileLabel(store.owner.value),
+      phone: '',
+      conversationKey: '',
+    );
+    result.add(self);
+    seen.add(self.profileKey);
+    for (final m in _familyMembers) {
+      if (seen.add(m.profileKey)) result.add(m);
+    }
+    for (final c in _chatContacts) {
+      if (seen.add(c.profileKey)) result.add(c);
+    }
+    for (final c in _phoneContacts) {
+      if (seen.add(c.profileKey)) result.add(c);
+    }
+    return result;
+  }
+
   String _contactLabel(ChatContact contact) {
     if (contact.displayName.trim().isNotEmpty) {
       return contact.displayName.trim();
@@ -2123,16 +2146,7 @@ class _HomePageState extends State<HomePage> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: (_familyMembers.isEmpty
-                                ? [
-                                    ChatContact(
-                                      profileKey: store.owner.value,
-                                      displayName: _profileLabel(store.owner.value),
-                                      phone: '',
-                                      conversationKey: '',
-                                    )
-                                  ]
-                                : _familyMembers)
+                        children: _allKnownContacts(store))
                             .map((member) {
                           final profile = member.profileKey;
                           return FilterChip(
@@ -2732,6 +2746,8 @@ class _ChatMessageBubble extends StatelessWidget {
               const SizedBox(height: 4),
               _buildContent(deleted),
               const SizedBox(height: 4),
+              if (message.reactions.isNotEmpty) _buildReactionsRow(),
+              if (message.reactions.isNotEmpty) const SizedBox(height: 4),
               Text(
                 _messageFooter(),
                 style: const TextStyle(fontSize: 10, color: Colors.black45),
@@ -2763,6 +2779,14 @@ class _ChatMessageBubble extends StatelessWidget {
         );
       }
       return Text(text, style: const TextStyle(fontSize: 34));
+    }
+    if (message.messageType == 'image_group') {
+      final urls = message.attachments
+          .where((item) => item.kind == 'image' && item.assetUrl.isNotEmpty)
+          .map((item) => item.assetUrl)
+          .toList();
+      if (urls.isEmpty) return Text(text);
+      return _buildImageGrid(urls);
     }
     if (message.messageType == 'image' && imageUrl.isNotEmpty) {
       final urls = message.attachments.isNotEmpty
@@ -2841,6 +2865,34 @@ class _ChatMessageBubble extends StatelessWidget {
     return Text(text);
   }
 
+  Widget _buildImageGrid(List<String> urls) {
+    return Wrap(
+      spacing: 4,
+      runSpacing: 4,
+      children: [
+        for (var i = 0; i < urls.length; i++)
+          GestureDetector(
+            onTap: () => onImageTap(i),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                _bubbleAssetUrl(urls[i]),
+                fit: BoxFit.cover,
+                width: urls.length == 1 ? (compact ? 260 : 420) : (compact ? 120 : 160),
+                height: urls.length == 1 ? null : (compact ? 120 : 160),
+                errorBuilder: (context, error, stackTrace) {
+                  return SelectableText(
+                    urls[i],
+                    style: const TextStyle(decoration: TextDecoration.underline),
+                  );
+                },
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   String _bubbleAssetUrl(String raw) {
     final value = raw.trim();
     if (value.startsWith('http://') || value.startsWith('https://')) {
@@ -2850,6 +2902,35 @@ class _ChatMessageBubble extends StatelessWidget {
       return 'http://31.129.97.211$value';
     }
     return value;
+  }
+
+  Widget _buildReactionsRow() {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      children: message.reactions.map((reaction) {
+        final isMyReaction = message.myReaction == reaction.reaction;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: isMyReaction
+                ? const Color(0xFFDBEAFE)
+                : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(12),
+            border: isMyReaction
+                ? Border.all(color: const Color(0xFF3B82F6), width: 1)
+                : null,
+          ),
+          child: Text(
+            '${reaction.reaction} ${reaction.count}',
+            style: TextStyle(
+              fontSize: 13,
+              color: isMyReaction ? const Color(0xFF1D4ED8) : const Color(0xFF475569),
+            ),
+          ),
+        );
+      }).toList(),
+    );
   }
 
   String _messageFooter() {
