@@ -118,9 +118,6 @@ class _HomePageState extends State<HomePage> {
       <String, List<ChatMessage>>{};
   String _activeConversationKey = '';
 
-  // Voice recording (to be enabled after native setup)
-  bool _isRecording = false;
-
   bool get _isDesktopWindows =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
@@ -760,7 +757,6 @@ class _HomePageState extends State<HomePage> {
           return;
         }
         await _safeSyncDelta(store, showErrors: false);
-        store.setPage(4); // Switch to Messenger tab
         await _refreshActiveConversation(store, useNetwork: true, quiet: true);
       },
     );
@@ -1141,20 +1137,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _startVoiceRecord(TaskStore store) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Голосовые будут добавлены отдельно')),
-    );
-  }
-
-  Future<void> _stopVoiceRecord(TaskStore store) async {
-    // no-op
-  }
-
-  Future<void> _toggleVoicePlayback(ChatMessage message) async {
-    // no-op
-  }
-
   Future<void> _sendTextMessage(TaskStore store) async {
     final text = _chatInputCtl.text.trim();
     if (text.isEmpty) {
@@ -1402,39 +1384,6 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    // Ask for optional caption
-    String caption = '';
-    if (mounted) {
-      final captionCtl = TextEditingController();
-      final result = await showDialog<String>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Подпись к фото'),
-          content: TextField(
-            controller: captionCtl,
-            maxLines: 3,
-            decoration: const InputDecoration(
-              hintText: 'Добавить подпись (необязательно)',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, ''),
-              child: const Text('Пропустить'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, captionCtl.text.trim()),
-              child: const Text('Готово'),
-            ),
-          ],
-        ),
-      );
-      if (result != null) {
-        caption = result;
-      }
-    }
-
     final actor = store.owner.value;
     final api = store.repository.api;
     final db = store.repository.db;
@@ -1461,9 +1410,8 @@ class _HomePageState extends State<HomePage> {
         actorProfile: actor,
         conversationKey: conversationKey,
         messageType: attachments.length == 1 ? 'image' : 'image_group',
-        text: caption,
-        imageUrl: null,
-        imageMeta: null,
+        imageUrl: attachments.length == 1 ? attachments.first.assetUrl : null,
+        imageMeta: attachments.length == 1 ? attachments.first.imageMeta : null,
         attachments: attachments,
         clientMessageId: 'img-${DateTime.now().microsecondsSinceEpoch}',
       );
@@ -1728,10 +1676,8 @@ class _HomePageState extends State<HomePage> {
                       controller: _chatInputCtl,
                       minLines: 1,
                       maxLines: 4,
-                      textInputAction: TextInputAction.newline,
-                      onSubmitted: _editingMessageId != null
-                          ? (_) => _sendTextMessage(store)
-                          : null,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _sendTextMessage(store),
                       decoration: InputDecoration(
                         hintText: _editingMessageId == null
                             ? 'Сообщение'
@@ -1746,7 +1692,13 @@ class _HomePageState extends State<HomePage> {
                   IconButton(
                     tooltip: 'Голосовое',
                     icon: const Icon(Icons.mic_none),
-                    onPressed: () => _startVoiceRecord(store),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Голосовые будут добавлены отдельно'),
+                        ),
+                      );
+                    },
                   ),
                   IconButton.filled(
                     tooltip: 'Отправить',
@@ -1784,39 +1736,6 @@ class _HomePageState extends State<HomePage> {
     return conversation.conversationKey;
   }
 
-  List<ChatContact> _allKnownContacts(TaskStore store) {
-    final seen = <String>{};
-    final result = <ChatContact>[];
-    // Always include self
-    final self = ChatContact(
-      profileKey: store.owner.value,
-      displayName: _profileLabel(store.owner.value),
-      phone: '',
-      conversationKey: '',
-    );
-    result.add(self);
-    seen.add(self.profileKey);
-    // Add family members first
-    for (final m in _familyMembers) {
-      if (seen.add(m.profileKey)) {
-        result.add(m);
-      }
-    }
-    // Add chat contacts
-    for (final c in _chatContacts) {
-      if (seen.add(c.profileKey)) {
-        result.add(c);
-      }
-    }
-    // Add phone contacts
-    for (final c in _phoneContacts) {
-      if (seen.add(c.profileKey)) {
-        result.add(c);
-      }
-    }
-    return result;
-  }
-
   String _contactLabel(ChatContact contact) {
     if (contact.displayName.trim().isNotEmpty) {
       return contact.displayName.trim();
@@ -1852,8 +1771,7 @@ class _HomePageState extends State<HomePage> {
       return '🙂';
     }
     if (message.messageType == 'image' || message.messageType == 'image_group') {
-      final count = message.attachments.isNotEmpty ? message.attachments.length : 1;
-      return 'Изображение${count > 1 ? ' ($count)' : ''}';
+      return 'Изображение';
     }
     return message.text;
   }
@@ -2170,7 +2088,16 @@ class _HomePageState extends State<HomePage> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: _allKnownContacts(store))
+                        children: (_familyMembers.isEmpty
+                                ? [
+                                    ChatContact(
+                                      profileKey: store.owner.value,
+                                      displayName: _profileLabel(store.owner.value),
+                                      phone: '',
+                                      conversationKey: '',
+                                    )
+                                  ]
+                                : _familyMembers)
                             .map((member) {
                           final profile = member.profileKey;
                           return FilterChip(
@@ -2770,8 +2697,6 @@ class _ChatMessageBubble extends StatelessWidget {
               const SizedBox(height: 4),
               _buildContent(deleted),
               const SizedBox(height: 4),
-              if (message.reactions.isNotEmpty) _buildReactionsRow(),
-              if (message.reactions.isNotEmpty) const SizedBox(height: 4),
               Text(
                 _messageFooter(),
                 style: const TextStyle(fontSize: 10, color: Colors.black45),
@@ -2804,25 +2729,6 @@ class _ChatMessageBubble extends StatelessWidget {
       }
       return Text(text, style: const TextStyle(fontSize: 34));
     }
-    if (message.messageType == 'image_group') {
-      final urls = message.attachments
-          .where((item) => item.kind == 'image' && item.assetUrl.isNotEmpty)
-          .map((item) => item.assetUrl)
-          .toList();
-      if (urls.isEmpty) {
-        return Text(text);
-      }
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildImageGrid(urls),
-          if (message.text.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(message.text, style: const TextStyle(fontSize: 14)),
-          ],
-        ],
-      );
-    }
     if (message.messageType == 'image' && imageUrl.isNotEmpty) {
       final urls = message.attachments.isNotEmpty
           ? message.attachments
@@ -2831,38 +2737,29 @@ class _ChatMessageBubble extends StatelessWidget {
               .where((item) => item.isNotEmpty)
               .toList()
           : [imageUrl];
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      return Wrap(
+        spacing: 4,
+        runSpacing: 4,
         children: [
-          Wrap(
-            spacing: 4,
-            runSpacing: 4,
-            children: [
-              for (var i = 0; i < urls.length; i++)
-                GestureDetector(
-                  onTap: () => onImageTap(i),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      _bubbleAssetUrl(urls[i]),
-                      fit: BoxFit.cover,
-                      width: urls.length == 1 ? (compact ? 260 : 420) : 132,
-                      height: urls.length == 1 ? null : 132,
-                      errorBuilder: (context, error, stackTrace) {
-                        return SelectableText(
-                          urls[i],
-                          style: const TextStyle(decoration: TextDecoration.underline),
-                        );
-                      },
-                    ),
-                  ),
+          for (var i = 0; i < urls.length; i++)
+            GestureDetector(
+              onTap: () => onImageTap(i),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  _bubbleAssetUrl(urls[i]),
+                  fit: BoxFit.cover,
+                  width: urls.length == 1 ? (compact ? 260 : 420) : 132,
+                  height: urls.length == 1 ? null : 132,
+                  errorBuilder: (context, error, stackTrace) {
+                    return SelectableText(
+                      urls[i],
+                      style: const TextStyle(decoration: TextDecoration.underline),
+                    );
+                  },
                 ),
-            ],
-          ),
-          if (message.text.isNotEmpty && message.text != 'Изображение') ...[
-            const SizedBox(height: 4),
-            Text(message.text, style: const TextStyle(fontSize: 14)),
-          ],
+              ),
+            ),
         ],
       );
     }
@@ -2909,34 +2806,6 @@ class _ChatMessageBubble extends StatelessWidget {
     return Text(text);
   }
 
-  Widget _buildImageGrid(List<String> urls) {
-    return Wrap(
-      spacing: 4,
-      runSpacing: 4,
-      children: [
-        for (var i = 0; i < urls.length; i++)
-          GestureDetector(
-            onTap: () => onImageTap(i),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                _bubbleAssetUrl(urls[i]),
-                fit: BoxFit.cover,
-                width: urls.length == 1 ? (compact ? 260 : 420) : (compact ? 120 : 160),
-                height: urls.length == 1 ? null : (compact ? 120 : 160),
-                errorBuilder: (context, error, stackTrace) {
-                  return SelectableText(
-                    urls[i],
-                    style: const TextStyle(decoration: TextDecoration.underline),
-                  );
-                },
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
   String _bubbleAssetUrl(String raw) {
     final value = raw.trim();
     if (value.startsWith('http://') || value.startsWith('https://')) {
@@ -2946,35 +2815,6 @@ class _ChatMessageBubble extends StatelessWidget {
       return 'http://31.129.97.211$value';
     }
     return value;
-  }
-
-  Widget _buildReactionsRow() {
-    return Wrap(
-      spacing: 6,
-      runSpacing: 4,
-      children: message.reactions.map((reaction) {
-        final isMyReaction = message.myReaction == reaction.reaction;
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: isMyReaction
-                ? const Color(0xFFDBEAFE)
-                : const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(12),
-            border: isMyReaction
-                ? Border.all(color: const Color(0xFF3B82F6), width: 1)
-                : null,
-          ),
-          child: Text(
-            '${reaction.reaction} ${reaction.count}',
-            style: TextStyle(
-              fontSize: 13,
-              color: isMyReaction ? const Color(0xFF1D4ED8) : const Color(0xFF475569),
-            ),
-          ),
-        );
-      }).toList(),
-    );
   }
 
   String _messageFooter() {
