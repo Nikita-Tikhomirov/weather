@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:record/record.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'domain/task_draft.dart';
@@ -117,6 +119,18 @@ class _HomePageState extends State<HomePage> {
   final Map<String, List<ChatMessage>> _chatMessagesByConversation =
       <String, List<ChatMessage>>{};
   String _activeConversationKey = '';
+
+  // Voice recording state
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isRecording = false;
+  Duration _recordingDuration = Duration.zero;
+  Timer? _recordingTimer;
+  String? _playingMessageId;
+  bool _isPlaying = false;
+  Duration _playbackPosition = Duration.zero;
+  Duration _playbackDuration = Duration.zero;
+  Timer? _playbackTimer;
 
   bool get _isDesktopWindows =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
@@ -757,6 +771,7 @@ class _HomePageState extends State<HomePage> {
           return;
         }
         await _safeSyncDelta(store, showErrors: false);
+        store.setPage(4); // Switch to Messenger tab
         await _refreshActiveConversation(store, useNetwork: true, quiet: true);
       },
     );
@@ -1137,6 +1152,148 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _startVoiceRecord(TaskStore store) async {
+    if (_isRecording) return;
+    try {
+      final hasPermission = await _audioRecorder.hasPermission();
+      if (!hasPermission) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Нет разрешения на запись аудио')),
+          );
+        }
+        return;
+      }
+      final path =
+          '${Directory.systemTemp.path}/voice_${DateTime.now().microsecondsSinceEpoch}.m4a';
+      await _audioRecorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: path);
+      setState(() {
+        _isRecording = true;
+        _recordingDuration = Duration.zero;
+      });
+      _recordingTimer?.cancel();
+      _recordingTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+        if (_isRecording) {
+          setState(() {
+            _recordingDuration += const Duration(milliseconds: 100);
+          });
+        }
+      });
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка записи: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _stopVoiceRecord(TaskStore store) async {
+    if (!_isRecording) return;
+    _recordingTimer?.cancel();
+    final path = await _audioRecorder.stop();
+    setState(() => _isRecording = false);
+    if (path == null || _recordingDuration.inSeconds < 1) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Слишком короткая запись')),
+        );
+      }
+      return;
+    }
+    await _sendVoiceMessage(store, path, _recordingDuration);
+  }
+
+  Future<void> _sendVoiceMessage(
+    TaskStore store,
+    String filePath,
+    Duration duration,
+  ) async {
+    final actor = store.owner.value;
+    final api = store.repository.api;
+    final db = store.repository.db;
+    final conversationKey = _activeConversationKey;
+    try {
+      final file = File(filePath);
+      final bytes = await file.readAsBytes();
+      final uploaded = await api.chatUploadSticker(
+        actorProfile: actor,
+        bytes: bytes,
+        filename: 'voice_${DateTime.now().microsecondsSinceEpoch}.m4a',
+      );
+      final message = await api.chatSendMessage(
+        actorProfile: actor,
+        conversationKey: conversationKey,
+        messageType: 'voice',
+        imageUrl: uploaded.assetUrl,
+        imageMeta: {
+          ...uploaded.imageMeta,
+          'duration_ms': duration.inMilliseconds,
+        },
+        clientMessageId: 'voice-${DateTime.now().microsecondsSinceEpoch}',
+      );
+      await db.upsertMessages([message]);
+      await _refreshConversation(
+        store,
+        conversationKey,
+        useNetwork: true,
+        quiet: true,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка отправки голосового: $error')),
+      );
+    }
+  }
+
+  Future<void> _toggleVoicePlayback(ChatMessage message) async {
+    final url = _absoluteAssetUrl(message.imageUrl ?? '');
+    if (url.isEmpty) return;
+
+    if (_playingMessageId == message.id && _isPlaying) {
+      await _audioPlayer.pause();
+      setState(() => _isPlaying = false);
+      _playbackTimer?.cancel();
+      return;
+    }
+
+    if (_playingMessageId != message.id) {
+      await _audioPlayer.stop();
+      await _audioPlayer.play(UrlSource(url));
+      setState(() {
+        _playingMessageId = message.id;
+        _isPlaying = true;
+        _playbackPosition = Duration.zero;
+        _playbackDuration = Duration(
+          milliseconds: (message.imageMeta['duration_ms'] as int?) ?? 0,
+        );
+      });
+      _playbackTimer?.cancel();
+      _playbackTimer = Timer.periodic(const Duration(milliseconds: 100), (_) async {
+        if (!_isPlaying) return;
+        final pos = await _audioPlayer.getCurrentPosition();
+        final dur = await _audioPlayer.getDuration();
+        if (pos == null) return;
+        setState(() {
+          _playbackPosition = pos;
+          if (dur != null) _playbackDuration = dur;
+        });
+      });
+
+      _audioPlayer.onPlayerComplete.listen((_) {
+        setState(() {
+          _isPlaying = false;
+          _playbackPosition = Duration.zero;
+        });
+        _playbackTimer?.cancel();
+      });
+    } else {
+      await _audioPlayer.resume();
+      setState(() => _isPlaying = true);
+    }
+  }
+
   Future<void> _sendTextMessage(TaskStore store) async {
     final text = _chatInputCtl.text.trim();
     if (text.isEmpty) {
@@ -1384,6 +1541,39 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
+    // Ask for optional caption
+    String caption = '';
+    if (mounted) {
+      final captionCtl = TextEditingController();
+      final result = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Подпись к фото'),
+          content: TextField(
+            controller: captionCtl,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: 'Добавить подпись (необязательно)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, ''),
+              child: const Text('Пропустить'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, captionCtl.text.trim()),
+              child: const Text('Готово'),
+            ),
+          ],
+        ),
+      );
+      if (result != null) {
+        caption = result;
+      }
+    }
+
     final actor = store.owner.value;
     final api = store.repository.api;
     final db = store.repository.db;
@@ -1410,8 +1600,9 @@ class _HomePageState extends State<HomePage> {
         actorProfile: actor,
         conversationKey: conversationKey,
         messageType: attachments.length == 1 ? 'image' : 'image_group',
-        imageUrl: attachments.length == 1 ? attachments.first.assetUrl : null,
-        imageMeta: attachments.length == 1 ? attachments.first.imageMeta : null,
+        text: caption,
+        imageUrl: null,
+        imageMeta: null,
         attachments: attachments,
         clientMessageId: 'img-${DateTime.now().microsecondsSinceEpoch}',
       );
@@ -1620,6 +1811,7 @@ class _HomePageState extends State<HomePage> {
             imageUrlFor: _chatImageUrl,
             onLongPress: (message) => _openMessageActions(store, message),
             onImageTap: _openPhotoViewer,
+            onVoiceToggle: (message) => _toggleVoicePlayback(message),
           ),
         ),
         Padding(
@@ -1676,8 +1868,10 @@ class _HomePageState extends State<HomePage> {
                       controller: _chatInputCtl,
                       minLines: 1,
                       maxLines: 4,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendTextMessage(store),
+                      textInputAction: TextInputAction.newline,
+                      onSubmitted: _editingMessageId != null
+                          ? (_) => _sendTextMessage(store)
+                          : null,
                       decoration: InputDecoration(
                         hintText: _editingMessageId == null
                             ? 'Сообщение'
@@ -1689,16 +1883,21 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'Голосовое',
-                    icon: const Icon(Icons.mic_none),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Голосовые будут добавлены отдельно'),
-                        ),
-                      );
-                    },
+                  GestureDetector(
+                    onLongPressStart: (_) => _startVoiceRecord(store),
+                    onLongPressEnd: (_) => _stopVoiceRecord(store),
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: _isRecording ? Colors.red : const Color(0xFFE8EAED),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Icon(
+                        _isRecording ? Icons.mic : Icons.mic_none,
+                        color: _isRecording ? Colors.white : const Color(0xFF64748B),
+                      ),
+                    ),
                   ),
                   IconButton.filled(
                     tooltip: 'Отправить',
@@ -1736,6 +1935,39 @@ class _HomePageState extends State<HomePage> {
     return conversation.conversationKey;
   }
 
+  List<ChatContact> _allKnownContacts(TaskStore store) {
+    final seen = <String>{};
+    final result = <ChatContact>[];
+    // Always include self
+    final self = ChatContact(
+      profileKey: store.owner.value,
+      displayName: _profileLabel(store.owner.value),
+      phone: '',
+      conversationKey: '',
+    );
+    result.add(self);
+    seen.add(self.profileKey);
+    // Add family members first
+    for (final m in _familyMembers) {
+      if (seen.add(m.profileKey)) {
+        result.add(m);
+      }
+    }
+    // Add chat contacts
+    for (final c in _chatContacts) {
+      if (seen.add(c.profileKey)) {
+        result.add(c);
+      }
+    }
+    // Add phone contacts
+    for (final c in _phoneContacts) {
+      if (seen.add(c.profileKey)) {
+        result.add(c);
+      }
+    }
+    return result;
+  }
+
   String _contactLabel(ChatContact contact) {
     if (contact.displayName.trim().isNotEmpty) {
       return contact.displayName.trim();
@@ -1771,7 +2003,8 @@ class _HomePageState extends State<HomePage> {
       return '🙂';
     }
     if (message.messageType == 'image' || message.messageType == 'image_group') {
-      return 'Изображение';
+      final count = message.attachments.isNotEmpty ? message.attachments.length : 1;
+      return 'Изображение${count > 1 ? ' ($count)' : ''}';
     }
     return message.text;
   }
@@ -2088,16 +2321,7 @@ class _HomePageState extends State<HomePage> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: (_familyMembers.isEmpty
-                                ? [
-                                    ChatContact(
-                                      profileKey: store.owner.value,
-                                      displayName: _profileLabel(store.owner.value),
-                                      phone: '',
-                                      conversationKey: '',
-                                    )
-                                  ]
-                                : _familyMembers)
+                        children: _allKnownContacts(store))
                             .map((member) {
                           final profile = member.profileKey;
                           return FilterChip(
@@ -2566,6 +2790,7 @@ class _ChatMessagesList extends StatefulWidget {
   final String Function(ChatMessage message) imageUrlFor;
   final void Function(ChatMessage message) onLongPress;
   final void Function(ChatMessage message, int index) onImageTap;
+  final void Function(ChatMessage message)? onVoiceToggle;
 
   @override
   State<_ChatMessagesList> createState() => _ChatMessagesListState();
@@ -2635,6 +2860,9 @@ class _ChatMessagesListState extends State<_ChatMessagesList> {
           imageUrl: widget.imageUrlFor(message),
           onLongPress: () => widget.onLongPress(message),
           onImageTap: (index) => widget.onImageTap(message, index),
+          onVoiceToggle: widget.onVoiceToggle != null
+              ? () => widget.onVoiceToggle!(message)
+              : null,
         );
       },
     );
@@ -2662,6 +2890,7 @@ class _ChatMessageBubble extends StatelessWidget {
   final String imageUrl;
   final VoidCallback onLongPress;
   final void Function(int index) onImageTap;
+  final VoidCallback? onVoiceToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -2697,6 +2926,8 @@ class _ChatMessageBubble extends StatelessWidget {
               const SizedBox(height: 4),
               _buildContent(deleted),
               const SizedBox(height: 4),
+              if (message.reactions.isNotEmpty) _buildReactionsRow(),
+              if (message.reactions.isNotEmpty) const SizedBox(height: 4),
               Text(
                 _messageFooter(),
                 style: const TextStyle(fontSize: 10, color: Colors.black45),
@@ -2729,6 +2960,25 @@ class _ChatMessageBubble extends StatelessWidget {
       }
       return Text(text, style: const TextStyle(fontSize: 34));
     }
+    if (message.messageType == 'image_group') {
+      final urls = message.attachments
+          .where((item) => item.kind == 'image' && item.assetUrl.isNotEmpty)
+          .map((item) => item.assetUrl)
+          .toList();
+      if (urls.isEmpty) {
+        return Text(text);
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildImageGrid(urls),
+          if (message.text.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(message.text, style: const TextStyle(fontSize: 14)),
+          ],
+        ],
+      );
+    }
     if (message.messageType == 'image' && imageUrl.isNotEmpty) {
       final urls = message.attachments.isNotEmpty
           ? message.attachments
@@ -2737,29 +2987,38 @@ class _ChatMessageBubble extends StatelessWidget {
               .where((item) => item.isNotEmpty)
               .toList()
           : [imageUrl];
-      return Wrap(
-        spacing: 4,
-        runSpacing: 4,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (var i = 0; i < urls.length; i++)
-            GestureDetector(
-              onTap: () => onImageTap(i),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  _bubbleAssetUrl(urls[i]),
-                  fit: BoxFit.cover,
-                  width: urls.length == 1 ? (compact ? 260 : 420) : 132,
-                  height: urls.length == 1 ? null : 132,
-                  errorBuilder: (context, error, stackTrace) {
-                    return SelectableText(
-                      urls[i],
-                      style: const TextStyle(decoration: TextDecoration.underline),
-                    );
-                  },
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: [
+              for (var i = 0; i < urls.length; i++)
+                GestureDetector(
+                  onTap: () => onImageTap(i),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      _bubbleAssetUrl(urls[i]),
+                      fit: BoxFit.cover,
+                      width: urls.length == 1 ? (compact ? 260 : 420) : 132,
+                      height: urls.length == 1 ? null : 132,
+                      errorBuilder: (context, error, stackTrace) {
+                        return SelectableText(
+                          urls[i],
+                          style: const TextStyle(decoration: TextDecoration.underline),
+                        );
+                      },
+                    ),
+                  ),
                 ),
-              ),
-            ),
+            ],
+          ),
+          if (message.text.isNotEmpty && message.text != 'Изображение') ...[
+            const SizedBox(height: 4),
+            Text(message.text, style: const TextStyle(fontSize: 14)),
+          ],
         ],
       );
     }
@@ -2806,6 +3065,70 @@ class _ChatMessageBubble extends StatelessWidget {
     return Text(text);
   }
 
+  Widget _buildVoiceContent() {
+    final durationMs = (message.imageMeta['duration_ms'] as int?) ?? 0;
+    final total = Duration(milliseconds: durationMs);
+    final isCurrentPlaying =
+        onVoiceToggle != null; // simplified: parent manages state
+    return GestureDetector(
+      onTap: onVoiceToggle,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: mine ? const Color(0xFFDBEAFE) : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isCurrentPlaying ? Icons.pause : Icons.play_arrow,
+              size: 28,
+              color: mine ? const Color(0xFF1D4ED8) : const Color(0xFF475569),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${total.inMinutes}:${(total.inSeconds % 60).toString().padLeft(2, '0')}',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: mine ? const Color(0xFF1E3A8A) : const Color(0xFF334155),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageGrid(List<String> urls) {
+    return Wrap(
+      spacing: 4,
+      runSpacing: 4,
+      children: [
+        for (var i = 0; i < urls.length; i++)
+          GestureDetector(
+            onTap: () => onImageTap(i),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                _bubbleAssetUrl(urls[i]),
+                fit: BoxFit.cover,
+                width: urls.length == 1 ? (compact ? 260 : 420) : (compact ? 120 : 160),
+                height: urls.length == 1 ? null : (compact ? 120 : 160),
+                errorBuilder: (context, error, stackTrace) {
+                  return SelectableText(
+                    urls[i],
+                    style: const TextStyle(decoration: TextDecoration.underline),
+                  );
+                },
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   String _bubbleAssetUrl(String raw) {
     final value = raw.trim();
     if (value.startsWith('http://') || value.startsWith('https://')) {
@@ -2815,6 +3138,35 @@ class _ChatMessageBubble extends StatelessWidget {
       return 'http://31.129.97.211$value';
     }
     return value;
+  }
+
+  Widget _buildReactionsRow() {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      children: message.reactions.map((reaction) {
+        final isMyReaction = message.myReaction == reaction.reaction;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: isMyReaction
+                ? const Color(0xFFDBEAFE)
+                : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(12),
+            border: isMyReaction
+                ? Border.all(color: const Color(0xFF3B82F6), width: 1)
+                : null,
+          ),
+          child: Text(
+            '${reaction.reaction} ${reaction.count}',
+            style: TextStyle(
+              fontSize: 13,
+              color: isMyReaction ? const Color(0xFF1D4ED8) : const Color(0xFF475569),
+            ),
+          ),
+        );
+      }).toList(),
+    );
   }
 
   String _messageFooter() {

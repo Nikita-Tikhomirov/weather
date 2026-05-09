@@ -69,13 +69,16 @@ function apply_event(PDO $db, array $event, string $actor, string $source): arra
 
     register_event($db, $eventId, $source);
     if ($source !== 'telegram') {
-        enqueue_telegram_event($db, $eventId, [
+        // Only notify for family tasks via Telegram
+        if ($entity === 'family_task') {
+            enqueue_telegram_event($db, $eventId, [
             'event_id' => $eventId,
             'entity' => $entity,
             'action' => $action,
             'payload' => $payload,
             'actor_profile' => $actor,
         ], $recipients);
+        }
     }
     // Delivery policy: Telegram messages only.
     return ['status' => 'accepted'];
