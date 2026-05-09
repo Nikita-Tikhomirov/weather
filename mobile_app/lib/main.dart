@@ -2146,7 +2146,7 @@ class _HomePageState extends State<HomePage> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: _allKnownContacts(store))
+                        children: _allKnownContacts(store)
                             .map((member) {
                           final profile = member.profileKey;
                           return FilterChip(
