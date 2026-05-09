@@ -6,8 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:record/record.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'domain/task_draft.dart';
@@ -120,17 +118,8 @@ class _HomePageState extends State<HomePage> {
       <String, List<ChatMessage>>{};
   String _activeConversationKey = '';
 
-  // Voice recording state
-  final AudioRecorder _audioRecorder = AudioRecorder();
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  // Voice recording (to be enabled after native setup)
   bool _isRecording = false;
-  Duration _recordingDuration = Duration.zero;
-  Timer? _recordingTimer;
-  String? _playingMessageId;
-  bool _isPlaying = false;
-  Duration _playbackPosition = Duration.zero;
-  Duration _playbackDuration = Duration.zero;
-  Timer? _playbackTimer;
 
   bool get _isDesktopWindows =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
@@ -1153,145 +1142,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _startVoiceRecord(TaskStore store) async {
-    if (_isRecording) return;
-    try {
-      final hasPermission = await _audioRecorder.hasPermission();
-      if (!hasPermission) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Нет разрешения на запись аудио')),
-          );
-        }
-        return;
-      }
-      final path =
-          '${Directory.systemTemp.path}/voice_${DateTime.now().microsecondsSinceEpoch}.m4a';
-      await _audioRecorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: path);
-      setState(() {
-        _isRecording = true;
-        _recordingDuration = Duration.zero;
-      });
-      _recordingTimer?.cancel();
-      _recordingTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-        if (_isRecording) {
-          setState(() {
-            _recordingDuration += const Duration(milliseconds: 100);
-          });
-        }
-      });
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка записи: $error')),
-        );
-      }
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Голосовые будут добавлены отдельно')),
+    );
   }
 
   Future<void> _stopVoiceRecord(TaskStore store) async {
-    if (!_isRecording) return;
-    _recordingTimer?.cancel();
-    final path = await _audioRecorder.stop();
-    setState(() => _isRecording = false);
-    if (path == null || _recordingDuration.inSeconds < 1) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Слишком короткая запись')),
-        );
-      }
-      return;
-    }
-    await _sendVoiceMessage(store, path, _recordingDuration);
-  }
-
-  Future<void> _sendVoiceMessage(
-    TaskStore store,
-    String filePath,
-    Duration duration,
-  ) async {
-    final actor = store.owner.value;
-    final api = store.repository.api;
-    final db = store.repository.db;
-    final conversationKey = _activeConversationKey;
-    try {
-      final file = File(filePath);
-      final bytes = await file.readAsBytes();
-      final uploaded = await api.chatUploadSticker(
-        actorProfile: actor,
-        bytes: bytes,
-        filename: 'voice_${DateTime.now().microsecondsSinceEpoch}.m4a',
-      );
-      final message = await api.chatSendMessage(
-        actorProfile: actor,
-        conversationKey: conversationKey,
-        messageType: 'voice',
-        imageUrl: uploaded.assetUrl,
-        imageMeta: {
-          ...uploaded.imageMeta,
-          'duration_ms': duration.inMilliseconds,
-        },
-        clientMessageId: 'voice-${DateTime.now().microsecondsSinceEpoch}',
-      );
-      await db.upsertMessages([message]);
-      await _refreshConversation(
-        store,
-        conversationKey,
-        useNetwork: true,
-        quiet: true,
-      );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка отправки голосового: $error')),
-      );
-    }
+    // no-op
   }
 
   Future<void> _toggleVoicePlayback(ChatMessage message) async {
-    final url = _absoluteAssetUrl(message.imageUrl ?? '');
-    if (url.isEmpty) return;
-
-    if (_playingMessageId == message.id && _isPlaying) {
-      await _audioPlayer.pause();
-      setState(() => _isPlaying = false);
-      _playbackTimer?.cancel();
-      return;
-    }
-
-    if (_playingMessageId != message.id) {
-      await _audioPlayer.stop();
-      await _audioPlayer.play(UrlSource(url));
-      setState(() {
-        _playingMessageId = message.id;
-        _isPlaying = true;
-        _playbackPosition = Duration.zero;
-        _playbackDuration = Duration(
-          milliseconds: (message.imageMeta['duration_ms'] as int?) ?? 0,
-        );
-      });
-      _playbackTimer?.cancel();
-      _playbackTimer = Timer.periodic(const Duration(milliseconds: 100), (_) async {
-        if (!_isPlaying) return;
-        final pos = await _audioPlayer.getCurrentPosition();
-        final dur = await _audioPlayer.getDuration();
-        if (pos == null) return;
-        setState(() {
-          _playbackPosition = pos;
-          if (dur != null) _playbackDuration = dur;
-        });
-      });
-
-      _audioPlayer.onPlayerComplete.listen((_) {
-        setState(() {
-          _isPlaying = false;
-          _playbackPosition = Duration.zero;
-        });
-        _playbackTimer?.cancel();
-      });
-    } else {
-      await _audioPlayer.resume();
-      setState(() => _isPlaying = true);
-    }
+    // no-op
   }
 
   Future<void> _sendTextMessage(TaskStore store) async {
@@ -1811,7 +1672,6 @@ class _HomePageState extends State<HomePage> {
             imageUrlFor: _chatImageUrl,
             onLongPress: (message) => _openMessageActions(store, message),
             onImageTap: _openPhotoViewer,
-            onVoiceToggle: (message) => _toggleVoicePlayback(message),
           ),
         ),
         Padding(
@@ -1883,21 +1743,10 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
-                  GestureDetector(
-                    onLongPressStart: (_) => _startVoiceRecord(store),
-                    onLongPressEnd: (_) => _stopVoiceRecord(store),
-                    child: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: _isRecording ? Colors.red : const Color(0xFFE8EAED),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Icon(
-                        _isRecording ? Icons.mic : Icons.mic_none,
-                        color: _isRecording ? Colors.white : const Color(0xFF64748B),
-                      ),
-                    ),
+                  IconButton(
+                    tooltip: 'Голосовое',
+                    icon: const Icon(Icons.mic_none),
+                    onPressed: () => _startVoiceRecord(store),
                   ),
                   IconButton.filled(
                     tooltip: 'Отправить',
@@ -2780,7 +2629,6 @@ class _ChatMessagesList extends StatefulWidget {
     required this.imageUrlFor,
     required this.onLongPress,
     required this.onImageTap,
-    this.onVoiceToggle,
   });
 
   final List<ChatMessage> messages;
@@ -2791,7 +2639,6 @@ class _ChatMessagesList extends StatefulWidget {
   final String Function(ChatMessage message) imageUrlFor;
   final void Function(ChatMessage message) onLongPress;
   final void Function(ChatMessage message, int index) onImageTap;
-  final void Function(ChatMessage message)? onVoiceToggle;
 
   @override
   State<_ChatMessagesList> createState() => _ChatMessagesListState();
@@ -2861,9 +2708,6 @@ class _ChatMessagesListState extends State<_ChatMessagesList> {
           imageUrl: widget.imageUrlFor(message),
           onLongPress: () => widget.onLongPress(message),
           onImageTap: (index) => widget.onImageTap(message, index),
-          onVoiceToggle: widget.onVoiceToggle != null
-              ? () => widget.onVoiceToggle!(message)
-              : null,
         );
       },
     );
@@ -2881,7 +2725,6 @@ class _ChatMessageBubble extends StatelessWidget {
     required this.imageUrl,
     required this.onLongPress,
     required this.onImageTap,
-    this.onVoiceToggle,
   });
 
   final ChatMessage message;
@@ -2892,7 +2735,6 @@ class _ChatMessageBubble extends StatelessWidget {
   final String imageUrl;
   final VoidCallback onLongPress;
   final void Function(int index) onImageTap;
-  final VoidCallback? onVoiceToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -3065,42 +2907,6 @@ class _ChatMessageBubble extends StatelessWidget {
       );
     }
     return Text(text);
-  }
-
-  Widget _buildVoiceContent() {
-    final durationMs = (message.imageMeta['duration_ms'] as int?) ?? 0;
-    final total = Duration(milliseconds: durationMs);
-    final isCurrentPlaying =
-        onVoiceToggle != null; // simplified: parent manages state
-    return GestureDetector(
-      onTap: onVoiceToggle,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: mine ? const Color(0xFFDBEAFE) : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isCurrentPlaying ? Icons.pause : Icons.play_arrow,
-              size: 28,
-              color: mine ? const Color(0xFF1D4ED8) : const Color(0xFF475569),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '${total.inMinutes}:${(total.inSeconds % 60).toString().padLeft(2, '0')}',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: mine ? const Color(0xFF1E3A8A) : const Color(0xFF334155),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _buildImageGrid(List<String> urls) {
