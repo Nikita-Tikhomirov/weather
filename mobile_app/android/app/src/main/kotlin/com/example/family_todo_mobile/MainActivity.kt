@@ -82,26 +82,28 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "saveImage" -> {
                     val url = call.argument<String>("url") ?: return@setMethodCallHandler result.error("NO_URL", null, null)
-                    try {
-                        val bytes = java.net.URL(url).readBytes()
-                        val filename = "FamilyTodo_${System.currentTimeMillis()}.jpg"
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                            val values = android.content.ContentValues().apply {
-                                put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
-                                put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                                put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, android.os.Environment.DIRECTORY_PICTURES + "/FamilyTodo")
+                    Thread {
+                        try {
+                            val bytes = java.net.URL(url).readBytes()
+                            val filename = "FamilyTodo_${System.currentTimeMillis()}.jpg"
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                                val values = android.content.ContentValues().apply {
+                                    put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
+                                    put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                                    put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, android.os.Environment.DIRECTORY_PICTURES + "/FamilyTodo")
+                                }
+                                val uri = contentResolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                                uri?.let { contentResolver.openOutputStream(it)?.use { it.write(bytes) } }
+                            } else {
+                                val dir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_PICTURES), "FamilyTodo")
+                                dir.mkdirs()
+                                java.io.File(dir, filename).writeBytes(bytes)
                             }
-                            val uri = contentResolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                            uri?.let { contentResolver.openOutputStream(it)?.use { it.write(bytes) } }
-                        } else {
-                            val dir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_PICTURES), "FamilyTodo")
-                            dir.mkdirs()
-                            java.io.File(dir, filename).writeBytes(bytes)
+                            runOnUiThread { result.success(true) }
+                        } catch (e: Exception) {
+                            runOnUiThread { result.error("SAVE_ERR", e.message, null) }
                         }
-                        result.success(true)
-                    } catch (e: Exception) {
-                        result.error("SAVE_ERR", e.message, null)
-                    }
+                    }.start()
                 }
                 else -> result.notImplemented()
             }
