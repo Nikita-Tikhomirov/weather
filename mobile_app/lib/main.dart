@@ -3876,7 +3876,7 @@ class _DesktopTasksBoard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
-      builder: (context, constraints) {
+      builder: (ctx, constraints) {
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -3891,6 +3891,9 @@ class _DesktopTasksBoard extends StatelessWidget {
                   width: 330,
                   child: Card(
                     margin: const EdgeInsets.only(right: 10),
+                    elevation: 0,
+                    color: Theme.of(ctx).colorScheme.surfaceContainerLow,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     child: Padding(
                       padding: const EdgeInsets.all(10),
                       child: Column(
@@ -3922,9 +3925,36 @@ class _DesktopTasksBoard extends StatelessWidget {
                             child: DragTarget<TaskItem>(
                               onAcceptWithDetails: (details) =>
                                   onDropStatus(details.data, status),
-                              builder: (context, _, __) {
+                              builder: (dragCtx, candidateData, rejectedData) {
+                                final isHovering = candidateData.isNotEmpty;
+                                if (items.isEmpty && !isHovering) {
+                                  return Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(20),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.inbox_outlined, size: 32, color: colColor.withAlpha(100)),
+                                          const SizedBox(height: 8),
+                                          Text('Нет задач', style: TextStyle(color: Theme.of(dragCtx).colorScheme.onSurface.withOpacity(0.4))),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }
                                 return ListView(
                                   children: [
+                                    if (isHovering)
+                                      Container(
+                                        height: 60,
+                                        margin: const EdgeInsets.only(bottom: 8),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(color: colColor, width: 2, strokeAlign: BorderSide.strokeAlignInside),
+                                          borderRadius: BorderRadius.circular(12),
+                                          color: colColor.withAlpha(15),
+                                        ),
+                                        child: Center(child: Icon(Icons.add, color: colColor)),
+                                      ),
                                     for (final item in items)
                                       LongPressDraggable<TaskItem>(
                                         data: item,
@@ -4377,12 +4407,25 @@ class _TaskCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final resolveLabel = labelFor ?? profileLabel;
     final statusColor = _statusColor(item.workflowStatus);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF1F2937) : const Color(0xFFFFFFFF);
+    final textColor = Theme.of(context).colorScheme.onSurface;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(
+      decoration: BoxDecoration(
+        color: cardBg,
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: statusColor.withAlpha(80), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withAlpha(25),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border(
+          left: BorderSide(color: statusColor, width: 4),
+        ),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -4393,11 +4436,15 @@ class _TaskCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (selectionMode)
-                    Checkbox(
-                      value: selected,
-                      onChanged: (_) => onSelectionToggle?.call(),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Checkbox(
+                        value: selected,
+                        onChanged: (_) => onSelectionToggle?.call(),
+                      ),
                     ),
                   Expanded(
                     child: Text(
@@ -4408,33 +4455,70 @@ class _TaskCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   _statusChip(
                     item.workflowStatus,
                     workflowLabel(item.workflowStatus),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                '${item.dueDate} ${item.time}'.trim(),
-                style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
-              ),
+              if (item.dueDate.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today, size: 14, color: statusColor),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${item.dueDate} ${item.time}'.trim(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textColor.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               if (item.details.isNotEmpty) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
                   item.details,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13),
+                  style: TextStyle(fontSize: 13, color: textColor.withOpacity(0.7)),
                 ),
               ],
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Row(
                 children: [
+                  if (item.assignees.isNotEmpty)
+                    ...item.assignees.take(3).map((assignee) {
+                      final initials = resolveLabel(assignee).isNotEmpty
+                          ? resolveLabel(assignee).substring(0, 1).toUpperCase()
+                          : '?';
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: CircleAvatar(
+                          radius: 11,
+                          backgroundColor: statusColor.withAlpha(40),
+                          child: Text(
+                            initials,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: statusColor,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       resolveLabel(item.ownerKey),
-                      style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.45)),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: textColor.withOpacity(0.45),
+                      ),
                     ),
                   ),
                   if (!selectionMode) ...[
@@ -4445,13 +4529,15 @@ class _TaskCard extends StatelessWidget {
                         item.workflowStatus == 'done'
                             ? Icons.undo
                             : Icons.check_circle,
+                        color: statusColor,
                       ),
                       onPressed: () => onDoneToggle(),
                     ),
                     IconButton(
                       tooltip: 'Удалить',
                       iconSize: 20,
-                      icon: const Icon(Icons.delete_outline),
+                      icon: Icon(Icons.delete_outline,
+                          color: textColor.withOpacity(0.5)),
                       onPressed: () => onDelete(),
                     ),
                   ],
