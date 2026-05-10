@@ -8,7 +8,6 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:record/record.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'domain/task_draft.dart';
@@ -3464,34 +3463,24 @@ class _ChatMessageBubble extends StatelessWidget {
   Widget _buildVoiceBubble() {
     final durationMs = (message.imageMeta['duration_ms'] as int?) ?? 0;
     final dur = Duration(milliseconds: durationMs);
-    final url = imageUrl.isNotEmpty ? _bubbleAssetUrl(imageUrl) : '';
-    return GestureDetector(
-      onTap: () async {
-        if (url.isNotEmpty) {
-          try {
-            await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-          } catch (_) {}
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: mine ? Theme.of(context).colorScheme.primaryContainer : Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.play_arrow, size: 24,
-              color: mine ? Theme.of(context).colorScheme.onPrimaryContainer : Theme.of(context).colorScheme.onSurfaceVariant),
-            const SizedBox(width: 8),
-            Text(
-              '${dur.inMinutes}:${(dur.inSeconds % 60).toString().padLeft(2, '0')}',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500,
-                color: mine ? Theme.of(context).colorScheme.onPrimaryContainer : Theme.of(context).colorScheme.onSurface),
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: mine ? Theme.of(context).colorScheme.primaryContainer : Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.play_arrow, size: 24,
+            color: mine ? Theme.of(context).colorScheme.onPrimaryContainer : Theme.of(context).colorScheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Text(
+            '${dur.inMinutes}:${(dur.inSeconds % 60).toString().padLeft(2, '0')}',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500,
+              color: mine ? Theme.of(context).colorScheme.onPrimaryContainer : Theme.of(context).colorScheme.onSurface),
+          ),
+        ],
       ),
     );
   }
