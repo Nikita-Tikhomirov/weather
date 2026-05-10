@@ -52,6 +52,19 @@ class MainActivity : FlutterActivity() {
                         .addOnSuccessListener { result.success(true) }
                         .addOnFailureListener { result.error("fis_delete_failed", it.message, null) }
                 }
+                "scanFile" -> {
+                    val path = call.argument<String>("path")
+                    if (path != null) {
+                        android.media.MediaScannerConnection.scanFile(
+                            applicationContext,
+                            arrayOf(path),
+                            null
+                        ) { _, _ -> }
+                        result.success(true)
+                    } else {
+                        result.error("INVALID_PATH", "path is null", null)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

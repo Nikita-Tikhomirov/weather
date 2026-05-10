@@ -249,6 +249,7 @@ class _HomePageState extends State<HomePage> {
   ChatRealtimeService? _chatRealtime;
   bool _chatLoading = false;
   String? _editingMessageId;
+  ChatMessage? _replyToMessage;
   List<ChatContact> _chatContacts = const <ChatContact>[];
   List<ChatContact> _phoneContacts = const <ChatContact>[];
   List<ChatContact> _familyMembers = const <ChatContact>[];
@@ -283,8 +284,29 @@ class _HomePageState extends State<HomePage> {
         defaultValue: 'dev-local-key',
       ),
     );
-    final owner =
-        savedOwner.isNotEmpty ? savedOwner : await _promptForInitialProfile(api);
+    String? owner = savedOwner.isNotEmpty ? savedOwner : null;
+    if (owner == null) {
+      // Try auto-restore from saved phone number
+      final savedPhone = prefs.getString('profile_phone')?.trim() ?? '';
+      if (savedPhone.isNotEmpty) {
+        try {
+          final deviceId = await _ensureDeviceId(prefs);
+          final session = await api.deviceStart(
+            phone: savedPhone,
+            deviceId: deviceId,
+            displayName: _currentProfileDisplayName,
+          );
+          owner = session.profileKey;
+          await prefs.setString('actor_profile', session.profileKey);
+          await prefs.setString('profile_phone', session.phone);
+          await prefs.setString('profile_display_name', session.displayName);
+          _currentProfileDisplayName = session.displayName;
+        } catch (_) {
+          // auto-restore failed, fall through to manual dialog
+        }
+      }
+    }
+    owner ??= await _promptForInitialProfile(api);
     if (!mounted || owner == null || owner.isEmpty) {
       return;
     }
@@ -1377,9 +1399,18 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _sendTextMessage(TaskStore store) async {
-    final text = _chatInputCtl.text.trim();
+    var text = _chatInputCtl.text.trim();
     if (text.isEmpty) {
       return;
+    }
+
+    final replyTo = _replyToMessage;
+    if (replyTo != null) {
+      final quoted = replyTo.text
+          .split('\n')
+          .map((line) => '> $line')
+          .join('\n');
+      text = '$quoted\n\n$text';
     }
 
     final actor = store.owner.value;
@@ -1406,6 +1437,7 @@ class _HomePageState extends State<HomePage> {
       _chatInputCtl.clear();
       setState(() {
         _editingMessageId = null;
+        _replyToMessage = null;
       });
       await _refreshConversation(
         store,
@@ -1477,15 +1509,16 @@ class _HomePageState extends State<HomePage> {
       final api = store.repository.api;
       // Send as forwarded message
       String shareText = '';
+      final senderLabel = profileLabel(message.senderProfile);
       if (message.messageType == 'text') {
-        shareText = '↪ ${message.text}';
+        shareText = '↪ $senderLabel: ${message.text}';
       } else if (message.messageType == 'sticker') {
         await api.chatSendMessage(
           actorProfile: store.owner.value,
           conversationKey: conversationKey,
           messageType: 'sticker',
           stickerId: message.stickerId ?? '',
-          text: '↪ Стикер',
+          text: '↪ $senderLabel: Стикер',
         );
       } else if (message.messageType == 'image' || message.messageType == 'image_group') {
         final atts = message.attachments.isNotEmpty
@@ -1499,7 +1532,7 @@ class _HomePageState extends State<HomePage> {
             conversationKey: conversationKey,
             messageType: atts.length == 1 ? 'image' : 'image_group',
             attachments: atts,
-            text: message.text.isNotEmpty ? '↪ ${message.text}' : '↪ Фото',
+            text: message.text.isNotEmpty ? '↪ $senderLabel: ${message.text}' : '↪ $senderLabel: Фото',
           );
         }
       }
@@ -1615,12 +1648,18 @@ class _HomePageState extends State<HomePage> {
                   title: const Text('Убрать реакцию'),
                   onTap: () => Navigator.of(sheetContext).pop('react:'),
                 ),
-              if (message.messageType == 'text')
+              if (message.messageType == 'text' &&
+                  message.senderProfile == store.owner.value)
                 ListTile(
                   leading: const Icon(Icons.edit_outlined),
                   title: const Text('Редактировать'),
                   onTap: () => Navigator.of(sheetContext).pop('edit'),
                 ),
+              ListTile(
+                leading: const Icon(Icons.reply_outlined),
+                title: const Text('Ответить'),
+                onTap: () => Navigator.of(sheetContext).pop('reply'),
+              ),
               ListTile(
                 leading: const Icon(Icons.share_outlined),
                 title: const Text('Поделиться'),
@@ -1642,6 +1681,12 @@ class _HomePageState extends State<HomePage> {
         message,
         action!.substring('react:'.length),
       );
+    } else if (action == 'reply') {
+      setState(() {
+        _editingMessageId = null;
+        _chatInputCtl.clear();
+        _replyToMessage = message;
+      });
     } else if (action == 'edit') {
       await _editChatMessage(message);
     } else if (action == 'share') {
@@ -1812,6 +1857,45 @@ class _HomePageState extends State<HomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Ошибка отправки изображения: $error')),
       );
+    }
+  }
+
+  Future<void> _openAttachMenu(TaskStore store) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Галерея'),
+                onTap: () => Navigator.pop(ctx, 'gallery'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Камера'),
+                onTap: () => Navigator.pop(ctx, 'camera'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.emoji_emotions_outlined),
+                title: const Text('Стикер'),
+                onTap: () => Navigator.pop(ctx, 'sticker'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (action == 'gallery') {
+      await _sendPhotos(store, source: ImageSource.gallery, allowMultiple: true);
+    } else if (action == 'camera') {
+      await _sendPhotos(store, source: ImageSource.camera);
+    } else if (action == 'sticker') {
+      await _openStickerSheet(store);
     }
   }
 
@@ -2011,6 +2095,29 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (_replyToMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.reply, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'В ответ на: ${_chatMessageText(_replyToMessage!)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setState(() => _replyToMessage = null);
+                        },
+                        child: const Text('Отмена'),
+                      ),
+                    ],
+                  ),
+                ),
               if (_editingMessageId != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6),
@@ -2034,26 +2141,9 @@ class _HomePageState extends State<HomePage> {
               Row(
                 children: [
                   IconButton(
-                    tooltip: 'Стикеры',
-                    icon: const Icon(Icons.emoji_emotions_outlined),
-                    onPressed: () => _openStickerSheet(store),
-                  ),
-                  IconButton(
-                    tooltip: 'Вложение',
+                    tooltip: 'Прикрепить',
                     icon: const Icon(Icons.attach_file),
-                    onPressed: () => _sendPhotos(
-                      store,
-                      source: ImageSource.gallery,
-                      allowMultiple: true,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Камера',
-                    icon: const Icon(Icons.photo_camera_outlined),
-                    onPressed: () => _sendPhotos(
-                      store,
-                      source: ImageSource.camera,
-                    ),
+                    onPressed: () => _openAttachMenu(store),
                   ),
                   Expanded(
                     child: TextField(
@@ -2214,6 +2304,40 @@ class _HomePageState extends State<HomePage> {
     return _absoluteAssetUrl(message.imageUrl ?? '');
   }
 
+  Future<void> _saveImageToGallery(String url) async {
+    try {
+      final httpClient = HttpClient();
+      final request = await httpClient.getUrl(Uri.parse(url));
+      final response = await request.close();
+      final bytes = await response.fold<List<int>>([], (prev, chunk) => prev..addAll(chunk));
+      httpClient.close();
+
+      final dir = Directory('/storage/emulated/0/Pictures/FamilyTodo');
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      final filename = 'img_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final file = File('${dir.path}/$filename');
+      await file.writeAsBytes(bytes);
+
+      // Notify media scanner
+      const channel = MethodChannel('family_todo_mobile/share');
+      await channel.invokeMethod('scanFile', {'path': file.path});
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Сохранено в Pictures/FamilyTodo')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка сохранения: $error')),
+        );
+      }
+    }
+  }
+
   void _openPhotoViewer(ChatMessage message, int initialIndex) {
     final urls = _messageImageUrls(message);
     if (urls.isEmpty) {
@@ -2241,9 +2365,19 @@ class _HomePageState extends State<HomePage> {
               Positioned(
                 top: 24,
                 right: 12,
-                child: IconButton.filled(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  icon: const Icon(Icons.close),
+                child: Row(
+                  children: [
+                    IconButton.filled(
+                      tooltip: 'Сохранить',
+                      onPressed: () => _saveImageToGallery(urls[controller.hasClients ? controller.page?.round() ?? 0 : 0]),
+                      icon: const Icon(Icons.download),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filled(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -3125,10 +3259,10 @@ class _ChatMessageBubble extends StatelessWidget {
           constraints: BoxConstraints(maxWidth: compact ? 320 : 560),
           decoration: BoxDecoration(
             color: deleted
-                ? const Color(0xFFE8EAED)
+                ? Theme.of(context).colorScheme.surfaceContainerHighest
                 : mine
-                    ? const Color(0xFFDDF4FF)
-                    : const Color(0xFFF2F4F8),
+                    ? Theme.of(context).colorScheme.primaryContainer
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(14),
           ),
           child: Column(
