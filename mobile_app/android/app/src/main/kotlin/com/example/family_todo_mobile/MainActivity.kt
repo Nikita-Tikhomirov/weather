@@ -15,6 +15,7 @@ class MainActivity : FlutterActivity() {
     private var sharedImageUris: ArrayList<String>? = null
     private var shareChannel: MethodChannel? = null
     private var mediaRecorder: android.media.MediaRecorder? = null
+    private var mediaPlayer: android.media.MediaPlayer? = null
     private var voiceFilePath: String? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -111,6 +112,40 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     } catch (e: Exception) {
                         result.error("STOP_ERROR", e.message, null)
+                    }
+                }
+                "playVoice" -> {
+                    val url = call.argument<String>("url")
+                    if (url != null) {
+                        try {
+                            mediaPlayer?.release()
+                            mediaPlayer = android.media.MediaPlayer().apply {
+                                setDataSource(url)
+                                setOnPreparedListener { start() }
+                                setOnCompletionListener {
+                                    release()
+                                    mediaPlayer = null
+                                }
+                                prepareAsync()
+                            }
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("PLAY_ERROR", e.message, null)
+                        }
+                    } else {
+                        result.error("INVALID_URL", "url is null", null)
+                    }
+                }
+                "stopVoice" -> {
+                    try {
+                        mediaPlayer?.apply {
+                            if (isPlaying) stop()
+                            release()
+                        }
+                        mediaPlayer = null
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("STOP_PLAY_ERROR", e.message, null)
                     }
                 }
                 else -> result.notImplemented()

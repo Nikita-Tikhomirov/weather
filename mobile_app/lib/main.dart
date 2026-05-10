@@ -3459,26 +3459,35 @@ class _ChatMessageBubble extends StatelessWidget {
   Widget _buildVoiceBubble() {
     final durationMs = (message.imageMeta['duration_ms'] as int?) ?? 0;
     final dur = Duration(milliseconds: durationMs);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: mine ? const Color(0xFFDBEAFE) : const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.play_arrow, size: 24,
-            color: mine ? const Color(0xFF1D4ED8) : const Color(0xFF475569)),
-          const SizedBox(width: 8),
-          Text(
-            '${dur.inMinutes}:${(dur.inSeconds % 60).toString().padLeft(2, '0')}',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500,
-              color: mine ? const Color(0xFF1E3A8A) : const Color(0xFF334155)),
-          ),
-        ],
+    final url = imageUrl.isNotEmpty ? _bubbleAssetUrl(imageUrl) : '';
+    return GestureDetector(
+      onTap: () => _playVoice(url),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: mine ? const Color(0xFFDBEAFE) : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.play_arrow, size: 24,
+              color: mine ? const Color(0xFF1D4ED8) : const Color(0xFF475569)),
+            const SizedBox(width: 8),
+            Text(
+              '${dur.inMinutes}:${(dur.inSeconds % 60).toString().padLeft(2, '0')}',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500,
+                color: mine ? const Color(0xFF1E3A8A) : const Color(0xFF334155)),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  static void _playVoice(String url) {
+    const channel = MethodChannel('family_todo_mobile/voice');
+    channel.invokeMethod('playVoice', {'url': url});
   }
 
   Widget _buildReactionsRow() {
