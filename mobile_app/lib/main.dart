@@ -3321,10 +3321,10 @@ class _ChatMessageBubble extends StatelessWidget {
             children: [
               Text(
                 senderLabel,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black54,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                 ),
               ),
               const SizedBox(height: 4),
@@ -3334,7 +3334,7 @@ class _ChatMessageBubble extends StatelessWidget {
               if (message.reactions.isNotEmpty) const SizedBox(height: 4),
               Text(
                 _messageFooter(),
-                style: const TextStyle(fontSize: 10, color: Colors.black45),
+                style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
               ),
             ],
           ),
@@ -3347,7 +3347,7 @@ class _ChatMessageBubble extends StatelessWidget {
     if (deleted) {
       return const Text(
         'Сообщение удалено',
-        style: TextStyle(fontStyle: FontStyle.italic, color: Colors.black54),
+        style: TextStyle(fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
       );
     }
     if (message.messageType == 'voice') {
@@ -4372,7 +4372,7 @@ class _TaskCard extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 '${item.dueDate} ${item.time}'.trim(),
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
+                style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
               ),
               if (item.details.isNotEmpty) ...[
                 const SizedBox(height: 4),
@@ -4389,7 +4389,7 @@ class _TaskCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       resolveLabel(item.ownerKey),
-                      style: const TextStyle(fontSize: 11, color: Colors.black45),
+                      style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.45)),
                     ),
                   ),
                   if (!selectionMode) ...[
