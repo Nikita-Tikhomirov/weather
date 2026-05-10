@@ -3462,19 +3462,19 @@ class _ChatMessageBubble extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: mine ? Theme.of(context).colorScheme.primaryContainer : Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: mine ? const Color(0xFFDBEAFE) : const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.play_arrow, size: 24,
-            color: mine ? Theme.of(context).colorScheme.onPrimaryContainer : Theme.of(context).colorScheme.onSurfaceVariant),
+            color: mine ? const Color(0xFF1D4ED8) : const Color(0xFF475569)),
           const SizedBox(width: 8),
           Text(
             '${dur.inMinutes}:${(dur.inSeconds % 60).toString().padLeft(2, '0')}',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500,
-              color: mine ? Theme.of(context).colorScheme.onPrimaryContainer : Theme.of(context).colorScheme.onSurface),
+              color: mine ? const Color(0xFF1E3A8A) : const Color(0xFF334155)),
           ),
         ],
       ),
