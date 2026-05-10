@@ -70,6 +70,12 @@ object VoiceChannel {
                             setDataSource(url)
                             setOnPreparedListener { start() }
                             setOnCompletionListener { release(); player = null }
+                            setOnErrorListener { _, what, extra ->
+                                android.util.Log.e("VoiceChannel", "MediaPlayer error what=$what extra=$extra url=$url")
+                                release()
+                                player = null
+                                false
+                            }
                             prepareAsync()
                         }
                         result.success(true)
