@@ -3527,6 +3527,7 @@ class _MetricCard extends StatelessWidget {
       ),
     );
   }
+
 }
 
 class _CalendarView extends StatelessWidget {
@@ -3729,6 +3730,16 @@ class _DesktopTasksBoard extends StatelessWidget {
     'done': 'Выполнено',
   };
 
+  static Color _columnColor(String status) {
+    switch (status) {
+      case 'todo': return const Color(0xFFF59E0B);
+      case 'in_progress': return const Color(0xFF3B82F6);
+      case 'in_review': return const Color(0xFF8B5CF6);
+      case 'done': return const Color(0xFF10B981);
+      default: return const Color(0xFF94A3B8);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -3751,9 +3762,48 @@ class _DesktopTasksBoard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            '${_titles[status]} (${items.length})',
-                            style: Theme.of(context).textTheme.titleMedium,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: _columnColor(status).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 10, height: 10,
+                                  decoration: BoxDecoration(
+                                    color: _columnColor(status),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _titles[status]!,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: _columnColor(status),
+                                  ),
+                                ),
+                                const Spacer(),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: _columnColor(status).withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '${items.length}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: _columnColor(status),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Expanded(
@@ -4189,11 +4239,17 @@ class _TaskCard extends StatelessWidget {
       if (item.isFamily && item.durationMinutes > 0)
         'Длительность: ${item.durationMinutes} мин',
       if (item.details.isNotEmpty) item.details,
-      'Владелец: ${resolveLabel(item.ownerKey)}',
     ].join('\n');
 
+    final statusColor = _statusColor(item.workflowStatus);
+
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: statusColor.withOpacity(0.6), width: 1.5),
+      ),
+      elevation: 1,
       child: ListTile(
         onTap: selectionMode ? onSelectionToggle : () => onEdit(),
         leading: selectionMode
@@ -4203,8 +4259,27 @@ class _TaskCard extends StatelessWidget {
               )
             : null,
         title: Text(item.title),
-        subtitle: Text(subtitle),
-        isThreeLine: true,
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                _statusChip(item.workflowStatus),
+                const SizedBox(width: 6),
+                Text('${item.dueDate} ${item.time}'.trim(),
+                    style: const TextStyle(fontSize: 12)),
+              ],
+            ),
+            if (item.isFamily && assigneeLabels.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(assigneeLabels.join(', '),
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.6))),
         trailing: selectionMode
             ? null
             : Wrap(
@@ -4226,6 +4301,37 @@ class _TaskCard extends StatelessWidget {
                   ),
                 ],
               ),
+      ),
+    );
+  }
+
+  static Color _statusColor(String status) {
+    switch (status) {
+      case 'todo':
+        return const Color(0xFFF59E0B);
+      case 'in_progress':
+        return const Color(0xFF3B82F6);
+      case 'in_review':
+        return const Color(0xFF8B5CF6);
+      case 'done':
+        return const Color(0xFF10B981);
+      default:
+        return const Color(0xFF94A3B8);
+    }
+  }
+
+  static Widget _statusChip(String status) {
+    final label = workflowLabel(status);
+    final color = _statusColor(status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
       ),
     );
   }
