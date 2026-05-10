@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:record/record.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'domain/task_draft.dart';
@@ -250,6 +252,10 @@ class _HomePageState extends State<HomePage> {
   bool _chatLoading = false;
   String? _editingMessageId;
   ChatMessage? _replyToMessage;
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  bool _isRecording = false;
+  Duration _recordingDuration = Duration.zero;
+  Timer? _recordingTimer;
   List<ChatContact> _chatContacts = const <ChatContact>[];
   List<ChatContact> _phoneContacts = const <ChatContact>[];
   List<ChatContact> _familyMembers = const <ChatContact>[];
@@ -1398,6 +1404,69 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _startVoiceRecord(TaskStore store) async {
+    if (_isRecording) return;
+    try {
+      final hasPermission = await _audioRecorder.hasPermission();
+      if (!hasPermission) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Нет доступа к микрофону')),
+        );
+        return;
+      }
+      final path = '${Directory.systemTemp.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      await _audioRecorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: path);
+      setState(() { _isRecording = true; _recordingDuration = Duration.zero; });
+      _recordingTimer?.cancel();
+      _recordingTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+        if (_isRecording) setState(() => _recordingDuration += const Duration(milliseconds: 100));
+      });
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+    }
+  }
+
+  Future<void> _stopVoiceRecord(TaskStore store) async {
+    if (!_isRecording) return;
+    _recordingTimer?.cancel();
+    final path = await _audioRecorder.stop();
+    setState(() => _isRecording = false);
+    if (path == null || _recordingDuration.inSeconds < 1) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Слишком коротко')),
+      );
+      return;
+    }
+    await _sendVoiceMessage(store, path);
+  }
+
+  Future<void> _sendVoiceMessage(TaskStore store, String filePath) async {
+    final actor = store.owner.value;
+    final api = store.repository.api;
+    final db = store.repository.db;
+    try {
+      final file = File(filePath);
+      final bytes = await file.readAsBytes();
+      final uploaded = await api.chatUploadSticker(
+        actorProfile: actor, bytes: bytes, filename: 'voice.m4a',
+      );
+      final meta = Map<String, dynamic>.from(uploaded.imageMeta);
+      meta['duration_ms'] = _recordingDuration.inMilliseconds;
+      final message = await api.chatSendMessage(
+        actorProfile: actor,
+        conversationKey: _activeConversationKey,
+        messageType: 'voice',
+        imageUrl: uploaded.assetUrl,
+        imageMeta: meta,
+        clientMessageId: 'voice-${DateTime.now().microsecondsSinceEpoch}',
+      );
+      await db.upsertMessages([message]);
+      await _refreshConversation(store, _activeConversationKey, useNetwork: true, quiet: true);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+    }
+  }
+
   Future<void> _sendTextMessage(TaskStore store) async {
     var text = _chatInputCtl.text.trim();
     if (text.isEmpty) {
@@ -2165,16 +2234,21 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'Голосовое',
-                    icon: const Icon(Icons.mic_none),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Голосовые будут добавлены отдельно'),
-                        ),
-                      );
-                    },
+                  GestureDetector(
+                    onLongPressStart: (_) => _startVoiceRecord(store),
+                    onLongPressEnd: (_) => _stopVoiceRecord(store),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: _isRecording ? Colors.red : Colors.transparent,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Icon(
+                        _isRecording ? Icons.mic : Icons.mic_none,
+                        color: _isRecording ? Colors.white : null,
+                      ),
+                    ),
                   ),
                   IconButton.filled(
                     tooltip: 'Отправить',
@@ -2274,7 +2348,10 @@ class _HomePageState extends State<HomePage> {
       return '🙂';
     }
     if (message.messageType == 'image' || message.messageType == 'image_group') {
-      return 'Изображение';
+      return message.text.isNotEmpty ? message.text : 'Изображение';
+    }
+    if (message.messageType == 'voice') {
+      return '🎤 Голосовое сообщение';
     }
     return message.text;
   }
@@ -3314,6 +3391,9 @@ class _ChatMessageBubble extends StatelessWidget {
       }
       return Text(text, style: const TextStyle(fontSize: 34));
     }
+    if (message.messageType == 'voice') {
+      return _buildVoiceBubble();
+    }
     if (message.messageType == 'image' || message.messageType == 'image_group') {
       final urls = _messageImageUrls();
       if (urls.isEmpty) {
@@ -3379,6 +3459,41 @@ class _ChatMessageBubble extends StatelessWidget {
       return 'http://31.129.97.211$value';
     }
     return value;
+  }
+
+  Widget _buildVoiceBubble() {
+    final durationMs = (message.imageMeta['duration_ms'] as int?) ?? 0;
+    final dur = Duration(milliseconds: durationMs);
+    final url = imageUrl.isNotEmpty ? _bubbleAssetUrl(imageUrl) : '';
+    return GestureDetector(
+      onTap: () async {
+        if (url.isNotEmpty) {
+          try {
+            await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+          } catch (_) {}
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: mine ? Theme.of(context).colorScheme.primaryContainer : Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.play_arrow, size: 24,
+              color: mine ? Theme.of(context).colorScheme.onPrimaryContainer : Theme.of(context).colorScheme.onSurfaceVariant),
+            const SizedBox(width: 8),
+            Text(
+              '${dur.inMinutes}:${(dur.inSeconds % 60).toString().padLeft(2, '0')}',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500,
+                color: mine ? Theme.of(context).colorScheme.onPrimaryContainer : Theme.of(context).colorScheme.onSurface),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildReactionsRow() {
