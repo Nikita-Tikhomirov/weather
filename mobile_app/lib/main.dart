@@ -3334,7 +3334,7 @@ class _ChatMessageBubble extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              _buildContent(deleted),
+              _buildContent(deleted, text),
               const SizedBox(height: 4),
               if (message.reactions.isNotEmpty) _buildReactionsRow(),
               if (message.reactions.isNotEmpty) const SizedBox(height: 4),
@@ -3349,7 +3349,7 @@ class _ChatMessageBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildContent(bool deleted) {
+  Widget _buildContent(bool deleted, String text) {
     if (deleted) {
       return const Text(
         'Сообщение удалено',
@@ -3357,7 +3357,6 @@ class _ChatMessageBubble extends StatelessWidget {
       );
     }
     // Reply quote
-    final text = widget.textFor(message);
     if (text.startsWith('> ') && text.contains('\n') && message.messageType == 'text') {
       final parts = text.split('\n');
       final quoteLines = <String>[];
