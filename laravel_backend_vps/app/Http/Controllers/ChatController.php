@@ -293,6 +293,9 @@ class ChatController extends Controller
         if ($type === 'image') {
             return 'Отправлено изображение';
         }
+        if ($type === 'voice') {
+            return '🎤 Голосовое сообщение';
+        }
 
         $text = trim((string)($message['text'] ?? ''));
         if ($text === '') {
