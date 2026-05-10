@@ -13,7 +13,7 @@ object VoiceChannel {
     private const val PERMISSION_CODE = 1001
     private var pendingResult: MethodChannel.Result? = null
 
-    fun register(flutterEngine: FlutterEngine, activity: androidx.fragment.app.FragmentActivity? = null) {
+    fun register(flutterEngine: FlutterEngine, activity: android.app.Activity? = null) {
         var recorder: android.media.MediaRecorder? = null
         var player: android.media.MediaPlayer? = null
 
