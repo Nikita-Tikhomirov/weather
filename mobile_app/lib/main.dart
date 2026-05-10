@@ -1451,6 +1451,7 @@ class _HomePageState extends State<HomePage> {
         actorProfile: actor,
         conversationKey: _activeConversationKey,
         messageType: 'voice',
+        text: '🎤 Голосовое',
         imageUrl: up.assetUrl,
         imageMeta: meta,
         clientMessageId: 'v-${DateTime.now().microsecondsSinceEpoch}',
@@ -1472,6 +1473,11 @@ class _HomePageState extends State<HomePage> {
     if (text.isEmpty) {
       return;
     }
+    final replyTo = _replyToMessage;
+    String finalText = text;
+    if (replyTo != null) {
+      finalText = '> ${replyTo.text.split('\n').join('\n> ')}\n$text';
+    }
 
     final actor = store.owner.value;
     final api = store.repository.api;
@@ -1484,7 +1490,7 @@ class _HomePageState extends State<HomePage> {
               actorProfile: actor,
               conversationKey: conversationKey,
               messageType: 'text',
-              text: text,
+              text: finalText,
               clientMessageId:
                   'mobile-${DateTime.now().microsecondsSinceEpoch}',
             )
@@ -2374,7 +2380,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _saveImageToGallery(String url) async {
     try {
       const channel = MethodChannel('family_todo_mobile/share');
-      await channel.invokeMethod('saveToGallery', {'url': url});
+      final ok = await channel.invokeMethod<bool>('saveImage', {'url': url});
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Фото сохранено в галерею')),
@@ -3348,6 +3354,44 @@ class _ChatMessageBubble extends StatelessWidget {
       return const Text(
         'Сообщение удалено',
         style: TextStyle(fontStyle: FontStyle.italic, color: Color(0xFF9CA3AF)),
+      );
+    }
+    // Reply quote
+    final text = widget.textFor(message);
+    if (text.startsWith('> ') && text.contains('\n') && message.messageType == 'text') {
+      final parts = text.split('\n');
+      final quoteLines = <String>[];
+      final replyLines = <String>[];
+      bool inReply = false;
+      for (final line in parts) {
+        if (!inReply && line.startsWith('> ')) {
+          quoteLines.add(line.substring(2));
+        } else {
+          inReply = true;
+          replyLines.add(line);
+        }
+      }
+      final quoteText = quoteLines.join('\n');
+      final replyText = replyLines.join('\n');
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.only(left: 8),
+            decoration: const BoxDecoration(
+              border: Border(left: BorderSide(color: Color(0xFF3B82F6), width: 3)),
+            ),
+            child: Text(
+              quoteText,
+              style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+            ),
+          ),
+          if (replyText.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(replyText, style: const TextStyle(fontSize: 15)),
+          ],
+        ],
       );
     }
     if (message.messageType == 'voice') {
