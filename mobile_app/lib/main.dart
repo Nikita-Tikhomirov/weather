@@ -2980,89 +2980,32 @@ class _ChatMessageBubble extends StatelessWidget {
       }
       return Text(text, style: const TextStyle(fontSize: 34));
     }
-    if (message.messageType == 'image_group') {
-      final urls = message.attachments
-          .where((item) => item.kind == 'image' && item.assetUrl.isNotEmpty)
-          .map((item) => item.assetUrl)
-          .toList();
-      if (urls.isEmpty) return Text(text);
-      return _buildImageGrid(urls);
-    }
-    if (message.messageType == 'image' && imageUrl.isNotEmpty) {
-      final urls = message.attachments.isNotEmpty
-          ? message.attachments
-              .where((item) => item.kind == 'image')
-              .map((item) => item.assetUrl)
-              .where((item) => item.isNotEmpty)
-              .toList()
-          : [imageUrl];
-      return Wrap(
-        spacing: 4,
-        runSpacing: 4,
-        children: [
-          for (var i = 0; i < urls.length; i++)
-            GestureDetector(
-              onTap: () => onImageTap(i),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  _bubbleAssetUrl(urls[i]),
-                  fit: BoxFit.cover,
-                  width: urls.length == 1 ? (compact ? 260 : 420) : 132,
-                  height: urls.length == 1 ? null : 132,
-                  errorBuilder: (context, error, stackTrace) {
-                    return SelectableText(
-                      urls[i],
-                      style: const TextStyle(decoration: TextDecoration.underline),
-                    );
-                  },
-                ),
-              ),
-            ),
-        ],
-      );
-    }
-    if (message.messageType == 'image_group' && message.attachments.isNotEmpty) {
-      return Wrap(
-        spacing: 4,
-        runSpacing: 4,
-        children: [
-          for (var i = 0; i < message.attachments.length; i++)
-            GestureDetector(
-              onTap: () => onImageTap(i),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  _bubbleAssetUrl(message.attachments[i].assetUrl),
-                  fit: BoxFit.cover,
-                  width: 132,
-                  height: 132,
-                ),
-              ),
-            ),
-        ],
-      );
-    }
-    if (message.reactions.isNotEmpty) {
+    if (message.messageType == 'image' || message.messageType == 'image_group') {
+      final urls = _messageImageUrls();
+      if (urls.isEmpty) {
+        return Text(text.isEmpty ? 'Изображение' : text);
+      }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(text),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 4,
-            children: [
-              for (final reaction in message.reactions)
-                Chip(
-                  visualDensity: VisualDensity.compact,
-                  label: Text('${reaction.reaction} ${reaction.count}'),
-                ),
-            ],
-          ),
+          _buildImageGrid(urls),
+          if (text.trim().isNotEmpty) const SizedBox(height: 6),
+          if (text.trim().isNotEmpty) Text(text),
         ],
       );
     }
     return Text(text);
+  }
+
+  List<String> _messageImageUrls() {
+    final attachments = message.attachments
+        .where((item) => item.kind == 'image' && item.assetUrl.trim().isNotEmpty)
+        .toList()
+      ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
+    if (attachments.isNotEmpty) {
+      return attachments.map((item) => item.assetUrl).toList();
+    }
+    return imageUrl.trim().isEmpty ? const [] : [imageUrl];
   }
 
   Widget _buildImageGrid(List<String> urls) {
