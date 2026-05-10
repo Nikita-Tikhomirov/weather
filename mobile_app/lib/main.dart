@@ -3345,7 +3345,7 @@ class _ChatMessageBubble extends StatelessWidget {
 
   Widget _buildContent(bool deleted) {
     if (deleted) {
-      return const Text(
+      return Text(
         'Сообщение удалено',
         style: TextStyle(fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
       );
