@@ -23,7 +23,7 @@ object VoiceChannel {
                             setOutputFormat(android.media.MediaRecorder.OutputFormat.MPEG_4)
                             setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AAC)
                             setAudioSamplingRate(44100)
-                            setAudioBitRate(96000)
+                            setAudioEncodingBitRate(96000)
                             setOutputFile(path)
                             prepare()
                             start()
