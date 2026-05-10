@@ -259,6 +259,7 @@ class _HomePageState extends State<HomePage> {
   String _activeConversationKey = '';
   String _currentProfileDisplayName = '';
   ChatMessage? _replyToMessage;
+  String? _replyToMessageId;
   bool _isRecording = false;
   String? _voicePath;
   Timer? _voiceTimer;
@@ -1476,7 +1477,19 @@ class _HomePageState extends State<HomePage> {
     final replyTo = _replyToMessage;
     String finalText = text;
     if (replyTo != null) {
-      finalText = '> ${replyTo.text.split('\n').join('\n> ')}\n$text';
+      final senderLabel = _profileLabel(replyTo.senderProfile);
+      if (replyTo.messageType == 'image' || replyTo.messageType == 'image_group') {
+        final url = (replyTo.imageUrl ?? '').isNotEmpty
+            ? replyTo.imageUrl!
+            : (replyTo.attachments.isNotEmpty
+                ? replyTo.attachments.first.assetUrl
+                : '');
+        finalText = '> $senderLabel: [photo:$url] ${replyTo.text}\n$text';
+      } else if (replyTo.messageType == 'voice') {
+        finalText = '> $senderLabel: [voice] ${replyTo.text}\n$text';
+      } else {
+        finalText = '> $senderLabel: ${replyTo.text.split('\n').join('\n> ')}\n$text';
+      }
     }
 
     final actor = store.owner.value;
@@ -1504,6 +1517,7 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _editingMessageId = null;
         _replyToMessage = null;
+        _replyToMessageId = null;
       });
       await _refreshConversation(
         store,
@@ -1750,7 +1764,10 @@ class _HomePageState extends State<HomePage> {
     } else if (action == 'edit') {
       await _editChatMessage(message);
     } else if (action == 'reply') {
-      setState(() => _replyToMessage = message);
+      setState(() {
+        _replyToMessage = message;
+        _replyToMessageId = message.id;
+      });
     } else if (action == 'share') {
       await _shareMessage(store, message);
     } else if (action == 'delete') {
@@ -2175,7 +2192,10 @@ class _HomePageState extends State<HomePage> {
                       ),
                       TextButton(
                         onPressed: () {
-                          setState(() => _replyToMessage = null);
+                          setState(() {
+                            _replyToMessage = null;
+                            _replyToMessageId = null;
+                          });
                         },
                         child: const Text('Отмена'),
                       ),
@@ -3191,6 +3211,7 @@ class _ChatMessagesList extends StatefulWidget {
     required this.imageUrlFor,
     required this.onLongPress,
     required this.onImageTap,
+    this.replyToMessageId,
   });
 
   final List<ChatMessage> messages;
@@ -3202,6 +3223,7 @@ class _ChatMessagesList extends StatefulWidget {
   final String Function(ChatMessage message) imageUrlFor;
   final void Function(ChatMessage message) onLongPress;
   final void Function(ChatMessage message, int index) onImageTap;
+  final String? replyToMessageId;
 
   @override
   State<_ChatMessagesList> createState() => _ChatMessagesListState();
@@ -3252,6 +3274,21 @@ class _ChatMessagesListState extends State<_ChatMessagesList> {
     Future<void>.delayed(const Duration(milliseconds: 900), jump);
   }
 
+  void scrollToMessage(String messageId) {
+    if (!_controller.hasClients) return;
+    final index = widget.messages.indexWhere((m) => m.id == messageId);
+    if (index < 0) return;
+    final itemHeight = 80.0;
+    final estimatedOffset = index * itemHeight;
+    final maxScroll = _controller.position.maxScrollExtent;
+    final target = estimatedOffset.clamp(0.0, maxScroll);
+    _controller.animateTo(
+      target,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
@@ -3290,6 +3327,7 @@ class _ChatMessageBubble extends StatelessWidget {
     required this.imageUrl,
     required this.onLongPress,
     required this.onImageTap,
+    this.onQuoteTap,
   });
 
   final ChatMessage message;
@@ -3301,6 +3339,7 @@ class _ChatMessageBubble extends StatelessWidget {
   final String imageUrl;
   final VoidCallback onLongPress;
   final void Function(int index) onImageTap;
+  final VoidCallback? onQuoteTap;
 
   @override
   Widget build(BuildContext context) {
@@ -3372,6 +3411,10 @@ class _ChatMessageBubble extends StatelessWidget {
       }
       final quoteText = quoteLines.join('\n');
       final replyText = replyLines.join('\n');
+      // Check for photo preview
+      final photoMatch = RegExp(r'\[photo:(.+?)\]').firstMatch(quoteText);
+      final hasVoice = quoteText.contains('[voice]');
+      final cleanQuote = quoteText.replaceAll(RegExp(r'\[photo:.+?\]\s*'), '').replaceAll('[voice] ', '');
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -3381,9 +3424,36 @@ class _ChatMessageBubble extends StatelessWidget {
             decoration: const BoxDecoration(
               border: Border(left: BorderSide(color: Color(0xFF3B82F6), width: 3)),
             ),
-            child: Text(
-              quoteText,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+            child: GestureDetector(
+              onTap: onQuoteTap,
+              child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (photoMatch != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: Image.network(
+                        _bubbleAssetUrl(photoMatch.group(1)!),
+                        width: 40, height: 40, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 40),
+                      ),
+                    ),
+                  ),
+                if (hasVoice)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: Icon(Icons.mic, size: 24, color: Color(0xFF6B7280)),
+                  ),
+                Expanded(
+                  child: Text(
+                    cleanQuote,
+                    style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                  ),
+                ),
+              ],
+            ),
             ),
           ),
           if (replyText.isNotEmpty) ...[
