@@ -71,14 +71,47 @@ class MainActivity : FlutterActivity() {
         }
 
         // Voice recording + playback
-        VoiceChannel.register(flutterEngine)
+        VoiceChannel.register(flutterEngine, this)
 
         // Share intent receiver channel
         shareChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "family_todo_mobile/share"
         )
+        shareChannel?.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "saveImage" -> {
+                    val url = call.argument<String>("url") ?: return@setMethodCallHandler result.error("NO_URL", null, null)
+                    try {
+                        val bytes = java.net.URL(url).readBytes()
+                        val filename = "FamilyTodo_${System.currentTimeMillis()}.jpg"
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                            val values = android.content.ContentValues().apply {
+                                put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
+                                put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                                put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, android.os.Environment.DIRECTORY_PICTURES + "/FamilyTodo")
+                            }
+                            val uri = contentResolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                            uri?.let { contentResolver.openOutputStream(it)?.use { it.write(bytes) } }
+                        } else {
+                            val dir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_PICTURES), "FamilyTodo")
+                            dir.mkdirs()
+                            java.io.File(dir, filename).writeBytes(bytes)
+                        }
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("SAVE_ERR", e.message, null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
         handleShareIntent(intent)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        VoiceChannel.onRequestPermissionsResult(requestCode, grantResults)
     }
 
     override fun onNewIntent(intent: Intent) {

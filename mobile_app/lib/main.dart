@@ -1407,6 +1407,12 @@ class _HomePageState extends State<HomePage> {
   Future<void> _startRecord(TaskStore store) async {
     const ch = MethodChannel('family_todo_mobile/voice');
     try {
+      // Request permission first
+      final granted = await ch.invokeMethod<bool>('requestPermission') ?? false;
+      if (!granted) {
+        if (mounted) showSnack('Нужен доступ к микрофону');
+        return;
+      }
       _voicePath = '${Directory.systemTemp.path}/v_${DateTime.now().millisecondsSinceEpoch}.m4a';
       await ch.invokeMethod('startRecording', {'path': _voicePath});
       setState(() { _isRecording = true; _voiceSec = 0; });

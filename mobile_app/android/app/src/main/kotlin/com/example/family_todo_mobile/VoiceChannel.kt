@@ -2,11 +2,18 @@
 
 package com.example.family_todo_mobile
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 object VoiceChannel {
-    fun register(flutterEngine: FlutterEngine) {
+    private const val PERMISSION_CODE = 1001
+    private var pendingResult: MethodChannel.Result? = null
+
+    fun register(flutterEngine: FlutterEngine, activity: androidx.fragment.app.FragmentActivity? = null) {
         var recorder: android.media.MediaRecorder? = null
         var player: android.media.MediaPlayer? = null
 
@@ -15,6 +22,19 @@ object VoiceChannel {
             "family_todo_mobile/voice"
         ).setMethodCallHandler { call, result ->
             when (call.method) {
+                "requestPermission" -> {
+                    val act = activity
+                    if (act == null) {
+                        result.success(true) // Can't check, assume granted
+                        return@setMethodCallHandler
+                    }
+                    if (ContextCompat.checkSelfPermission(act, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                        result.success(true)
+                    } else {
+                        pendingResult = result
+                        ActivityCompat.requestPermissions(act, arrayOf(Manifest.permission.RECORD_AUDIO), PERMISSION_CODE)
+                    }
+                }
                 "startRecording" -> {
                     val path = call.argument<String>("path") ?: return@setMethodCallHandler result.error("NO_PATH", null, null)
                     try {
@@ -68,6 +88,13 @@ object VoiceChannel {
                 }
                 else -> result.notImplemented()
             }
+        }
+    }
+
+    fun onRequestPermissionsResult(requestCode: Int, grantResults: IntArray) {
+        if (requestCode == PERMISSION_CODE && pendingResult != null) {
+            pendingResult!!.success(grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+            pendingResult = null
         }
     }
 }
