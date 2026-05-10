@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Flutter generates plugin registrants during build.
+/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
