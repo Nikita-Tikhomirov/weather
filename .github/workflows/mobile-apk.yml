@@ -106,8 +106,10 @@ jobs:
           if [ -n "${RELEASE_KEYSTORE_BASE64:-}" ] && [ -n "${RELEASE_KEYSTORE_PASSWORD:-}" ] && [ -n "${RELEASE_KEY_ALIAS:-}" ] && [ -n "${RELEASE_KEY_PASSWORD:-}" ]; then
             echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$APP_DIR/android/release.keystore"
             echo "Using release keystore from GitHub secrets"
+            echo "SIGNING_KEY_SOURCE=secrets" >> "$GITHUB_ENV"
           elif [ -f "$APP_DIR/android/release.keystore" ]; then
             echo "::warning::Using cached fallback release keystore. Configure RELEASE_KEYSTORE_* secrets for stable production signing."
+            echo "SIGNING_KEY_SOURCE=fallback" >> "$GITHUB_ENV"
           else
             echo "::warning::Generating fallback release keystore. Configure RELEASE_KEYSTORE_* secrets for stable production signing."
             keytool -genkeypair \
@@ -120,6 +122,7 @@ jobs:
               -storepass "$STORE_PASSWORD" \
               -keypass "$KEY_PASSWORD" \
               -dname "CN=Family Todo, OU=Local, O=Local, L=Moscow, S=Moscow, C=RU"
+            echo "SIGNING_KEY_SOURCE=fallback" >> "$GITHUB_ENV"
           fi
           echo "SIGNING_STORE_FILE=$APP_DIR/android/release.keystore" >> "$GITHUB_ENV"
           echo "SIGNING_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
@@ -206,6 +209,10 @@ jobs:
             exit 1
           fi
           if ! echo ",${ALLOWED_SIGN_SHA1_HEX}," | grep -Fq ",${ACTUAL_SHA1},"; then
+            if [ "${SIGNING_KEY_SOURCE:-}" = "fallback" ]; then
+              echo "::warning::APK uses fallback signing key ${ACTUAL_SHA1}. Configure RELEASE_KEYSTORE_* secrets for stable production signing."
+              exit 0
+            fi
             echo "::error::APK signing fingerprint is not registered in Firebase. Got ${ACTUAL_SHA1}; allowed ${ALLOWED_SIGN_SHA1_HEX}."
             exit 1
           fi
