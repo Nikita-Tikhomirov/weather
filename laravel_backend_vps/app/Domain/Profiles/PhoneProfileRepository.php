@@ -25,7 +25,7 @@ final class PhoneProfileRepository
             $currentDevice = (string)$existing->primary_device_id;
             $rebindPending = str_starts_with($currentDevice, 'rebind-pending:');
             if ($currentDevice !== $normalizedDevice && !$rebindPending) {
-                throw new InvalidArgumentException('Phone is already linked to another device');
+                // Auto-rebind to new device
             }
             DB::table('messenger_users')->where('id', (int)$existing->id)->update([
                 'display_name' => trim($displayName) !== '' ? trim($displayName) : (string)$existing->display_name,
