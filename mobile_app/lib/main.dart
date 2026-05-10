@@ -3309,6 +3309,7 @@ class _ChatMessagesListState extends State<_ChatMessagesList> {
           imageUrl: widget.imageUrlFor(message),
           onLongPress: () => widget.onLongPress(message),
           onImageTap: (index) => widget.onImageTap(message, index),
+          onQuoteTap: widget.onQuoteTap != null ? () => widget.onQuoteTap!(message.id) : null,
         );
       },
     );
@@ -3339,7 +3340,7 @@ class _ChatMessageBubble extends StatelessWidget {
   final String imageUrl;
   final VoidCallback onLongPress;
   final void Function(int index) onImageTap;
-  final VoidCallback? onQuoteTap;
+  final void Function(String messageId)? onQuoteTap;
 
   @override
   Widget build(BuildContext context) {
