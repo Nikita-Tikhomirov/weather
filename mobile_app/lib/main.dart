@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -158,6 +159,7 @@ class _HomePageState extends State<HomePage> {
     _bindFcm(api: api, owner: owner);
     await _safeSyncFull(store, showErrors: false);
     await _initChat(store);
+    _initShareReceiver(store);
     _startSyncLoops(store);
     if (!mounted) {
       store.dispose();
@@ -832,6 +834,92 @@ class _HomePageState extends State<HomePage> {
         ).showSnackBar(SnackBar(content: Text('Ошибка синхронизации: $error')));
       }
     }
+  }
+
+  void _initShareReceiver(TaskStore store) {
+    const channel = MethodChannel('family_todo_mobile/share');
+    channel.setMethodCallHandler((call) async {
+      if (call.method != 'onShareReceived') return;
+      final args = call.arguments as Map<dynamic, dynamic>?;
+      if (args == null || !mounted) return;
+      final text = (args['text'] as String?)?.trim() ?? '';
+      final imageUris = (args['imageUris'] as List?)?.map((e) => e.toString()).toList() ?? const [];
+
+      // Wait a moment for UI to settle
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
+
+      // Show contact picker to forward shared content
+      final allContacts = _allKnownContacts(store)
+          .where((c) => c.profileKey != store.owner.value)
+          .toList();
+      if (allContacts.isEmpty) return;
+
+      final selected = await showDialog<ChatContact>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(text.isNotEmpty ? 'Поделиться текстом' : 'Поделиться фото'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: allContacts.length,
+              itemBuilder: (_, i) => ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.person)),
+                title: Text(_contactLabel(allContacts[i])),
+                onTap: () => Navigator.pop(ctx, allContacts[i]),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Отмена'),
+            ),
+          ],
+        ),
+      );
+      if (selected == null || !mounted) return;
+
+      var conversationKey = selected.conversationKey;
+      if (conversationKey.isEmpty) {
+        final members = [store.owner.value, selected.profileKey]..sort();
+        conversationKey = 'dm:${members[0]}:${members[1]}';
+      }
+
+      final api = store.repository.api;
+      try {
+        if (text.isNotEmpty) {
+          await api.chatSendMessage(
+            actorProfile: store.owner.value,
+            conversationKey: conversationKey,
+            messageType: 'text',
+            text: text,
+          );
+        }
+        if (imageUris.isNotEmpty) {
+          for (var i = 0; i < imageUris.length; i++) {
+            final uri = imageUris[i];
+            final attachments = [ChatAttachment(
+              kind: 'image',
+              assetUrl: uri,
+              imageMeta: const {},
+              sortOrder: i,
+            )];
+            await api.chatSendMessage(
+              actorProfile: store.owner.value,
+              conversationKey: conversationKey,
+              messageType: 'image',
+              attachments: attachments,
+            );
+          }
+        }
+        setState(() => _activeConversationKey = conversationKey);
+        await _refreshConversation(store, conversationKey, useNetwork: true, quiet: true);
+      } catch (_) {
+        // silently ignore share errors
+      }
+    });
   }
 
   Future<void> _initChat(TaskStore store) async {
