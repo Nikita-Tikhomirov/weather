@@ -251,6 +251,9 @@ class _HomePageState extends State<HomePage> {
   String? _editingMessageId;
   ChatMessage? _replyToMessage;
   bool _isRecording = false;
+  String? _voiceRecordingPath;
+  Timer? _recordingTimer;
+  int _recordingSeconds = 0;
   List<ChatContact> _chatContacts = const <ChatContact>[];
   List<ChatContact> _phoneContacts = const <ChatContact>[];
   List<ChatContact> _familyMembers = const <ChatContact>[];
@@ -1399,6 +1402,67 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _startRecording(TaskStore store) async {
+    const channel = MethodChannel('family_todo_mobile/voice');
+    try {
+      final dir = Directory.systemTemp;
+      _voiceRecordingPath = '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      await channel.invokeMethod('startRecording', {'path': _voiceRecordingPath});
+      setState(() { _isRecording = true; _recordingSeconds = 0; });
+      _recordingTimer?.cancel();
+      _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (_isRecording) setState(() => _recordingSeconds++);
+      });
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+    }
+  }
+
+  Future<void> _stopRecording(TaskStore store) async {
+    if (!_isRecording) return;
+    _recordingTimer?.cancel();
+    const channel = MethodChannel('family_todo_mobile/voice');
+    try {
+      await channel.invokeMethod('stopRecording');
+    } catch (_) {}
+    setState(() => _isRecording = false);
+    if (_voiceRecordingPath == null || _recordingSeconds < 1) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Слишком коротко')),
+      );
+      return;
+    }
+    await _sendVoiceFile(store, _voiceRecordingPath!, _recordingSeconds);
+    _voiceRecordingPath = null;
+  }
+
+  Future<void> _sendVoiceFile(TaskStore store, String filePath, int seconds) async {
+    final actor = store.owner.value;
+    final api = store.repository.api;
+    final db = store.repository.db;
+    try {
+      final file = File(filePath);
+      final bytes = await file.readAsBytes();
+      final uploaded = await api.chatUploadSticker(
+        actorProfile: actor, bytes: bytes, filename: 'voice.m4a',
+      );
+      final meta = Map<String, dynamic>.from(uploaded.imageMeta);
+      meta['duration_ms'] = seconds * 1000;
+      final message = await api.chatSendMessage(
+        actorProfile: actor,
+        conversationKey: _activeConversationKey,
+        messageType: 'voice',
+        imageUrl: uploaded.assetUrl,
+        imageMeta: meta,
+        clientMessageId: 'voice-${DateTime.now().microsecondsSinceEpoch}',
+      );
+      await db.upsertMessages([message]);
+      await _refreshConversation(store, _activeConversationKey, useNetwork: true, quiet: true);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+    }
+  }
+
   Future<void> _sendTextMessage(TaskStore store) async {
     var text = _chatInputCtl.text.trim();
     if (text.isEmpty) {
@@ -2166,11 +2230,19 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'Голосовое',
-                    icon: const Icon(Icons.mic_none),
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Голосовые — в следующем обновлении')),
+                  GestureDetector(
+                    onLongPressStart: (_) => _startRecording(store),
+                    onLongPressEnd: (_) => _stopRecording(store),
+                    child: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        color: _isRecording ? Colors.red : Colors.transparent,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Icon(
+                        _isRecording ? Icons.mic : Icons.mic_none,
+                        color: _isRecording ? Colors.white : null,
+                      ),
                     ),
                   ),
                   IconButton.filled(

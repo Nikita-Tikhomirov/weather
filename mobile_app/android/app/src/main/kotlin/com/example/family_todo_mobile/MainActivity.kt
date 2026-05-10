@@ -14,6 +14,9 @@ class MainActivity : FlutterActivity() {
     private var sharedText: String? = null
     private var sharedImageUris: ArrayList<String>? = null
     private var shareChannel: MethodChannel? = null
+    private var mediaRecorder: android.media.MediaRecorder? = null
+    private var voiceFilePath: String? = null
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
@@ -63,6 +66,51 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     } else {
                         result.error("INVALID_PATH", "path is null", null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // Voice recording channel
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "family_todo_mobile/voice"
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "startRecording" -> {
+                    val path = call.argument<String>("path")
+                    if (path != null) {
+                        voiceFilePath = path
+                        try {
+                            mediaRecorder = android.media.MediaRecorder().apply {
+                                setAudioSource(android.media.MediaRecorder.AudioSource.MIC)
+                                setOutputFormat(android.media.MediaRecorder.OutputFormat.MPEG_4)
+                                setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AAC)
+                                setAudioSamplingRate(44100)
+                                setAudioBitRate(96000)
+                                setOutputFile(path)
+                                prepare()
+                                start()
+                            }
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("RECORD_ERROR", e.message, null)
+                        }
+                    } else {
+                        result.error("INVALID_PATH", "path is null", null)
+                    }
+                }
+                "stopRecording" -> {
+                    try {
+                        mediaRecorder?.apply {
+                            stop()
+                            release()
+                        }
+                        mediaRecorder = null
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("STOP_ERROR", e.message, null)
                     }
                 }
                 else -> result.notImplemented()
