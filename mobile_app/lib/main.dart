@@ -40,6 +40,109 @@ const kWorkflowLabels = {
 String profileLabel(String key) => kProfileLabels[key] ?? key;
 String workflowLabel(String key) => kWorkflowLabels[key] ?? key;
 
+class AppThemeOption {
+  const AppThemeOption({
+    required this.key,
+    required this.name,
+    required this.seed,
+    required this.scaffold,
+    this.brightness = Brightness.light,
+  });
+
+  final String key;
+  final String name;
+  final Color seed;
+  final Color scaffold;
+  final Brightness brightness;
+}
+
+const _appThemeOptions = <AppThemeOption>[
+  AppThemeOption(
+    key: 'ocean',
+    name: 'Океан',
+    seed: Color(0xFF118AB2),
+    scaffold: Color(0xFFF7FAFC),
+  ),
+  AppThemeOption(
+    key: 'mint',
+    name: 'Мята',
+    seed: Color(0xFF2A9D8F),
+    scaffold: Color(0xFFF3FBF8),
+  ),
+  AppThemeOption(
+    key: 'coral',
+    name: 'Коралл',
+    seed: Color(0xFFE76F51),
+    scaffold: Color(0xFFFFF7F4),
+  ),
+  AppThemeOption(
+    key: 'iris',
+    name: 'Ирис',
+    seed: Color(0xFF6D5BD0),
+    scaffold: Color(0xFFF8F7FF),
+  ),
+  AppThemeOption(
+    key: 'forest',
+    name: 'Лес',
+    seed: Color(0xFF2D6A4F),
+    scaffold: Color(0xFFF5FAF6),
+  ),
+  AppThemeOption(
+    key: 'sky_dark',
+    name: 'Ночь',
+    seed: Color(0xFF60A5FA),
+    scaffold: Color(0xFF0F172A),
+    brightness: Brightness.dark,
+  ),
+  AppThemeOption(
+    key: 'graphite',
+    name: 'Графит',
+    seed: Color(0xFF94A3B8),
+    scaffold: Color(0xFF111827),
+    brightness: Brightness.dark,
+  ),
+  AppThemeOption(
+    key: 'plum',
+    name: 'Слива',
+    seed: Color(0xFFC084FC),
+    scaffold: Color(0xFF1E1B2E),
+    brightness: Brightness.dark,
+  ),
+  AppThemeOption(
+    key: 'pine',
+    name: 'Хвоя',
+    seed: Color(0xFF34D399),
+    scaffold: Color(0xFF10201A),
+    brightness: Brightness.dark,
+  ),
+  AppThemeOption(
+    key: 'amber',
+    name: 'Янтарь',
+    seed: Color(0xFFF59E0B),
+    scaffold: Color(0xFF211A10),
+    brightness: Brightness.dark,
+  ),
+];
+
+AppThemeOption _themeOptionByKey(String key) {
+  return _appThemeOptions.firstWhere(
+    (option) => option.key == key,
+    orElse: () => _appThemeOptions.first,
+  );
+}
+
+ThemeData _buildAppTheme(AppThemeOption option) {
+  final colorScheme = ColorScheme.fromSeed(
+    seedColor: option.seed,
+    brightness: option.brightness,
+  );
+  return ThemeData(
+    colorScheme: colorScheme,
+    scaffoldBackgroundColor: option.scaffold,
+    useMaterial3: true,
+  );
+}
+
 const _monthNamesRu = [
   'Январь',
   'Февраль',
@@ -70,26 +173,62 @@ void main() {
   runApp(const FamilyTodoApp());
 }
 
-class FamilyTodoApp extends StatelessWidget {
+class FamilyTodoApp extends StatefulWidget {
   const FamilyTodoApp({super.key});
 
   @override
+  State<FamilyTodoApp> createState() => _FamilyTodoAppState();
+}
+
+class _FamilyTodoAppState extends State<FamilyTodoApp> {
+  String _themeKey = _appThemeOptions.first.key;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTheme();
+  }
+
+  Future<void> _loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString('app_theme_key') ?? _themeKey;
+    if (!mounted) {
+      return;
+    }
+    setState(() => _themeKey = _themeOptionByKey(saved).key);
+  }
+
+  Future<void> _setTheme(String key) async {
+    final normalized = _themeOptionByKey(key).key;
+    setState(() => _themeKey = normalized);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('app_theme_key', normalized);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final option = _themeOptionByKey(_themeKey);
     return MaterialApp(
       title: 'Семейные задачи',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF118AB2)),
-        scaffoldBackgroundColor: const Color(0xFFF7FAFC),
-        useMaterial3: true,
+      theme: _buildAppTheme(option),
+      home: HomePage(
+        selectedThemeKey: option.key,
+        onThemeChanged: _setTheme,
       ),
-      home: const HomePage(),
     );
   }
 }
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({
+    super.key,
+    required this.selectedThemeKey,
+    required this.onThemeChanged,
+  });
+
+  final String selectedThemeKey;
+  final ValueChanged<String> onThemeChanged;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -118,6 +257,7 @@ class _HomePageState extends State<HomePage> {
   final Map<String, List<ChatMessage>> _chatMessagesByConversation =
       <String, List<ChatMessage>>{};
   String _activeConversationKey = '';
+  String _currentProfileDisplayName = '';
 
   bool get _isDesktopWindows =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
@@ -131,6 +271,8 @@ class _HomePageState extends State<HomePage> {
   Future<void> _init() async {
     final prefs = await SharedPreferences.getInstance();
     final savedOwner = prefs.getString('actor_profile')?.trim() ?? '';
+    _currentProfileDisplayName =
+        prefs.getString('profile_display_name')?.trim() ?? '';
     final api = ApiClient(
       baseUrl: const String.fromEnvironment(
         'API_BASE_URL',
@@ -241,6 +383,11 @@ class _HomePageState extends State<HomePage> {
                         'profile_display_name',
                         session.displayName,
                       );
+                      if (mounted) {
+                        setState(() {
+                          _currentProfileDisplayName = session.displayName;
+                        });
+                      }
                       if (dialogContext.mounted) {
                         Navigator.of(dialogContext).pop(session.profileKey);
                       }
@@ -580,6 +727,7 @@ class _HomePageState extends State<HomePage> {
             builder: (context, vm, __) {
               return _DashboardView(
                 vm: vm,
+                labelFor: _profileLabel,
                 onOpenCalendar: () async {
                   store.setPage(2);
                 },
@@ -618,6 +766,7 @@ class _HomePageState extends State<HomePage> {
                   Expanded(
                     child: _DesktopTasksBoard(
                       byStatus: byStatus,
+                      labelFor: _profileLabel,
                       selectionMode: false,
                       selectedIds: const <String>{},
                       onToggleSelect: (_) {},
@@ -709,6 +858,7 @@ class _HomePageState extends State<HomePage> {
                   return _FamilyView(
                     familyTasks: tasks,
                     familyFilter: familyFilter,
+                    labelFor: _profileLabel,
                     onFilterChanged: store.setFamilyFilter,
                     onEdit: (task) => _openTaskEditor(store, existing: task),
                     onDelete: (task) async {
@@ -1849,6 +1999,7 @@ class _HomePageState extends State<HomePage> {
             owner: store.owner.value,
             compact: compact,
             textFor: _chatMessageText,
+            senderLabelFor: _profileLabel,
             stickerAssetFor: _chatStickerAssetUrl,
             imageUrlFor: _chatImageUrl,
             onLongPress: (message) => _openMessageActions(store, message),
@@ -2006,6 +2157,10 @@ class _HomePageState extends State<HomePage> {
       if (contact.profileKey == profile && contact.displayName.trim().isNotEmpty) {
         return contact.displayName.trim();
       }
+    }
+    if (profile == (_store?.owner.value ?? '') &&
+        _currentProfileDisplayName.trim().isNotEmpty) {
+      return _currentProfileDisplayName.trim();
     }
     return profileLabel(profile);
   }
@@ -2499,6 +2654,42 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _themeMenuButton() {
+    return PopupMenuButton<String>(
+      tooltip: 'Цветовая схема',
+      icon: const Icon(Icons.palette_outlined),
+      initialValue: widget.selectedThemeKey,
+      onSelected: widget.onThemeChanged,
+      itemBuilder: (context) {
+        return [
+          for (final option in _appThemeOptions)
+            PopupMenuItem<String>(
+              value: option.key,
+              child: Row(
+                children: [
+                  Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: option.seed,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(option.name)),
+                  if (option.key == widget.selectedThemeKey)
+                    const Icon(Icons.check, size: 18),
+                ],
+              ),
+            ),
+        ];
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = _store;
@@ -2527,8 +2718,8 @@ class _HomePageState extends State<HomePage> {
                 }
                 return Scaffold(
                   appBar: AppBar(
-                    title: Text('Семейные задачи - $selectedDateKey'),
                     actions: [
+                      _themeMenuButton(),
                       ValueListenableBuilder<bool>(
                         valueListenable: store.canUndo,
                         builder: (context, canUndo, _) {
@@ -2603,6 +2794,7 @@ class _HomePageState extends State<HomePage> {
                                       builder: (context, vm, _) {
                                         return _DashboardView(
                                           vm: vm,
+                                          labelFor: _profileLabel,
                                           onOpenCalendar: () async {
                                             final picked = await showDatePicker(
                                               context: context,
@@ -2625,6 +2817,7 @@ class _HomePageState extends State<HomePage> {
                                       builder: (context, byStatus, _) {
                                         return _TasksBoard(
                                           byStatus: byStatus,
+                                          labelFor: _profileLabel,
                                           selectionMode: false,
                                           selectedIds: const <String>{},
                                           onToggleSelect: (_) {},
@@ -2673,6 +2866,7 @@ class _HomePageState extends State<HomePage> {
                                         return _CalendarView(
                                           selectedDate: selectedDate,
                                           tasksForSelectedDate: tasks,
+                                          labelFor: _profileLabel,
                                           onDateChange: store.setSelectedDate,
                                           onEdit: (task) => _openTaskEditor(
                                             store,
@@ -2701,6 +2895,7 @@ class _HomePageState extends State<HomePage> {
                                             return _FamilyView(
                                               familyTasks: tasks,
                                               familyFilter: familyFilter,
+                                              labelFor: _profileLabel,
                                               onFilterChanged:
                                                   store.setFamilyFilter,
                                               onEdit: (task) => _openTaskEditor(
@@ -2801,6 +2996,7 @@ class _ChatMessagesList extends StatefulWidget {
     required this.owner,
     required this.compact,
     required this.textFor,
+    required this.senderLabelFor,
     required this.stickerAssetFor,
     required this.imageUrlFor,
     required this.onLongPress,
@@ -2811,6 +3007,7 @@ class _ChatMessagesList extends StatefulWidget {
   final String owner;
   final bool compact;
   final String Function(ChatMessage message) textFor;
+  final String Function(String profile) senderLabelFor;
   final String Function(ChatMessage message) stickerAssetFor;
   final String Function(ChatMessage message) imageUrlFor;
   final void Function(ChatMessage message) onLongPress;
@@ -2880,6 +3077,7 @@ class _ChatMessagesListState extends State<_ChatMessagesList> {
           mine: mine,
           compact: widget.compact,
           text: widget.textFor(message),
+          senderLabel: widget.senderLabelFor(message.senderProfile),
           stickerAssetUrl: widget.stickerAssetFor(message),
           imageUrl: widget.imageUrlFor(message),
           onLongPress: () => widget.onLongPress(message),
@@ -2897,6 +3095,7 @@ class _ChatMessageBubble extends StatelessWidget {
     required this.mine,
     required this.compact,
     required this.text,
+    required this.senderLabel,
     required this.stickerAssetUrl,
     required this.imageUrl,
     required this.onLongPress,
@@ -2907,6 +3106,7 @@ class _ChatMessageBubble extends StatelessWidget {
   final bool mine;
   final bool compact;
   final String text;
+  final String senderLabel;
   final String stickerAssetUrl;
   final String imageUrl;
   final VoidCallback onLongPress;
@@ -2936,7 +3136,7 @@ class _ChatMessageBubble extends StatelessWidget {
                 mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
               Text(
-                profileLabel(message.senderProfile),
+                senderLabel,
                 style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
@@ -3085,9 +3285,14 @@ class _ChatMessageBubble extends StatelessWidget {
 }
 
 class _DashboardView extends StatelessWidget {
-  const _DashboardView({required this.vm, required this.onOpenCalendar});
+  const _DashboardView({
+    required this.vm,
+    required this.labelFor,
+    required this.onOpenCalendar,
+  });
 
   final DashboardVm vm;
+  final String Function(String profile) labelFor;
   final Future<void> Function() onOpenCalendar;
 
   @override
@@ -3148,7 +3353,7 @@ class _DashboardView extends StatelessWidget {
             child: ListTile(
               title: Text(task.title),
               subtitle: Text(
-                '${task.dueDate} ${task.time} - ${profileLabel(task.ownerKey)} - ${workflowLabel(task.workflowStatus)}',
+                '${task.dueDate} ${task.time} - ${labelFor(task.ownerKey)} - ${workflowLabel(task.workflowStatus)}',
               ),
               trailing:
                   task.isFamily ? const Icon(Icons.family_restroom) : null,
@@ -3194,6 +3399,7 @@ class _CalendarView extends StatelessWidget {
   const _CalendarView({
     required this.selectedDate,
     required this.tasksForSelectedDate,
+    required this.labelFor,
     required this.onDateChange,
     required this.onEdit,
     required this.onDelete,
@@ -3201,6 +3407,7 @@ class _CalendarView extends StatelessWidget {
 
   final DateTime selectedDate;
   final List<TaskItem> tasksForSelectedDate;
+  final String Function(String profile) labelFor;
   final void Function(DateTime) onDateChange;
   final Future<void> Function(TaskItem) onEdit;
   final Future<void> Function(TaskItem) onDelete;
@@ -3245,6 +3452,7 @@ class _CalendarView extends StatelessWidget {
               for (final item in tasksForSelectedDate)
                 _TaskCard(
                   item: item,
+                  labelFor: labelFor,
                   onEdit: () => onEdit(item),
                   onDelete: () => onDelete(item),
                   onDoneToggle: () async {},
@@ -3260,6 +3468,7 @@ class _CalendarView extends StatelessWidget {
 class _TasksBoard extends StatelessWidget {
   const _TasksBoard({
     required this.byStatus,
+    required this.labelFor,
     required this.selectionMode,
     required this.selectedIds,
     required this.onToggleSelect,
@@ -3270,6 +3479,7 @@ class _TasksBoard extends StatelessWidget {
   });
 
   final Map<String, List<TaskItem>> byStatus;
+  final String Function(String profile) labelFor;
   final bool selectionMode;
   final Set<String> selectedIds;
   final void Function(String) onToggleSelect;
@@ -3325,6 +3535,7 @@ class _TasksBoard extends StatelessWidget {
                             width: 260,
                             child: _TaskCard(
                               item: item,
+                              labelFor: labelFor,
                               onEdit: () async {},
                               onDelete: () async {},
                               onDoneToggle: () async {},
@@ -3334,6 +3545,7 @@ class _TasksBoard extends StatelessWidget {
                         childWhenDragging: const SizedBox.shrink(),
                         child: _TaskCard(
                           item: item,
+                          labelFor: labelFor,
                           selectionMode: selectionMode,
                           selected: selectedIds.contains(item.id),
                           onSelectionToggle: () => onToggleSelect(item.id),
@@ -3356,6 +3568,7 @@ class _TasksBoard extends StatelessWidget {
 class _DesktopTasksBoard extends StatelessWidget {
   const _DesktopTasksBoard({
     required this.byStatus,
+    required this.labelFor,
     required this.selectionMode,
     required this.selectedIds,
     required this.onToggleSelect,
@@ -3366,6 +3579,7 @@ class _DesktopTasksBoard extends StatelessWidget {
   });
 
   final Map<String, List<TaskItem>> byStatus;
+  final String Function(String profile) labelFor;
   final bool selectionMode;
   final Set<String> selectedIds;
   final void Function(String) onToggleSelect;
@@ -3424,6 +3638,7 @@ class _DesktopTasksBoard extends StatelessWidget {
                                             width: 280,
                                             child: _TaskCard(
                                               item: item,
+                                              labelFor: labelFor,
                                               onEdit: () async {},
                                               onDelete: () async {},
                                               onDoneToggle: () async {},
@@ -3434,6 +3649,7 @@ class _DesktopTasksBoard extends StatelessWidget {
                                             const SizedBox.shrink(),
                                         child: _TaskCard(
                                           item: item,
+                                          labelFor: labelFor,
                                           selectionMode: selectionMode,
                                           selected:
                                               selectedIds.contains(item.id),
@@ -3745,6 +3961,7 @@ class _FamilyView extends StatelessWidget {
   const _FamilyView({
     required this.familyTasks,
     required this.familyFilter,
+    required this.labelFor,
     required this.onFilterChanged,
     required this.onEdit,
     required this.onDelete,
@@ -3752,6 +3969,7 @@ class _FamilyView extends StatelessWidget {
 
   final List<TaskItem> familyTasks;
   final String familyFilter;
+  final String Function(String profile) labelFor;
   final void Function(String) onFilterChanged;
   final Future<void> Function(TaskItem) onEdit;
   final Future<void> Function(TaskItem) onDelete;
@@ -3791,6 +4009,7 @@ class _FamilyView extends StatelessWidget {
               for (final item in familyTasks)
                 _TaskCard(
                   item: item,
+                  labelFor: labelFor,
                   onEdit: () => onEdit(item),
                   onDelete: () => onDelete(item),
                   onDoneToggle: () async {},
@@ -3809,6 +4028,7 @@ class _TaskCard extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onDoneToggle,
+    this.labelFor,
     this.selectionMode = false,
     this.selected = false,
     this.onSelectionToggle,
@@ -3818,13 +4038,15 @@ class _TaskCard extends StatelessWidget {
   final bool selectionMode;
   final bool selected;
   final VoidCallback? onSelectionToggle;
+  final String Function(String profile)? labelFor;
   final Future<void> Function() onEdit;
   final Future<void> Function() onDelete;
   final Future<void> Function() onDoneToggle;
 
   @override
   Widget build(BuildContext context) {
-    final assigneeLabels = item.assignees.map(profileLabel).toList();
+    final resolveLabel = labelFor ?? profileLabel;
+    final assigneeLabels = item.assignees.map(resolveLabel).toList();
     final subtitle = [
       '${item.dueDate} ${item.time}'.trim(),
       'Статус: ${workflowLabel(item.workflowStatus)}',
@@ -3833,7 +4055,7 @@ class _TaskCard extends StatelessWidget {
       if (item.isFamily && item.durationMinutes > 0)
         'Длительность: ${item.durationMinutes} мин',
       if (item.details.isNotEmpty) item.details,
-      'Владелец: ${profileLabel(item.ownerKey)}',
+      'Владелец: ${resolveLabel(item.ownerKey)}',
     ].join('\n');
 
     return Card(
