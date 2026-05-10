@@ -259,6 +259,10 @@ class _HomePageState extends State<HomePage> {
   String _activeConversationKey = '';
   String _currentProfileDisplayName = '';
   ChatMessage? _replyToMessage;
+  bool _isRecording = false;
+  String? _voicePath;
+  Timer? _voiceTimer;
+  int _voiceSec = 0;
 
   bool get _isDesktopWindows =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
@@ -1400,6 +1404,63 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _startRecord(TaskStore store) async {
+    const ch = MethodChannel('family_todo_mobile/voice');
+    try {
+      _voicePath = '${Directory.systemTemp.path}/v_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      await ch.invokeMethod('startRecording', {'path': _voicePath});
+      setState(() { _isRecording = true; _voiceSec = 0; });
+      _voiceTimer?.cancel();
+      _voiceTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (_isRecording) setState(() => _voiceSec++);
+      });
+    } catch (e) {
+      if (mounted) showSnack('Ошибка микрофона: $e');
+    }
+  }
+
+  Future<void> _stopRecord(TaskStore store) async {
+    if (!_isRecording) return;
+    _voiceTimer?.cancel();
+    const ch = MethodChannel('family_todo_mobile/voice');
+    try { await ch.invokeMethod('stopRecording'); } catch (_) {}
+    setState(() => _isRecording = false);
+    if (_voicePath == null || _voiceSec < 1) {
+      if (mounted) showSnack('Слишком коротко');
+      return;
+    }
+    await _sendVoiceFile(store);
+  }
+
+  Future<void> _sendVoiceFile(TaskStore store) async {
+    final api = store.repository.api;
+    final db = store.repository.db;
+    final actor = store.owner.value;
+    try {
+      final bytes = await File(_voicePath!).readAsBytes();
+      final up = await api.chatUploadSticker(actorProfile: actor, bytes: bytes, filename: 'voice.m4a');
+      final meta = Map<String, dynamic>.from(up.imageMeta);
+      meta['duration_ms'] = _voiceSec * 1000;
+      final msg = await api.chatSendMessage(
+        actorProfile: actor,
+        conversationKey: _activeConversationKey,
+        messageType: 'voice',
+        imageUrl: up.assetUrl,
+        imageMeta: meta,
+        clientMessageId: 'v-${DateTime.now().microsecondsSinceEpoch}',
+      );
+      await db.upsertMessages([msg]);
+      await _refreshConversation(store, _activeConversationKey, useNetwork: true, quiet: true);
+      _voicePath = null;
+    } catch (e) {
+      if (mounted) showSnack('Ошибка: $e');
+    }
+  }
+
+  void showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
   Future<void> _sendTextMessage(TaskStore store) async {
     final text = _chatInputCtl.text.trim();
     if (text.isEmpty) {
@@ -2156,16 +2217,20 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'Голосовое',
-                    icon: const Icon(Icons.mic_none),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Голосовые будут добавлены отдельно'),
-                        ),
-                      );
-                    },
+                  GestureDetector(
+                    onLongPressStart: (_) => _startRecord(store),
+                    onLongPressEnd: (_) => _stopRecord(store),
+                    child: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        color: _isRecording ? Colors.red : Colors.transparent,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Icon(
+                        _isRecording ? Icons.mic : Icons.mic_none,
+                        color: _isRecording ? Colors.white : null,
+                      ),
+                    ),
                   ),
                   IconButton.filled(
                     tooltip: 'Отправить',
@@ -2266,6 +2331,11 @@ class _HomePageState extends State<HomePage> {
     }
     if (message.messageType == 'image' || message.messageType == 'image_group') {
       return message.text.isNotEmpty ? message.text : 'Изображение';
+    }
+    if (message.messageType == 'voice') {
+      final ms = (message.imageMeta['duration_ms'] as int?) ?? 0;
+      final d = Duration(milliseconds: ms);
+      return '🎤 ${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
     }
     return message.text;
   }
@@ -3274,6 +3344,9 @@ class _ChatMessageBubble extends StatelessWidget {
         style: TextStyle(fontStyle: FontStyle.italic, color: Colors.black54),
       );
     }
+    if (message.messageType == 'voice') {
+      return _buildVoiceBubble();
+    }
     if (message.messageType == 'sticker') {
       if (stickerAssetUrl.isNotEmpty && !stickerAssetUrl.startsWith('emoji://')) {
         return Image.network(
@@ -3341,6 +3414,37 @@ class _ChatMessageBubble extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildVoiceBubble() {
+    final ms = (message.imageMeta['duration_ms'] as int?) ?? 0;
+    final d = Duration(milliseconds: ms);
+    return GestureDetector(
+      onTap: () {
+        const ch = MethodChannel('family_todo_mobile/voice');
+        ch.invokeMethod('playVoice', {'url': _bubbleAssetUrl(imageUrl)});
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: mine ? const Color(0xFFDBEAFE) : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.play_arrow, size: 24,
+              color: mine ? const Color(0xFF1D4ED8) : const Color(0xFF475569)),
+            const SizedBox(width: 8),
+            Text(
+              '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500,
+                color: mine ? const Color(0xFF1E3A8A) : const Color(0xFF334155)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
