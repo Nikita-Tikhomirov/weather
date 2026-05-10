@@ -249,11 +249,6 @@ class _HomePageState extends State<HomePage> {
   ChatRealtimeService? _chatRealtime;
   bool _chatLoading = false;
   String? _editingMessageId;
-  ChatMessage? _replyToMessage;
-  bool _isRecording = false;
-  String? _voiceRecordingPath;
-  Timer? _recordingTimer;
-  int _recordingSeconds = 0;
   List<ChatContact> _chatContacts = const <ChatContact>[];
   List<ChatContact> _phoneContacts = const <ChatContact>[];
   List<ChatContact> _familyMembers = const <ChatContact>[];
@@ -263,6 +258,7 @@ class _HomePageState extends State<HomePage> {
       <String, List<ChatMessage>>{};
   String _activeConversationKey = '';
   String _currentProfileDisplayName = '';
+  ChatMessage? _replyToMessage;
 
   bool get _isDesktopWindows =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
@@ -288,9 +284,10 @@ class _HomePageState extends State<HomePage> {
         defaultValue: 'dev-local-key',
       ),
     );
-    String? owner = savedOwner.isNotEmpty ? savedOwner : null;
-    if (owner == null) {
-      // Try auto-restore from saved phone number
+    String? owner;
+    if (savedOwner.isNotEmpty) {
+      owner = savedOwner;
+    } else {
       final savedPhone = prefs.getString('profile_phone')?.trim() ?? '';
       if (savedPhone.isNotEmpty) {
         try {
@@ -300,17 +297,18 @@ class _HomePageState extends State<HomePage> {
             deviceId: deviceId,
             displayName: _currentProfileDisplayName,
           );
-          owner = session.profileKey;
           await prefs.setString('actor_profile', session.profileKey);
           await prefs.setString('profile_phone', session.phone);
           await prefs.setString('profile_display_name', session.displayName);
           _currentProfileDisplayName = session.displayName;
+          owner = session.profileKey;
         } catch (_) {
-          // auto-restore failed, fall through to manual dialog
+          owner = await _promptForInitialProfile(api);
         }
+      } else {
+        owner = await _promptForInitialProfile(api);
       }
     }
-    owner ??= await _promptForInitialProfile(api);
     if (!mounted || owner == null || owner.isEmpty) {
       return;
     }
@@ -1402,80 +1400,10 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _startRecording(TaskStore store) async {
-    const channel = MethodChannel('family_todo_mobile/voice');
-    try {
-      final dir = Directory.systemTemp;
-      _voiceRecordingPath = '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
-      await channel.invokeMethod('startRecording', {'path': _voiceRecordingPath});
-      setState(() { _isRecording = true; _recordingSeconds = 0; });
-      _recordingTimer?.cancel();
-      _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (_isRecording) setState(() => _recordingSeconds++);
-      });
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
-    }
-  }
-
-  Future<void> _stopRecording(TaskStore store) async {
-    if (!_isRecording) return;
-    _recordingTimer?.cancel();
-    const channel = MethodChannel('family_todo_mobile/voice');
-    try {
-      await channel.invokeMethod('stopRecording');
-    } catch (_) {}
-    setState(() => _isRecording = false);
-    if (_voiceRecordingPath == null || _recordingSeconds < 1) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Слишком коротко')),
-      );
-      return;
-    }
-    await _sendVoiceFile(store, _voiceRecordingPath!, _recordingSeconds);
-    _voiceRecordingPath = null;
-  }
-
-  Future<void> _sendVoiceFile(TaskStore store, String filePath, int seconds) async {
-    final actor = store.owner.value;
-    final api = store.repository.api;
-    final db = store.repository.db;
-    try {
-      final file = File(filePath);
-      final bytes = await file.readAsBytes();
-      final uploaded = await api.chatUploadSticker(
-        actorProfile: actor, bytes: bytes, filename: 'voice.m4a',
-      );
-      final meta = Map<String, dynamic>.from(uploaded.imageMeta);
-      meta['duration_ms'] = seconds * 1000;
-      final message = await api.chatSendMessage(
-        actorProfile: actor,
-        conversationKey: _activeConversationKey,
-        messageType: 'voice',
-        imageUrl: uploaded.assetUrl,
-        imageMeta: meta,
-        clientMessageId: 'voice-${DateTime.now().microsecondsSinceEpoch}',
-      );
-      await db.upsertMessages([message]);
-      await _refreshConversation(store, _activeConversationKey, useNetwork: true, quiet: true);
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
-    }
-  }
-
   Future<void> _sendTextMessage(TaskStore store) async {
-    var text = _chatInputCtl.text.trim();
+    final text = _chatInputCtl.text.trim();
     if (text.isEmpty) {
       return;
-    }
-
-    final replyTo = _replyToMessage;
-    if (replyTo != null) {
-      final quoted = replyTo.text
-          .split('\n')
-          .map((line) => '> $line')
-          .join('\n');
-      text = '$quoted\n\n$text';
     }
 
     final actor = store.owner.value;
@@ -1572,9 +1500,9 @@ class _HomePageState extends State<HomePage> {
     }
     try {
       final api = store.repository.api;
+      final senderLabel = profileLabel(message.senderProfile);
       // Send as forwarded message
       String shareText = '';
-      final senderLabel = profileLabel(message.senderProfile);
       if (message.messageType == 'text') {
         shareText = '↪ $senderLabel: ${message.text}';
       } else if (message.messageType == 'sticker') {
@@ -1746,14 +1674,10 @@ class _HomePageState extends State<HomePage> {
         message,
         action!.substring('react:'.length),
       );
-    } else if (action == 'reply') {
-      setState(() {
-        _editingMessageId = null;
-        _chatInputCtl.clear();
-        _replyToMessage = message;
-      });
     } else if (action == 'edit') {
       await _editChatMessage(message);
+    } else if (action == 'reply') {
+      setState(() => _replyToMessage = message);
     } else if (action == 'share') {
       await _shareMessage(store, message);
     } else if (action == 'delete') {
@@ -1926,42 +1850,44 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _openAttachMenu(TaskStore store) async {
-    final action = await showModalBottomSheet<String>(
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+      builder: (sheetContext) {
+        return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.photo_library_outlined),
+                leading: const Icon(Icons.image_outlined),
                 title: const Text('Галерея'),
-                onTap: () => Navigator.pop(ctx, 'gallery'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _sendPhotos(store, source: ImageSource.gallery, allowMultiple: true);
+                },
               ),
               ListTile(
                 leading: const Icon(Icons.photo_camera_outlined),
                 title: const Text('Камера'),
-                onTap: () => Navigator.pop(ctx, 'camera'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _sendPhotos(store, source: ImageSource.camera);
+                },
               ),
               ListTile(
                 leading: const Icon(Icons.emoji_emotions_outlined),
                 title: const Text('Стикер'),
-                onTap: () => Navigator.pop(ctx, 'sticker'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _openStickerSheet(store);
+                },
               ),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
-    if (action == 'gallery') {
-      await _sendPhotos(store, source: ImageSource.gallery, allowMultiple: true);
-    } else if (action == 'camera') {
-      await _sendPhotos(store, source: ImageSource.camera);
-    } else if (action == 'sticker') {
-      await _openStickerSheet(store);
-    }
   }
 
   Future<void> _openStickerSheet(TaskStore store) async {
@@ -2165,11 +2091,11 @@ class _HomePageState extends State<HomePage> {
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Row(
                     children: [
-                      const Icon(Icons.reply, size: 18),
+                      const Icon(Icons.reply_outlined, size: 18),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'В ответ на: ${_chatMessageText(_replyToMessage!)}',
+                          'Ответ: ${_chatMessageText(_replyToMessage!)}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -2206,7 +2132,7 @@ class _HomePageState extends State<HomePage> {
               Row(
                 children: [
                   IconButton(
-                    tooltip: 'Прикрепить',
+                    tooltip: 'Вложение',
                     icon: const Icon(Icons.attach_file),
                     onPressed: () => _openAttachMenu(store),
                   ),
@@ -2230,20 +2156,16 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
-                  GestureDetector(
-                    onLongPressStart: (_) => _startRecording(store),
-                    onLongPressEnd: (_) => _stopRecording(store),
-                    child: Container(
-                      width: 40, height: 40,
-                      decoration: BoxDecoration(
-                        color: _isRecording ? Colors.red : Colors.transparent,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Icon(
-                        _isRecording ? Icons.mic : Icons.mic_none,
-                        color: _isRecording ? Colors.white : null,
-                      ),
-                    ),
+                  IconButton(
+                    tooltip: 'Голосовое',
+                    icon: const Icon(Icons.mic_none),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Голосовые будут добавлены отдельно'),
+                        ),
+                      );
+                    },
                   ),
                   IconButton.filled(
                     tooltip: 'Отправить',
@@ -2345,9 +2267,6 @@ class _HomePageState extends State<HomePage> {
     if (message.messageType == 'image' || message.messageType == 'image_group') {
       return message.text.isNotEmpty ? message.text : 'Изображение';
     }
-    if (message.messageType == 'voice') {
-      return '🎤 Голосовое сообщение';
-    }
     return message.text;
   }
 
@@ -2378,33 +2297,17 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _saveImageToGallery(String url) async {
     try {
-      final httpClient = HttpClient();
-      final request = await httpClient.getUrl(Uri.parse(url));
-      final response = await request.close();
-      final bytes = await response.fold<List<int>>([], (prev, chunk) => prev..addAll(chunk));
-      httpClient.close();
-
-      final dir = Directory('/storage/emulated/0/Pictures/FamilyTodo');
-      if (!await dir.exists()) {
-        await dir.create(recursive: true);
-      }
-      final filename = 'img_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final file = File('${dir.path}/$filename');
-      await file.writeAsBytes(bytes);
-
-      // Notify media scanner
       const channel = MethodChannel('family_todo_mobile/share');
-      await channel.invokeMethod('scanFile', {'path': file.path});
-
+      await channel.invokeMethod('saveToGallery', {'url': url});
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Сохранено в Pictures/FamilyTodo')),
+          const SnackBar(content: Text('Фото сохранено в галерею')),
         );
       }
-    } catch (error) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка сохранения: $error')),
+          const SnackBar(content: Text('Не удалось сохранить фото')),
         );
       }
     }
@@ -2440,8 +2343,7 @@ class _HomePageState extends State<HomePage> {
                 child: Row(
                   children: [
                     IconButton.filled(
-                      tooltip: 'Сохранить',
-                      onPressed: () => _saveImageToGallery(urls[controller.hasClients ? controller.page?.round() ?? 0 : 0]),
+                      onPressed: () => _saveImageToGallery(urls[0]),
                       icon: const Icon(Icons.download),
                     ),
                     const SizedBox(width: 8),
@@ -3331,10 +3233,10 @@ class _ChatMessageBubble extends StatelessWidget {
           constraints: BoxConstraints(maxWidth: compact ? 320 : 560),
           decoration: BoxDecoration(
             color: deleted
-                ? Theme.of(context).colorScheme.surfaceContainerHighest
+                ? const Color(0xFFE8EAED)
                 : mine
-                    ? Theme.of(context).colorScheme.primaryContainer
-                    : Theme.of(context).colorScheme.surfaceContainerHighest,
+                    ? const Color(0xFFDDF4FF)
+                    : const Color(0xFFF2F4F8),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Column(
@@ -3385,9 +3287,6 @@ class _ChatMessageBubble extends StatelessWidget {
         );
       }
       return Text(text, style: const TextStyle(fontSize: 34));
-    }
-    if (message.messageType == 'voice') {
-      return _buildVoiceBubble();
     }
     if (message.messageType == 'image' || message.messageType == 'image_group') {
       final urls = _messageImageUrls();
@@ -3454,40 +3353,6 @@ class _ChatMessageBubble extends StatelessWidget {
       return 'http://31.129.97.211$value';
     }
     return value;
-  }
-
-  Widget _buildVoiceBubble() {
-    final durationMs = (message.imageMeta['duration_ms'] as int?) ?? 0;
-    final dur = Duration(milliseconds: durationMs);
-    final url = imageUrl.isNotEmpty ? _bubbleAssetUrl(imageUrl) : '';
-    return GestureDetector(
-      onTap: () => _playVoice(url),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: mine ? const Color(0xFFDBEAFE) : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.play_arrow, size: 24,
-              color: mine ? const Color(0xFF1D4ED8) : const Color(0xFF475569)),
-            const SizedBox(width: 8),
-            Text(
-              '${dur.inMinutes}:${(dur.inSeconds % 60).toString().padLeft(2, '0')}',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500,
-                color: mine ? const Color(0xFF1E3A8A) : const Color(0xFF334155)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static void _playVoice(String url) {
-    const channel = MethodChannel('family_todo_mobile/voice');
-    channel.invokeMethod('playVoice', {'url': url});
   }
 
   Widget _buildReactionsRow() {
@@ -3636,7 +3501,6 @@ class _MetricCard extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _CalendarView extends StatelessWidget {
@@ -3841,11 +3705,16 @@ class _DesktopTasksBoard extends StatelessWidget {
 
   static Color _columnColor(String status) {
     switch (status) {
-      case 'todo': return const Color(0xFFF59E0B);
-      case 'in_progress': return const Color(0xFF3B82F6);
-      case 'in_review': return const Color(0xFF8B5CF6);
-      case 'done': return const Color(0xFF10B981);
-      default: return const Color(0xFF94A3B8);
+      case 'todo':
+        return const Color(0xFF3B82F6);
+      case 'in_progress':
+        return const Color(0xFFF59E0B);
+      case 'in_review':
+        return const Color(0xFF8B5CF6);
+      case 'done':
+        return const Color(0xFF10B981);
+      default:
+        return const Color(0xFF6B7280);
     }
   }
 
@@ -3862,6 +3731,7 @@ class _DesktopTasksBoard extends StatelessWidget {
             child: Row(
               children: _titles.keys.map((status) {
                 final items = byStatus[status] ?? const <TaskItem>[];
+                final colColor = _columnColor(status);
                 return SizedBox(
                   width: 330,
                   child: Card(
@@ -3872,42 +3742,20 @@ class _DesktopTasksBoard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
-                              color: _columnColor(status).withOpacity(0.1),
+                              color: colColor.withAlpha(25),
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: colColor, width: 1),
                             ),
                             child: Row(
                               children: [
-                                Container(
-                                  width: 10, height: 10,
-                                  decoration: BoxDecoration(
-                                    color: _columnColor(status),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  _titles[status]!,
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    color: _columnColor(status),
-                                  ),
-                                ),
-                                const Spacer(),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: _columnColor(status).withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
+                                Expanded(
                                   child: Text(
-                                    '${items.length}',
+                                    '${_titles[status]} (${items.length})',
                                     style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: _columnColor(status),
+                                      fontWeight: FontWeight.w700,
+                                      color: colColor,
                                     ),
                                   ),
                                 ),
@@ -4336,111 +4184,127 @@ class _TaskCard extends StatelessWidget {
   final Future<void> Function() onDelete;
   final Future<void> Function() onDoneToggle;
 
-  @override
-  Widget build(BuildContext context) {
-    final resolveLabel = labelFor ?? profileLabel;
-    final assigneeLabels = item.assignees.map(resolveLabel).toList();
-    final subtitle = [
-      '${item.dueDate} ${item.time}'.trim(),
-      'Статус: ${workflowLabel(item.workflowStatus)}',
-      if (item.isFamily && assigneeLabels.isNotEmpty)
-        'Ответственные: ${assigneeLabels.join(', ')}',
-      if (item.isFamily && item.durationMinutes > 0)
-        'Длительность: ${item.durationMinutes} мин',
-      if (item.details.isNotEmpty) item.details,
-    ].join('\n');
-
-    final statusColor = _statusColor(item.workflowStatus);
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: statusColor.withOpacity(0.6), width: 1.5),
-      ),
-      elevation: 1,
-      child: ListTile(
-        onTap: selectionMode ? onSelectionToggle : () => onEdit(),
-        leading: selectionMode
-            ? Checkbox(
-                value: selected,
-                onChanged: (_) => onSelectionToggle?.call(),
-              )
-            : null,
-        title: Text(item.title),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                _statusChip(item.workflowStatus),
-                const SizedBox(width: 6),
-                Text('${item.dueDate} ${item.time}'.trim(),
-                    style: const TextStyle(fontSize: 12)),
-              ],
-            ),
-            if (item.isFamily && assigneeLabels.isNotEmpty) ...[
-              const SizedBox(height: 2),
-              Text(assigneeLabels.join(', '),
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(0.6))),
-        trailing: selectionMode
-            ? null
-            : Wrap(
-                spacing: 4,
-                children: [
-                  IconButton(
-                    tooltip: 'Выполнить/отменить',
-                    icon: Icon(
-                      item.workflowStatus == 'done'
-                          ? Icons.undo
-                          : Icons.check_circle,
-                    ),
-                    onPressed: () => onDoneToggle(),
-                  ),
-                  IconButton(
-                    tooltip: 'Удалить',
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => onDelete(),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-
   static Color _statusColor(String status) {
     switch (status) {
       case 'todo':
-        return const Color(0xFFF59E0B);
-      case 'in_progress':
         return const Color(0xFF3B82F6);
+      case 'in_progress':
+        return const Color(0xFFF59E0B);
       case 'in_review':
         return const Color(0xFF8B5CF6);
       case 'done':
         return const Color(0xFF10B981);
       default:
-        return const Color(0xFF94A3B8);
+        return const Color(0xFF6B7280);
     }
   }
 
-  static Widget _statusChip(String status) {
-    final label = workflowLabel(status);
-    final color = _statusColor(status);
+  static Widget _statusChip(String status, String label) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(8),
+        color: _statusColor(status).withAlpha(30),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _statusColor(status), width: 1),
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: _statusColor(status),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final resolveLabel = labelFor ?? profileLabel;
+    final statusColor = _statusColor(item.workflowStatus);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: statusColor.withAlpha(80), width: 1.5),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: selectionMode ? onSelectionToggle : () => onEdit(),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (selectionMode)
+                    Checkbox(
+                      value: selected,
+                      onChanged: (_) => onSelectionToggle?.call(),
+                    ),
+                  Expanded(
+                    child: Text(
+                      item.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                  _statusChip(
+                    item.workflowStatus,
+                    workflowLabel(item.workflowStatus),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${item.dueDate} ${item.time}'.trim(),
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+              if (item.details.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  item.details,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ],
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      resolveLabel(item.ownerKey),
+                      style: const TextStyle(fontSize: 11, color: Colors.black45),
+                    ),
+                  ),
+                  if (!selectionMode) ...[
+                    IconButton(
+                      tooltip: 'Выполнить/отменить',
+                      iconSize: 20,
+                      icon: Icon(
+                        item.workflowStatus == 'done'
+                            ? Icons.undo
+                            : Icons.check_circle,
+                      ),
+                      onPressed: () => onDoneToggle(),
+                    ),
+                    IconButton(
+                      tooltip: 'Удалить',
+                      iconSize: 20,
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => onDelete(),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
