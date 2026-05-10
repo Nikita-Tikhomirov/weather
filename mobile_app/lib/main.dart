@@ -2371,7 +2371,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _chatImageUrl(ChatMessage message) {
-    if (message.messageType != 'image') {
+    if (message.messageType != 'image' && message.messageType != 'voice') {
       return '';
     }
     return _absoluteAssetUrl(message.imageUrl ?? '');
@@ -3315,10 +3315,10 @@ class _ChatMessageBubble extends StatelessWidget {
           constraints: BoxConstraints(maxWidth: compact ? 320 : 560),
           decoration: BoxDecoration(
             color: deleted
-                ? const Color(0xFFE8EAED)
+                ? Theme.of(context).colorScheme.surfaceContainerHighest
                 : mine
-                    ? const Color(0xFFDDF4FF)
-                    : const Color(0xFFF2F4F8),
+                    ? Theme.of(context).colorScheme.primaryContainer
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(14),
           ),
           child: Column(
@@ -3334,9 +3334,9 @@ class _ChatMessageBubble extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              _buildContent(deleted, text),
+              _buildContent(context, deleted, text),
               const SizedBox(height: 4),
-              if (message.reactions.isNotEmpty) _buildReactionsRow(),
+              if (message.reactions.isNotEmpty) _buildReactionsRow(context),
               if (message.reactions.isNotEmpty) const SizedBox(height: 4),
               Text(
                 _messageFooter(),
@@ -3349,7 +3349,7 @@ class _ChatMessageBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildContent(bool deleted, String text) {
+  Widget _buildContent(BuildContext context, bool deleted, String text) {
     if (deleted) {
       return const Text(
         'Сообщение удалено',
@@ -3394,7 +3394,7 @@ class _ChatMessageBubble extends StatelessWidget {
       );
     }
     if (message.messageType == 'voice') {
-      return _buildVoiceBubble();
+      return _buildVoiceBubble(context);
     }
     if (message.messageType == 'sticker') {
       if (stickerAssetUrl.isNotEmpty && !stickerAssetUrl.startsWith('emoji://')) {
@@ -3466,9 +3466,10 @@ class _ChatMessageBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildVoiceBubble() {
+  Widget _buildVoiceBubble(BuildContext context) {
     final ms = (message.imageMeta['duration_ms'] as int?) ?? 0;
     final d = Duration(milliseconds: ms);
+    final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: () {
         const ch = MethodChannel('family_todo_mobile/voice');
@@ -3477,19 +3478,19 @@ class _ChatMessageBubble extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: mine ? const Color(0xFFDBEAFE) : const Color(0xFFF1F5F9),
+          color: mine ? cs.primaryContainer : cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.play_arrow, size: 24,
-              color: mine ? const Color(0xFF1D4ED8) : const Color(0xFF475569)),
+              color: mine ? cs.onPrimaryContainer : cs.onSurfaceVariant),
             const SizedBox(width: 8),
             Text(
               '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500,
-                color: mine ? const Color(0xFF1E3A8A) : const Color(0xFF334155)),
+                color: mine ? cs.onPrimaryContainer : cs.onSurface),
             ),
           ],
         ),
@@ -3508,7 +3509,8 @@ class _ChatMessageBubble extends StatelessWidget {
     return value;
   }
 
-  Widget _buildReactionsRow() {
+  Widget _buildReactionsRow(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Wrap(
       spacing: 6,
       runSpacing: 4,
@@ -3518,11 +3520,11 @@ class _ChatMessageBubble extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
             color: isMyReaction
-                ? const Color(0xFFDBEAFE)
-                : const Color(0xFFF1F5F9),
+                ? cs.primaryContainer.withOpacity(0.5)
+                : cs.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
             border: isMyReaction
-                ? Border.all(color: const Color(0xFF3B82F6), width: 1)
+                ? Border.all(color: cs.primary, width: 1)
                 : null,
           ),
           child: Text(
