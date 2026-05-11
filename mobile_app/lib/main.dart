@@ -12,9 +12,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'domain/task_draft.dart';
 import 'domain/task_domain_service.dart';
 import 'models/chat_models.dart';
+import 'models/project_contact.dart';
 import 'models/task_item.dart';
 import 'services/desktop_process_host_service.dart';
 import 'services/desktop_theme_service.dart';
+import 'services/project_bridge_service.dart';
 import 'repositories/task_repository.dart';
 import 'services/api_client.dart';
 import 'services/chat_realtime_service.dart';
@@ -252,6 +254,9 @@ class _HomePageState extends State<HomePage> {
   List<ChatContact> _chatContacts = const <ChatContact>[];
   List<ChatContact> _phoneContacts = const <ChatContact>[];
   List<ChatContact> _familyMembers = const <ChatContact>[];
+  List<ProjectContact> _projectContacts = const <ProjectContact>[];
+  ProjectBridgeService? _projectBridge;
+  final List<BridgeMessage> _projectMessages = <BridgeMessage>[];
   List<ChatConversation> _chatConversations = const <ChatConversation>[];
   List<StickerPack> _chatStickerPacks = const <StickerPack>[];
   final Map<String, List<ChatMessage>> _chatMessagesByConversation =
@@ -329,6 +334,7 @@ class _HomePageState extends State<HomePage> {
     }
     _bindFcm(api: api, owner: owner);
     await _safeSyncFull(store, showErrors: false);
+    _loadProjects();
     await _initChat(store);
     _initShareReceiver(store);
     _startSyncLoops(store);
@@ -1138,7 +1144,10 @@ class _HomePageState extends State<HomePage> {
         api: api,
         actorProfile: actor,
         activeConversationKey: () => _activeConversationKey,
-        shouldPoll: () => mounted && _store?.pageIndex.value == 4,
+        shouldPoll: () =>
+            mounted &&
+            _store?.pageIndex.value == 4 &&
+            !_isProjectConversation(_activeConversationKey),
         onMessagesUpdated: (conversationKey) async {
           await _refreshConversation(
             store,
@@ -1163,12 +1172,133 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _loadProjects() {
+    try {
+      final file = File('family_data/nik/projects.json');
+      if (!file.existsSync()) {
+        return;
+      }
+      final content = file.readAsStringSync();
+      final json = jsonDecode(content) as Map<String, dynamic>;
+      final rawList = json['projects'] as List<dynamic>? ?? [];
+      final projects = rawList
+          .whereType<Map<String, dynamic>>()
+          .map((item) => ProjectContact.fromJson(item))
+          .where((p) => p.path.isNotEmpty && Directory(p.path).existsSync())
+          .toList();
+      if (mounted) {
+        setState(() => _projectContacts = projects);
+      }
+    } catch (_) {
+      // Ignore errors loading projects config
+    }
+  }
+
+  Future<void> _openProjectContact(TaskStore store, ProjectContact project) async {
+    if (!mounted || !_isDesktopWindows) {
+      return;
+    }
+
+    // Set active conversation to project key
+    setState(() {
+      _activeConversationKey = project.conversationKey;
+      _projectMessages.clear();
+    });
+
+    // Stop existing bridge if any
+    await _projectBridge?.dispose();
+    _projectBridge = null;
+
+    // Start the Python bridge
+    final bridge = ProjectBridgeService(
+      project: project,
+      onMessage: (msg) {
+        if (mounted) {
+          setState(() => _projectMessages.add(msg));
+        }
+      },
+      onStatusChange: (connected, status) {
+        if (mounted && !connected) {
+          setState(() {
+            _projectMessages.add(BridgeMessage(
+              type: 'status',
+              text: status,
+            ));
+          });
+        }
+      },
+    );
+
+    // Launch bridge via DesktopProcessHostService
+    final processHost = _desktopProcessHostService;
+    if (processHost != null) {
+      // Start the bridge Python script
+      final pythonExe = _findPython();
+      if (pythonExe != null) {
+        Process.start(
+          pythonExe,
+          [
+            'project_bridge.py',
+            '--project-dir',
+            project.path,
+          ],
+          workingDirectory: Directory.current.path,
+          runInShell: true,
+        ).then((_) {
+          // Give the bridge a moment to start
+          Future.delayed(const Duration(seconds: 2), () {
+            bridge.connect();
+          });
+        }).catchError((_) {
+          bridge.connect(); // Try anyway
+        });
+      } else {
+        bridge.connect(); // Try anyway
+      }
+    } else {
+      bridge.connect(); // Try anyway
+    }
+
+    setState(() => _projectBridge = bridge);
+  }
+
+  String? _findPython() {
+    for (final candidate in [
+      'python',
+      r'C:\Users\user\AppData\Local\Programs\Python\Python310\python.exe',
+      r'C:\Users\user\AppData\Local\Programs\Python\Python311\python.exe',
+    ]) {
+      final result = Process.runSync(candidate, ['--version'],
+          runInShell: true);
+      if (result.exitCode == 0) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  bool _isProjectConversation(String key) => key.startsWith('project:');
+
+  ProjectContact? _projectByConversationKey(String key) {
+    if (!_isProjectConversation(key)) {
+      return null;
+    }
+    return _projectContacts.cast<ProjectContact?>().firstWhere(
+          (p) => p?.conversationKey == key,
+          orElse: () => null,
+        );
+  }
+
   Future<void> _refreshActiveConversation(
     TaskStore store, {
     required bool useNetwork,
     required bool quiet,
   }) async {
     if (_activeConversationKey.isEmpty) {
+      return;
+    }
+    // Skip project conversations (handled by bridge)
+    if (_isProjectConversation(_activeConversationKey)) {
       return;
     }
     await _refreshConversation(
@@ -1237,6 +1367,12 @@ class _HomePageState extends State<HomePage> {
       TaskStore store, String conversationKey) async {
     if (!mounted) {
       return;
+    }
+    // Clean up project bridge when switching to regular conversation
+    if (_isProjectConversation(_activeConversationKey)) {
+      _projectBridge?.dispose();
+      _projectBridge = null;
+      _projectMessages.clear();
     }
     setState(() {
       _activeConversationKey = conversationKey;
@@ -1470,6 +1606,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _sendTextMessage(TaskStore store) async {
+    // Route to project bridge for project conversations
+    if (_isProjectConversation(_activeConversationKey)) {
+      _sendProjectMessage();
+      return;
+    }
+
     final text = _chatInputCtl.text.trim();
     if (text.isEmpty) {
       return;
@@ -2071,6 +2213,7 @@ class _HomePageState extends State<HomePage> {
 
     if (_activeConversationKey.isEmpty) {
       final contacts = _phoneContacts.isEmpty ? _chatContacts : _phoneContacts;
+      final projects = _projectContacts;
       return Column(
         children: [
           Padding(
@@ -2097,31 +2240,69 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           Expanded(
-            child: contacts.isEmpty
-                ? const Center(
+            child: ListView(
+              children: [
+                // Regular contacts
+                if (contacts.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(16),
                     child: Text('Нет зарегистрированных контактов из телефона'),
                   )
-                : ListView.separated(
-                    itemCount: contacts.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final contact = contacts[index];
-                      return ListTile(
-                        leading: const CircleAvatar(child: Icon(Icons.person)),
-                        title: Text(_contactLabel(contact)),
-                        subtitle: Text(contact.phone),
-                        trailing: IconButton(
-                          tooltip: 'Добавить в семью',
-                          icon: const Icon(Icons.family_restroom_outlined),
-                          onPressed: () => _addContactToFamily(store, contact),
-                        ),
-                        onTap: () => _openDirectContact(store, contact),
-                      );
-                    },
+                else
+                  ...List.generate(contacts.length, (index) {
+                    final contact = contacts[index];
+                    return ListTile(
+                      leading:
+                          const CircleAvatar(child: Icon(Icons.person)),
+                      title: Text(_contactLabel(contact)),
+                      subtitle: Text(contact.phone),
+                      trailing: IconButton(
+                        tooltip: 'Добавить в семью',
+                        icon: const Icon(Icons.family_restroom_outlined),
+                        onPressed: () =>
+                            _addContactToFamily(store, contact),
+                      ),
+                      onTap: () =>
+                          _openDirectContact(store, contact),
+                    );
+                  }),
+                // Projects section
+                if (projects.isNotEmpty) ...[
+                  const Divider(height: 24),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    child: Text(
+                      'Проекты (терминалы)',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
+                  ...projects.map((project) {
+                    return ListTile(
+                      leading: CircleAvatar(
+                        child: Icon(_projectIcon(project.icon)),
+                      ),
+                      title: Text(project.name),
+                      subtitle: Text(project.path,
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      trailing: const Icon(Icons.terminal),
+                      onTap: () =>
+                          _openProjectContact(store, project),
+                    );
+                  }),
+                ],
+              ],
+            ),
           ),
         ],
       );
+    }
+
+    // Project conversation view
+    if (_isProjectConversation(_activeConversationKey)) {
+      return _buildProjectChatView(store, compact: compact);
     }
 
     return Column(
@@ -2276,6 +2457,254 @@ class _HomePageState extends State<HomePage> {
         ),
       ],
     );
+  }
+
+  IconData _projectIcon(String icon) {
+    switch (icon) {
+      case 'code':
+        return Icons.code;
+      case 'folder':
+        return Icons.folder;
+      case 'terminal':
+      default:
+        return Icons.terminal;
+    }
+  }
+
+  Widget _buildProjectChatView(TaskStore store, {required bool compact}) {
+    final project = _projectByConversationKey(_activeConversationKey);
+    if (project == null) {
+      return const Center(child: Text('Проект не найден'));
+    }
+
+    final bridge = _projectBridge;
+    final messages = _projectMessages;
+
+    return Column(
+      children: [
+        // Chat header with back button
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: Theme.of(context).dividerColor,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  setState(() => _activeConversationKey = '');
+                  _projectBridge?.dispose();
+                  _projectBridge = null;
+                  _projectMessages.clear();
+                },
+              ),
+              const SizedBox(width: 8),
+              CircleAvatar(
+                child: Icon(_projectIcon(project.icon)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      project.name,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      bridge?.isConnected == true
+                          ? 'Подключено'
+                          : 'Подключение...',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: bridge?.isConnected == true
+                            ? Colors.green
+                            : Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Запустить терминал',
+                icon: const Icon(Icons.open_in_new),
+                onPressed: () {
+                  // Terminal is already launched by the bridge
+                },
+              ),
+            ],
+          ),
+        ),
+        // Messages list
+        Expanded(
+          child: messages.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.terminal,
+                        size: 48,
+                        color: Theme.of(context).disabledColor,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Терминал проекта',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Напишите сообщение для взаимодействия\nс AI-ассистентом в проекте',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Theme.of(context).disabledColor,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          _projectBridge?.dispose();
+                          _projectBridge = null;
+                          _projectMessages.clear();
+                          if (project != null) {
+                            _openProjectContact(store, project);
+                          }
+                        },
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Переподключиться'),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  reverse: true,
+                  padding: const EdgeInsets.all(12),
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final msg = messages[messages.length - 1 - index];
+                    final isMe = msg.isSent || msg.type == 'send';
+                    final isStatus = msg.isStatus || msg.isPong;
+
+                    if (isStatus) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Text(
+                          msg.text,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context).disabledColor,
+                          ),
+                        ),
+                      );
+                    }
+
+                    return Align(
+                      alignment:
+                          isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isMe
+                              ? Theme.of(context)
+                                  .colorScheme
+                                  .primaryContainer
+                              : Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: isMe
+                              ? CrossAxisAlignment.end
+                              : CrossAxisAlignment.start,
+                          children: [
+                            if (!isMe)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 2),
+                                child: Text(
+                                  project.name,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary,
+                                  ),
+                                ),
+                              ),
+                            SelectableText(
+                              msg.text,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+        // Input bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _chatInputCtl,
+                  minLines: 1,
+                  maxLines: 4,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _sendProjectMessage(),
+                  decoration: const InputDecoration(
+                    hintText: 'Сообщение',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(24)),
+                    ),
+                    isDense: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(
+                tooltip: 'Отправить',
+                onPressed: _sendProjectMessage,
+                icon: const Icon(Icons.send),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _sendProjectMessage() {
+    final text = _chatInputCtl.text.trim();
+    if (text.isEmpty) {
+      return;
+    }
+    _chatInputCtl.clear();
+
+    _projectBridge?.sendText(text);
+
+    // Show the message immediately in the UI
+    if (mounted) {
+      setState(() {
+        _projectMessages.add(BridgeMessage(
+          type: 'send',
+          text: text,
+        ));
+      });
+    }
   }
 
   String _conversationLabel(ChatConversation conversation, String actor) {

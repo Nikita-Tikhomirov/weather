@@ -1,0 +1,22 @@
+{
+  "projects": [
+    {
+      "id": "weather",
+      "name": "Weather (этот проект)",
+      "path": "C:\\Users\\user\\Desktop\\weather",
+      "icon": "terminal"
+    },
+    {
+      "id": "deepseek-tui-dev",
+      "name": "deepseek-tui repo",
+      "path": "C:\\Users\\user\\Desktop\\deepseek-tui",
+      "icon": "code"
+    },
+    {
+      "id": "my-other-project",
+      "name": "Другой проект",
+      "path": "C:\\Users\\user\\Desktop\\my-other-project",
+      "icon": "folder"
+    }
+  ]
+}
