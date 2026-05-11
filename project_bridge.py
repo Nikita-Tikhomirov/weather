@@ -373,23 +373,187 @@ class BridgeServer:
 
 
 # ---------------------------------------------------------------------------
+# Tunnel client — connects PC to VPS relay
+# ---------------------------------------------------------------------------
+class TunnelClient:
+    """Connects to tunnel_server.py on VPS for each project, relays messages."""
+
+    def __init__(self, tunnel_host: str, tunnel_port: int = 9877):
+        self.tunnel_host = tunnel_host
+        self.tunnel_port = tunnel_port
+        self._sessions: Dict[str, ProjectSession] = {}
+        self._projects: list = []
+        self._tasks: list = []
+
+    def _load_projects(self) -> list:
+        candidates = [
+            Path('family_data/nik/projects.json'),
+            Path(os.getcwd()) / 'family_data/nik/projects.json',
+        ]
+        for path in candidates:
+            if path.exists():
+                try:
+                    data = json.loads(path.read_text(encoding='utf-8'))
+                    return data.get('projects', DEFAULT_PROJECTS)
+                except Exception:
+                    pass
+        return DEFAULT_PROJECTS
+
+    async def start(self):
+        self._projects = self._load_projects()
+        print(f"Tunnel client connecting to {self.tunnel_host}:{self.tunnel_port}", flush=True)
+        print(f"Projects to register: {[p['id'] for p in self._projects]}", flush=True)
+
+        for project in self._projects:
+            task = asyncio.create_task(self._register_project(project))
+            self._tasks.append(task)
+
+        if self._tasks:
+            await asyncio.gather(*self._tasks, return_exceptions=True)
+
+    async def _register_project(self, project: dict):
+        project_id = project['id']
+        project_dir = project['path']
+
+        while True:
+            try:
+                reader, writer = await asyncio.wait_for(
+                    asyncio.open_connection(self.tunnel_host, self.tunnel_port),
+                    timeout=10,
+                )
+                # Register as bridge
+                reg_msg = json.dumps({
+                    'type': 'register',
+                    'project_id': project_id,
+                }, ensure_ascii=False) + '\n'
+                writer.write(reg_msg.encode('utf-8'))
+                await writer.drain()
+
+                print(f"[tunnel] Registered bridge for {project_id}", flush=True)
+
+                # Wait for mobile client connection
+                while True:
+                    line = await reader.readline()
+                    if not line:
+                        break
+
+                    try:
+                        msg = json.loads(line.decode('utf-8', errors='replace').strip())
+                        msg_type = msg.get('type', '')
+
+                        if msg_type == 'pong':
+                            continue
+
+                        if msg_type == 'status':
+                            # Mobile client paired — start session if needed
+                            session_key = project_id
+                            if session_key not in self._sessions:
+                                session = ProjectSession(project_id, project_dir)
+                                ok = session.start()
+                                if ok:
+                                    self._sessions[session_key] = session
+                                    # Relay: session stdout -> tunnel writer
+                                    self._start_relay_thread(session, writer)
+                            continue
+
+                        if msg_type in ('send',):
+                            text = msg.get('text', '')
+                            session = self._sessions.get(project_id)
+                            if session and session.is_running and text:
+                                session.send(text)
+
+                    except json.JSONDecodeError:
+                        # Plain text — forward to session
+                        session = self._sessions.get(project_id)
+                        line_text = line.decode('utf-8', errors='replace').strip()
+                        if session and session.is_running and line_text:
+                            session.send(line_text)
+
+            except (ConnectionRefusedError, ConnectionResetError, OSError, asyncio.TimeoutError) as e:
+                print(f"[tunnel] Connection failed for {project_id}: {e}. Retrying in 10s...", flush=True)
+            except Exception as e:
+                print(f"[tunnel] Error for {project_id}: {e}. Retrying in 10s...", flush=True)
+
+            await asyncio.sleep(10)
+
+    def _start_relay_thread(self, session: ProjectSession, tunnel_writer: asyncio.StreamWriter):
+        """Forward session stdout to tunnel in a background thread."""
+        import threading
+
+        def forward_to_tunnel(text: str):
+            try:
+                msg = json.dumps({'type': 'output', 'text': text}, ensure_ascii=False) + '\n'
+                # Schedule write on the event loop
+                asyncio.get_event_loop().call_soon_threadsafe(
+                    lambda: asyncio.create_task(self._safe_write(tunnel_writer, msg))
+                )
+            except Exception:
+                pass
+
+        # Hook into session's broadcast
+        original_broadcast = session._broadcast_output
+        def hooked_broadcast(text):
+            original_broadcast(text)
+            forward_to_tunnel(text)
+
+        session._broadcast_output = hooked_broadcast
+
+        original_status = session._broadcast_status
+        def hooked_status(text):
+            original_status(text)
+            forward_to_tunnel(text)
+
+        session._broadcast_status = hooked_status
+
+    @staticmethod
+    async def _safe_write(writer: asyncio.StreamWriter, data: str):
+        try:
+            writer.write(data.encode('utf-8'))
+            await writer.drain()
+        except Exception:
+            pass
+
+    async def stop(self):
+        for task in self._tasks:
+            task.cancel()
+        for session in self._sessions.values():
+            session.stop()
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 async def main():
     parser = argparse.ArgumentParser(description='Project Bridge Server')
-    parser.add_argument('--port', type=int, default=9876, help='WebSocket port')
-    parser.add_argument('--host', type=str, default='0.0.0.0', help='Bind address')
+    parser.add_argument('--port', type=int, default=9876, help='Local WebSocket port (direct mode)')
+    parser.add_argument('--host', type=str, default='0.0.0.0', help='Bind address (direct mode)')
+    parser.add_argument('--tunnel', type=str, default='', metavar='HOST:PORT',
+                        help='VPS tunnel address (e.g. 31.129.97.211:9877) — use tunnel mode')
     args = parser.parse_args()
 
-    server = BridgeServer(host=args.host, port=args.port)
-    await server.start()
+    if args.tunnel:
+        # Tunnel mode: connect PC to VPS relay
+        parts = args.tunnel.split(':')
+        tunnel_host = parts[0]
+        tunnel_port = int(parts[1]) if len(parts) > 1 else 9877
 
-    try:
-        await asyncio.Event().wait()
-    except KeyboardInterrupt:
-        print("\nShutting down...", flush=True)
-    finally:
-        await server.stop()
+        client = TunnelClient(tunnel_host, tunnel_port)
+        try:
+            await client.start()
+        except KeyboardInterrupt:
+            print("\nShutting down...", flush=True)
+        finally:
+            await client.stop()
+    else:
+        # Direct mode: listen for local connections
+        server = BridgeServer(host=args.host, port=args.port)
+        await server.start()
+        try:
+            await asyncio.Event().wait()
+        except KeyboardInterrupt:
+            print("\nShutting down...", flush=True)
+        finally:
+            await server.stop()
 
 
 if __name__ == '__main__':

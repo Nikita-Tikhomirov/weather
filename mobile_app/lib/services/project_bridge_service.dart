@@ -67,7 +67,7 @@ class ProjectBridgeService {
   /// Resolve server address from SharedPreferences.
   static Future<String> getServerAddress() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('bridge_host') ?? '10.0.0.5:9876';
+    return prefs.getString('bridge_host') ?? '31.129.97.211:9877';
   }
 
   /// Save server address to SharedPreferences.
@@ -155,15 +155,14 @@ class ProjectBridgeService {
     }
   }
 
-  /// Start a project session on the server.
+  /// Start a project session via tunnel (connect to PC bridge).
   void startProject(ProjectContact project) {
     if (!isConnected) {
       return;
     }
     final message = jsonEncode({
-      'type': 'start',
+      'type': 'connect',
       'project_id': project.id,
-      'project_dir': project.path,
     });
     _sendRaw('$message\n');
   }

@@ -1,13 +1,15 @@
 @echo off
-REM Start the Project Bridge Server for mobile-to-PC terminal control
-REM The mobile app connects to this server to launch/manage deepseek-tui sessions
+REM Project Bridge Server — tunnel mode (connects PC to VPS relay)
 REM 
-REM Make sure deepseek-tui is in PATH, and Python 3.10+ is installed
-REM Run this on PC startup or manually before using project chats from mobile
+REM The VPS (31.129.97.211) runs tunnel_server.py on port 9877.
+REM This script connects the PC to the VPS relay.
+REM Mobile app connects to VPS, VPS pairs them with this PC.
+REM
+REM Run this on PC startup. Deepseek-tui must be in PATH.
 
 cd /d "%~dp0"
-echo Starting Project Bridge Server on port 9876...
-echo Mobile app should connect to: YOUR_PC_IP:9876
+echo Connecting to VPS tunnel at 31.129.97.211:9877...
+echo Mobile app connects to: 31.129.97.211:9877 (fixed, works anywhere)
 echo.
-python project_bridge.py --port 9876 --host 0.0.0.0
+python project_bridge.py --tunnel 31.129.97.211:9877
 pause
