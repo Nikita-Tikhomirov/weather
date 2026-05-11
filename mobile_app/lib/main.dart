@@ -1175,17 +1175,41 @@ class _HomePageState extends State<HomePage> {
 
   void _loadProjects() {
     try {
-      final file = File('family_data/nik/projects.json');
-      if (!file.existsSync()) {
+      // Try multiple locations for projects.json
+      final candidates = <String>[
+        'family_data/nik/projects.json',
+        '${Directory.current.path}/family_data/nik/projects.json',
+      ];
+      // Remove duplicate slashes
+      final normalized = candidates
+          .map((p) => p.replaceAll('\\', '/').replaceAll(RegExp(r'/+'), '/'))
+          .toList();
+
+      File? file;
+      for (final path in normalized) {
+        final f = File(path);
+        if (f.existsSync()) {
+          file = f;
+          break;
+        }
+      }
+
+      if (file == null) {
+        // Fallback: use bundled project list so contacts appear on all platforms
+        if (mounted) {
+          setState(() {
+            _projectContacts = _fallbackProjects();
+          });
+        }
         return;
       }
+
       final content = file.readAsStringSync();
       final json = jsonDecode(content) as Map<String, dynamic>;
       final rawList = json['projects'] as List<dynamic>? ?? [];
       final projects = rawList
           .whereType<Map<String, dynamic>>()
           .map((item) => ProjectContact.fromJson(item))
-          .where((p) => p.path.isNotEmpty && Directory(p.path).existsSync())
           .toList();
       if (mounted) {
         setState(() => _projectContacts = projects);
@@ -1195,8 +1219,49 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  List<ProjectContact> _fallbackProjects() {
+    // Built-in project list synced with family_data/nik/projects.json
+    return const [
+      ProjectContact(
+        id: 'tudushka',
+        name: 'Тудушка',
+        path: r'C:\Users\user\Desktop\weather',
+        icon: 'terminal',
+      ),
+      ProjectContact(
+        id: 'cifra',
+        name: 'Цифра',
+        path: r'C:\Users\user\Desktop\depseeker_test',
+        icon: 'code',
+      ),
+      ProjectContact(
+        id: 'stylish-house',
+        name: 'Stylysh-house',
+        path: r'C:\Users\user\Desktop\stylish-house',
+        icon: 'code',
+      ),
+      ProjectContact(
+        id: 'nousro',
+        name: 'Nousro',
+        path: r'C:\Users\user\Desktop\nousro',
+        icon: 'folder',
+      ),
+    ];
+  }
+
   Future<void> _openProjectContact(TaskStore store, ProjectContact project) async {
-    if (!mounted || !_isDesktopWindows) {
+    if (!mounted) {
+      return;
+    }
+    if (!_isDesktopWindows) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Терминалы проектов доступны только на Windows'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
       return;
     }
 

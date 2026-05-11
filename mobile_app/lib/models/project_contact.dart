@@ -1,5 +1,5 @@
 class ProjectContact {
-  ProjectContact({
+  const ProjectContact({
     required this.id,
     required this.name,
     required this.path,
