@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -1206,7 +1207,7 @@ class _HomePageState extends State<HomePage> {
     });
 
     // Stop existing bridge if any
-    await _projectBridge?.dispose();
+    _projectBridge?.dispose();
     _projectBridge = null;
 
     // Start the Python bridge
