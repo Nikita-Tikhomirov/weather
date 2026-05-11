@@ -3,28 +3,36 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../models/project_contact.dart';
 
-/// Message received from the project bridge.
+/// Message received from the project bridge server.
 class BridgeMessage {
   BridgeMessage({
     required this.type,
     this.text = '',
     this.tuiRunning = false,
-    this.projectDir = '',
+    this.projectId = '',
+    this.projects = const [],
   });
 
   final String type;
   final String text;
   final bool tuiRunning;
-  final String projectDir;
+  final String projectId;
+  final List<Map<String, dynamic>> projects;
 
   factory BridgeMessage.fromJson(Map<String, dynamic> json) {
     return BridgeMessage(
       type: (json['type'] ?? '').toString(),
       text: (json['text'] ?? '').toString(),
       tuiRunning: json['tui_running'] == true,
-      projectDir: (json['project_dir'] ?? '').toString(),
+      projectId: (json['project_id'] ?? '').toString(),
+      projects: (json['projects'] as List<dynamic>?)
+              ?.whereType<Map<String, dynamic>>()
+              .toList() ??
+          const [],
     );
   }
 
@@ -33,52 +41,65 @@ class BridgeMessage {
   bool get isError => type == 'error';
   bool get isSent => type == 'sent';
   bool get isPong => type == 'pong';
+  bool get isProjects => type == 'projects';
 }
 
-/// Manages a WebSocket connection to the Python project bridge.
+/// Manages TCP connection to the remote Project Bridge Server running on PC.
+///
+/// Server address is stored in SharedPreferences under key 'bridge_host'.
+/// Default: '10.0.0.5:9876' (replace with actual PC IP).
 class ProjectBridgeService {
   ProjectBridgeService({
-    required this.project,
     required this.onMessage,
     required this.onStatusChange,
   });
 
-  final ProjectContact project;
   final void Function(BridgeMessage message) onMessage;
   final void Function(bool connected, String status) onStatusChange;
 
   Socket? _socket;
   bool _running = false;
   Timer? _pingTimer;
-  int _port = 0;
   final StringBuffer _buffer = StringBuffer();
 
   bool get isConnected => _socket != null && _running;
 
-  /// Connect to the bridge. Reads port from the project's .project_bridge_port file.
+  /// Resolve server address from SharedPreferences.
+  static Future<String> getServerAddress() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('bridge_host') ?? '10.0.0.5:9876';
+  }
+
+  /// Save server address to SharedPreferences.
+  static Future<void> setServerAddress(String host) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('bridge_host', host);
+  }
+
+  /// Connect to the bridge server.
   Future<bool> connect() async {
     if (_running) {
       return true;
     }
 
-    // Try to read the port from the port file
-    _port = await _readPortFile();
-    if (_port <= 0) {
-      onStatusChange(false, 'Bridge port file not found. Start project_bridge.py first.');
-      return false;
-    }
+    final address = await getServerAddress();
+    final parts = address.split(':');
+    final host = parts[0].trim();
+    final port = parts.length > 1
+        ? int.tryParse(parts[1].trim()) ?? 9876
+        : 9876;
 
     try {
       _socket = await Socket.connect(
-        InternetAddress.loopbackIPv4,
-        _port,
+        host,
+        port,
         timeout: const Duration(seconds: 5),
       );
       _running = true;
-      onStatusChange(true, 'Connected to bridge on port $_port');
+      onStatusChange(true, 'Connected to $address');
 
       // Start ping timer
-      _pingTimer = Timer.periodic(const Duration(seconds: 10), (_) => _ping());
+      _pingTimer = Timer.periodic(const Duration(seconds: 15), (_) => _ping());
 
       // Listen for messages
       _socket!.listen(
@@ -88,12 +109,13 @@ class ProjectBridgeService {
           _cleanup();
         },
         onDone: () {
-          onStatusChange(false, 'Bridge disconnected');
+          onStatusChange(false, 'Server disconnected');
           _cleanup();
         },
       );
 
-      // Send a ping to verify
+      // Request project list
+      _sendRaw('{"type":"list"}\n');
       _ping();
 
       return true;
@@ -102,17 +124,6 @@ class ProjectBridgeService {
       _cleanup();
       return false;
     }
-  }
-
-  Future<int> _readPortFile() async {
-    try {
-      final file = File('${project.path}\\.project_bridge_port'.replaceAll('\\', '/'));
-      if (await file.exists()) {
-        final content = await file.readAsString();
-        return int.tryParse(content.trim()) ?? 0;
-      }
-    } catch (_) {}
-    return 0;
   }
 
   void _onData(Uint8List data) {
@@ -144,6 +155,20 @@ class ProjectBridgeService {
     }
   }
 
+  /// Start a project session on the server.
+  void startProject(ProjectContact project) {
+    if (!isConnected) {
+      return;
+    }
+    final message = jsonEncode({
+      'type': 'start',
+      'project_id': project.id,
+      'project_dir': project.path,
+    });
+    _sendRaw('$message\n');
+  }
+
+  /// Send text to the current project session.
   void sendText(String text) {
     if (!isConnected) {
       return;
@@ -155,6 +180,14 @@ class ProjectBridgeService {
     _sendRaw('$message\n');
   }
 
+  /// Stop the current project session.
+  void stopProject() {
+    if (!isConnected) {
+      return;
+    }
+    _sendRaw('{"type":"stop"}\n');
+  }
+
   void _ping() {
     if (!isConnected) {
       return;
@@ -162,18 +195,11 @@ class ProjectBridgeService {
     _sendRaw('{"type":"ping"}\n');
   }
 
-  void restartTui() {
+  void requestProjectList() {
     if (!isConnected) {
       return;
     }
-    _sendRaw('{"type":"restart"}\n');
-  }
-
-  void stopTui() {
-    if (!isConnected) {
-      return;
-    }
-    _sendRaw('{"type":"stop"}\n');
+    _sendRaw('{"type":"list"}\n');
   }
 
   void _sendRaw(String data) {

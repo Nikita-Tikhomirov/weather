@@ -1253,17 +1253,6 @@ class _HomePageState extends State<HomePage> {
     if (!mounted) {
       return;
     }
-    if (!_isDesktopWindows) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Терминалы проектов доступны только на Windows'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-      return;
-    }
 
     // Set active conversation to project key
     setState(() {
@@ -1275,16 +1264,15 @@ class _HomePageState extends State<HomePage> {
     _projectBridge?.dispose();
     _projectBridge = null;
 
-    // Start the Python bridge
+    // Connect to the remote bridge server running on PC
     final bridge = ProjectBridgeService(
-      project: project,
       onMessage: (msg) {
         if (mounted) {
           setState(() => _projectMessages.add(msg));
         }
       },
       onStatusChange: (connected, status) {
-        if (mounted && !connected) {
+        if (mounted) {
           setState(() {
             _projectMessages.add(BridgeMessage(
               type: 'status',
@@ -1295,52 +1283,13 @@ class _HomePageState extends State<HomePage> {
       },
     );
 
-    // Launch bridge via DesktopProcessHostService
-    final processHost = _desktopProcessHostService;
-    if (processHost != null) {
-      // Start the bridge Python script
-      final pythonExe = _findPython();
-      if (pythonExe != null) {
-        Process.start(
-          pythonExe,
-          [
-            'project_bridge.py',
-            '--project-dir',
-            project.path,
-          ],
-          workingDirectory: Directory.current.path,
-          runInShell: true,
-        ).then((_) {
-          // Give the bridge a moment to start
-          Future.delayed(const Duration(seconds: 2), () {
-            bridge.connect();
-          });
-        }).catchError((_) {
-          bridge.connect(); // Try anyway
-        });
-      } else {
-        bridge.connect(); // Try anyway
-      }
-    } else {
-      bridge.connect(); // Try anyway
-    }
-
     setState(() => _projectBridge = bridge);
-  }
 
-  String? _findPython() {
-    for (final candidate in [
-      'python',
-      r'C:\Users\user\AppData\Local\Programs\Python\Python310\python.exe',
-      r'C:\Users\user\AppData\Local\Programs\Python\Python311\python.exe',
-    ]) {
-      final result = Process.runSync(candidate, ['--version'],
-          runInShell: true);
-      if (result.exitCode == 0) {
-        return candidate;
-      }
+    // Connect to server, then start the project session
+    final ok = await bridge.connect();
+    if (ok) {
+      bridge.startProject(project);
     }
-    return null;
   }
 
   bool _isProjectConversation(String key) => key.startsWith('project:');
@@ -2335,14 +2284,25 @@ class _HomePageState extends State<HomePage> {
                 // Projects section
                 if (projects.isNotEmpty) ...[
                   const Divider(height: 24),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
-                    child: Text(
-                      'Проекты (терминалы)',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Проекты (терминалы)',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Настроить сервер',
+                          icon: const Icon(Icons.settings, size: 20),
+                          onPressed: () => _openBridgeSettings(),
+                        ),
+                      ],
                     ),
                   ),
                   ...projects.map((project) {
@@ -2582,26 +2542,30 @@ class _HomePageState extends State<HomePage> {
                       project.name,
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    Text(
-                      bridge?.isConnected == true
-                          ? 'Подключено'
-                          : 'Подключение...',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: bridge?.isConnected == true
-                            ? Colors.green
-                            : Colors.grey,
-                      ),
+                    FutureBuilder<String>(
+                      future: ProjectBridgeService.getServerAddress(),
+                      builder: (context, snapshot) {
+                        final addr = snapshot.data ?? '...';
+                        return Text(
+                          bridge?.isConnected == true
+                              ? 'Подключено • $addr'
+                              : 'Подключение к $addr...',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: bridge?.isConnected == true
+                                ? Colors.green
+                                : Colors.grey,
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
               ),
               IconButton(
-                tooltip: 'Запустить терминал',
-                icon: const Icon(Icons.open_in_new),
-                onPressed: () {
-                  // Terminal is already launched by the bridge
-                },
+                tooltip: 'Настроить сервер',
+                icon: const Icon(Icons.settings),
+                onPressed: () => _openBridgeSettings(),
               ),
             ],
           ),
@@ -2771,6 +2735,62 @@ class _HomePageState extends State<HomePage> {
         ));
       });
     }
+  }
+
+  Future<void> _openBridgeSettings() async {
+    final ctl = TextEditingController(
+      text: await ProjectBridgeService.getServerAddress(),
+    );
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Сервер проектов'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'IP-адрес и порт ПК, на котором запущен project_bridge.py',
+                style: TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: ctl,
+                decoration: const InputDecoration(
+                  labelText: 'Адрес',
+                  hintText: '192.168.1.5:9876',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Отмена'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                await ProjectBridgeService.setServerAddress(ctl.text.trim());
+                if (ctx.mounted) Navigator.of(ctx).pop();
+                // Reconnect if we have a bridge
+                if (_projectBridge != null) {
+                  _projectBridge?.dispose();
+                  _projectBridge = null;
+                  // Re-trigger connection
+                  final project =
+                      _projectByConversationKey(_activeConversationKey);
+                  if (project != null && mounted) {
+                    _openProjectContact(_store!, project);
+                  }
+                }
+              },
+              child: const Text('Сохранить'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   String _conversationLabel(ChatConversation conversation, String actor) {

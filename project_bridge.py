@@ -1,14 +1,11 @@
 """
-Project Bridge - WebSocket server that manages a deepseek-tui session
-for a specific project directory.
+Project Bridge Server — persistent WebSocket server that manages deepseek-tui
+sessions per project directory. Designed to run on the PC continuously.
 
-Usage: python project_bridge.py --project-dir "C:\path\to\project" [--port PORT]
+Mobile app connects via WebSocket, triggers terminal launch, and
+exchanges messages bidirectionally.
 
-The bridge:
-1. Starts a WebSocket server on localhost
-2. Launches deepseek-tui in the project directory
-3. Routes messages: WebSocket <-> deepseek-tui stdin/stdout
-4. Opens WezTerm (or PowerShell) for visible terminal access
+Usage: python project_bridge.py [--port 9876] [--host 0.0.0.0]
 """
 import argparse
 import asyncio
@@ -16,12 +13,11 @@ import json
 import os
 import re
 import signal
-import socket
 import subprocess
 import sys
 import threading
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict
 
 # ---------------------------------------------------------------------------
 # ANSI escape code stripping
@@ -32,35 +28,30 @@ def strip_ansi(text: str) -> str:
     return ANSI_RE.sub('', text)
 
 # ---------------------------------------------------------------------------
-# Process manager for deepseek-tui
+# Single project session (deepseek-tui subprocess)
 # ---------------------------------------------------------------------------
-class TuiProcess:
-    def __init__(self, project_dir: str):
-        self.project_dir = Path(project_dir).resolve()
+class ProjectSession:
+    def __init__(self, project_id: str, project_dir: str):
+        self.project_id = project_id
+        self.project_dir = str(Path(project_dir).resolve())
         self.process: Optional[subprocess.Popen] = None
         self._read_thread: Optional[threading.Thread] = None
         self._running = False
-        self._on_output: Optional[callable] = None
+        self._clients: set = set()  # WebSocket writers for this session
 
-    def start(self, on_output: callable) -> bool:
+    def start(self) -> bool:
         """Start deepseek-tui in the project directory."""
-        if not self.project_dir.exists():
-            on_output(f"[bridge] Project directory not found: {self.project_dir}")
+        if not Path(self.project_dir).exists():
             return False
 
-        self._on_output = on_output
-
-        # Find deepseek-tui executable
         exe = self._find_deepseek_tui()
         if not exe:
-            on_output("[bridge] deepseek-tui not found in PATH")
             return False
 
         try:
-            # Launch with stdin/stdout pipes
             self.process = subprocess.Popen(
                 [exe],
-                cwd=str(self.project_dir),
+                cwd=self.project_dir,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -71,41 +62,73 @@ class TuiProcess:
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
             )
             self._running = True
-            on_output(f"[bridge] deepseek-tui started in {self.project_dir}")
+            self._broadcast_status(f"deepseek-tui started in {self.project_dir}")
 
-            # Start reader thread
             self._read_thread = threading.Thread(target=self._read_stdout, daemon=True)
             self._read_thread.start()
 
+            # Launch visible terminal
+            self._launch_terminal()
+
             return True
         except Exception as e:
-            on_output(f"[bridge] Failed to start deepseek-tui: {e}")
+            self._broadcast_error(f"Failed to start: {e}")
             return False
 
     def _find_deepseek_tui(self) -> Optional[str]:
-        """Locate deepseek-tui executable."""
-        # Common names
-        candidates = ['deepseek-tui', 'deepseek', 'deekseek-tui']
-        
-        # Check PATH first
-        for name in candidates:
-            import shutil
+        import shutil
+        for name in ['deepseek-tui', 'deepseek']:
             found = shutil.which(name)
             if found:
                 return found
-
-        # Check common install locations on Windows
         if sys.platform == 'win32':
             for base in [
                 os.path.expandvars(r'%LOCALAPPDATA%\Programs\deepseek\bin'),
                 os.path.expandvars(r'%USERPROFILE%\.cargo\bin'),
-                os.path.expandvars(r'%APPDATA%\npm'),
             ]:
                 for name in ['deepseek-tui.exe', 'deepseek.exe']:
                     p = Path(base) / name
                     if p.exists():
                         return str(p)
+        return None
 
+    def _launch_terminal(self) -> None:
+        """Open visible WezTerm/PowerShell with deepseek-tui."""
+        project_path = self.project_dir
+        wezterm = self._find_wezterm()
+        if wezterm:
+            try:
+                subprocess.Popen(
+                    [wezterm, 'start', '--cwd', project_path, '--', 'deepseek-tui'],
+                    creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == 'win32' else 0,
+                )
+                return
+            except Exception:
+                pass
+        # Fallback: PowerShell
+        try:
+            ps_cmd = f'Set-Location "{project_path}"; deepseek-tui'
+            subprocess.Popen(
+                ['powershell', '-NoExit', '-Command', ps_cmd],
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+            )
+        except Exception:
+            pass
+
+    @staticmethod
+    def _find_wezterm() -> Optional[str]:
+        import shutil
+        found = shutil.which('wezterm')
+        if found:
+            return found
+        if sys.platform == 'win32':
+            for base in [
+                os.path.expandvars(r'%ProgramFiles%\WezTerm'),
+                os.path.expandvars(r'%LOCALAPPDATA%\Programs\WezTerm'),
+            ]:
+                p = Path(base) / 'wezterm.exe'
+                if p.exists():
+                    return str(p)
         return None
 
     def send(self, text: str) -> None:
@@ -118,29 +141,64 @@ class TuiProcess:
                 self._running = False
 
     def _read_stdout(self) -> None:
-        """Continuously read stdout and forward via callback."""
         try:
             for line in self.process.stdout:
                 if not self._running:
                     break
                 clean = strip_ansi(line.rstrip('\n\r'))
                 if clean.strip():
-                    self._on_output(clean)
+                    self._broadcast_output(clean)
         except (ValueError, OSError):
             pass
         finally:
             self._running = False
-            self._on_output("[bridge] deepseek-tui process ended")
+            self._broadcast_status("deepseek-tui process ended")
+
+    def add_client(self, writer: asyncio.StreamWriter) -> None:
+        self._clients.add(writer)
+
+    def remove_client(self, writer: asyncio.StreamWriter) -> None:
+        self._clients.discard(writer)
+
+    def _broadcast_output(self, text: str) -> None:
+        msg = json.dumps({'type': 'output', 'text': text}, ensure_ascii=False) + '\n'
+        dead = set()
+        for w in self._clients:
+            try:
+                w.write(msg.encode('utf-8'))
+            except Exception:
+                dead.add(w)
+        self._clients -= dead
+
+    def _broadcast_status(self, text: str) -> None:
+        msg = json.dumps({'type': 'status', 'text': text}, ensure_ascii=False) + '\n'
+        dead = set()
+        for w in self._clients:
+            try:
+                w.write(msg.encode('utf-8'))
+            except Exception:
+                dead.add(w)
+        self._clients -= dead
+
+    def _broadcast_error(self, text: str) -> None:
+        msg = json.dumps({'type': 'error', 'text': text}, ensure_ascii=False) + '\n'
+        dead = set()
+        for w in self._clients:
+            try:
+                w.write(msg.encode('utf-8'))
+            except Exception:
+                dead.add(w)
+        self._clients -= dead
+
+    @property
+    def is_running(self) -> bool:
+        return self._running and self.process is not None and self.process.poll() is None
 
     def stop(self) -> None:
-        """Stop the process."""
         self._running = False
         if self.process:
             try:
-                if sys.platform == 'win32':
-                    self.process.terminate()
-                else:
-                    self.process.send_signal(signal.SIGTERM)
+                self.process.terminate()
                 self.process.wait(timeout=3)
             except Exception:
                 try:
@@ -149,242 +207,189 @@ class TuiProcess:
                     pass
             self.process = None
 
-    @property
-    def is_running(self) -> bool:
-        return self._running and self.process is not None and self.process.poll() is None
-
 
 # ---------------------------------------------------------------------------
-# Terminal launcher (WezTerm or PowerShell)
+# Default project list (synced with mobile fallback)
 # ---------------------------------------------------------------------------
-def launch_terminal(project_dir: str) -> Optional[subprocess.Popen]:
-    """Open a visible terminal with deepseek-tui in the project directory."""
-    project_path = Path(project_dir).resolve()
-
-    # Try WezTerm first
-    wezterm = _find_wezterm()
-    if wezterm:
-        try:
-            proc = subprocess.Popen(
-                [wezterm, 'start', '--cwd', str(project_path), '--', 'deepseek-tui'],
-                creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == 'win32' else 0,
-            )
-            return proc
-        except Exception:
-            pass
-
-    # Fallback to PowerShell
-    try:
-        ps_command = f'Set-Location "{project_path}"; deepseek-tui'
-        proc = subprocess.Popen(
-            ['powershell', '-NoExit', '-Command', ps_command],
-            creationflags=subprocess.CREATE_NEW_CONSOLE,
-        )
-        return proc
-    except Exception:
-        pass
-
-    # Last resort: cmd
-    try:
-        proc = subprocess.Popen(
-            ['cmd', '/c', 'start', 'cmd', '/k', f'cd /d "{project_path}" && deepseek-tui'],
-        )
-        return proc
-    except Exception:
-        return None
-
-
-def _find_wezterm() -> Optional[str]:
-    """Find WezTerm executable."""
-    import shutil
-    found = shutil.which('wezterm')
-    if found:
-        return found
-    if sys.platform == 'win32':
-        for base in [
-            os.path.expandvars(r'%ProgramFiles%\WezTerm'),
-            os.path.expandvars(r'%LOCALAPPDATA%\Programs\WezTerm'),
-        ]:
-            p = Path(base) / 'wezterm.exe'
-            if p.exists():
-                return str(p)
-    return None
+DEFAULT_PROJECTS = [
+    {"id": "tudushka",    "name": "Тудушка",       "path": r"C:\Users\user\Desktop\weather",        "icon": "terminal"},
+    {"id": "cifra",       "name": "Цифра",         "path": r"C:\Users\user\Desktop\depseeker_test", "icon": "code"},
+    {"id": "stylish-house","name": "Stylysh-house","path": r"C:\Users\user\Desktop\stylish-house",  "icon": "code"},
+    {"id": "nousro",      "name": "Nousro",        "path": r"C:\Users\user\Desktop\nousro",         "icon": "folder"},
+]
 
 
 # ---------------------------------------------------------------------------
 # WebSocket server
 # ---------------------------------------------------------------------------
-class ProjectBridge:
-    def __init__(self, project_dir: str, port: int = 0):
-        self.project_dir = str(Path(project_dir).resolve())
+class BridgeServer:
+    def __init__(self, host: str = '0.0.0.0', port: int = 9876):
+        self.host = host
         self.port = port
-        self.tui: Optional[TuiProcess] = None
-        self._clients: set = set()
+        self._sessions: Dict[str, ProjectSession] = {}
         self._server = None
 
-    async def start(self) -> int:
-        """Start the bridge. Returns the actual port."""
-        # Start deepseek-tui
-        self.tui = TuiProcess(self.project_dir)
-        ok = self.tui.start(on_output=self._broadcast)
-        if not ok:
-            print(f"WARNING: deepseek-tui not available, bridge will forward commands only", file=sys.stderr)
+    def _load_projects(self) -> list:
+        """Load project list from JSON config, fallback to defaults."""
+        candidates = [
+            Path('family_data/nik/projects.json'),
+            Path(os.getcwd()) / 'family_data/nik/projects.json',
+        ]
+        for path in candidates:
+            if path.exists():
+                try:
+                    data = json.loads(path.read_text(encoding='utf-8'))
+                    return data.get('projects', DEFAULT_PROJECTS)
+                except Exception:
+                    pass
+        return DEFAULT_PROJECTS
 
-        # Launch visible terminal
-        launch_terminal(self.project_dir)
-
-        # Start WebSocket server
+    async def start(self) -> None:
         self._server = await asyncio.start_server(
             self._handle_client,
-            host='127.0.0.1',
+            host=self.host,
             port=self.port,
         )
-        
-        # Get actual port
         addr = self._server.sockets[0].getsockname()
-        actual_port = addr[1]
-        self.port = actual_port
-
-        # Write port to file so Flutter can discover it
-        port_file = Path(self.project_dir) / '.project_bridge_port'
-        port_file.write_text(str(actual_port))
-
-        print(f"Bridge started on port {actual_port} for {self.project_dir}", flush=True)
-
-        return actual_port
+        print(f"Bridge server listening on {addr[0]}:{addr[1]}", flush=True)
+        print(f"Projects: {len(self._load_projects())} configured", flush=True)
 
     async def _handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        """Handle a WebSocket client connection."""
-        self._clients.add(writer)
         addr = writer.get_extra_info('peername')
-        print(f"[bridge] Client connected: {addr}", flush=True)
+        print(f"[server] Client connected: {addr}", flush=True)
+
+        current_session: Optional[ProjectSession] = None
 
         try:
-            # Send initial status
-            status = {
-                'type': 'status',
-                'project_dir': self.project_dir,
-                'tui_running': self.tui.is_running if self.tui else False,
-            }
-            self._send_json(writer, status)
+            # Send project list on connect
+            projects = self._load_projects()
+            self._send_json(writer, {
+                'type': 'projects',
+                'projects': projects,
+            })
 
-            # Read messages from client
             while True:
                 data = await reader.readline()
                 if not data:
                     break
-                
+
                 line = data.decode('utf-8', errors='replace').strip()
                 if not line:
                     continue
-                
-                # Try to parse as JSON (command message)
+
                 try:
                     msg = json.loads(line)
-                    await self._handle_message(writer, msg)
                 except json.JSONDecodeError:
-                    # Plain text - forward to deepseek-tui
-                    if self.tui and self.tui.is_running:
-                        self.tui.send(line)
+                    # Plain text — forward to current session
+                    if current_session and current_session.is_running:
+                        current_session.send(line)
+                    continue
+
+                msg_type = msg.get('type', '')
+
+                if msg_type == 'start':
+                    # Start/resume a project session
+                    project_id = msg.get('project_id', '')
+                    project_dir = msg.get('project_dir', '')
+
+                    if not project_dir:
+                        # Look up by id
+                        for proj in projects:
+                            if proj.get('id') == project_id:
+                                project_dir = proj.get('path', '')
+                                break
+
+                    if not project_dir:
+                        self._send_json(writer, {'type': 'error', 'text': 'project not found'})
+                        continue
+
+                    # Reuse or create session
+                    session_key = project_id or project_dir
+                    if session_key not in self._sessions:
+                        session = ProjectSession(project_id, project_dir)
+                        ok = session.start()
+                        if not ok:
+                            self._send_json(writer, {'type': 'error', 'text': 'failed to start deepseek-tui'})
+                            continue
+                        self._sessions[session_key] = session
                     else:
-                        self._send_json(writer, {
-                            'type': 'error',
-                            'message': 'deepseek-tui not running',
-                        })
+                        session = self._sessions[session_key]
+
+                    current_session = session
+                    session.add_client(writer)
+                    self._send_json(writer, {
+                        'type': 'status',
+                        'text': f'Session active: {project_id or project_dir}',
+                        'project_id': project_id,
+                        'tui_running': session.is_running,
+                    })
+
+                elif msg_type == 'send':
+                    text = msg.get('text', '')
+                    if text and current_session and current_session.is_running:
+                        current_session.send(text)
+                        self._send_json(writer, {'type': 'sent', 'text': text})
+
+                elif msg_type == 'ping':
+                    self._send_json(writer, {
+                        'type': 'pong',
+                        'sessions': len(self._sessions),
+                    })
+
+                elif msg_type == 'stop':
+                    if current_session:
+                        current_session.remove_client(writer)
+                        current_session.stop()
+                        # Don't remove from _sessions — allow reconnect
+                    self._send_json(writer, {'type': 'status', 'text': 'Session stopped'})
+
+                elif msg_type == 'list':
+                    self._send_json(writer, {
+                        'type': 'projects',
+                        'projects': self._load_projects(),
+                    })
 
         except (ConnectionResetError, asyncio.IncompleteReadError):
             pass
         finally:
-            self._clients.discard(writer)
+            if current_session:
+                current_session.remove_client(writer)
             writer.close()
             await writer.wait_closed()
-            print(f"[bridge] Client disconnected: {addr}", flush=True)
-
-    async def _handle_message(self, writer: asyncio.StreamWriter, msg: dict) -> None:
-        """Handle a structured message from the client."""
-        msg_type = msg.get('type', '')
-
-        if msg_type == 'send':
-            text = msg.get('text', '')
-            if text and self.tui and self.tui.is_running:
-                self.tui.send(text)
-                self._send_json(writer, {
-                    'type': 'sent',
-                    'text': text,
-                })
-        elif msg_type == 'ping':
-            self._send_json(writer, {
-                'type': 'pong',
-                'tui_running': self.tui.is_running if self.tui else False,
-            })
-        elif msg_type == 'restart':
-            if self.tui:
-                self.tui.stop()
-                ok = self.tui.start(on_output=self._broadcast)
-                self._send_json(writer, {
-                    'type': 'status',
-                    'tui_running': ok,
-                })
-        elif msg_type == 'stop':
-            if self.tui:
-                self.tui.stop()
-            self._send_json(writer, {
-                'type': 'status',
-                'tui_running': False,
-            })
-
-    def _broadcast(self, text: str) -> None:
-        """Send text to all connected clients."""
-        msg = {'type': 'output', 'text': text}
-        dead = set()
-        for writer in self._clients:
-            try:
-                self._send_json(writer, msg)
-            except Exception:
-                dead.add(writer)
-        self._clients -= dead
+            print(f"[server] Client disconnected: {addr}", flush=True)
 
     @staticmethod
     def _send_json(writer: asyncio.StreamWriter, obj: dict) -> None:
-        """Send a JSON message followed by newline."""
         data = json.dumps(obj, ensure_ascii=False) + '\n'
         writer.write(data.encode('utf-8'))
 
     async def stop(self) -> None:
-        """Stop the bridge."""
-        if self.tui:
-            self.tui.stop()
+        for session in self._sessions.values():
+            session.stop()
+        self._sessions.clear()
         if self._server:
             self._server.close()
             await self._server.wait_closed()
-        # Clean up port file
-        port_file = Path(self.project_dir) / '.project_bridge_port'
-        try:
-            port_file.unlink(missing_ok=True)
-        except Exception:
-            pass
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 async def main():
-    parser = argparse.ArgumentParser(description='Project Bridge for deepseek-tui')
-    parser.add_argument('--project-dir', required=True, help='Project directory path')
-    parser.add_argument('--port', type=int, default=0, help='WebSocket port (0=auto)')
-    parser.add_argument('--no-terminal', action='store_true', help='Skip opening visible terminal')
+    parser = argparse.ArgumentParser(description='Project Bridge Server')
+    parser.add_argument('--port', type=int, default=9876, help='WebSocket port')
+    parser.add_argument('--host', type=str, default='0.0.0.0', help='Bind address')
     args = parser.parse_args()
 
-    bridge = ProjectBridge(args.project_dir, args.port)
-    port = await bridge.start()
-    print(f"BRIDGE_PORT={port}", flush=True)
+    server = BridgeServer(host=args.host, port=args.port)
+    await server.start()
 
     try:
-        await asyncio.Event().wait()  # Run forever
+        await asyncio.Event().wait()
     except KeyboardInterrupt:
-        pass
+        print("\nShutting down...", flush=True)
     finally:
-        await bridge.stop()
+        await server.stop()
 
 
 if __name__ == '__main__':
