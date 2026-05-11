@@ -1,21 +1,27 @@
 {
   "projects": [
     {
-      "id": "weather",
-      "name": "Weather (этот проект)",
+      "id": "tudushka",
+      "name": "Тудушка",
       "path": "C:\\Users\\user\\Desktop\\weather",
       "icon": "terminal"
     },
     {
-      "id": "deepseek-tui-dev",
-      "name": "deepseek-tui repo",
-      "path": "C:\\Users\\user\\Desktop\\deepseek-tui",
+      "id": "cifra",
+      "name": "Цифра",
+      "path": "C:\\Users\\user\\Desktop\\depseeker_test",
       "icon": "code"
     },
     {
-      "id": "my-other-project",
-      "name": "Другой проект",
-      "path": "C:\\Users\\user\\Desktop\\my-other-project",
+      "id": "stylish-house",
+      "name": "Stylysh-house",
+      "path": "C:\\Users\\user\\Desktop\\stylish-house",
+      "icon": "code"
+    },
+    {
+      "id": "nousro",
+      "name": "Nousro",
+      "path": "C:\\Users\\user\\Desktop\\nousro",
       "icon": "folder"
     }
   ]
