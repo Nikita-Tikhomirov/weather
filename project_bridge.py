@@ -403,9 +403,9 @@ class TunnelClient:
     def __init__(self, tunnel_host: str, tunnel_port: int = 9877):
         self.tunnel_host = tunnel_host
         self.tunnel_port = tunnel_port
-        self._sessions: Dict[str, ProjectSession] = {}
         self._projects: list = []
         self._tasks: list = []
+        self._terminal_launched: set = set()
 
     def _load_projects(self) -> list:
         candidates = [
@@ -463,23 +463,6 @@ class TunnelClient:
                     if not line_str:
                         continue
 
-                    # Auto-start session on first message if not running
-                    session = self._sessions.get(project_id)
-                    if not session or not session.is_running:
-                        session = ProjectSession(project_id, project_dir)
-                        ok = session.start()
-                        if ok:
-                            self._sessions[project_id] = session
-                            self._start_relay_thread(session, writer)
-                            print(f"[tunnel] Auto-started session for {project_id}", flush=True)
-                        else:
-                            # Send error to mobile
-                            err = json.dumps({'type': 'error', 'text': f'Failed to start deepseek-tui in {project_dir}'}, ensure_ascii=False) + '\n'
-                            try:
-                                writer.write(err.encode('utf-8'))
-                            except Exception:
-                                pass
-
                     try:
                         msg = json.loads(line_str)
                         msg_type = msg.get('type', '')
@@ -489,19 +472,21 @@ class TunnelClient:
 
                         if msg_type in ('send',):
                             text = msg.get('text', '')
-                            if text and session and session.is_running:
-                                session.send(text)
+                            if text:
                                 print(f"[tunnel] {project_id} <- {text}", flush=True)
+                                # Run one-shot deepseek-tui exec
+                                asyncio.create_task(
+                                    self._exec_prompt(project_id, project_dir, text, writer)
+                                )
                             continue
 
-                        # Unknown JSON message — treat as plain text
-                        if session and session.is_running:
-                            session.send(line_str)
-
                     except json.JSONDecodeError:
-                        # Plain text — forward to session
-                        if session and session.is_running and line_str:
-                            session.send(line_str)
+                        # Plain text — also run as prompt
+                        if line_str:
+                            print(f"[tunnel] {project_id} <- {line_str[:60]}", flush=True)
+                            asyncio.create_task(
+                                self._exec_prompt(project_id, project_dir, line_str, writer)
+                            )
 
             except (ConnectionRefusedError, ConnectionResetError, OSError, asyncio.TimeoutError) as e:
                 print(f"[tunnel] Connection failed for {project_id}: {e}. Retrying in 10s...", flush=True)
@@ -510,48 +495,125 @@ class TunnelClient:
 
             await asyncio.sleep(10)
 
-    def _start_relay_thread(self, session: ProjectSession, tunnel_writer: asyncio.StreamWriter):
-        """Forward session stdout to tunnel in a background thread."""
-        import threading
+    async def _exec_prompt(self, project_id: str, project_dir: str, prompt: str, writer: asyncio.StreamWriter):
+        """Run deepseek-tui exec --prompt and send output back to mobile."""
+        exe = self._find_exe()
+        if not exe:
+            self._send_error(writer, 'deepseek-tui not found')
+            return
 
-        def forward_to_tunnel(text: str):
+        # Build command
+        if sys.platform == 'win32' and exe.endswith('.cmd'):
+            cmd = ['cmd', '/c', exe, 'exec', '--prompt', prompt, '--yolo', '-w', project_dir]
+        else:
+            cmd = [exe, 'exec', '--prompt', prompt, '--yolo', '-w', project_dir]
+
+        # Send "thinking" indicator
+        self._send_to(writer, {'type': 'status', 'text': '...'})
+
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                cwd=project_dir,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            output = []
+            async for line in proc.stdout:
+                decoded = line.decode('utf-8', errors='replace').rstrip('\n\r')
+                clean = strip_ansi(decoded)
+                if clean.strip():
+                    output.append(clean)
+                    self._send_to(writer, {'type': 'output', 'text': clean})
+
+            await proc.wait()
+            if output:
+                print(f"[tunnel] {project_id} -> {len(output)} lines", flush=True)
+            else:
+                self._send_to(writer, {'type': 'status', 'text': '(no output)'})
+
+        except Exception as e:
+            self._send_error(writer, f'exec failed: {e}')
+
+        # Launch visible terminal on first message (once)
+        if project_id not in self._terminal_launched:
+            self._terminal_launched.add(project_id)
+            self._launch_terminal(project_dir)
+
+    def _find_exe(self) -> Optional[str]:
+        """Find deepseek-tui executable."""
+        import shutil
+        if sys.platform == 'win32':
+            for name in ['deepseek-tui.cmd', 'deepseek-tui.exe', 'deepseek.cmd', 'deepseek.exe']:
+                found = shutil.which(name)
+                if found:
+                    return found
+            npm_root = os.path.expandvars(r'%APPDATA%\npm')
+            for name in ['deepseek-tui.cmd', 'deepseek.cmd']:
+                p = Path(npm_root) / name
+                if p.exists():
+                    return str(p)
+        for name in ['deepseek-tui', 'deepseek']:
+            found = shutil.which(name)
+            if found:
+                return found
+        return None
+
+    def _launch_terminal(self, project_dir: str) -> None:
+        """Open visible terminal with deepseek-tui."""
+        wezterm = self._find_wezterm()
+        if wezterm:
             try:
-                msg = json.dumps({'type': 'output', 'text': text}, ensure_ascii=False) + '\n'
-                # Schedule write on the event loop
-                asyncio.get_event_loop().call_soon_threadsafe(
-                    lambda: asyncio.create_task(self._safe_write(tunnel_writer, msg))
-                )
+                if sys.platform == 'win32':
+                    subprocess.Popen(
+                        [wezterm, 'start', '--cwd', project_dir, '--',
+                         'cmd', '/c', 'deepseek-tui', '--yolo'],
+                        creationflags=subprocess.CREATE_NEW_CONSOLE,
+                    )
+                else:
+                    subprocess.Popen(
+                        [wezterm, 'start', '--cwd', project_dir, '--',
+                         'deepseek-tui', '--yolo'],
+                    )
+                return
             except Exception:
                 pass
-
-        # Hook into session's broadcast
-        original_broadcast = session._broadcast_output
-        def hooked_broadcast(text):
-            original_broadcast(text)
-            forward_to_tunnel(text)
-
-        session._broadcast_output = hooked_broadcast
-
-        original_status = session._broadcast_status
-        def hooked_status(text):
-            original_status(text)
-            forward_to_tunnel(text)
-
-        session._broadcast_status = hooked_status
-
-    @staticmethod
-    async def _safe_write(writer: asyncio.StreamWriter, data: str):
         try:
-            writer.write(data.encode('utf-8'))
-            await writer.drain()
+            ps_cmd = f'Set-Location "{project_dir}"; deepseek-tui --yolo'
+            subprocess.Popen(
+                ['powershell', '-NoExit', '-Command', ps_cmd],
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+            )
         except Exception:
             pass
+
+    @staticmethod
+    def _find_wezterm() -> Optional[str]:
+        import shutil
+        found = shutil.which('wezterm')
+        if found:
+            return found
+        if sys.platform == 'win32':
+            for base in [os.path.expandvars(r'%ProgramFiles%\WezTerm'),
+                         os.path.expandvars(r'%LOCALAPPDATA%\Programs\WezTerm')]:
+                p = Path(base) / 'wezterm.exe'
+                if p.exists():
+                    return str(p)
+        return None
+
+    def _send_to(self, writer: asyncio.StreamWriter, obj: dict):
+        try:
+            data = json.dumps(obj, ensure_ascii=False) + '\n'
+            writer.write(data.encode('utf-8'))
+        except Exception:
+            pass
+
+    def _send_error(self, writer: asyncio.StreamWriter, text: str):
+        self._send_to(writer, {'type': 'error', 'text': text})
 
     async def stop(self):
         for task in self._tasks:
             task.cancel()
-        for session in self._sessions.values():
-            session.stop()
 
 
 # ---------------------------------------------------------------------------
