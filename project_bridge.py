@@ -19,6 +19,10 @@ import threading
 from pathlib import Path
 from typing import Optional, Dict
 
+# Fix Windows Proactor event loop socket errors
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 # ---------------------------------------------------------------------------
 # ANSI escape code stripping
 # ---------------------------------------------------------------------------
@@ -437,37 +441,44 @@ class TunnelClient:
                     if not line:
                         break
 
+                    line_str = line.decode('utf-8', errors='replace').strip()
+                    if not line_str:
+                        continue
+
+                    # Auto-start session on first message if not running
+                    session = self._sessions.get(project_id)
+                    if not session or not session.is_running:
+                        session = ProjectSession(project_id, project_dir)
+                        ok = session.start()
+                        if ok:
+                            self._sessions[project_id] = session
+                            self._start_relay_thread(session, writer)
+                            print(f"[tunnel] Auto-started session for {project_id}", flush=True)
+
                     try:
-                        msg = json.loads(line.decode('utf-8', errors='replace').strip())
+                        msg = json.loads(line_str)
                         msg_type = msg.get('type', '')
 
                         if msg_type == 'pong':
                             continue
-
                         if msg_type == 'status':
-                            # Mobile client paired — start session if needed
-                            session_key = project_id
-                            if session_key not in self._sessions:
-                                session = ProjectSession(project_id, project_dir)
-                                ok = session.start()
-                                if ok:
-                                    self._sessions[session_key] = session
-                                    # Relay: session stdout -> tunnel writer
-                                    self._start_relay_thread(session, writer)
                             continue
 
                         if msg_type in ('send',):
                             text = msg.get('text', '')
-                            session = self._sessions.get(project_id)
-                            if session and session.is_running and text:
+                            if text and session and session.is_running:
                                 session.send(text)
+                                print(f"[tunnel] {project_id} <- {text}", flush=True)
+                            continue
+
+                        # Unknown JSON message — treat as plain text
+                        if session and session.is_running:
+                            session.send(line_str)
 
                     except json.JSONDecodeError:
                         # Plain text — forward to session
-                        session = self._sessions.get(project_id)
-                        line_text = line.decode('utf-8', errors='replace').strip()
-                        if session and session.is_running and line_text:
-                            session.send(line_text)
+                        if session and session.is_running and line_str:
+                            session.send(line_str)
 
             except (ConnectionRefusedError, ConnectionResetError, OSError, asyncio.TimeoutError) as e:
                 print(f"[tunnel] Connection failed for {project_id}: {e}. Retrying in 10s...", flush=True)
