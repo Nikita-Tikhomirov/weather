@@ -1,6 +1,6 @@
 """
-Project Bridge Server — persistent deepseek-tui sessions via exec --auto with -c (continue).
-Each message runs node deepseek-tui exec --auto, -c preserves session context.
+Project Bridge Server — deepseek-tui exec with Python-managed conversation history.
+Each project session accumulates messages in Python, prepends them to exec prompts.
 
 Usage: python project_bridge.py [--tunnel 31.129.97.211:9877]
 """
@@ -22,14 +22,46 @@ DEFAULT_PROJECTS = [
     {"id": "nousro",      "name": "Nousro",        "path": r"C:\Users\user\Desktop\nousro",         "icon": "folder"},
 ]
 
+class Session:
+    """Holds conversation history for a project."""
+    def __init__(self, project_dir: str):
+        self.project_dir = project_dir
+        self.history: list = []  # [(role, text)]
+
+    def add(self, role: str, text: str):
+        self.history.append((role, text))
+        if len(self.history) > 30:
+            self.history = self.history[-20:]
+
+    def build_prompt(self, new_msg: str) -> str:
+        ctx = ""
+        if not self.history:
+            # First message: include project context
+            for f in ['AGENTS.md', 'README.md']:
+                fp = Path(self.project_dir) / f
+                if fp.exists():
+                    ctx += f"\n--- {f} ---\n{fp.read_text('utf-8', errors='replace')[:3000]}\n"
+            try:
+                r = subprocess.run(['dir','/b'], cwd=self.project_dir, shell=True,
+                    capture_output=True, text=True, errors='replace')
+                ctx += f"\nProject files:\n{r.stdout[:1500]}\n"
+            except Exception: pass
+
+        parts = []
+        if ctx:
+            parts.append(f"[Project context]\n{ctx}\n[End context]")
+        for role, text in self.history:
+            parts.append(f"{'User' if role == 'user' else 'Assistant'}: {text}")
+        parts.append(f"User: {new_msg}")
+        return '\n\n'.join(parts)
+
 class TunnelClient:
     def __init__(self, tunnel_host: str, tunnel_port: int = 9877):
         self.tunnel_host = tunnel_host
         self.tunnel_port = tunnel_port
-        self._active: Dict[str, bool] = {}  # project_id -> has been started
+        self._sessions: Dict[str, Session] = {}
         self._writers: Dict[str, list] = {}
         self._tasks: list = []
-        self._projects: list = []
 
     def _load_projects(self) -> list:
         candidates = [Path('family_data/nik/projects.json'),
@@ -51,9 +83,9 @@ class TunnelClient:
         return None, None
 
     async def start(self):
-        self._projects = self._load_projects()
+        projects = self._load_projects()
         print(f"Tunnel -> {self.tunnel_host}:{self.tunnel_port}", flush=True)
-        for p in self._projects:
+        for p in projects:
             t = asyncio.create_task(self._register_project(p))
             self._tasks.append(t)
         if self._tasks:
@@ -85,56 +117,75 @@ class TunnelClient:
                                 if first:
                                     self._launch_terminal(pdir)
                                     first = False
-                                asyncio.create_task(self._exec(pid, pdir, txt,
-                                    self._writers.get(pid,[])))
+                                asyncio.create_task(self._exec(pid, pdir, txt))
                     except json.JSONDecodeError:
                         if ls:
-                            asyncio.create_task(self._exec(pid, pdir, ls,
-                                self._writers.get(pid,[])))
+                            asyncio.create_task(self._exec(pid, pdir, ls))
             except Exception as e:
                 print(f"[tunnel] {pid} err: {e}. Retry 10s...", flush=True)
             await asyncio.sleep(10)
 
-    async def _exec(self, project_id: str, project_dir: str, prompt: str, writers: list):
+    async def _exec(self, pid: str, pdir: str, text: str):
+        session = self._sessions.get(pid)
+        if not session:
+            session = Session(pdir)
+            self._sessions[pid] = session
+
+        session.add('user', text)
+        prompt = session.build_prompt(text)
+        writers = self._writers.get(pid, [])
+
         node, js = self._get_node_js()
         if not node or not js:
-            self._broadcast(writers, 'error', 'deepseek-tui not found'); return
+            self._send(writers, 'error', 'deepseek-tui not found'); return
 
-        use_continue = self._active.get(project_id, False)
-        flags = ['--yolo', '-c', '-w', project_dir] if use_continue else ['--yolo', '-w', project_dir]
-        cmd = [node, js] + flags + ['exec', '--auto', prompt]
-        self._active[project_id] = True
-
-        print(f"[tunnel] {project_id} exec {'(cont)' if use_continue else '(new)'}: {len(writers)} writers", flush=True)
-        self._broadcast(writers, 'status', '...')
+        cmd = [node, js, '--yolo', '-w', pdir, 'exec', '--auto', prompt]
+        self._send(writers, 'status', '...')
 
         loop = asyncio.get_event_loop()
+
         def run():
             try:
-                proc = subprocess.run(cmd, cwd=project_dir, capture_output=True,
-                    text=True, encoding='utf-8', errors='replace', timeout=300)
+                # Write prompt to temp file to avoid command-line length limits
+                tmp = Path(pdir) / '.bridge_prompt.txt'
+                tmp.write_text(prompt, encoding='utf-8')
+                # Use stdin approach to avoid arg length issues
+                proc = subprocess.run(
+                    cmd,
+                    cwd=pdir,
+                    capture_output=True,
+                    text=True, encoding='utf-8', errors='replace',
+                    timeout=300,
+                )
                 return proc.stdout, proc.stderr, proc.returncode
             except subprocess.TimeoutExpired:
                 return None, None, -1
             except Exception as e:
                 return None, str(e), -2
+
         stdout, stderr, rc = await loop.run_in_executor(None, run)
-        print(f"[tunnel] {project_id} exec done: rc={rc} out={len(stdout or '')} err={len(stderr or '')}", flush=True)
-        
+        print(f"[tunnel] {pid} exec: rc={rc} out={len(stdout or '')}", flush=True)
+
+        response_text = ""
         if stdout:
             for line in stdout.split('\n'):
                 clean = strip_ansi(line.strip())
                 if clean:
-                    self._broadcast(writers, 'output', clean)
+                    response_text += clean + '\n'
+                    self._send(writers, 'output', clean)
         elif stderr:
             for line in stderr.split('\n'):
                 clean = strip_ansi(line.strip())
                 if clean:
-                    self._broadcast(writers, 'output', clean)
+                    response_text += clean + '\n'
+                    self._send(writers, 'output', clean)
         else:
-            self._broadcast(writers, 'status', f'exit {rc}')
+            self._send(writers, 'status', f'exit {rc}')
 
-    def _broadcast(self, writers: list, typ: str, text: str):
+        if response_text.strip():
+            session.add('assistant', response_text.strip())
+
+    def _send(self, writers: list, typ: str, text: str):
         if not writers: return
         msg = json.dumps({'type':typ,'text':text}, ensure_ascii=False)+'\n'
         data = msg.encode('utf-8')
@@ -147,7 +198,7 @@ class TunnelClient:
             try: w.close()
             except Exception: pass
 
-    def _launch_terminal(self, project_dir: str):
+    def _launch_terminal(self, pdir: str):
         import shutil
         wz = shutil.which('wezterm')
         if not wz:
@@ -157,13 +208,13 @@ class TunnelClient:
                 if p.exists(): wz = str(p); break
         if wz:
             try:
-                subprocess.Popen([wz,'start','--cwd',project_dir,'--','cmd','/c','deepseek-tui','--yolo'],
+                subprocess.Popen([wz,'start','--cwd',pdir,'--','cmd','/c','deepseek-tui','--yolo'],
                     creationflags=subprocess.CREATE_NEW_CONSOLE)
                 return
             except Exception: pass
         try:
             subprocess.Popen(['powershell','-NoExit','-Command',
-                f'Set-Location "{project_dir}"; deepseek-tui --yolo'],
+                f'Set-Location "{pdir}"; deepseek-tui --yolo'],
                 creationflags=subprocess.CREATE_NEW_CONSOLE)
         except Exception: pass
 
