@@ -99,10 +99,9 @@ class TunnelClient:
         if not node or not js:
             self._send(writers, 'error', 'deepseek-tui not found'); return
 
-        # Use -c to continue the most recent session in this workspace
         first = pid not in self._sessions
         if first:
-            self._sessions[pid] = True  # mark as active
+            self._sessions[pid] = True
             flags = ['--yolo', '-w', pdir]
         else:
             flags = ['--yolo', '-c', '-w', pdir]
@@ -112,38 +111,57 @@ class TunnelClient:
         print(f"[tunnel] {pid} exec {'(new)' if first else '(cont)'}", flush=True)
 
         loop = asyncio.get_event_loop()
+        
+        def run_stream():
+            """Run with Popen, stream lines back via queue."""
+            import queue
+            q = queue.Queue()
+            
+            def target():
+                try:
+                    proc = subprocess.Popen(
+                        cmd, cwd=pdir, stdin=subprocess.PIPE,
+                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                        text=True, encoding='utf-8', errors='replace',
+                        bufsize=1,
+                    )
+                    proc.stdin.write(text)
+                    proc.stdin.close()
+                    for line in proc.stdout:
+                        q.put(('line', line.rstrip('\n\r')))
+                    proc.wait()
+                    q.put(('done', proc.returncode))
+                except Exception as e:
+                    q.put(('error', str(e)))
+            
+            t = threading.Thread(target=target, daemon=True)
+            t.start()
+            return q, t
 
-        def run():
+        q, thread = await loop.run_in_executor(None, run_stream)
+        
+        # Stream lines back as they come
+        line_count = 0
+        while thread.is_alive() or not q.empty():
             try:
-                proc = subprocess.run(
-                    cmd,
-                    cwd=pdir,
-                    input=text,  # stdin, no arg length limits
-                    capture_output=True,
-                    text=True, encoding='utf-8', errors='replace',
-                    timeout=300,
-                )
-                return proc.stdout, proc.stderr, proc.returncode
-            except subprocess.TimeoutExpired:
-                return None, None, -1
-            except Exception as e:
-                return None, str(e), -2
-
-        stdout, stderr, rc = await loop.run_in_executor(None, run)
-        print(f"[tunnel] {pid} exec: rc={rc} out={len(stdout or '')}", flush=True)
-
-        if stdout:
-            for line in stdout.split('\n'):
-                clean = strip_ansi(line.strip())
-                if clean:
-                    self._send(writers, 'output', clean)
-        elif stderr:
-            for line in stderr.split('\n'):
-                clean = strip_ansi(line.strip())
-                if clean:
-                    self._send(writers, 'output', clean)
-        else:
-            self._send(writers, 'status', f'exit {rc}')
+                import queue as _q
+                kind, data = q.get(timeout=0.3)
+                if kind == 'line':
+                    clean = strip_ansi(data.strip())
+                    if clean:
+                        line_count += 1
+                        self._send(writers, 'output', clean)
+                elif kind == 'done':
+                    if data != 0 and line_count == 0:
+                        self._send(writers, 'status', f'exit {data}')
+                    break
+                elif kind == 'error':
+                    self._send(writers, 'error', data)
+                    break
+            except _q.Empty:
+                await asyncio.sleep(0.05)
+        
+        print(f"[tunnel] {pid} exec: {line_count} lines", flush=True)
 
     def _send(self, writers: list, typ: str, text: str):
         if not writers: return
