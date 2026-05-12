@@ -13,3 +13,7 @@ chrome-win64/
 # Local runtime secrets
 sync_runtime.local.json
 backend_api/config.php
+
+# Local DeepSeek bridge runtime state
+.deepseek/state/bridge_memory*.json
+.tmp_deepseek_*/
