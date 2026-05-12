@@ -496,10 +496,7 @@ class TunnelClient:
             await asyncio.sleep(10)
 
     async def _exec_prompt(self, project_id: str, project_dir: str, prompt: str, writer: asyncio.StreamWriter):
-        """Run deepseek-tui exec and send output back to mobile."""
-        escaped_prompt = prompt.replace('"', '\\"')
-        cmd_str = f'deepseek-tui -w "{project_dir}" exec --auto "{escaped_prompt}"'
-
+        """Run deepseek-tui --yolo --prompt via stdin to avoid shell escaping issues."""
         self._send_to(writer, {'type': 'status', 'text': '...'})
         print(f"[tunnel] {project_id} exec: {prompt[:80]}", flush=True)
 
@@ -507,15 +504,23 @@ class TunnelClient:
 
         def run_sync():
             try:
+                # Build command: node <js_path> --yolo -w <dir> exec --auto <prompt>
+                # List form avoids all shell quoting/encoding issues
+                node, js_path = self._get_node_and_js()
+                if not node or not js_path:
+                    return None, 'deepseek-tui not found (node or js)', -2
+
+                cmd = [node, js_path, '--yolo', '-w', project_dir, 'exec', '--auto', prompt]
+                print(f"[tunnel] exec cmd: {' '.join(cmd[:4])} ...", flush=True)
+
                 proc = subprocess.run(
-                    cmd_str,
+                    cmd,
                     cwd=project_dir,
                     capture_output=True,
                     text=True,
                     encoding='utf-8',
                     errors='replace',
-                    timeout=120,
-                    shell=True,
+                    timeout=300,
                 )
                 return proc.stdout, proc.stderr, proc.returncode
             except subprocess.TimeoutExpired:
@@ -567,6 +572,27 @@ class TunnelClient:
             if found:
                 return found
         return None
+
+    def _get_node_and_js(self) -> tuple:
+        """Return (node_exe, js_path) for deepseek-tui. Avoids .cmd wrapper."""
+        import shutil
+        node = shutil.which('node') or 'node'
+        npm_root = os.path.expandvars(r'%APPDATA%\npm')
+        js_candidate = Path(npm_root) / 'node_modules' / 'deepseek-tui' / 'bin' / 'deepseek-tui.js'
+        if js_candidate.exists():
+            return node, str(js_candidate)
+        # Fallback: try to read from .cmd file
+        cmd_path = Path(npm_root) / 'deepseek-tui.cmd'
+        if cmd_path.exists():
+            try:
+                content = cmd_path.read_text(encoding='utf-8')
+                m = re.search(r'"%_prog%"\s+"([^"]+)"', content)
+                if m:
+                    js_path = m.group(1).replace('%dp0%', npm_root)
+                    return node, js_path
+            except Exception:
+                pass
+        return None, None
 
     def _launch_terminal(self, project_dir: str) -> None:
         """Open visible terminal with deepseek-tui."""
