@@ -59,7 +59,6 @@ class ProjectBridgeService {
 
   Socket? _socket;
   bool _running = false;
-  Timer? _pingTimer;
   final StringBuffer _buffer = StringBuffer();
 
   bool get isConnected => _socket != null && _running;
@@ -98,9 +97,6 @@ class ProjectBridgeService {
       _running = true;
       onStatusChange(true, 'Connected to $address');
 
-      // Start ping timer
-      _pingTimer = Timer.periodic(const Duration(seconds: 15), (_) => _ping());
-
       // Listen for messages
       _socket!.listen(
         _onData,
@@ -114,10 +110,7 @@ class ProjectBridgeService {
         },
       );
 
-      // Request project list
-      _sendRaw('{"type":"list"}\n');
-      _ping();
-
+      // Don't send anything — wait for startProject() to send 'connect'
       return true;
     } catch (e) {
       onStatusChange(false, 'Failed to connect: $e');
@@ -179,28 +172,6 @@ class ProjectBridgeService {
     _sendRaw('$message\n');
   }
 
-  /// Stop the current project session.
-  void stopProject() {
-    if (!isConnected) {
-      return;
-    }
-    _sendRaw('{"type":"stop"}\n');
-  }
-
-  void _ping() {
-    if (!isConnected) {
-      return;
-    }
-    _sendRaw('{"type":"ping"}\n');
-  }
-
-  void requestProjectList() {
-    if (!isConnected) {
-      return;
-    }
-    _sendRaw('{"type":"list"}\n');
-  }
-
   void _sendRaw(String data) {
     try {
       _socket?.write(data);
@@ -211,8 +182,6 @@ class ProjectBridgeService {
 
   void _cleanup() {
     _running = false;
-    _pingTimer?.cancel();
-    _pingTimer = null;
     try {
       _socket?.destroy();
     } catch (_) {}

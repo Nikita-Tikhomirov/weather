@@ -459,9 +459,7 @@ class TunnelClient:
                         msg = json.loads(line_str)
                         msg_type = msg.get('type', '')
 
-                        if msg_type == 'pong':
-                            continue
-                        if msg_type == 'status':
+                        if msg_type in ('pong', 'ping', 'list', 'status'):
                             continue
 
                         if msg_type in ('send',):

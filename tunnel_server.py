@@ -67,8 +67,8 @@ class TunnelServer:
                 # Mobile client connecting
                 await self._handle_mobile(project_id, reader, writer)
             else:
-                self._send_json(writer, {'type': 'error', 'text': f'unknown type: {msg_type}'})
-                writer.close()
+                # Unknown type — ignore, let connection stay open
+                print(f"[tunnel] Unknown message type from {addr}: {msg_type}", flush=True)
 
         except asyncio.TimeoutError:
             pass
