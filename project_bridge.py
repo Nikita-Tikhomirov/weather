@@ -49,6 +49,7 @@ class PtySession:
         try:
             argv = [node, js, '--yolo', '-w', self.pdir]
             self.proc = PtyProcess.spawn(argv, cwd=self.pdir, dimensions=(40, 120))
+            self.proc.fileobj.settimeout(0.3)  # non-blocking reads
             self.running = True
             self.thread = threading.Thread(target=self._read_loop, daemon=True)
             self.thread.start()
@@ -59,21 +60,33 @@ class PtySession:
             return False
 
     def _read_loop(self):
+        import socket
         count = 0
+        buf = ''
         while self.running:
             try:
-                line = self.proc.readline()
-                if line:
+                try:
+                    data = self.proc.fileobj.recv(4096)
+                    if data:
+                        buf += data.decode('utf-8', errors='replace')
+                    else:
+                        break  # EOF
+                except socket.timeout:
+                    pass
+                except (OSError, EOFError):
+                    break
+                
+                # Process complete lines from buffer
+                while '\n' in buf:
+                    idx = buf.index('\n')
+                    line = buf[:idx].rstrip('\r')
+                    buf = buf[idx+1:]
                     count += 1
                     clean = clean_line(line)
                     if clean:
                         if count <= 5:
                             print(f"[pty] {self.pid} out: {clean[:100]}", flush=True)
                         self._broadcast('output', clean)
-                else:
-                    break
-            except EOFError:
-                break
             except Exception:
                 time.sleep(0.2)
         self.running = False
