@@ -12,7 +12,6 @@ Usage: python tunnel_server.py --port 9877
 import argparse
 import asyncio
 import json
-import os
 import sys
 from typing import Optional
 
@@ -21,10 +20,12 @@ class TunnelServer:
         self.host = host
         self.port = port
         self._server = None
-        # project_id -> waiting bridge connection (writer, reader)
+        # project_id -> (bridge_reader, bridge_writer)
         self._bridges: dict[str, tuple] = {}
-        # project_id -> queue of waiting mobile clients
-        self._waiting_clients: dict[str, list[tuple]] = {}
+        # project_id -> list of mobile writers
+        self._mobile_writers: dict[str, list] = {}
+        # project_id -> relay task
+        self._relay_tasks: dict[str, asyncio.Task] = {}
 
     async def start(self):
         self._server = await asyncio.start_server(
@@ -40,7 +41,6 @@ class TunnelServer:
         print(f"[tunnel] Connection from {addr}", flush=True)
 
         try:
-            # Read first message to determine role
             first_line = await asyncio.wait_for(reader.readline(), timeout=10)
             if not first_line:
                 writer.close()
@@ -56,19 +56,15 @@ class TunnelServer:
             project_id = msg.get('project_id', '').strip()
 
             if not project_id:
-                self._send_json(writer, {'type': 'error', 'text': 'project_id required'})
                 writer.close()
                 return
 
             if msg_type == 'register':
-                # PC bridge registering
                 await self._handle_bridge(project_id, reader, writer)
             elif msg_type == 'connect':
-                # Mobile client connecting
                 await self._handle_mobile(project_id, reader, writer)
             else:
-                # Unknown type — ignore, let connection stay open
-                print(f"[tunnel] Unknown message type from {addr}: {msg_type}", flush=True)
+                print(f"[tunnel] Unknown first msg from {addr}: {msg_type}", flush=True)
 
         except asyncio.TimeoutError:
             pass
@@ -79,97 +75,95 @@ class TunnelServer:
                 writer.close()
 
     async def _handle_bridge(self, project_id: str, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        """PC bridge registers and waits for mobile clients."""
+        """PC bridge registers. All data from bridge is broadcast to mobile clients."""
         self._bridges[project_id] = (reader, writer)
         print(f"[tunnel] Bridge registered: {project_id}", flush=True)
 
-        # Notify any waiting mobile clients
-        waiting = self._waiting_clients.pop(project_id, [])
-        for m_reader, m_writer in waiting:
-            self._send_json(m_writer, {
-                'type': 'status',
-                'text': f'Bridge available for {project_id}',
-                'project_id': project_id,
-            })
-            # Start relay
-            asyncio.create_task(self._relay(m_reader, m_writer, reader, writer, project_id))
+        # Start relay: bridge -> all mobile clients
+        async def forward_bridge_to_mobiles():
+            try:
+                while True:
+                    line = await reader.readline()
+                    if not line:
+                        break
+                    # Forward to all mobile clients
+                    mobiles = self._mobile_writers.get(project_id, [])
+                    dead = []
+                    for mw in mobiles:
+                        try:
+                            mw.write(line)
+                            await mw.drain()
+                        except Exception:
+                            dead.append(mw)
+                    for mw in dead:
+                        mobiles.remove(mw)
+                        try:
+                            mw.close()
+                        except Exception:
+                            pass
+            except (ConnectionResetError, asyncio.IncompleteReadError):
+                pass
+            finally:
+                # Cleanup
+                self._bridges.pop(project_id, None)
+                self._mobile_writers.pop(project_id, None)
+                self._relay_tasks.pop(project_id, None)
+                print(f"[tunnel] Bridge unregistered: {project_id}", flush=True)
+                if not writer.is_closing():
+                    writer.close()
 
-        # Keep connection alive with ping/pong
+        task = asyncio.create_task(forward_bridge_to_mobiles())
+        self._relay_tasks[project_id] = task
+        await task
+
+    async def _handle_mobile(self, project_id: str, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        """Mobile client connects. Messages from mobile go to bridge."""
+        bridge = self._bridges.get(project_id)
+        if not bridge:
+            self._send_json(writer, {'type': 'status', 'text': f'Waiting for PC bridge ({project_id})...'})
+            print(f"[tunnel] Mobile waiting for bridge: {project_id}", flush=True)
+            # Wait a bit and check again
+            for _ in range(30):  # 30 seconds timeout
+                await asyncio.sleep(1)
+                bridge = self._bridges.get(project_id)
+                if bridge:
+                    break
+            if not bridge:
+                self._send_json(writer, {'type': 'error', 'text': 'Bridge not available'})
+                return
+
+        b_reader, b_writer = bridge
+        print(f"[tunnel] Paired mobile -> {project_id}", flush=True)
+        self._send_json(writer, {
+            'type': 'status',
+            'text': f'Connected to {project_id}',
+            'project_id': project_id,
+        })
+
+        # Register this mobile writer for broadcasts from bridge
+        self._mobile_writers.setdefault(project_id, []).append(writer)
+
+        # Forward mobile messages to bridge
         try:
             while True:
-                line = await asyncio.wait_for(reader.readline(), timeout=60)
+                line = await reader.readline()
                 if not line:
                     break
                 try:
-                    msg = json.loads(line.decode('utf-8', errors='replace').strip())
-                    if msg.get('type') == 'ping':
-                        self._send_json(writer, {'type': 'pong'})
-                except json.JSONDecodeError:
-                    pass
-        except asyncio.TimeoutError:
-            pass
+                    b_writer.write(line)
+                    await b_writer.drain()
+                except Exception:
+                    break
         except (ConnectionResetError, asyncio.IncompleteReadError):
             pass
         finally:
-            self._bridges.pop(project_id, None)
-            print(f"[tunnel] Bridge unregistered: {project_id}", flush=True)
+            # Remove this mobile from broadcast list
+            mobiles = self._mobile_writers.get(project_id, [])
+            if writer in mobiles:
+                mobiles.remove(writer)
+            print(f"[tunnel] Mobile disconnected: {project_id}", flush=True)
             if not writer.is_closing():
                 writer.close()
-
-    async def _handle_mobile(self, project_id: str, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        """Mobile client wants to talk to a PC bridge."""
-        bridge = self._bridges.get(project_id)
-        if bridge:
-            b_reader, b_writer = bridge
-            print(f"[tunnel] Paired mobile -> {project_id}", flush=True)
-            self._send_json(writer, {
-                'type': 'status',
-                'text': f'Connected to {project_id}',
-                'project_id': project_id,
-            })
-            await self._relay(reader, writer, b_reader, b_writer, project_id)
-        else:
-            # Bridge not yet connected — queue mobile client
-            print(f"[tunnel] Mobile waiting for bridge: {project_id}", flush=True)
-            self._send_json(writer, {
-                'type': 'status',
-                'text': f'Waiting for PC bridge ({project_id})...',
-                'project_id': project_id,
-            })
-            self._waiting_clients.setdefault(project_id, []).append((reader, writer))
-            # Wait until bridge appears or timeout
-            try:
-                while project_id in self._waiting_clients:
-                    await asyncio.sleep(1)
-            except Exception:
-                pass
-
-    async def _relay(self, a_reader, a_writer, b_reader, b_writer, project_id: str):
-        """Bidirectional relay between two connections."""
-        async def forward(src_reader, dst_writer, label: str):
-            try:
-                while True:
-                    line = await src_reader.readline()
-                    if not line:
-                        break
-                    dst_writer.write(line)
-                    await dst_writer.drain()
-            except (ConnectionResetError, asyncio.IncompleteReadError):
-                pass
-            except Exception as e:
-                print(f"[tunnel] Relay {label} error: {e}", flush=True)
-
-        task_a = asyncio.create_task(forward(a_reader, b_writer, f'{project_id}:A->B'))
-        task_b = asyncio.create_task(forward(b_reader, a_writer, f'{project_id}:B->A'))
-
-        _, pending = await asyncio.wait(
-            [task_a, task_b],
-            return_when=asyncio.FIRST_COMPLETED,
-        )
-        for task in pending:
-            task.cancel()
-
-        print(f"[tunnel] Relay ended for {project_id}", flush=True)
 
     @staticmethod
     def _send_json(writer: asyncio.StreamWriter, obj: dict):
@@ -177,6 +171,8 @@ class TunnelServer:
         writer.write(data.encode('utf-8'))
 
     async def stop(self):
+        for task in self._relay_tasks.values():
+            task.cancel()
         if self._server:
             self._server.close()
             await self._server.wait_closed()
