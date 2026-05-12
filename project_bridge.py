@@ -54,8 +54,14 @@ class ProjectSession:
 
         try:
             # Use non-interactive inline mode for piped I/O
+            # On Windows with .cmd wrapper, invoke via cmd /c
+            if sys.platform == 'win32' and exe.endswith('.cmd'):
+                cmd_args = ['cmd', '/c', exe, '--no-alt-screen', '--yolo', '-w', self.project_dir]
+            else:
+                cmd_args = [exe, '--no-alt-screen', '--yolo', '-w', self.project_dir]
+
             self.process = subprocess.Popen(
-                [exe, '--no-alt-screen', '--yolo', '-w', self.project_dir],
+                cmd_args,
                 cwd=self.project_dir,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
@@ -82,19 +88,22 @@ class ProjectSession:
 
     def _find_deepseek_tui(self) -> Optional[str]:
         import shutil
+        # On Windows, prefer .cmd/.exe; fallback to unqualified name
+        if sys.platform == 'win32':
+            for name in ['deepseek-tui.cmd', 'deepseek-tui.exe', 'deepseek.cmd', 'deepseek.exe']:
+                found = shutil.which(name)
+                if found:
+                    return found
+            # Check npm global install
+            npm_root = os.path.expandvars(r'%APPDATA%\npm')
+            for name in ['deepseek-tui.cmd', 'deepseek.cmd']:
+                p = Path(npm_root) / name
+                if p.exists():
+                    return str(p)
         for name in ['deepseek-tui', 'deepseek']:
             found = shutil.which(name)
             if found:
                 return found
-        if sys.platform == 'win32':
-            for base in [
-                os.path.expandvars(r'%LOCALAPPDATA%\Programs\deepseek\bin'),
-                os.path.expandvars(r'%USERPROFILE%\.cargo\bin'),
-            ]:
-                for name in ['deepseek-tui.exe', 'deepseek.exe']:
-                    p = Path(base) / name
-                    if p.exists():
-                        return str(p)
         return None
 
     def _launch_terminal(self) -> None:
@@ -103,10 +112,18 @@ class ProjectSession:
         wezterm = self._find_wezterm()
         if wezterm:
             try:
-                subprocess.Popen(
-                    [wezterm, 'start', '--cwd', project_path, '--', 'deepseek-tui', '--yolo'],
-                    creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == 'win32' else 0,
-                )
+                # Use cmd /c to properly invoke .cmd wrapper on Windows
+                if sys.platform == 'win32':
+                    subprocess.Popen(
+                        [wezterm, 'start', '--cwd', project_path, '--',
+                         'cmd', '/c', 'deepseek-tui', '--yolo'],
+                        creationflags=subprocess.CREATE_NEW_CONSOLE,
+                    )
+                else:
+                    subprocess.Popen(
+                        [wezterm, 'start', '--cwd', project_path, '--',
+                         'deepseek-tui', '--yolo'],
+                    )
                 return
             except Exception:
                 pass
