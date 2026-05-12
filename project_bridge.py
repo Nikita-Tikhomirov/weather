@@ -347,7 +347,12 @@ class TunnelClient:
                     if session.start():
                         self._sessions[project_id] = session
 
-                if session and session.running and writer not in session.writers:
+                if session and session.running:
+                    # Close old dead writers from previous connections
+                    for old in list(session.writers):
+                        try: old.close()
+                        except Exception: pass
+                    session.writers.clear()
                     session.writers.append(writer)
 
                 # Send projects list to mobile so it can update its UI
