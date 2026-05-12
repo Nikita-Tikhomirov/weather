@@ -333,6 +333,17 @@ class TunnelClient:
                 if session and session.running and writer not in session.writers:
                     session.writers.append(writer)
 
+                # Send projects list to mobile so it can update its UI
+                projects_data = self._load_projects()
+                writer.write(
+                    json.dumps(
+                        {"type": "projects", "projects": projects_data},
+                        ensure_ascii=False,
+                    ).encode("utf-8")
+                    + b"\n"
+                )
+                await writer.drain()
+
                 while True:
                     line = await reader.readline()
                     if not line:
