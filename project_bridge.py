@@ -59,12 +59,16 @@ class PtySession:
             return False
 
     def _read_loop(self):
+        count = 0
         while self.running:
             try:
                 line = self.proc.readline()
                 if line:
+                    count += 1
                     clean = clean_line(line)
                     if clean:
+                        if count <= 5:
+                            print(f"[pty] {self.pid} out: {clean[:100]}", flush=True)
                         self._broadcast('output', clean)
                 else:
                     break
@@ -74,15 +78,20 @@ class PtySession:
                 time.sleep(0.2)
         self.running = False
         self._broadcast('status', 'Session ended')
+        print(f"[pty] {self.pid} ended after {count} lines", flush=True)
 
     def write(self, text: str):
         if self.proc and self.running:
             try:
                 self.proc.write(text + '\r\n')
+                print(f"[pty] {self.pid} write: {text[:60]}", flush=True)
             except Exception:
                 self.running = False
 
     def _broadcast(self, typ: str, text: str):
+        if not self.writers:
+            print(f"[pty] {self.pid} broadcast with 0 writers!", flush=True)
+            return
         msg = json.dumps({'type': typ, 'text': text}, ensure_ascii=False) + '\n'
         data = msg.encode('utf-8')
         dead = []
