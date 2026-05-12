@@ -120,7 +120,12 @@ class ProjectSession:
                 return
 
             exec_prompt = self._compact_for_cli(self._build_prompt_with_memory(prompt))
-            argv = [exe, "-w", self.project_dir, "exec", "--auto", exec_prompt]
+            npm = Path(os.path.expandvars(r"%APPDATA%\npm"))
+            js = npm / "node_modules" / "deepseek-tui" / "bin" / "deepseek-tui.js"
+            if exe == "node" and js.exists():
+                argv = [exe, str(js), "--yolo", "-w", self.project_dir, "exec", "--auto", exec_prompt]
+            else:
+                argv = [exe, "--yolo", "-w", self.project_dir, "exec", "--auto", exec_prompt]
             print(f"[session] {self.project_id} exec: {prompt[:80]}", flush=True)
             self._broadcast("status", "DeepSeek начал выполнение...")
 
@@ -263,11 +268,22 @@ class ProjectSession:
     def _get_deepseek_exe() -> str | None:
         import shutil
 
-        exe = shutil.which("deepseek-tui") or shutil.which("deepseek-tui.cmd")
+        # Prefer .exe (native, no encoding issues)
+        exe = shutil.which("deepseek-tui.exe")
         if exe:
             return exe
 
+        # .cmd wrapper breaks Cyrillic args — use node directly instead
         npm = Path(os.path.expandvars(r"%APPDATA%\npm"))
+        js = npm / "node_modules" / "deepseek-tui" / "bin" / "deepseek-tui.js"
+        node = shutil.which("node") or "node"
+        if js.exists():
+            return node  # Return 'node', js path handled elsewhere
+
+        # Fallback to .cmd
+        cmd = shutil.which("deepseek-tui.cmd") or shutil.which("deepseek-tui")
+        if cmd:
+            return cmd
         for name in ("deepseek-tui.cmd", "deepseek-tui.exe", "deepseek-tui"):
             candidate = npm / name
             if candidate.exists():
