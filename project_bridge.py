@@ -53,8 +53,9 @@ class ProjectSession:
             return False
 
         try:
+            # Use non-interactive inline mode for piped I/O
             self.process = subprocess.Popen(
-                [exe],
+                [exe, '--no-alt-screen', '--yolo', '-w', self.project_dir],
                 cwd=self.project_dir,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
@@ -97,13 +98,13 @@ class ProjectSession:
         return None
 
     def _launch_terminal(self) -> None:
-        """Open visible WezTerm/PowerShell with deepseek-tui."""
+        """Open visible WezTerm/PowerShell with deepseek-tui (full TUI)."""
         project_path = self.project_dir
         wezterm = self._find_wezterm()
         if wezterm:
             try:
                 subprocess.Popen(
-                    [wezterm, 'start', '--cwd', project_path, '--', 'deepseek-tui'],
+                    [wezterm, 'start', '--cwd', project_path, '--', 'deepseek-tui', '--yolo'],
                     creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == 'win32' else 0,
                 )
                 return
@@ -111,7 +112,7 @@ class ProjectSession:
                 pass
         # Fallback: PowerShell
         try:
-            ps_cmd = f'Set-Location "{project_path}"; deepseek-tui'
+            ps_cmd = f'Set-Location "{project_path}"; deepseek-tui --yolo'
             subprocess.Popen(
                 ['powershell', '-NoExit', '-Command', ps_cmd],
                 creationflags=subprocess.CREATE_NEW_CONSOLE,
@@ -454,6 +455,13 @@ class TunnelClient:
                             self._sessions[project_id] = session
                             self._start_relay_thread(session, writer)
                             print(f"[tunnel] Auto-started session for {project_id}", flush=True)
+                        else:
+                            # Send error to mobile
+                            err = json.dumps({'type': 'error', 'text': f'Failed to start deepseek-tui in {project_dir}'}, ensure_ascii=False) + '\n'
+                            try:
+                                writer.write(err.encode('utf-8'))
+                            except Exception:
+                                pass
 
                     try:
                         msg = json.loads(line_str)
