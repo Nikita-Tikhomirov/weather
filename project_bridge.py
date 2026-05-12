@@ -497,24 +497,16 @@ class TunnelClient:
 
     async def _exec_prompt(self, project_id: str, project_dir: str, prompt: str, writer: asyncio.StreamWriter):
         """Run deepseek-tui exec and send output back to mobile."""
-        exe = self._find_exe()
-        if not exe:
-            self._send_error(writer, 'deepseek-tui not found')
-            return
-
-        # Build command: deepseek-tui -w <dir> exec --auto <prompt>
-        # Use node directly to avoid cmd /c quoting issues
-        cmd = self._build_exec_cmd(exe, project_dir, prompt)
-        if not cmd:
-            self._send_error(writer, 'cannot build exec command')
-            return
+        # Build shell command with proper quoting
+        escaped_prompt = prompt.replace('"', '\\"')
+        cmd_str = f'deepseek-tui -w "{project_dir}" exec --auto "{escaped_prompt}"'
 
         self._send_to(writer, {'type': 'status', 'text': '...'})
         print(f"[tunnel] {project_id} exec: {prompt[:80]}", flush=True)
 
         try:
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
+            proc = await asyncio.create_subprocess_shell(
+                cmd_str,
                 cwd=project_dir,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
@@ -535,36 +527,12 @@ class TunnelClient:
 
         except Exception as e:
             self._send_error(writer, f'exec failed: {e}')
-            print(f"[tunnel] exec error: {e}", flush=True)
+            print(f"[tunnel] exec error: {e!r}", flush=True)
 
         # Launch visible terminal on first message (once)
         if project_id not in self._terminal_launched:
             self._terminal_launched.add(project_id)
             self._launch_terminal(project_dir)
-
-    def _build_exec_cmd(self, exe: str, project_dir: str, prompt: str) -> Optional[list]:
-        """Build command list for deepseek-tui exec. Avoids cmd /c by using node directly."""
-        # If the exe is a .cmd wrapper, extract the node call
-        if sys.platform == 'win32' and exe.endswith('.cmd'):
-            try:
-                with open(exe, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                # Extract js path from: "%_prog%"  "%dp0%\node_modules\...\deepseek-tui.js" %*
-                m = re.search(r'"%_prog%"\s+"([^"]+)"', content)
-                if m:
-                    dp0 = str(Path(exe).parent)
-                    js_path = m.group(1).replace('%dp0%', dp0)
-                    # Use bundled node.exe or system node
-                    node_exe = Path(dp0) / 'node.exe'
-                    node = str(node_exe) if node_exe.exists() else 'node'
-                    return [node, js_path, '-w', project_dir, 'exec', '--auto', prompt]
-            except Exception:
-                pass
-            # Fallback: use cmd /c with the .cmd directly
-            return ['cmd', '/c', exe, '-w', project_dir, 'exec', '--auto', prompt]
-
-        # Direct executable (non-Windows or .exe)
-        return [exe, '-w', project_dir, 'exec', '--auto', prompt]
 
     def _find_exe(self) -> Optional[str]:
         """Find deepseek-tui executable."""
