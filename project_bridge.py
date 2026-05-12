@@ -497,37 +497,52 @@ class TunnelClient:
 
     async def _exec_prompt(self, project_id: str, project_dir: str, prompt: str, writer: asyncio.StreamWriter):
         """Run deepseek-tui exec and send output back to mobile."""
-        # Build shell command with proper quoting
         escaped_prompt = prompt.replace('"', '\\"')
         cmd_str = f'deepseek-tui -w "{project_dir}" exec --auto "{escaped_prompt}"'
 
         self._send_to(writer, {'type': 'status', 'text': '...'})
         print(f"[tunnel] {project_id} exec: {prompt[:80]}", flush=True)
 
+        loop = asyncio.get_event_loop()
+
+        def run_sync():
+            try:
+                proc = subprocess.run(
+                    cmd_str,
+                    cwd=project_dir,
+                    capture_output=True,
+                    text=True,
+                    encoding='utf-8',
+                    errors='replace',
+                    timeout=120,
+                    shell=True,
+                )
+                return proc.stdout, proc.stderr, proc.returncode
+            except subprocess.TimeoutExpired:
+                return None, None, -1
+            except Exception as e:
+                return None, str(e), -2
+
         try:
-            proc = await asyncio.create_subprocess_shell(
-                cmd_str,
-                cwd=project_dir,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-            )
-            output = []
-            async for line in proc.stdout:
-                decoded = line.decode('utf-8', errors='replace').rstrip('\n\r')
-                clean = strip_ansi(decoded)
-                if clean.strip():
-                    output.append(clean)
-                    self._send_to(writer, {'type': 'output', 'text': clean})
-
-            await proc.wait()
-            if not output:
-                self._send_to(writer, {'type': 'status', 'text': '(no output)'})
-            else:
-                print(f"[tunnel] {project_id} -> {len(output)} lines", flush=True)
-
+            stdout, stderr, rc = await loop.run_in_executor(None, run_sync)
         except Exception as e:
             self._send_error(writer, f'exec failed: {e}')
             print(f"[tunnel] exec error: {e!r}", flush=True)
+            return
+
+        if stdout:
+            for line in stdout.split('\n'):
+                clean = strip_ansi(line.strip())
+                if clean:
+                    self._send_to(writer, {'type': 'output', 'text': clean})
+            print(f"[tunnel] {project_id} -> response ({len(stdout)} chars)", flush=True)
+        elif stderr:
+            for line in stderr.split('\n'):
+                clean = strip_ansi(line.strip())
+                if clean:
+                    self._send_to(writer, {'type': 'output', 'text': clean})
+        else:
+            self._send_to(writer, {'type': 'status', 'text': f'(exit code {rc})'})
 
         # Launch visible terminal on first message (once)
         if project_id not in self._terminal_launched:
