@@ -26,7 +26,8 @@ class TunnelClient:
     def __init__(self, tunnel_host: str, tunnel_port: int = 9877):
         self.tunnel_host = tunnel_host
         self.tunnel_port = tunnel_port
-        self._sessions: Dict[str, Session] = {}
+        self._sessions: Dict[str, bool] = {}  # project_id -> active
+        self._mode: Dict[str, str] = {}       # project_id -> 'auto' | 'ask'
         self._writers: Dict[str, list] = {}
         self._tasks: list = []
 
@@ -98,7 +99,7 @@ class TunnelClient:
         
         # File commands
         if text.startswith('/'):
-            result = await self._run_local_cmd(text, pdir)
+            result = await self._run_local_cmd(text, pdir, pid)
             if result is not None:
                 for line in result.split('\n'):
                     if line.strip():
@@ -107,7 +108,7 @@ class TunnelClient:
         
         await self._exec(pid, pdir, text, writers)
 
-    async def _run_local_cmd(self, text: str, pdir: str) -> Optional[str]:
+    async def _run_local_cmd(self, text: str, pdir: str, pid: str) -> Optional[str]:
         """Handle /commands locally. Returns string or None if not a command."""
         parts = text.split(maxsplit=1)
         cmd = parts[0].lower()
@@ -148,8 +149,14 @@ class TunnelClient:
         if cmd == '/pwd':
             return pdir
         
+        if cmd == '/mode':
+            if arg in ('auto', 'ask'):
+                self._mode[pid] = arg
+                return f'Mode set to: {arg}'
+            return f'Current mode: {self._mode.get(pid, "auto")}. Use /mode auto or /mode ask'
+        
         if cmd == '/help':
-            return '/ls [path]  /cat <file>  /tree  /git  /pwd  /help'
+            return '/ls [path]  /cat <file>  /tree  /git  /pwd  /mode [auto|ask]  /help'
         
         return None  # not a local command, forward to exec
 
@@ -165,8 +172,10 @@ class TunnelClient:
             text = '/skill superpowers-lite\n' + text
         flags = ['--yolo', '-c', '-w', pdir] if not first else ['--yolo', '-w', pdir]
 
-        # Use --json for structured output with tool calls
-        cmd = [node, js] + flags + ['exec', '--json', '--auto', '-']
+        # Mode: auto (tools) or ask (chat only)
+        mode = self._mode.get(pid, 'auto')
+        exec_flags = ['exec', '--json'] + (['--auto'] if mode == 'auto' else []) + ['-']
+        cmd = [node, js] + flags + exec_flags
         self._send(writers, 'status', '...')
         print(f"[tunnel] {pid} exec {'(cont)' if not first else '(new)'}", flush=True)
 
