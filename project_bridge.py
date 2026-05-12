@@ -174,8 +174,8 @@ class TunnelClient:
 
         # Mode: auto (tools) or ask (chat only)
         mode = self._mode.get(pid, 'auto')
-        exec_flags = ['exec', '--json'] + (['--auto'] if mode == 'auto' else []) + ['-']
-        cmd = [node, js] + flags + exec_flags
+        exec_flags = ['exec', '--json'] + (['--auto'] if mode == 'auto' else [])
+        cmd = [node, js] + flags + exec_flags + [text]
         self._send(writers, 'status', '...')
         print(f"[tunnel] {pid} exec {'(cont)' if not first else '(new)'}", flush=True)
 
@@ -187,12 +187,10 @@ class TunnelClient:
             def target():
                 try:
                     proc = subprocess.Popen(
-                        cmd, cwd=pdir, stdin=subprocess.PIPE,
+                        cmd, cwd=pdir,
                         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                         text=True, encoding='utf-8', errors='replace', bufsize=1,
                     )
-                    proc.stdin.write(text)
-                    proc.stdin.close()
                     for line in proc.stdout:
                         q.put(('out', line.rstrip('\n\r')))
                     for line in proc.stderr:
