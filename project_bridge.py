@@ -22,39 +22,6 @@ DEFAULT_PROJECTS = [
     {"id": "nousro",      "name": "Nousro",        "path": r"C:\Users\user\Desktop\nousro",         "icon": "folder"},
 ]
 
-class Session:
-    """Holds conversation history for a project."""
-    def __init__(self, project_dir: str):
-        self.project_dir = project_dir
-        self.history: list = []  # [(role, text)]
-
-    def add(self, role: str, text: str):
-        self.history.append((role, text))
-        if len(self.history) > 30:
-            self.history = self.history[-20:]
-
-    def build_prompt(self, new_msg: str) -> str:
-        ctx = ""
-        if not self.history:
-            # First message: include project context
-            for f in ['AGENTS.md', 'README.md']:
-                fp = Path(self.project_dir) / f
-                if fp.exists():
-                    ctx += f"\n--- {f} ---\n{fp.read_text('utf-8', errors='replace')[:3000]}\n"
-            try:
-                r = subprocess.run(['dir','/b'], cwd=self.project_dir, shell=True,
-                    capture_output=True, text=True, errors='replace')
-                ctx += f"\nProject files:\n{r.stdout[:1500]}\n"
-            except Exception: pass
-
-        parts = []
-        if ctx:
-            parts.append(f"[Project context]\n{ctx}\n[End context]")
-        for role, text in self.history:
-            parts.append(f"{'User' if role == 'user' else 'Assistant'}: {text}")
-        parts.append(f"User: {new_msg}")
-        return '\n\n'.join(parts)
-
 class TunnelClient:
     def __init__(self, tunnel_host: str, tunnel_port: int = 9877):
         self.tunnel_host = tunnel_host
@@ -126,33 +93,32 @@ class TunnelClient:
             await asyncio.sleep(10)
 
     async def _exec(self, pid: str, pdir: str, text: str):
-        session = self._sessions.get(pid)
-        if not session:
-            session = Session(pdir)
-            self._sessions[pid] = session
-
-        session.add('user', text)
-        prompt = session.build_prompt(text)
         writers = self._writers.get(pid, [])
 
         node, js = self._get_node_js()
         if not node or not js:
             self._send(writers, 'error', 'deepseek-tui not found'); return
 
-        cmd = [node, js, '--yolo', '-w', pdir, 'exec', '--auto', prompt]
+        # Use -c to continue the most recent session in this workspace
+        first = pid not in self._sessions
+        if first:
+            self._sessions[pid] = True  # mark as active
+            flags = ['--yolo', '-w', pdir]
+        else:
+            flags = ['--yolo', '-c', '-w', pdir]
+
+        cmd = [node, js] + flags + ['exec', '--auto', '-']
         self._send(writers, 'status', '...')
+        print(f"[tunnel] {pid} exec {'(new)' if first else '(cont)'}", flush=True)
 
         loop = asyncio.get_event_loop()
 
         def run():
             try:
-                # Write prompt to temp file to avoid command-line length limits
-                tmp = Path(pdir) / '.bridge_prompt.txt'
-                tmp.write_text(prompt, encoding='utf-8')
-                # Use stdin approach to avoid arg length issues
                 proc = subprocess.run(
                     cmd,
                     cwd=pdir,
+                    input=text,  # stdin, no arg length limits
                     capture_output=True,
                     text=True, encoding='utf-8', errors='replace',
                     timeout=300,
@@ -166,24 +132,18 @@ class TunnelClient:
         stdout, stderr, rc = await loop.run_in_executor(None, run)
         print(f"[tunnel] {pid} exec: rc={rc} out={len(stdout or '')}", flush=True)
 
-        response_text = ""
         if stdout:
             for line in stdout.split('\n'):
                 clean = strip_ansi(line.strip())
                 if clean:
-                    response_text += clean + '\n'
                     self._send(writers, 'output', clean)
         elif stderr:
             for line in stderr.split('\n'):
                 clean = strip_ansi(line.strip())
                 if clean:
-                    response_text += clean + '\n'
                     self._send(writers, 'output', clean)
         else:
             self._send(writers, 'status', f'exit {rc}')
-
-        if response_text.strip():
-            session.add('assistant', response_text.strip())
 
     def _send(self, writers: list, typ: str, text: str):
         if not writers: return
