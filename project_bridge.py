@@ -159,7 +159,10 @@ class TunnelClient:
             self._send(writers, 'error', 'deepseek-tui not found'); return
 
         first = pid not in self._sessions
-        self._sessions[pid] = True
+        if first:
+            self._sessions[pid] = True
+            # Preload superpowers skill on first message
+            text = '/skill superpowers-lite\n' + text
         flags = ['--yolo', '-c', '-w', pdir] if not first else ['--yolo', '-w', pdir]
 
         # Use --json for structured output with tool calls
