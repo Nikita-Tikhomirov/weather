@@ -122,7 +122,8 @@ class ProjectSession:
             exec_prompt = self._compact_for_cli(self._build_prompt_with_memory(prompt))
             npm = Path(os.path.expandvars(r"%APPDATA%\npm"))
             js = npm / "node_modules" / "deepseek-tui" / "bin" / "deepseek-tui.js"
-            if exe == "node" and js.exists():
+            is_node = exe.lower().endswith("node.exe") or exe.lower().endswith("node")
+            if is_node and js.exists():
                 argv = [exe, str(js), "--yolo", "-w", self.project_dir, "exec", "--auto", exec_prompt]
             else:
                 argv = [exe, "--yolo", "-w", self.project_dir, "exec", "--auto", exec_prompt]
