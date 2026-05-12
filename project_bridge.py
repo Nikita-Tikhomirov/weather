@@ -100,35 +100,39 @@ class TunnelClient:
         if not node or not js:
             self._broadcast(writers, 'error', 'deepseek-tui not found'); return
 
-        # -c continues the most recent session in this workspace
         use_continue = self._active.get(project_id, False)
         flags = ['--yolo', '-c', '-w', project_dir] if use_continue else ['--yolo', '-w', project_dir]
         cmd = [node, js] + flags + ['exec', '--auto', prompt]
         self._active[project_id] = True
 
+        print(f"[tunnel] {project_id} exec {'(cont)' if use_continue else '(new)'}: {len(writers)} writers", flush=True)
         self._broadcast(writers, 'status', '...')
-        print(f"[tunnel] {project_id} exec {'(cont)' if use_continue else '(new)'}", flush=True)
 
         loop = asyncio.get_event_loop()
         def run():
             try:
-                return subprocess.run(cmd, cwd=project_dir, capture_output=True,
+                proc = subprocess.run(cmd, cwd=project_dir, capture_output=True,
                     text=True, encoding='utf-8', errors='replace', timeout=300)
-            except subprocess.TimeoutExpired: return None
-            except Exception as e: return None
-        proc = await loop.run_in_executor(None, run)
-        if proc is None:
-            self._broadcast(writers, 'error', 'exec timeout/failed'); return
-        if proc.stdout:
-            for line in proc.stdout.split('\n'):
+                return proc.stdout, proc.stderr, proc.returncode
+            except subprocess.TimeoutExpired:
+                return None, None, -1
+            except Exception as e:
+                return None, str(e), -2
+        stdout, stderr, rc = await loop.run_in_executor(None, run)
+        print(f"[tunnel] {project_id} exec done: rc={rc} out={len(stdout or '')} err={len(stderr or '')}", flush=True)
+        
+        if stdout:
+            for line in stdout.split('\n'):
                 clean = strip_ansi(line.strip())
-                if clean: self._broadcast(writers, 'output', clean)
-        elif proc.stderr:
-            for line in proc.stderr.split('\n'):
+                if clean:
+                    self._broadcast(writers, 'output', clean)
+        elif stderr:
+            for line in stderr.split('\n'):
                 clean = strip_ansi(line.strip())
-                if clean: self._broadcast(writers, 'output', clean)
+                if clean:
+                    self._broadcast(writers, 'output', clean)
         else:
-            self._broadcast(writers, 'status', f'exit {proc.returncode}')
+            self._broadcast(writers, 'status', f'exit {rc}')
 
     def _broadcast(self, writers: list, typ: str, text: str):
         if not writers: return
