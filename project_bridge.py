@@ -87,6 +87,14 @@ IMAGE_EXTENSIONS = {
 }
 
 
+def _ts() -> str:
+    return datetime.now().strftime("%H:%M:%S")
+
+
+def _log(tag: str, msg: str) -> None:
+    print(f"[{_ts()}] [{tag}] {msg}", flush=True)
+
+
 class ProjectSession:
     """Serializes DeepSeek exec prompts for one project."""
 
@@ -101,21 +109,26 @@ class ProjectSession:
         self._safe_project_id = self._safe_id(project_id)
         self._session_dir = self._state_dir / "sessions" / self._safe_project_id
         self._latest_session_path = self._session_dir / "latest.txt"
-        self.session_id = self._load_or_create_session_id()
+        self.session_id = ""
         self._current_proc: subprocess.Popen | None = None
+        # Defer session-id loading to start() so we can report errors
+        self._init_error: str | None = None
 
     def start(self) -> bool:
         if not self._get_deepseek_exe():
-            print(f"[session] deepseek-tui not found for {self.project_id}", flush=True)
+            _log("session", f"deepseek-tui not found for {self.project_id}")
             return False
         if not Path(self.project_dir).exists():
-            print(
-                f"[session] Project path missing for {self.project_id}: {self.project_dir}",
-                flush=True,
-            )
+            _log("session", f"Project path missing for {self.project_id}: {self.project_dir}")
+            return False
+        try:
+            self.session_id = self._load_or_create_session_id()
+        except Exception as exc:
+            _log("session", f"Session init failed for {self.project_id}: {exc}")
+            self._init_error = str(exc)
             return False
         self.running = True
-        print(f"[session] Ready {self.project_id}", flush=True)
+        _log("session", f"Ready {self.project_id} session={self.session_id}")
         return True
 
     def write(self, text: str) -> None:
@@ -140,7 +153,7 @@ class ProjectSession:
         try:
             lines = path.read_text(encoding="utf-8").splitlines()
         except Exception as exc:
-            print(f"[session] History load failed for {self.project_id}: {exc}", flush=True)
+            _log("session", f"History load failed for {self.project_id}: {exc}")
             return []
         items: list[dict] = []
         for line in lines[-limit:]:
@@ -196,7 +209,7 @@ class ProjectSession:
                 argv = [exe, str(js), "--yolo", "-w", self.project_dir, "exec", "--auto", exec_prompt]
             else:
                 argv = [exe, "--yolo", "-w", self.project_dir, "exec", "--auto", exec_prompt]
-            print(f"[session] {self.project_id} exec: {prompt[:80]}", flush=True)
+            _log("session", f"{self.project_id} exec: {prompt[:80]}")
             self._broadcast("status", "DeepSeek начал выполнение...")
 
             try:
@@ -223,10 +236,7 @@ class ProjectSession:
                 if clean:
                     emitted = True
                     output_lines.append(clean)
-                    print(
-                        f"[session] {self.project_id} out: {clean[:120]}",
-                        flush=True,
-                    )
+                    _log("session", f"{self.project_id} out: {clean[:120]}")
                     self._broadcast("output", clean)
 
             code = proc.wait()
@@ -296,7 +306,7 @@ class ProjectSession:
                 encoding="utf-8",
             )
         except Exception as exc:
-            print(f"[session] Memory save failed for {self.project_id}: {exc}", flush=True)
+            _log("session", f"Memory save failed for {self.project_id}: {exc}")
 
     def _load_memory(self) -> list:
         try:
@@ -305,7 +315,7 @@ class ProjectSession:
             data = json.loads(self._memory_path.read_text(encoding="utf-8"))
             return data if isinstance(data, list) else []
         except Exception as exc:
-            print(f"[session] Memory load failed for {self.project_id}: {exc}", flush=True)
+            _log("session", f"Memory load failed for {self.project_id}: {exc}")
             return []
 
     @staticmethod
@@ -324,10 +334,7 @@ class ProjectSession:
     def _broadcast(self, msg_type: str, text: str) -> None:
         event = self._append_event(msg_type, text)
         if not self.writers:
-            print(
-                f"[session] {self.project_id} broadcast with 0 writers!",
-                flush=True,
-            )
+            _log("session", f"{self.project_id} broadcast with 0 writers!")
             return
         msg = json.dumps(event, ensure_ascii=False) + "\n"
         data = msg.encode("utf-8")
@@ -385,7 +392,7 @@ class ProjectSession:
             with self._session_log_path().open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps(event, ensure_ascii=False) + "\n")
         except Exception as exc:
-            print(f"[session] History save failed for {self.project_id}: {exc}", flush=True)
+            _log("session", f"History save failed for {self.project_id}: {exc}")
         return event
 
     def _session_log_path(self) -> Path:
@@ -398,13 +405,13 @@ class ProjectSession:
                 if re.fullmatch(r"[0-9]{8}_[0-9]{6}_[A-Za-z0-9_-]{8}", raw):
                     return raw
         except Exception as exc:
-            print(f"[session] Latest session load failed for {self.project_id}: {exc}", flush=True)
+            _log("session", f"Latest session load failed for {self.project_id}: {exc}")
         session_id = self._new_session_id()
         try:
             self._session_dir.mkdir(parents=True, exist_ok=True)
             self._latest_session_path.write_text(session_id, encoding="utf-8")
         except Exception as exc:
-            print(f"[session] Latest session save failed for {self.project_id}: {exc}", flush=True)
+            _log("session", f"Latest session save failed for {self.project_id}: {exc}")
         return session_id
 
     @staticmethod
@@ -466,7 +473,7 @@ class TunnelClient:
 
     async def start(self) -> None:
         projects = self._load_projects()
-        print(f"Tunnel -> {self.tunnel_host}:{self.tunnel_port}", flush=True)
+        _log("tunnel", f"Connecting to {self.tunnel_host}:{self.tunnel_port} ({len(projects)} projects)")
         for project in projects:
             task = asyncio.create_task(self._register_project(project))
             self._tasks.append(task)
@@ -477,8 +484,14 @@ class TunnelClient:
         project_id = str(project["id"])
         project_dir = str(project["path"])
         reconnect_attempt = 0
+        session: ProjectSession | None = None
         while True:
             try:
+                # Small delay before reconnecting so the tunnel server's
+                # old relay task can finish its cleanup and avoid the
+                # race condition that orphans the new registration.
+                if reconnect_attempt > 0:
+                    await asyncio.sleep(3.0)
                 reader, writer = await asyncio.wait_for(
                     asyncio.open_connection(self.tunnel_host, self.tunnel_port),
                     timeout=10,
@@ -491,20 +504,33 @@ class TunnelClient:
                     + b"\n"
                 )
                 await writer.drain()
-                print(f"[tunnel] {project_id} registered", flush=True)
+                _log("tunnel", f"{project_id} registered (attempt {reconnect_attempt + 1})")
                 reconnect_attempt = 0
 
                 session = self._sessions.get(project_id)
                 if not session or not session.running:
-                    session = ProjectSession(project_id, project_dir)
-                    if session.start():
+                    try:
+                        session = ProjectSession(project_id, project_dir)
+                    except Exception as exc:
+                        _log("tunnel", f"{project_id} session init crash: {exc}")
+                        session = None
+                    if session and session.start():
                         self._sessions[project_id] = session
+                    elif session:
+                        error_text = session._init_error or "неизвестная ошибка"
+                        session._broadcast(
+                            "error",
+                            f"Не удалось запустить сессию проекта {project_id}: {error_text}",
+                        )
+                        session = None
 
                 if session and session.running:
                     # Close old dead writers from previous connections
                     for old in list(session.writers):
-                        try: old.close()
-                        except Exception: pass
+                        try:
+                            old.close()
+                        except Exception:
+                            pass
                     session.writers.clear()
                     session.writers.append(writer)
 
@@ -576,18 +602,11 @@ class TunnelClient:
                     if msg.get("type") == "send":
                         text = str(msg.get("text", ""))
                         if text and session and session.running:
-                            print(
-                                f"[tunnel] {project_id} <- {text[:80]}",
-                                flush=True,
-                            )
+                            _log("tunnel", f"{project_id} <- {text[:80]}")
                             session.write(text)
             except Exception as exc:
                 delay = min(8, RECONNECT_DELAY_SECONDS * (2 ** reconnect_attempt))
-                print(
-                    f"[tunnel] {project_id} err: {exc}. "
-                    f"Retry {delay}s...",
-                    flush=True,
-                )
+                _log("tunnel", f"{project_id} error: {exc}. Retry in {delay}s")
                 await asyncio.sleep(delay)
                 reconnect_attempt += 1
                 continue

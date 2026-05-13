@@ -9,6 +9,8 @@ Usage: python bridge_launcher.py --tunnel 31.129.97.211:9877
 import argparse
 import asyncio
 import json
+import os
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -27,12 +29,20 @@ class BridgeLauncher:
         self._bridge_process: subprocess.Popen | None = None
 
     async def run_forever(self) -> None:
-        while True:
+        health_task = asyncio.create_task(self._health_check_loop())
+        try:
+            while True:
+                try:
+                    await self._run_once()
+                except Exception as exc:
+                    print(f"[launcher] error: {exc}", flush=True)
+                await asyncio.sleep(RECONNECT_DELAY_SECONDS)
+        finally:
+            health_task.cancel()
             try:
-                await self._run_once()
-            except Exception as exc:
-                print(f"[launcher] error: {exc}", flush=True)
-            await asyncio.sleep(RECONNECT_DELAY_SECONDS)
+                await health_task
+            except asyncio.CancelledError:
+                pass
 
     async def _run_once(self) -> None:
         reader, writer = await asyncio.open_connection(
@@ -63,8 +73,12 @@ class BridgeLauncher:
                     continue
                 if msg.get("type") == "start_bridge":
                     project_id = str(msg.get("project_id", "")).strip()
-                    started = self.start_bridge()
-                    status = "started" if started else "already running"
+                    try:
+                        started = self.start_bridge()
+                    except Exception as exc:
+                        print(f"[launcher] start_bridge failed: {exc}", flush=True)
+                        started = False
+                    status = "started" if started else "failed"
                     writer.write(
                         json.dumps(
                             {
@@ -82,11 +96,11 @@ class BridgeLauncher:
             print("[launcher] disconnected", flush=True)
 
     def start_bridge(self) -> bool:
-        if self._bridge_process and self._bridge_process.poll() is None:
-            return False
-        if self._external_bridge_running():
-            return False
+        """Kill any stale bridge process, then start a fresh one."""
+        self._kill_stale_bridge()
+        return self._spawn_bridge()
 
+    def _spawn_bridge(self) -> bool:
         state_dir = self.project_root / ".deepseek" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         log_path = state_dir / "bridge_launcher_project_bridge.log"
@@ -106,24 +120,63 @@ class BridgeLauncher:
         )
         return True
 
-    def _external_bridge_running(self) -> bool:
+    def _kill_stale_bridge(self) -> None:
+        """Terminate any existing project_bridge.py process (ours or external)."""
+        # Kill our tracked process if it exists (even if zombie)
+        if self._bridge_process is not None:
+            try:
+                if self._bridge_process.poll() is None:
+                    self._bridge_process.terminate()
+                    try:
+                        self._bridge_process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        self._bridge_process.kill()
+                        self._bridge_process.wait(timeout=5)
+                    print("[launcher] Terminated tracked bridge process", flush=True)
+            except Exception as exc:
+                print(f"[launcher] Error killing tracked bridge: {exc}", flush=True)
+            finally:
+                self._bridge_process = None
+
+        # Find and kill any external bridge processes
         tunnel = f"{self.tunnel_host}:{self.tunnel_port}"
+        pids = self._find_bridge_pids(tunnel)
+        for pid in pids:
+            try:
+                if sys.platform == "win32":
+                    subprocess.run(
+                        ["taskkill", "/F", "/PID", str(pid)],
+                        capture_output=True, timeout=10, check=False,
+                    )
+                else:
+                    os.kill(int(pid), signal.SIGTERM)
+                print(f"[launcher] Killed external bridge pid={pid}", flush=True)
+            except Exception as exc:
+                print(f"[launcher] Failed to kill pid={pid}: {exc}", flush=True)
+
+    def _find_bridge_pids(self, tunnel: str) -> list[int]:
+        """Return list of PIDs for project_bridge.py processes with given tunnel."""
         if sys.platform == "win32":
             command = (
                 "Get-CimInstance Win32_Process | "
                 "Where-Object { $_.ProcessName -like 'python*' "
                 "-and $_.CommandLine -like '*project_bridge.py*' "
                 f"-and $_.CommandLine -like '*{tunnel}*' }} | "
-                "Select-Object -First 1 -ExpandProperty ProcessId"
+                "Select-Object -ExpandProperty ProcessId"
             )
             result = subprocess.run(
                 ["powershell", "-NoProfile", "-Command", command],
                 capture_output=True,
                 text=True,
-                timeout=5,
+                timeout=10,
                 check=False,
             )
-            return bool(result.stdout.strip())
+            pids: list[int] = []
+            for line in result.stdout.strip().splitlines():
+                line = line.strip()
+                if line.isdigit():
+                    pids.append(int(line))
+            return pids
 
         result = subprocess.run(
             ["ps", "-eo", "pid,args"],
@@ -132,10 +185,27 @@ class BridgeLauncher:
             timeout=5,
             check=False,
         )
-        return any(
-            "project_bridge.py" in line and tunnel in line
-            for line in result.stdout.splitlines()
-        )
+        pids: list[int] = []
+        for line in result.stdout.splitlines():
+            if "project_bridge.py" in line and tunnel in line:
+                parts = line.strip().split(None, 1)
+                if parts and parts[0].isdigit():
+                    pids.append(int(parts[0]))
+        return pids
+
+    async def _health_check_loop(self) -> None:
+        """Periodically check if project_bridge.py is alive; restart if dead."""
+        while True:
+            await asyncio.sleep(15)  # Check every 15 seconds
+            if self._bridge_process is None:
+                continue
+            rc = self._bridge_process.poll()
+            if rc is not None:
+                print(
+                    f"[launcher] project_bridge.py exited with code {rc}, restarting...",
+                    flush=True,
+                )
+                self._spawn_bridge()
 
 
 async def main() -> None:
