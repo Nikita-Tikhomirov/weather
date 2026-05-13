@@ -110,11 +110,15 @@ class TunnelServer:
             except (ConnectionResetError, asyncio.IncompleteReadError):
                 pass
             finally:
-                # Cleanup
-                self._bridges.pop(project_id, None)
-                self._mobile_writers.pop(project_id, None)
-                self._relay_tasks.pop(project_id, None)
-                print(f"[tunnel] Bridge unregistered: {project_id}", flush=True)
+                # Only clean up if our bridge entry is still current.
+                # A reconnect may have registered a new (reader, writer)
+                # while this relay task was shutting down.
+                current = self._bridges.get(project_id)
+                if current is not None and current[0] is reader:
+                    self._bridges.pop(project_id, None)
+                    self._mobile_writers.pop(project_id, None)
+                    self._relay_tasks.pop(project_id, None)
+                    print(f"[tunnel] Bridge unregistered: {project_id}", flush=True)
                 if not writer.is_closing():
                     writer.close()
 
