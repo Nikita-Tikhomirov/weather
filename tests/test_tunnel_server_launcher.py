@@ -52,6 +52,37 @@ class TunnelServerLauncherTests(unittest.IsolatedAsyncioTestCase):
         await mobile_writer.wait_closed()
         await launcher_writer.wait_closed()
 
+    async def test_mobile_attach_notifies_bridge(self) -> None:
+        bridge_reader, bridge_writer = await asyncio.open_connection(
+            "127.0.0.1",
+            self.port,
+        )
+        bridge_writer.write(
+            json.dumps({"type": "register", "project_id": "cifra"}).encode("utf-8")
+            + b"\n"
+        )
+        await bridge_writer.drain()
+
+        mobile_reader, mobile_writer = await asyncio.open_connection(
+            "127.0.0.1",
+            self.port,
+        )
+        mobile_writer.write(
+            json.dumps({"type": "connect", "project_id": "cifra"}).encode("utf-8")
+            + b"\n"
+        )
+        await mobile_writer.drain()
+
+        self.assertEqual((await _read_json(mobile_reader))["type"], "status")
+        attached = await _read_json(bridge_reader)
+        self.assertEqual(attached["type"], "mobile_attached")
+        self.assertEqual(attached["project_id"], "cifra")
+
+        mobile_writer.close()
+        bridge_writer.close()
+        await mobile_writer.wait_closed()
+        await bridge_writer.wait_closed()
+
 
 if __name__ == "__main__":
     unittest.main()

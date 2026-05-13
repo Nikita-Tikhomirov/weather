@@ -14,14 +14,18 @@ class BridgeMessage {
     this.text = '',
     this.tuiRunning = false,
     this.projectId = '',
+    this.sessionId = '',
     this.projects = const [],
+    this.messages = const [],
   });
 
   final String type;
   final String text;
   final bool tuiRunning;
   final String projectId;
+  final String sessionId;
   final List<Map<String, dynamic>> projects;
+  final List<BridgeMessage> messages;
 
   factory BridgeMessage.fromJson(Map<String, dynamic> json) {
     return BridgeMessage(
@@ -29,8 +33,14 @@ class BridgeMessage {
       text: (json['text'] ?? '').toString(),
       tuiRunning: json['tui_running'] == true,
       projectId: (json['project_id'] ?? '').toString(),
+      sessionId: (json['session_id'] ?? '').toString(),
       projects: (json['projects'] as List<dynamic>?)
               ?.whereType<Map<String, dynamic>>()
+              .toList() ??
+          const [],
+      messages: (json['messages'] as List<dynamic>?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(BridgeMessage.fromJson)
               .toList() ??
           const [],
     );
@@ -42,6 +52,8 @@ class BridgeMessage {
   bool get isSent => type == 'sent';
   bool get isPong => type == 'pong';
   bool get isProjects => type == 'projects';
+  bool get isHistory => type == 'history';
+  bool get isSessionInfo => type == 'session_info';
 }
 
 /// Manages TCP connection to the remote Project Bridge Server running on PC.
@@ -307,6 +319,22 @@ class ProjectBridgeService {
     });
     _sendRaw('$message\n');
     return true;
+  }
+
+  void startNewSession() {
+    if (!isConnected) {
+      _scheduleReconnect();
+      return;
+    }
+    _sendRaw('${jsonEncode({'type': 'new_session'})}\n');
+  }
+
+  void stopCurrentPrompt() {
+    if (!isConnected) {
+      _scheduleReconnect();
+      return;
+    }
+    _sendRaw('${jsonEncode({'type': 'stop'})}\n');
   }
 
   void _sendRaw(String data) {

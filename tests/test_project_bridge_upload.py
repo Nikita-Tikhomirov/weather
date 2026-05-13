@@ -28,6 +28,29 @@ class ProjectBridgeUploadTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 session.save_upload("photo.jpg", "image/jpeg", "")
 
+    def test_broadcast_is_saved_to_current_session_log(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            session = ProjectSession("cifra", tmp)
+
+            session._broadcast("output", "hello from deepseek")
+
+            history = session.load_history(limit=10)
+            self.assertEqual(len(history), 1)
+            self.assertEqual(history[0]["type"], "output")
+            self.assertEqual(history[0]["text"], "hello from deepseek")
+
+    def test_new_session_switches_latest_log(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            session = ProjectSession("cifra", tmp)
+            first_id = session.session_id
+            session._broadcast("output", "old")
+
+            second_id = session.start_new_session()
+            session._broadcast("output", "new")
+
+            self.assertNotEqual(first_id, second_id)
+            self.assertEqual(session.load_history(limit=10)[-1]["text"], "new")
+
 
 if __name__ == "__main__":
     unittest.main()

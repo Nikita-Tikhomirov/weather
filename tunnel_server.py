@@ -213,6 +213,16 @@ class TunnelServer:
 
         # Register this mobile writer for broadcasts from bridge
         self._mobile_writers.setdefault(project_id, []).append(writer)
+        try:
+            b_writer.write(
+                json.dumps(
+                    {'type': 'mobile_attached', 'project_id': project_id},
+                    ensure_ascii=False,
+                ).encode('utf-8') + b'\n'
+            )
+            await b_writer.drain()
+        except Exception:
+            pass
 
         # Forward mobile messages to bridge
         try:

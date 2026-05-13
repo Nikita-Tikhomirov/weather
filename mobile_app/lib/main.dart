@@ -1281,6 +1281,14 @@ class _HomePageState extends State<HomePage> {
     final bridge = ProjectBridgeService(
       onMessage: (msg) {
         if (mounted) {
+          if (msg.isHistory) {
+            setState(() {
+              _projectMessages
+                ..clear()
+                ..addAll(msg.messages);
+            });
+            return;
+          }
           if (msg.isProjects && msg.projects.isNotEmpty) {
             setState(() {
               _projectContacts =
@@ -2605,6 +2613,16 @@ class _HomePageState extends State<HomePage> {
                 onPressed: () => _requestProjectBridgeStart(project),
               ),
               IconButton(
+                tooltip: 'Новая сессия',
+                icon: const Icon(Icons.add_to_queue),
+                onPressed: _startNewProjectSession,
+              ),
+              IconButton(
+                tooltip: 'Остановить DeepSeek',
+                icon: const Icon(Icons.stop_circle_outlined),
+                onPressed: _stopProjectPrompt,
+              ),
+              IconButton(
                 tooltip: 'Настроить сервер',
                 icon: const Icon(Icons.settings),
                 onPressed: () => _openBridgeSettings(),
@@ -2804,6 +2822,34 @@ class _HomePageState extends State<HomePage> {
       _projectBridge = null;
       _openProjectContact(store, project);
     }
+  }
+
+  void _startNewProjectSession() {
+    _projectBridge?.startNewSession();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _projectMessages
+        ..clear()
+        ..add(BridgeMessage(
+          type: 'status',
+          text: 'Создаю новую сессию...',
+        ));
+    });
+  }
+
+  void _stopProjectPrompt() {
+    _projectBridge?.stopCurrentPrompt();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _projectMessages.add(BridgeMessage(
+        type: 'status',
+        text: 'Команда остановки отправлена',
+      ));
+    });
   }
 
   Future<void> _sendProjectPhotos() async {

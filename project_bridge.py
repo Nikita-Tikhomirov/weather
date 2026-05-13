@@ -17,6 +17,8 @@ import re
 import subprocess
 import sys
 import threading
+import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
@@ -75,6 +77,7 @@ MAX_MEMORY_TURNS = 12
 MAX_MEMORY_CHARS = 12000
 RECONNECT_DELAY_SECONDS = 1
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024
+HISTORY_REPLAY_LIMIT = 300
 IMAGE_EXTENSIONS = {
     "image/jpeg": ".jpg",
     "image/jpg": ".jpg",
@@ -93,7 +96,13 @@ class ProjectSession:
         self.running = False
         self.writers: list = []
         self._lock = threading.Lock()
-        self._memory_path = self._build_memory_path(project_id)
+        self._state_dir = Path(project_dir) / ".deepseek" / "state"
+        self._memory_path = self._state_dir / f"bridge_memory_{self._safe_id(project_id)}.json"
+        self._safe_project_id = self._safe_id(project_id)
+        self._session_dir = self._state_dir / "sessions" / self._safe_project_id
+        self._latest_session_path = self._session_dir / "latest.txt"
+        self.session_id = self._load_or_create_session_id()
+        self._current_proc: subprocess.Popen | None = None
 
     def start(self) -> bool:
         if not self._get_deepseek_exe():
@@ -113,8 +122,44 @@ class ProjectSession:
         prompt = text.strip()
         if not prompt or not self.running:
             return
+        self._append_event("send", prompt)
         worker = threading.Thread(target=self._run_prompt, args=(prompt,), daemon=True)
         worker.start()
+
+    def start_new_session(self) -> str:
+        self.session_id = self._new_session_id()
+        self._session_dir.mkdir(parents=True, exist_ok=True)
+        self._latest_session_path.write_text(self.session_id, encoding="utf-8")
+        self._broadcast("session_info", f"Новая сессия: {self.session_id}")
+        return self.session_id
+
+    def load_history(self, limit: int = HISTORY_REPLAY_LIMIT) -> list[dict]:
+        path = self._session_log_path()
+        if not path.exists():
+            return []
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except Exception as exc:
+            print(f"[session] History load failed for {self.project_id}: {exc}", flush=True)
+            return []
+        items: list[dict] = []
+        for line in lines[-limit:]:
+            try:
+                item = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(item, dict):
+                items.append(item)
+        return items
+
+    def stop_current_prompt(self) -> bool:
+        proc = self._current_proc
+        if not proc or proc.poll() is not None:
+            self._broadcast("status", "Нет активного процесса DeepSeek.")
+            return False
+        proc.terminate()
+        self._broadcast("status", "Останавливаю DeepSeek...")
+        return True
 
     def save_upload(self, filename: str, mime_type: str, data_base64: str) -> Path:
         raw = base64.b64decode(data_base64, validate=True)
@@ -165,6 +210,7 @@ class ProjectSession:
                     errors="replace",
                     bufsize=1,
                 )
+                self._current_proc = proc
             except Exception as exc:
                 self._broadcast("error", f"Не удалось запустить deepseek-tui: {exc}")
                 return
@@ -195,6 +241,7 @@ class ProjectSession:
             else:
                 self._broadcast("error", f"deepseek-tui завершился с кодом {code}")
         finally:
+            self._current_proc = None
             self._lock.release()
 
     def _build_prompt_with_memory(self, prompt: str) -> str:
@@ -262,13 +309,6 @@ class ProjectSession:
             return []
 
     @staticmethod
-    def _build_memory_path(project_id: str) -> Path:
-        safe_id = re.sub(r"[^A-Za-z0-9_.-]+", "_", project_id).strip("._")
-        if not safe_id:
-            safe_id = "project"
-        return Path(".deepseek") / "state" / f"bridge_memory_{safe_id}.json"
-
-    @staticmethod
     def _safe_upload_name(filename: str, mime_type: str) -> str:
         original = Path(filename or "").name
         stem = Path(original).stem
@@ -282,13 +322,14 @@ class ProjectSession:
         return f"{safe_stem}_{stamp}{ext}"
 
     def _broadcast(self, msg_type: str, text: str) -> None:
+        event = self._append_event(msg_type, text)
         if not self.writers:
             print(
                 f"[session] {self.project_id} broadcast with 0 writers!",
                 flush=True,
             )
             return
-        msg = json.dumps({"type": msg_type, "text": text}, ensure_ascii=False) + "\n"
+        msg = json.dumps(event, ensure_ascii=False) + "\n"
         data = msg.encode("utf-8")
         dead = []
         for writer in self.writers:
@@ -301,6 +342,79 @@ class ProjectSession:
 
     def stop(self) -> None:
         self.running = False
+        self.stop_current_prompt()
+
+    def send_session_info(self, writer) -> None:
+        writer.write(
+            json.dumps(
+                {
+                    "type": "session_info",
+                    "text": f"Сессия: {self.session_id}",
+                    "session_id": self.session_id,
+                    "project_id": self.project_id,
+                },
+                ensure_ascii=False,
+            ).encode("utf-8")
+            + b"\n"
+        )
+
+    def send_history(self, writer, limit: int = HISTORY_REPLAY_LIMIT) -> None:
+        writer.write(
+            json.dumps(
+                {
+                    "type": "history",
+                    "project_id": self.project_id,
+                    "session_id": self.session_id,
+                    "messages": self.load_history(limit=limit),
+                },
+                ensure_ascii=False,
+            ).encode("utf-8")
+            + b"\n"
+        )
+
+    def _append_event(self, msg_type: str, text: str) -> dict:
+        event = {
+            "type": msg_type,
+            "text": text,
+            "project_id": self.project_id,
+            "session_id": self.session_id,
+            "ts": int(time.time()),
+        }
+        try:
+            self._session_dir.mkdir(parents=True, exist_ok=True)
+            with self._session_log_path().open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(event, ensure_ascii=False) + "\n")
+        except Exception as exc:
+            print(f"[session] History save failed for {self.project_id}: {exc}", flush=True)
+        return event
+
+    def _session_log_path(self) -> Path:
+        return self._session_dir / f"{self.session_id}.jsonl"
+
+    def _load_or_create_session_id(self) -> str:
+        try:
+            if self._latest_session_path.exists():
+                raw = self._latest_session_path.read_text(encoding="utf-8").strip()
+                if re.fullmatch(r"[0-9]{8}_[0-9]{6}_[A-Za-z0-9_-]{8}", raw):
+                    return raw
+        except Exception as exc:
+            print(f"[session] Latest session load failed for {self.project_id}: {exc}", flush=True)
+        session_id = self._new_session_id()
+        try:
+            self._session_dir.mkdir(parents=True, exist_ok=True)
+            self._latest_session_path.write_text(session_id, encoding="utf-8")
+        except Exception as exc:
+            print(f"[session] Latest session save failed for {self.project_id}: {exc}", flush=True)
+        return session_id
+
+    @staticmethod
+    def _new_session_id() -> str:
+        return f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+
+    @staticmethod
+    def _safe_id(value: str) -> str:
+        safe_id = re.sub(r"[^A-Za-z0-9_.-]+", "_", value).strip("._")
+        return safe_id or "project"
 
     @staticmethod
     def _get_deepseek_exe() -> str | None:
@@ -420,6 +534,20 @@ class TunnelClient:
                         continue
 
                     if msg.get("type") in ("pong", "ping", "list", "status"):
+                        continue
+                    if msg.get("type") == "mobile_attached":
+                        if session and session.running:
+                            session.send_session_info(writer)
+                            session.send_history(writer)
+                        continue
+                    if msg.get("type") == "new_session":
+                        if session and session.running:
+                            session.start_new_session()
+                            session.send_history(writer)
+                        continue
+                    if msg.get("type") == "stop":
+                        if session and session.running:
+                            session.stop_current_prompt()
                         continue
                     if msg.get("type") == "upload_file":
                         if not session or not session.running:
