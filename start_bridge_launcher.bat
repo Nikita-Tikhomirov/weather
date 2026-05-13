@@ -1,3 +1,3 @@
 @echo off
 cd /d "%~dp0"
-powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0start_bridge_launcher.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0bridge_launcher_watchdog.ps1"

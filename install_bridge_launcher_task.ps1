@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$LauncherScript = Join-Path $ProjectRoot 'start_bridge_launcher.ps1'
+$LauncherScript = Join-Path $ProjectRoot 'bridge_launcher_watchdog.ps1'
 $TaskName = 'BridgeLauncherAtLogon'
 
 if (-not (Test-Path -LiteralPath $LauncherScript)) {
@@ -49,13 +49,24 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$La
 try {
     Start-ScheduledTask -TaskName $TaskName -ErrorAction Stop
 } catch {
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$LauncherScript"
+    $watchdog = Get-CimInstance Win32_Process |
+        Where-Object {
+            $_.ProcessName -like 'powershell*' -and
+            $_.CommandLine -like '*bridge_launcher_watchdog.ps1*'
+        } |
+        Select-Object -First 1
+    if (-not $watchdog) {
+        Start-Process `
+            -FilePath 'powershell.exe' `
+            -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', $LauncherScript) `
+            -WindowStyle Hidden
+    }
 }
 Start-Sleep -Seconds 2
 
 Get-CimInstance Win32_Process |
     Where-Object {
-        $_.ProcessName -like 'python*' -and
-        $_.CommandLine -like '*bridge_launcher.py*'
+        ($_.ProcessName -like 'python*' -and $_.CommandLine -like '*bridge_launcher.py*') -or
+        ($_.ProcessName -like 'powershell*' -and $_.CommandLine -like '*bridge_launcher_watchdog.ps1*')
     } |
     Select-Object ProcessId, CommandLine

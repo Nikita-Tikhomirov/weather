@@ -174,6 +174,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install_bridge_launcher_ta
 Скрипт сначала пробует создать задачу `BridgeLauncherAtLogon` в Windows Task
 Scheduler. Если Windows запрещает регистрацию задачи без прав администратора,
 он добавляет `BridgeLauncherAtLogon.cmd` в пользовательскую папку Startup.
+Автозапуск поднимает `bridge_launcher_watchdog.ps1`: он каждые 15 секунд
+проверяет `bridge_launcher.py` и перезапускает его, если тот упал.
 
 Launcher держит соединение с VPS и по команде из APK запускает:
 
