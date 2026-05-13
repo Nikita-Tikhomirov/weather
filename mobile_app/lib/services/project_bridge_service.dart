@@ -59,6 +59,12 @@ class ProjectBridgeService {
 
   Socket? _socket;
   bool _running = false;
+  bool _disposed = false;
+  bool _connecting = false;
+  int _reconnectAttempt = 0;
+  Timer? _reconnectTimer;
+  ProjectContact? _activeProject;
+  final List<String> _pendingSends = <String>[];
   final StringBuffer _buffer = StringBuffer();
 
   bool get isConnected => _socket != null && _running;
@@ -77,16 +83,24 @@ class ProjectBridgeService {
 
   /// Connect to the bridge server.
   Future<bool> connect() async {
+    if (_disposed) {
+      return false;
+    }
     if (_running) {
       return true;
     }
+    if (_connecting) {
+      return false;
+    }
 
+    _connecting = true;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
     final address = await getServerAddress();
     final parts = address.split(':');
     final host = parts[0].trim();
-    final port = parts.length > 1
-        ? int.tryParse(parts[1].trim()) ?? 9876
-        : 9876;
+    final port =
+        parts.length > 1 ? int.tryParse(parts[1].trim()) ?? 9876 : 9876;
 
     try {
       _socket = await Socket.connect(
@@ -95,25 +109,45 @@ class ProjectBridgeService {
         timeout: const Duration(seconds: 5),
       );
       _running = true;
+      _connecting = false;
+      _reconnectAttempt = 0;
       onStatusChange(true, 'Connected to $address');
 
       // Listen for messages
       _socket!.listen(
         _onData,
         onError: (error) {
-          onStatusChange(false, 'Connection error: $error');
+          if (_disposed) {
+            _cleanup();
+            return;
+          }
+          onStatusChange(false, 'Ошибка соединения: $error');
           _cleanup();
+          _scheduleReconnect();
         },
         onDone: () {
-          onStatusChange(false, 'Server disconnected');
+          if (_disposed) {
+            _cleanup();
+            return;
+          }
+          onStatusChange(false, 'Соединение потеряно, переподключаюсь...');
           _cleanup();
+          _scheduleReconnect();
         },
       );
 
-      // Don't send anything — wait for startProject() to send 'connect'
+      final project = _activeProject;
+      if (project != null) {
+        startProject(project);
+      }
+      _flushPendingSends();
       return true;
     } catch (e) {
-      onStatusChange(false, 'Failed to connect: $e');
+      _connecting = false;
+      if (!_disposed) {
+        onStatusChange(false, 'Не удалось подключиться: $e');
+        _scheduleReconnect();
+      }
       _cleanup();
       return false;
     }
@@ -150,7 +184,9 @@ class ProjectBridgeService {
 
   /// Start a project session via tunnel (connect to PC bridge).
   void startProject(ProjectContact project) {
+    _activeProject = project;
     if (!isConnected) {
+      _scheduleReconnect();
       return;
     }
     final message = jsonEncode({
@@ -161,27 +197,73 @@ class ProjectBridgeService {
   }
 
   /// Send text to the current project session.
-  void sendText(String text) {
+  bool sendText(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      return false;
+    }
     if (!isConnected) {
-      return;
+      if (_pendingSends.length >= 20) {
+        _pendingSends.removeAt(0);
+      }
+      _pendingSends.add(trimmed);
+      onStatusChange(false,
+          'Нет соединения, сообщение будет отправлено после переподключения.');
+      _scheduleReconnect();
+      return false;
     }
     final message = jsonEncode({
       'type': 'send',
-      'text': text,
+      'text': trimmed,
     });
     _sendRaw('$message\n');
+    return true;
+  }
+
+  /// Upload an image to the selected project's vision/ folder.
+  bool sendImage({
+    required String fileName,
+    required String mimeType,
+    required Uint8List bytes,
+    String caption = '',
+  }) {
+    if (bytes.isEmpty) {
+      return false;
+    }
+    if (!isConnected) {
+      onStatusChange(
+          false, 'Нет соединения, фото можно отправить после переподключения.');
+      _scheduleReconnect();
+      return false;
+    }
+    final message = jsonEncode({
+      'type': 'upload_file',
+      'filename': fileName.trim().isEmpty ? 'photo.jpg' : fileName.trim(),
+      'mime_type': mimeType.trim().isEmpty ? 'image/jpeg' : mimeType.trim(),
+      'data_base64': base64Encode(bytes),
+      if (caption.trim().isNotEmpty) 'caption': caption.trim(),
+    });
+    _sendRaw('$message\n');
+    return true;
   }
 
   void _sendRaw(String data) {
     try {
       _socket?.write(data);
     } catch (_) {
+      if (!_disposed) {
+        onStatusChange(
+            false, 'Не удалось отправить данные, переподключаюсь...');
+      }
       _cleanup();
+      _scheduleReconnect();
     }
   }
 
   void _cleanup() {
     _running = false;
+    _connecting = false;
+    _buffer.clear();
     try {
       _socket?.destroy();
     } catch (_) {}
@@ -189,6 +271,38 @@ class ProjectBridgeService {
   }
 
   void dispose() {
+    _disposed = true;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _pendingSends.clear();
     _cleanup();
+  }
+
+  void _scheduleReconnect() {
+    if (_disposed || _activeProject == null || _reconnectTimer != null) {
+      return;
+    }
+    final delaySeconds = _reconnectAttempt < 1
+        ? 1
+        : (_reconnectAttempt < 2 ? 2 : (_reconnectAttempt < 3 ? 4 : 8));
+    _reconnectAttempt += 1;
+    _reconnectTimer = Timer(Duration(seconds: delaySeconds), () async {
+      _reconnectTimer = null;
+      if (_disposed) {
+        return;
+      }
+      await connect();
+    });
+  }
+
+  void _flushPendingSends() {
+    if (!isConnected || _pendingSends.isEmpty) {
+      return;
+    }
+    final queued = List<String>.from(_pendingSends);
+    _pendingSends.clear();
+    for (final text in queued) {
+      sendText(text);
+    }
   }
 }

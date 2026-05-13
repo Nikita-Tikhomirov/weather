@@ -1029,7 +1029,9 @@ class _HomePageState extends State<HomePage> {
       final args = call.arguments as Map<dynamic, dynamic>?;
       if (args == null || !mounted) return;
       final text = (args['text'] as String?)?.trim() ?? '';
-      final imageUris = (args['imageUris'] as List?)?.map((e) => e.toString()).toList() ?? const [];
+      final imageUris =
+          (args['imageUris'] as List?)?.map((e) => e.toString()).toList() ??
+              const [];
 
       // Wait a moment for UI to settle
       await Future.delayed(const Duration(milliseconds: 500));
@@ -1044,7 +1046,8 @@ class _HomePageState extends State<HomePage> {
       final selected = await showDialog<ChatContact>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text(text.isNotEmpty ? 'Поделиться текстом' : 'Поделиться фото'),
+          title:
+              Text(text.isNotEmpty ? 'Поделиться текстом' : 'Поделиться фото'),
           content: SizedBox(
             width: double.maxFinite,
             child: ListView.builder(
@@ -1086,12 +1089,14 @@ class _HomePageState extends State<HomePage> {
         if (imageUris.isNotEmpty) {
           for (var i = 0; i < imageUris.length; i++) {
             final uri = imageUris[i];
-            final attachments = [ChatAttachment(
-              kind: 'image',
-              assetUrl: uri,
-              imageMeta: const {},
-              sortOrder: i,
-            )];
+            final attachments = [
+              ChatAttachment(
+                kind: 'image',
+                assetUrl: uri,
+                imageMeta: const {},
+                sortOrder: i,
+              )
+            ];
             await api.chatSendMessage(
               actorProfile: store.owner.value,
               conversationKey: conversationKey,
@@ -1101,7 +1106,8 @@ class _HomePageState extends State<HomePage> {
           }
         }
         setState(() => _activeConversationKey = conversationKey);
-        await _refreshConversation(store, conversationKey, useNetwork: true, quiet: true);
+        await _refreshConversation(store, conversationKey,
+            useNetwork: true, quiet: true);
       } catch (_) {
         // silently ignore share errors
       }
@@ -1222,16 +1228,41 @@ class _HomePageState extends State<HomePage> {
   List<ProjectContact> _fallbackProjects() {
     // Built-in list synced with family_data/nik/projects.json
     return const [
-      ProjectContact(id: 'tudushka', name: 'Тудушка', path: r'C:\Users\user\Desktop\weather', icon: 'terminal'),
-      ProjectContact(id: 'cifra', name: 'Цифра', path: r'C:\Users\user\Desktop\depseeker_test', icon: 'code'),
-      ProjectContact(id: 'stylish-house', name: 'Stylysh-house', path: r'C:\Users\user\Desktop\stylish-house', icon: 'code'),
-      ProjectContact(id: 'exp76', name: 'Exp76', path: r'C:\Users\user\Desktop\exp76.ru', icon: 'code'),
-      ProjectContact(id: 'groot', name: 'Грут', path: r'C:\Users\user\Desktop\Грут', icon: 'code'),
-      ProjectContact(id: 'nousro', name: 'Nousro', path: r'C:\Users\user\Desktop\nousro', icon: 'folder'),
+      ProjectContact(
+          id: 'tudushka',
+          name: 'Тудушка',
+          path: r'C:\Users\user\Desktop\weather',
+          icon: 'terminal'),
+      ProjectContact(
+          id: 'cifra',
+          name: 'Цифра',
+          path: r'C:\Users\user\Desktop\depseeker_test',
+          icon: 'code'),
+      ProjectContact(
+          id: 'stylish-house',
+          name: 'Stylysh-house',
+          path: r'C:\Users\user\Desktop\stylish-house',
+          icon: 'code'),
+      ProjectContact(
+          id: 'exp76',
+          name: 'Exp76',
+          path: r'C:\Users\user\Desktop\exp76.ru',
+          icon: 'code'),
+      ProjectContact(
+          id: 'groot',
+          name: 'Грут',
+          path: r'C:\Users\user\Desktop\Грут',
+          icon: 'code'),
+      ProjectContact(
+          id: 'nousro',
+          name: 'Nousro',
+          path: r'C:\Users\user\Desktop\nousro',
+          icon: 'folder'),
     ];
   }
 
-  Future<void> _openProjectContact(TaskStore store, ProjectContact project) async {
+  Future<void> _openProjectContact(
+      TaskStore store, ProjectContact project) async {
     if (!mounted) {
       return;
     }
@@ -1252,9 +1283,8 @@ class _HomePageState extends State<HomePage> {
         if (mounted) {
           if (msg.isProjects && msg.projects.isNotEmpty) {
             setState(() {
-              _projectContacts = msg.projects
-                  .map((p) => ProjectContact.fromJson(p))
-                  .toList();
+              _projectContacts =
+                  msg.projects.map((p) => ProjectContact.fromJson(p)).toList();
             });
           }
           setState(() => _projectMessages.add(msg));
@@ -1274,11 +1304,10 @@ class _HomePageState extends State<HomePage> {
 
     setState(() => _projectBridge = bridge);
 
-    // Connect to server, then start the project session
+    // Remember the selected project before connecting so reconnects can resume it.
+    bridge.startProject(project);
     final ok = await bridge.connect();
-    if (ok) {
-      bridge.startProject(project);
-    }
+    if (!ok) return;
   }
 
   bool _isProjectConversation(String key) => key.startsWith('project:');
@@ -1396,7 +1425,8 @@ class _HomePageState extends State<HomePage> {
       final members = [store.owner.value, contact.profileKey]..sort();
       key = 'dm:${members[0]}:${members[1]}';
     }
-    final existing = _chatConversations.any((item) => item.conversationKey == key);
+    final existing =
+        _chatConversations.any((item) => item.conversationKey == key);
     if (!existing) {
       setState(() {
         _chatConversations = [
@@ -1554,9 +1584,13 @@ class _HomePageState extends State<HomePage> {
         if (mounted) showSnack('Нужен доступ к микрофону');
         return;
       }
-      _voicePath = '${Directory.systemTemp.path}/v_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      _voicePath =
+          '${Directory.systemTemp.path}/v_${DateTime.now().millisecondsSinceEpoch}.m4a';
       await ch.invokeMethod('startRecording', {'path': _voicePath});
-      setState(() { _isRecording = true; _voiceSec = 0; });
+      setState(() {
+        _isRecording = true;
+        _voiceSec = 0;
+      });
       _voiceTimer?.cancel();
       _voiceTimer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (_isRecording) setState(() => _voiceSec++);
@@ -1570,7 +1604,9 @@ class _HomePageState extends State<HomePage> {
     if (!_isRecording) return;
     _voiceTimer?.cancel();
     const ch = MethodChannel('family_todo_mobile/voice');
-    try { await ch.invokeMethod('stopRecording'); } catch (_) {}
+    try {
+      await ch.invokeMethod('stopRecording');
+    } catch (_) {}
     setState(() => _isRecording = false);
     if (_voicePath == null || _voiceSec < 1) {
       if (mounted) showSnack('Слишком коротко');
@@ -1585,7 +1621,8 @@ class _HomePageState extends State<HomePage> {
     final actor = store.owner.value;
     try {
       final bytes = await File(_voicePath!).readAsBytes();
-      final up = await api.chatUploadSticker(actorProfile: actor, bytes: bytes, filename: 'voice.m4a');
+      final up = await api.chatUploadSticker(
+          actorProfile: actor, bytes: bytes, filename: 'voice.m4a');
       final meta = Map<String, dynamic>.from(up.imageMeta);
       meta['duration_ms'] = _voiceSec * 1000;
       final msg = await api.chatSendMessage(
@@ -1598,7 +1635,8 @@ class _HomePageState extends State<HomePage> {
         clientMessageId: 'v-${DateTime.now().microsecondsSinceEpoch}',
       );
       await db.upsertMessages([msg]);
-      await _refreshConversation(store, _activeConversationKey, useNetwork: true, quiet: true);
+      await _refreshConversation(store, _activeConversationKey,
+          useNetwork: true, quiet: true);
       _voicePath = null;
     } catch (e) {
       if (mounted) showSnack('Ошибка: $e');
@@ -1624,7 +1662,8 @@ class _HomePageState extends State<HomePage> {
     String finalText = text;
     if (replyTo != null) {
       final senderLabel = _profileLabel(replyTo.senderProfile);
-      if (replyTo.messageType == 'image' || replyTo.messageType == 'image_group') {
+      if (replyTo.messageType == 'image' ||
+          replyTo.messageType == 'image_group') {
         final url = (replyTo.imageUrl ?? '').isNotEmpty
             ? replyTo.imageUrl!
             : (replyTo.attachments.isNotEmpty
@@ -1634,7 +1673,8 @@ class _HomePageState extends State<HomePage> {
       } else if (replyTo.messageType == 'voice') {
         finalText = '> $senderLabel: [voice] ${replyTo.text}\n$text';
       } else {
-        finalText = '> $senderLabel: ${replyTo.text.split('\n').join('\n> ')}\n$text';
+        finalText =
+            '> $senderLabel: ${replyTo.text.split('\n').join('\n> ')}\n$text';
       }
     }
 
@@ -1685,9 +1725,8 @@ class _HomePageState extends State<HomePage> {
     if (message.isDeleted) return;
     final allContacts = _allKnownContacts(store);
     // Build list of unique contacts excluding self
-    final targets = allContacts
-        .where((c) => c.profileKey != store.owner.value)
-        .toList();
+    final targets =
+        allContacts.where((c) => c.profileKey != store.owner.value).toList();
     if (targets.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1746,11 +1785,18 @@ class _HomePageState extends State<HomePage> {
           stickerId: message.stickerId ?? '',
           text: '↪ $senderLabel: Стикер',
         );
-      } else if (message.messageType == 'image' || message.messageType == 'image_group') {
+      } else if (message.messageType == 'image' ||
+          message.messageType == 'image_group') {
         final atts = message.attachments.isNotEmpty
             ? message.attachments
             : (message.imageUrl != null && message.imageUrl!.isNotEmpty
-                ? [ChatAttachment(kind: 'image', assetUrl: message.imageUrl!, imageMeta: message.imageMeta, sortOrder: 0)]
+                ? [
+                    ChatAttachment(
+                        kind: 'image',
+                        assetUrl: message.imageUrl!,
+                        imageMeta: message.imageMeta,
+                        sortOrder: 0)
+                  ]
                 : const <ChatAttachment>[]);
         if (atts.isNotEmpty) {
           await api.chatSendMessage(
@@ -1758,7 +1804,9 @@ class _HomePageState extends State<HomePage> {
             conversationKey: conversationKey,
             messageType: atts.length == 1 ? 'image' : 'image_group',
             attachments: atts,
-            text: message.text.isNotEmpty ? '↪ $senderLabel: ${message.text}' : '↪ $senderLabel: Фото',
+            text: message.text.isNotEmpty
+                ? '↪ $senderLabel: ${message.text}'
+                : '↪ $senderLabel: Фото',
           );
         }
       }
@@ -1772,7 +1820,8 @@ class _HomePageState extends State<HomePage> {
       }
       // Navigate to the conversation
       setState(() => _activeConversationKey = conversationKey);
-      await _refreshConversation(store, conversationKey, useNetwork: true, quiet: true);
+      await _refreshConversation(store, conversationKey,
+          useNetwork: true, quiet: true);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Переслано → ${_contactLabel(selected)}')),
@@ -2100,7 +2149,8 @@ class _HomePageState extends State<HomePage> {
                 title: const Text('Галерея'),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
-                  _sendPhotos(store, source: ImageSource.gallery, allowMultiple: true);
+                  _sendPhotos(store,
+                      source: ImageSource.gallery, allowMultiple: true);
                 },
               ),
               ListTile(
@@ -2256,18 +2306,15 @@ class _HomePageState extends State<HomePage> {
                   ...List.generate(contacts.length, (index) {
                     final contact = contacts[index];
                     return ListTile(
-                      leading:
-                          const CircleAvatar(child: Icon(Icons.person)),
+                      leading: const CircleAvatar(child: Icon(Icons.person)),
                       title: Text(_contactLabel(contact)),
                       subtitle: Text(contact.phone),
                       trailing: IconButton(
                         tooltip: 'Добавить в семью',
                         icon: const Icon(Icons.family_restroom_outlined),
-                        onPressed: () =>
-                            _addContactToFamily(store, contact),
+                        onPressed: () => _addContactToFamily(store, contact),
                       ),
-                      onTap: () =>
-                          _openDirectContact(store, contact),
+                      onTap: () => _openDirectContact(store, contact),
                     );
                   }),
                 // Projects section
@@ -2303,8 +2350,7 @@ class _HomePageState extends State<HomePage> {
                       subtitle: Text(project.path,
                           maxLines: 1, overflow: TextOverflow.ellipsis),
                       trailing: const Icon(Icons.terminal),
-                      onTap: () =>
-                          _openProjectContact(store, project),
+                      onTap: () => _openProjectContact(store, project),
                     );
                   }),
                 ],
@@ -2449,7 +2495,8 @@ class _HomePageState extends State<HomePage> {
                     onLongPressStart: (_) => _startRecord(store),
                     onLongPressEnd: (_) => _stopRecord(store),
                     child: Container(
-                      width: 40, height: 40,
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
                         color: _isRecording ? Colors.red : Colors.transparent,
                         borderRadius: BorderRadius.circular(20),
@@ -2634,9 +2681,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                         decoration: BoxDecoration(
                           color: isMe
-                              ? Theme.of(context)
-                                  .colorScheme
-                                  .primaryContainer
+                              ? Theme.of(context).colorScheme.primaryContainer
                               : Theme.of(context)
                                   .colorScheme
                                   .surfaceContainerHighest,
@@ -2655,9 +2700,8 @@ class _HomePageState extends State<HomePage> {
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .primary,
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
                                   ),
                                 ),
                               ),
@@ -2677,6 +2721,12 @@ class _HomePageState extends State<HomePage> {
           padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
           child: Row(
             children: [
+              IconButton(
+                tooltip: 'Фото в vision',
+                onPressed: _sendProjectPhotos,
+                icon: const Icon(Icons.image_outlined),
+              ),
+              const SizedBox(width: 4),
               Expanded(
                 child: TextField(
                   controller: _chatInputCtl,
@@ -2724,6 +2774,93 @@ class _HomePageState extends State<HomePage> {
         ));
       });
     }
+  }
+
+  Future<void> _sendProjectPhotos() async {
+    final bridge = _projectBridge;
+    if (bridge == null) {
+      return;
+    }
+    final picked = await _imagePicker.pickMultiImage(
+      imageQuality: 85,
+      maxWidth: 2000,
+    );
+    if (picked.isEmpty) {
+      return;
+    }
+
+    String caption = '';
+    if (mounted) {
+      final captionCtl = TextEditingController();
+      final result = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Комментарий к фото'),
+          content: TextField(
+            controller: captionCtl,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: 'Промт для DeepSeek после загрузки (необязательно)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, ''),
+              child: const Text('Только сохранить'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, captionCtl.text.trim()),
+              child: const Text('Отправить'),
+            ),
+          ],
+        ),
+      );
+      if (result != null) {
+        caption = result;
+      }
+    }
+
+    var sent = 0;
+    for (final file in picked) {
+      final bytes = await file.readAsBytes();
+      final ok = bridge.sendImage(
+        fileName: file.name,
+        mimeType: _projectImageMime(file),
+        bytes: bytes,
+        caption: caption,
+      );
+      if (ok) {
+        sent += 1;
+      }
+    }
+    if (!mounted || sent == 0) {
+      return;
+    }
+    setState(() {
+      _projectMessages.add(BridgeMessage(
+        type: 'send',
+        text: 'Фото отправлено в vision: $sent',
+      ));
+    });
+  }
+
+  String _projectImageMime(XFile file) {
+    final declared = file.mimeType?.trim();
+    if (declared != null && declared.isNotEmpty) {
+      return declared;
+    }
+    final name = file.name.toLowerCase();
+    if (name.endsWith('.png')) {
+      return 'image/png';
+    }
+    if (name.endsWith('.webp')) {
+      return 'image/webp';
+    }
+    if (name.endsWith('.gif')) {
+      return 'image/gif';
+    }
+    return 'image/jpeg';
   }
 
   Future<void> _openBridgeSettings() async {
@@ -2835,8 +2972,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _profileLabel(String profile) {
-    for (final contact in [..._chatContacts, ..._phoneContacts, ..._familyMembers]) {
-      if (contact.profileKey == profile && contact.displayName.trim().isNotEmpty) {
+    for (final contact in [
+      ..._chatContacts,
+      ..._phoneContacts,
+      ..._familyMembers
+    ]) {
+      if (contact.profileKey == profile &&
+          contact.displayName.trim().isNotEmpty) {
         return contact.displayName.trim();
       }
     }
@@ -2865,7 +3007,8 @@ class _HomePageState extends State<HomePage> {
       }
       return '🙂';
     }
-    if (message.messageType == 'image' || message.messageType == 'image_group') {
+    if (message.messageType == 'image' ||
+        message.messageType == 'image_group') {
       return message.text.isNotEmpty ? message.text : 'Изображение';
     }
     if (message.messageType == 'voice') {
@@ -2999,7 +3142,9 @@ class _HomePageState extends State<HomePage> {
 
   String _absoluteAssetUrl(String raw) {
     final value = raw.trim();
-    if (value.isEmpty || value.startsWith('http://') || value.startsWith('https://')) {
+    if (value.isEmpty ||
+        value.startsWith('http://') ||
+        value.startsWith('https://')) {
       return value;
     }
     if (!value.startsWith('/')) {
@@ -3215,8 +3360,7 @@ class _HomePageState extends State<HomePage> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: _allKnownContacts(store)
-                            .map((member) {
+                        children: _allKnownContacts(store).map((member) {
                           final profile = member.profileKey;
                           return FilterChip(
                             label: Text(_contactLabel(member)),
@@ -3745,9 +3889,11 @@ class _ChatMessagesListState extends State<_ChatMessagesList> {
   @override
   void didUpdateWidget(covariant _ChatMessagesList oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final oldLast = oldWidget.messages.isEmpty ? '' : oldWidget.messages.last.id;
+    final oldLast =
+        oldWidget.messages.isEmpty ? '' : oldWidget.messages.last.id;
     final newLast = widget.messages.isEmpty ? '' : widget.messages.last.id;
-    if (oldLast != newLast || oldWidget.messages.length != widget.messages.length) {
+    if (oldLast != newLast ||
+        oldWidget.messages.length != widget.messages.length) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     }
   }
@@ -3874,7 +4020,8 @@ class _ChatMessageBubble extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                 ),
               ),
               const SizedBox(height: 4),
@@ -3884,7 +4031,12 @@ class _ChatMessageBubble extends StatelessWidget {
               if (message.reactions.isNotEmpty) const SizedBox(height: 4),
               Text(
                 _messageFooter(),
-                style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
+                style: TextStyle(
+                    fontSize: 10,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.5)),
               ),
             ],
           ),
@@ -3901,7 +4053,9 @@ class _ChatMessageBubble extends StatelessWidget {
       );
     }
     // Reply quote
-    if (text.startsWith('> ') && text.contains('\n') && message.messageType == 'text') {
+    if (text.startsWith('> ') &&
+        text.contains('\n') &&
+        message.messageType == 'text') {
       final parts = text.split('\n');
       final quoteLines = <String>[];
       final replyLines = <String>[];
@@ -3919,7 +4073,9 @@ class _ChatMessageBubble extends StatelessWidget {
       // Check for photo preview
       final photoMatch = RegExp(r'\[photo:(.+?)\]').firstMatch(quoteText);
       final hasVoice = quoteText.contains('[voice]');
-      final cleanQuote = quoteText.replaceAll(RegExp(r'\[photo:.+?\]\s*'), '').replaceAll('[voice] ', '');
+      final cleanQuote = quoteText
+          .replaceAll(RegExp(r'\[photo:.+?\]\s*'), '')
+          .replaceAll('[voice] ', '');
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -3927,38 +4083,44 @@ class _ChatMessageBubble extends StatelessWidget {
           Container(
             padding: const EdgeInsets.only(left: 8),
             decoration: const BoxDecoration(
-              border: Border(left: BorderSide(color: Color(0xFF3B82F6), width: 3)),
+              border:
+                  Border(left: BorderSide(color: Color(0xFF3B82F6), width: 3)),
             ),
             child: GestureDetector(
               onTap: onQuoteTap,
               child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (photoMatch != null)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: Image.network(
-                        _bubbleAssetUrl(photoMatch.group(1)!),
-                        width: 40, height: 40, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 40),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (photoMatch != null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Image.network(
+                          _bubbleAssetUrl(photoMatch.group(1)!),
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              const Icon(Icons.broken_image, size: 40),
+                        ),
                       ),
                     ),
+                  if (hasVoice)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 8),
+                      child:
+                          Icon(Icons.mic, size: 24, color: Color(0xFF6B7280)),
+                    ),
+                  Expanded(
+                    child: Text(
+                      cleanQuote,
+                      style: const TextStyle(
+                          fontSize: 13, color: Color(0xFF6B7280)),
+                    ),
                   ),
-                if (hasVoice)
-                  const Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: Icon(Icons.mic, size: 24, color: Color(0xFF6B7280)),
-                  ),
-                Expanded(
-                  child: Text(
-                    cleanQuote,
-                    style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
-                  ),
-                ),
-              ],
-            ),
+                ],
+              ),
             ),
           ),
           if (replyText.isNotEmpty) ...[
@@ -3972,7 +4134,8 @@ class _ChatMessageBubble extends StatelessWidget {
       return _buildVoiceBubble(context);
     }
     if (message.messageType == 'sticker') {
-      if (stickerAssetUrl.isNotEmpty && !stickerAssetUrl.startsWith('emoji://')) {
+      if (stickerAssetUrl.isNotEmpty &&
+          !stickerAssetUrl.startsWith('emoji://')) {
         return Image.network(
           stickerAssetUrl,
           fit: BoxFit.contain,
@@ -3985,7 +4148,8 @@ class _ChatMessageBubble extends StatelessWidget {
       }
       return Text(text, style: const TextStyle(fontSize: 34));
     }
-    if (message.messageType == 'image' || message.messageType == 'image_group') {
+    if (message.messageType == 'image' ||
+        message.messageType == 'image_group') {
       final urls = _messageImageUrls();
       if (urls.isEmpty) {
         return Text(text.isEmpty ? 'Изображение' : text);
@@ -4004,7 +4168,8 @@ class _ChatMessageBubble extends StatelessWidget {
 
   List<String> _messageImageUrls() {
     final attachments = message.attachments
-        .where((item) => item.kind == 'image' && item.assetUrl.trim().isNotEmpty)
+        .where(
+            (item) => item.kind == 'image' && item.assetUrl.trim().isNotEmpty)
         .toList()
       ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
     if (attachments.isNotEmpty) {
@@ -4026,12 +4191,15 @@ class _ChatMessageBubble extends StatelessWidget {
               child: Image.network(
                 _bubbleAssetUrl(urls[i]),
                 fit: BoxFit.cover,
-                width: urls.length == 1 ? (compact ? 260 : 420) : (compact ? 120 : 160),
+                width: urls.length == 1
+                    ? (compact ? 260 : 420)
+                    : (compact ? 120 : 160),
                 height: urls.length == 1 ? null : (compact ? 120 : 160),
                 errorBuilder: (context, error, stackTrace) {
                   return SelectableText(
                     urls[i],
-                    style: const TextStyle(decoration: TextDecoration.underline),
+                    style:
+                        const TextStyle(decoration: TextDecoration.underline),
                   );
                 },
               ),
@@ -4059,13 +4227,16 @@ class _ChatMessageBubble extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.play_arrow, size: 24,
-              color: mine ? cs.onPrimaryContainer : cs.onSurfaceVariant),
+            Icon(Icons.play_arrow,
+                size: 24,
+                color: mine ? cs.onPrimaryContainer : cs.onSurfaceVariant),
             const SizedBox(width: 8),
             Text(
               '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500,
-                color: mine ? cs.onPrimaryContainer : cs.onSurface),
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: mine ? cs.onPrimaryContainer : cs.onSurface),
             ),
           ],
         ),
@@ -4098,15 +4269,16 @@ class _ChatMessageBubble extends StatelessWidget {
                 ? cs.primaryContainer.withOpacity(0.5)
                 : cs.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
-            border: isMyReaction
-                ? Border.all(color: cs.primary, width: 1)
-                : null,
+            border:
+                isMyReaction ? Border.all(color: cs.primary, width: 1) : null,
           ),
           child: Text(
             '${reaction.reaction} ${reaction.count}',
             style: TextStyle(
               fontSize: 13,
-              color: isMyReaction ? const Color(0xFF1D4ED8) : const Color(0xFF475569),
+              color: isMyReaction
+                  ? const Color(0xFF1D4ED8)
+                  : const Color(0xFF475569),
             ),
           ),
         );
@@ -4468,14 +4640,16 @@ class _DesktopTasksBoard extends StatelessWidget {
                     margin: const EdgeInsets.only(right: 10),
                     elevation: 0,
                     color: Theme.of(ctx).colorScheme.surfaceContainerLow,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                     child: Padding(
                       padding: const EdgeInsets.all(10),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
                               color: colColor.withAlpha(25),
                               borderRadius: BorderRadius.circular(8),
@@ -4509,9 +4683,16 @@ class _DesktopTasksBoard extends StatelessWidget {
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Icons.inbox_outlined, size: 32, color: colColor.withAlpha(100)),
+                                          Icon(Icons.inbox_outlined,
+                                              size: 32,
+                                              color: colColor.withAlpha(100)),
                                           const SizedBox(height: 8),
-                                          Text('Нет задач', style: TextStyle(color: Theme.of(dragCtx).colorScheme.onSurface.withOpacity(0.4))),
+                                          Text('Нет задач',
+                                              style: TextStyle(
+                                                  color: Theme.of(dragCtx)
+                                                      .colorScheme
+                                                      .onSurface
+                                                      .withOpacity(0.4))),
                                         ],
                                       ),
                                     ),
@@ -4522,13 +4703,21 @@ class _DesktopTasksBoard extends StatelessWidget {
                                     if (isHovering)
                                       Container(
                                         height: 60,
-                                        margin: const EdgeInsets.only(bottom: 8),
+                                        margin:
+                                            const EdgeInsets.only(bottom: 8),
                                         decoration: BoxDecoration(
-                                          border: Border.all(color: colColor, width: 2, strokeAlign: BorderSide.strokeAlignInside),
-                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                              color: colColor,
+                                              width: 2,
+                                              strokeAlign:
+                                                  BorderSide.strokeAlignInside),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                           color: colColor.withAlpha(15),
                                         ),
-                                        child: Center(child: Icon(Icons.add, color: colColor)),
+                                        child: Center(
+                                            child: Icon(Icons.add,
+                                                color: colColor)),
                                       ),
                                     for (final item in items)
                                       LongPressDraggable<TaskItem>(
@@ -5059,7 +5248,8 @@ class _TaskCard extends StatelessWidget {
                   item.details,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 13, color: textColor.withOpacity(0.7)),
+                  style: TextStyle(
+                      fontSize: 13, color: textColor.withOpacity(0.7)),
                 ),
               ],
               const SizedBox(height: 8),

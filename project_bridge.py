@@ -10,12 +10,14 @@ Usage: python project_bridge.py [--tunnel 31.129.97.211:9877]
 """
 import argparse
 import asyncio
+import base64
 import json
 import os
 import re
 import subprocess
 import sys
 import threading
+from datetime import datetime
 from pathlib import Path
 from typing import Dict
 
@@ -71,6 +73,15 @@ DEFAULT_PROJECTS = [
 
 MAX_MEMORY_TURNS = 12
 MAX_MEMORY_CHARS = 12000
+RECONNECT_DELAY_SECONDS = 1
+MAX_UPLOAD_BYTES = 15 * 1024 * 1024
+IMAGE_EXTENSIONS = {
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+}
 
 
 class ProjectSession:
@@ -104,6 +115,19 @@ class ProjectSession:
             return
         worker = threading.Thread(target=self._run_prompt, args=(prompt,), daemon=True)
         worker.start()
+
+    def save_upload(self, filename: str, mime_type: str, data_base64: str) -> Path:
+        raw = base64.b64decode(data_base64, validate=True)
+        if not raw:
+            raise ValueError("empty file")
+        if len(raw) > MAX_UPLOAD_BYTES:
+            raise ValueError("file is too large")
+
+        vision_dir = Path(self.project_dir) / "vision"
+        vision_dir.mkdir(parents=True, exist_ok=True)
+        target = vision_dir / self._safe_upload_name(filename, mime_type)
+        target.write_bytes(raw)
+        return target
 
     def _run_prompt(self, prompt: str) -> None:
         if not self._lock.acquire(blocking=False):
@@ -244,6 +268,19 @@ class ProjectSession:
             safe_id = "project"
         return Path(".deepseek") / "state" / f"bridge_memory_{safe_id}.json"
 
+    @staticmethod
+    def _safe_upload_name(filename: str, mime_type: str) -> str:
+        original = Path(filename or "").name
+        stem = Path(original).stem
+        ext = Path(original).suffix.lower()
+        if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+            ext = IMAGE_EXTENSIONS.get(mime_type.lower(), ".jpg")
+        safe_stem = re.sub(r"[^A-Za-z0-9_.-]+", "_", stem).strip("._")
+        if not safe_stem:
+            safe_stem = "photo"
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        return f"{safe_stem}_{stamp}{ext}"
+
     def _broadcast(self, msg_type: str, text: str) -> None:
         if not self.writers:
             print(
@@ -325,6 +362,7 @@ class TunnelClient:
     async def _register_project(self, project: dict) -> None:
         project_id = str(project["id"])
         project_dir = str(project["path"])
+        reconnect_attempt = 0
         while True:
             try:
                 reader, writer = await asyncio.wait_for(
@@ -340,6 +378,7 @@ class TunnelClient:
                 )
                 await writer.drain()
                 print(f"[tunnel] {project_id} registered", flush=True)
+                reconnect_attempt = 0
 
                 session = self._sessions.get(project_id)
                 if not session or not session.running:
@@ -382,6 +421,30 @@ class TunnelClient:
 
                     if msg.get("type") in ("pong", "ping", "list", "status"):
                         continue
+                    if msg.get("type") == "upload_file":
+                        if not session or not session.running:
+                            continue
+                        filename = str(msg.get("filename", "photo.jpg"))
+                        mime_type = str(msg.get("mime_type", "image/jpeg"))
+                        data_base64 = str(msg.get("data_base64", ""))
+                        caption = str(msg.get("caption", "")).strip()
+                        try:
+                            saved = session.save_upload(filename, mime_type, data_base64)
+                        except Exception as exc:
+                            session._broadcast(
+                                "error",
+                                f"Не удалось сохранить фото в vision: {exc}",
+                            )
+                            continue
+                        rel_path = saved.relative_to(Path(project_dir))
+                        rel_text = rel_path.as_posix()
+                        session._broadcast(
+                            "status",
+                            f"Фото сохранено: {rel_text}",
+                        )
+                        if caption:
+                            session.write(f"{caption}\n\nФайл фото: {rel_text}")
+                        continue
                     if msg.get("type") == "send":
                         text = str(msg.get("text", ""))
                         if text and session and session.running:
@@ -391,8 +454,17 @@ class TunnelClient:
                             )
                             session.write(text)
             except Exception as exc:
-                print(f"[tunnel] {project_id} err: {exc}. Retry 10s...", flush=True)
-            await asyncio.sleep(10)
+                delay = min(8, RECONNECT_DELAY_SECONDS * (2 ** reconnect_attempt))
+                print(
+                    f"[tunnel] {project_id} err: {exc}. "
+                    f"Retry {delay}s...",
+                    flush=True,
+                )
+                await asyncio.sleep(delay)
+                reconnect_attempt += 1
+                continue
+            reconnect_attempt = 0
+            await asyncio.sleep(RECONNECT_DELAY_SECONDS)
 
     async def stop(self) -> None:
         for task in self._tasks:
