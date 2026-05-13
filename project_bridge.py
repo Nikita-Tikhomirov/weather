@@ -77,6 +77,7 @@ MAX_MEMORY_TURNS = 12
 MAX_MEMORY_CHARS = 12000
 RECONNECT_DELAY_SECONDS = 1
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024
+MAX_TUNNEL_LINE_BYTES = 32 * 1024 * 1024
 HISTORY_REPLAY_LIMIT = 300
 IMAGE_EXTENSIONS = {
     "image/jpeg": ".jpg",
@@ -493,7 +494,11 @@ class TunnelClient:
                 if reconnect_attempt > 0:
                     await asyncio.sleep(3.0)
                 reader, writer = await asyncio.wait_for(
-                    asyncio.open_connection(self.tunnel_host, self.tunnel_port),
+                    asyncio.open_connection(
+                        self.tunnel_host,
+                        self.tunnel_port,
+                        limit=MAX_TUNNEL_LINE_BYTES,
+                    ),
                     timeout=10,
                 )
                 writer.write(

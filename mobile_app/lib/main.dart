@@ -2898,8 +2898,15 @@ class _HomePageState extends State<HomePage> {
     }
 
     var sent = 0;
+    var failed = 0;
     for (final file in picked) {
-      final bytes = await file.readAsBytes();
+      Uint8List bytes;
+      try {
+        bytes = await file.readAsBytes();
+      } catch (_) {
+        failed += 1;
+        continue;
+      }
       final ok = bridge.sendImage(
         fileName: file.name,
         mimeType: _projectImageMime(file),
@@ -2908,16 +2915,28 @@ class _HomePageState extends State<HomePage> {
       );
       if (ok) {
         sent += 1;
+      } else {
+        failed += 1;
       }
     }
-    if (!mounted || sent == 0) {
+    if (!mounted) {
       return;
     }
     setState(() {
-      _projectMessages.add(BridgeMessage(
-        type: 'send',
-        text: 'Фото отправлено в vision: $sent',
-      ));
+      if (sent > 0) {
+        _projectMessages.add(BridgeMessage(
+          type: 'send',
+          text: 'Фото отправлено в vision: $sent',
+        ));
+      }
+      if (failed > 0 || sent == 0) {
+        _projectMessages.add(BridgeMessage(
+          type: 'error',
+          text: sent == 0
+              ? 'Фото не отправлено. Проверьте соединение или размер файла.'
+              : 'Не отправлено фото: $failed',
+        ));
+      }
     });
   }
 

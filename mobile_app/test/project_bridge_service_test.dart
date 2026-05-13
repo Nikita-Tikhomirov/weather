@@ -153,6 +153,44 @@ void main() {
     await server.close();
   });
 
+  test('oversized image upload is rejected before socket send', () {
+    final statuses = <String>[];
+    final service = ProjectBridgeService(
+      onMessage: (_) {},
+      onStatusChange: (_, status) => statuses.add(status),
+    );
+
+    expect(
+      service.sendImage(
+        fileName: 'huge.jpg',
+        mimeType: 'image/jpeg',
+        bytes: Uint8List(ProjectBridgeService.maxProjectUploadBytes + 1),
+      ),
+      isFalse,
+    );
+    expect(statuses.single, contains('15 МБ'));
+
+    service.dispose();
+  });
+
+  test('empty image upload is rejected before socket send', () {
+    final service = ProjectBridgeService(
+      onMessage: (_) {},
+      onStatusChange: (_, __) {},
+    );
+
+    expect(
+      service.sendImage(
+        fileName: 'empty.jpg',
+        mimeType: 'image/jpeg',
+        bytes: Uint8List(0),
+      ),
+      isFalse,
+    );
+
+    service.dispose();
+  });
+
   test('start bridge sends launcher command', () async {
     final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
     final received = <Map<String, dynamic>>[];

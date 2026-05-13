@@ -68,6 +68,7 @@ class ProjectBridgeService {
 
   final void Function(BridgeMessage message) onMessage;
   final void Function(bool connected, String status) onStatusChange;
+  static const int maxProjectUploadBytes = 15 * 1024 * 1024;
 
   Socket? _socket;
   bool _running = false;
@@ -302,6 +303,11 @@ class ProjectBridgeService {
     String caption = '',
   }) {
     if (bytes.isEmpty) {
+      return false;
+    }
+    if (bytes.length > maxProjectUploadBytes) {
+      onStatusChange(
+          false, 'Фото больше 15 МБ. Уменьшите фото или отправьте другое.');
       return false;
     }
     if (!isConnected) {

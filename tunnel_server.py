@@ -15,6 +15,8 @@ import json
 import sys
 from typing import Optional
 
+MAX_RELAY_LINE_BYTES = 32 * 1024 * 1024
+
 class TunnelServer:
     def __init__(self, host: str = '0.0.0.0', port: int = 9877):
         self.host = host
@@ -34,6 +36,7 @@ class TunnelServer:
             self._handle_client,
             host=self.host,
             port=self.port,
+            limit=MAX_RELAY_LINE_BYTES,
         )
         addr = self._server.sockets[0].getsockname()
         print(f"Tunnel server listening on {addr[0]}:{addr[1]}", flush=True)
