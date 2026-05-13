@@ -165,6 +165,16 @@ python .\voice_trigger.py
 .\start_bridge_launcher.bat
 ```
 
+Для автозапуска после входа в Windows:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install_bridge_launcher_task.ps1
+```
+
+Скрипт сначала пробует создать задачу `BridgeLauncherAtLogon` в Windows Task
+Scheduler. Если Windows запрещает регистрацию задачи без прав администратора,
+он добавляет `BridgeLauncherAtLogon.cmd` в пользовательскую папку Startup.
+
 Launcher держит соединение с VPS и по команде из APK запускает:
 
 ```powershell

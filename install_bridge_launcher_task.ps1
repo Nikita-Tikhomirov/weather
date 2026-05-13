@@ -1,0 +1,61 @@
+$ErrorActionPreference = 'Stop'
+
+$ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$LauncherScript = Join-Path $ProjectRoot 'start_bridge_launcher.ps1'
+$TaskName = 'BridgeLauncherAtLogon'
+
+if (-not (Test-Path -LiteralPath $LauncherScript)) {
+    throw "Launcher script not found: $LauncherScript"
+}
+
+$action = New-ScheduledTaskAction `
+    -Execute 'powershell.exe' `
+    -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$LauncherScript`""
+
+$trigger = New-ScheduledTaskTrigger -AtLogOn
+$settings = New-ScheduledTaskSettingsSet `
+    -AllowStartIfOnBatteries `
+    -DontStopIfGoingOnBatteries `
+    -ExecutionTimeLimit (New-TimeSpan -Days 30) `
+    -MultipleInstances IgnoreNew `
+    -RestartCount 3 `
+    -RestartInterval (New-TimeSpan -Minutes 1)
+
+try {
+    Register-ScheduledTask `
+        -TaskName $TaskName `
+        -Action $action `
+        -Trigger $trigger `
+        -Settings $settings `
+        -Description 'Keeps project bridge launcher available for mobile project chats.' `
+        -Force | Out-Null
+} catch {
+    $taskCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$LauncherScript`""
+    & cmd.exe /c "schtasks.exe /Create /TN `"$TaskName`" /SC ONLOGON /TR `"$taskCommand`" /F >nul 2>nul"
+    if ($LASTEXITCODE -ne 0) {
+        $startupDir = [Environment]::GetFolderPath('Startup')
+        if (-not $startupDir) {
+            throw "Failed to register scheduled task and Startup folder is unavailable"
+        }
+        New-Item -ItemType Directory -Force -Path $startupDir | Out-Null
+        $startupCmd = Join-Path $startupDir "$TaskName.cmd"
+        @"
+@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$LauncherScript"
+"@ | Set-Content -Path $startupCmd -Encoding ascii
+    }
+}
+
+try {
+    Start-ScheduledTask -TaskName $TaskName -ErrorAction Stop
+} catch {
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$LauncherScript"
+}
+Start-Sleep -Seconds 2
+
+Get-CimInstance Win32_Process |
+    Where-Object {
+        $_.ProcessName -like 'python*' -and
+        $_.CommandLine -like '*bridge_launcher.py*'
+    } |
+    Select-Object ProcessId, CommandLine
