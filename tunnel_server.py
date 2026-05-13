@@ -26,6 +26,8 @@ class TunnelServer:
         self._mobile_writers: dict[str, list] = {}
         # project_id -> relay task
         self._relay_tasks: dict[str, asyncio.Task] = {}
+        # PC launcher sockets that can start project_bridge.py on demand.
+        self._launcher_writers: list[asyncio.StreamWriter] = []
 
     async def start(self):
         self._server = await asyncio.start_server(
@@ -63,6 +65,10 @@ class TunnelServer:
                 await self._handle_bridge(project_id, reader, writer)
             elif msg_type == 'connect':
                 await self._handle_mobile(project_id, reader, writer)
+            elif msg_type == 'launcher':
+                await self._handle_launcher(reader, writer)
+            elif msg_type == 'start_bridge':
+                await self._handle_start_bridge(project_id, writer)
             else:
                 print(f"[tunnel] Unknown first msg from {addr}: {msg_type}", flush=True)
 
@@ -116,12 +122,77 @@ class TunnelServer:
         self._relay_tasks[project_id] = task
         await task
 
+    async def _handle_launcher(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        """PC launcher stays connected and receives start_bridge commands."""
+        self._launcher_writers.append(writer)
+        print("[tunnel] Launcher registered", flush=True)
+        self._send_json(writer, {'type': 'status', 'text': 'Launcher registered'})
+        try:
+            while True:
+                line = await reader.readline()
+                if not line:
+                    break
+                try:
+                    msg = json.loads(line.decode('utf-8', errors='replace').strip())
+                except json.JSONDecodeError:
+                    continue
+                text = str(msg.get('text', '')).strip()
+                if text:
+                    print(f"[tunnel] Launcher: {text}", flush=True)
+        except (ConnectionResetError, asyncio.IncompleteReadError):
+            pass
+        finally:
+            if writer in self._launcher_writers:
+                self._launcher_writers.remove(writer)
+            print("[tunnel] Launcher unregistered", flush=True)
+            if not writer.is_closing():
+                writer.close()
+
+    async def _handle_start_bridge(self, project_id: str, writer: asyncio.StreamWriter):
+        """Mobile asks a PC launcher to start project_bridge.py."""
+        started = await self._request_bridge_start(project_id)
+        if started:
+            self._send_json(writer, {
+                'type': 'status',
+                'text': f'Bridge start requested for {project_id}',
+                'project_id': project_id,
+            })
+        else:
+            self._send_json(writer, {
+                'type': 'error',
+                'text': 'Bridge launcher is not connected',
+                'project_id': project_id,
+            })
+
+    async def _request_bridge_start(self, project_id: str) -> bool:
+        if not self._launcher_writers:
+            return False
+
+        payload = json.dumps(
+            {'type': 'start_bridge', 'project_id': project_id},
+            ensure_ascii=False,
+        ).encode('utf-8') + b'\n'
+        delivered = False
+        dead = []
+        for launcher in self._launcher_writers:
+            try:
+                launcher.write(payload)
+                await launcher.drain()
+                delivered = True
+            except Exception:
+                dead.append(launcher)
+        for launcher in dead:
+            if launcher in self._launcher_writers:
+                self._launcher_writers.remove(launcher)
+        return delivered
+
     async def _handle_mobile(self, project_id: str, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         """Mobile client connects. Messages from mobile go to bridge."""
         bridge = self._bridges.get(project_id)
         if not bridge:
             self._send_json(writer, {'type': 'status', 'text': f'Waiting for PC bridge ({project_id})...'})
             print(f"[tunnel] Mobile waiting for bridge: {project_id}", flush=True)
+            await self._request_bridge_start(project_id)
             # Wait a bit and check again
             for _ in range(30):  # 30 seconds timeout
                 await asyncio.sleep(1)
@@ -173,6 +244,10 @@ class TunnelServer:
     async def stop(self):
         for task in self._relay_tasks.values():
             task.cancel()
+        for writer in list(self._launcher_writers):
+            if not writer.is_closing():
+                writer.close()
+        self._launcher_writers.clear()
         if self._server:
             self._server.close()
             await self._server.wait_closed()

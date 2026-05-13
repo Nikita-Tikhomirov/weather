@@ -1306,6 +1306,7 @@ class _HomePageState extends State<HomePage> {
 
     // Remember the selected project before connecting so reconnects can resume it.
     bridge.startProject(project);
+    await ProjectBridgeService.requestBridgeStart(project);
     final ok = await bridge.connect();
     if (!ok) return;
   }
@@ -2599,6 +2600,11 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               IconButton(
+                tooltip: 'Запустить bridge',
+                icon: const Icon(Icons.power_settings_new),
+                onPressed: () => _requestProjectBridgeStart(project),
+              ),
+              IconButton(
                 tooltip: 'Настроить сервер',
                 icon: const Icon(Icons.settings),
                 onPressed: () => _openBridgeSettings(),
@@ -2773,6 +2779,30 @@ class _HomePageState extends State<HomePage> {
           text: text,
         ));
       });
+    }
+  }
+
+  Future<void> _requestProjectBridgeStart(ProjectContact project) async {
+    final ok = await ProjectBridgeService.requestBridgeStart(project);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _projectMessages.add(BridgeMessage(
+        type: ok ? 'status' : 'error',
+        text: ok
+            ? 'Команда запуска bridge отправлена'
+            : 'Не удалось отправить команду запуска bridge',
+      ));
+    });
+    if (ok) {
+      final store = _store;
+      if (store == null) {
+        return;
+      }
+      _projectBridge?.dispose();
+      _projectBridge = null;
+      _openProjectContact(store, project);
     }
   }
 

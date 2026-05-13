@@ -1,0 +1,57 @@
+import asyncio
+import json
+import unittest
+
+from tunnel_server import TunnelServer
+
+
+async def _read_json(reader: asyncio.StreamReader) -> dict:
+    line = await asyncio.wait_for(reader.readline(), timeout=2)
+    return json.loads(line.decode("utf-8"))
+
+
+class TunnelServerLauncherTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.server = TunnelServer(host="127.0.0.1", port=0)
+        await self.server.start()
+        assert self.server._server is not None
+        self.port = self.server._server.sockets[0].getsockname()[1]
+
+    async def asyncTearDown(self) -> None:
+        await self.server.stop()
+
+    async def test_mobile_start_bridge_is_forwarded_to_launcher(self) -> None:
+        launcher_reader, launcher_writer = await asyncio.open_connection(
+            "127.0.0.1",
+            self.port,
+        )
+        launcher_writer.write(
+            json.dumps({"type": "launcher", "project_id": "launcher"}).encode("utf-8")
+            + b"\n"
+        )
+        await launcher_writer.drain()
+        self.assertEqual((await _read_json(launcher_reader))["type"], "status")
+
+        mobile_reader, mobile_writer = await asyncio.open_connection(
+            "127.0.0.1",
+            self.port,
+        )
+        mobile_writer.write(
+            json.dumps({"type": "start_bridge", "project_id": "cifra"}).encode("utf-8")
+            + b"\n"
+        )
+        await mobile_writer.drain()
+
+        command = await _read_json(launcher_reader)
+        self.assertEqual(command["type"], "start_bridge")
+        self.assertEqual(command["project_id"], "cifra")
+        self.assertEqual((await _read_json(mobile_reader))["type"], "status")
+
+        mobile_writer.close()
+        launcher_writer.close()
+        await mobile_writer.wait_closed()
+        await launcher_writer.wait_closed()
+
+
+if __name__ == "__main__":
+    unittest.main()

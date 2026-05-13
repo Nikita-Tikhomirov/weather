@@ -152,4 +152,44 @@ void main() {
     await sub.cancel();
     await server.close();
   });
+
+  test('start bridge sends launcher command', () async {
+    final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    final received = <Map<String, dynamic>>[];
+    final connected = Completer<void>();
+
+    final sub = server.listen((socket) async {
+      connected.complete();
+      final line =
+          await utf8.decoder.bind(socket).transform(const LineSplitter()).first;
+      received.add(jsonDecode(line) as Map<String, dynamic>);
+      final reply = '${jsonEncode({
+            'type': 'status',
+            'text': 'Bridge start requested for cifra',
+          })}\n';
+      socket.add(utf8.encode(reply));
+      await socket.flush();
+    });
+
+    SharedPreferences.setMockInitialValues({
+      'bridge_host': '127.0.0.1:${server.port}',
+    });
+
+    final ok =
+        await ProjectBridgeService.requestBridgeStart(const ProjectContact(
+      id: 'cifra',
+      name: 'Цифра',
+      path: r'C:\Users\user\Desktop\depseeker_test',
+    ));
+
+    expect(ok, isTrue);
+    await connected.future.timeout(const Duration(seconds: 2));
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(received.single['type'], 'start_bridge');
+    expect(received.single['project_id'], 'cifra');
+
+    await sub.cancel();
+    await server.close();
+  });
 }

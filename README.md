@@ -155,6 +155,27 @@ python .\voice_trigger.py
 Результат:
 - `mobile_app\build\app\outputs\flutter-apk\app-release.apk`
 
+## 4.3 Project bridge для мобильного чата
+
+Проектные чаты в APK работают через VPS tunnel и локальный `project_bridge.py`.
+
+На ПК должен быть запущен легкий launcher:
+
+```powershell
+.\start_bridge_launcher.bat
+```
+
+Launcher держит соединение с VPS и по команде из APK запускает:
+
+```powershell
+python .\project_bridge.py --tunnel 31.129.97.211:9877
+```
+
+В APK при открытии проектного чата команда запуска отправляется автоматически.
+Также в шапке проектного чата есть кнопка питания для ручного запуска bridge.
+
+Фото из проектного чата сохраняются в папку `vision` в корне выбранного проекта.
+
 ## 5. Как пользоваться (основной сценарий)
 
 1. Запускаете `voice_trigger.py`.

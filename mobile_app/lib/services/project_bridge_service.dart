@@ -81,6 +81,68 @@ class ProjectBridgeService {
     await prefs.setString('bridge_host', host);
   }
 
+  /// Ask the PC-side launcher to start project_bridge.py through the tunnel.
+  static Future<bool> requestBridgeStart(ProjectContact project) async {
+    final address = await getServerAddress();
+    final parts = address.split(':');
+    final host = parts[0].trim();
+    final port =
+        parts.length > 1 ? int.tryParse(parts[1].trim()) ?? 9876 : 9876;
+    Socket? socket;
+    try {
+      socket = await Socket.connect(
+        host,
+        port,
+        timeout: const Duration(seconds: 5),
+      );
+      final reply = Completer<bool>();
+      final buffer = StringBuffer();
+      socket.listen(
+        (data) {
+          buffer.write(utf8.decode(data));
+          final content = buffer.toString();
+          final newlineIndex = content.indexOf('\n');
+          if (newlineIndex < 0) {
+            return;
+          }
+          final line = content.substring(0, newlineIndex).trim();
+          if (line.isEmpty || reply.isCompleted) {
+            return;
+          }
+          try {
+            final decoded = jsonDecode(line) as Map<String, dynamic>;
+            reply.complete(decoded['type'] != 'error');
+          } catch (_) {
+            reply.complete(false);
+          }
+        },
+        onError: (_) {
+          if (!reply.isCompleted) {
+            reply.complete(false);
+          }
+        },
+        onDone: () {
+          if (!reply.isCompleted) {
+            reply.complete(false);
+          }
+        },
+      );
+      final request = '${jsonEncode({
+            'type': 'start_bridge',
+            'project_id': project.id,
+          })}\n';
+      socket.write(request);
+      await socket.flush();
+      return await reply.future.timeout(const Duration(seconds: 3));
+    } catch (_) {
+      return false;
+    } finally {
+      try {
+        socket?.destroy();
+      } catch (_) {}
+    }
+  }
+
   /// Connect to the bridge server.
   Future<bool> connect() async {
     if (_disposed) {
