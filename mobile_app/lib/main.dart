@@ -1127,9 +1127,7 @@ class _HomePageState extends State<HomePage> {
 
     try {
       final bootstrap = await api.chatBootstrap(actorProfile: actor);
-      for (final conversation in bootstrap.conversations) {
-        await db.upsertConversation(conversation);
-      }
+      await db.replaceConversations(bootstrap.conversations);
       await db.replaceStickerPacks(bootstrap.stickerPacks);
 
       final conversations = await db.readConversations();

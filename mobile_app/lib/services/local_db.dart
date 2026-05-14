@@ -284,6 +284,41 @@ class LocalDb {
     );
   }
 
+  Future<void> replaceConversations(List<ChatConversation> items) async {
+    final keys = items.map((item) => item.conversationKey).toSet().toList();
+    await _db.transaction((txn) async {
+      if (keys.isEmpty) {
+        await txn.delete('chat_messages');
+        await txn.delete('chat_conversations');
+      } else {
+        final placeholders = List.filled(keys.length, '?').join(',');
+        await txn.delete(
+          'chat_messages',
+          where: 'conversation_key NOT IN ($placeholders)',
+          whereArgs: keys,
+        );
+        await txn.delete(
+          'chat_conversations',
+          where: 'conversation_key NOT IN ($placeholders)',
+          whereArgs: keys,
+        );
+      }
+      for (final item in items) {
+        await txn.insert(
+          'chat_conversations',
+          {
+            'conversation_key': item.conversationKey,
+            'kind': item.kind,
+            'title': item.title,
+            'members_json': jsonEncode(item.members),
+            'updated_at': DateTime.now().toIso8601String(),
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
   Future<List<ChatConversation>> readConversations() async {
     final rows = await _db.query(
       'chat_conversations',
