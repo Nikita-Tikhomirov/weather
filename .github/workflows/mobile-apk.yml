@@ -61,6 +61,13 @@ jobs:
           if [ -f mobile_app/android/build.gradle ]; then
             cp mobile_app/android/build.gradle "$APP_DIR/android/build.gradle"
           fi
+          if [ -f mobile_app/android/settings.gradle ]; then
+            rm -f "$APP_DIR/android/settings.gradle.kts"
+            cp mobile_app/android/settings.gradle "$APP_DIR/android/settings.gradle"
+          fi
+          if [ -f mobile_app/android/gradle.properties ]; then
+            cp mobile_app/android/gradle.properties "$APP_DIR/android/gradle.properties"
+          fi
           if [ -f mobile_app/android/app/build.gradle ]; then
             cp mobile_app/android/app/build.gradle "$APP_DIR/android/app/build.gradle"
           fi

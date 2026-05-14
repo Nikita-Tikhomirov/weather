@@ -296,29 +296,19 @@ class _HomePageState extends State<HomePage> {
       ),
     );
     String? owner;
-    if (savedOwner.isNotEmpty) {
+    final savedPhone = prefs.getString('profile_phone')?.trim() ?? '';
+    if (savedPhone.isNotEmpty) {
+      try {
+        owner = await _restoreProfileByPhone(api, prefs, savedPhone);
+      } catch (_) {
+        owner = savedOwner.isNotEmpty
+            ? savedOwner
+            : await _promptForInitialProfile(api);
+      }
+    } else if (savedOwner.isNotEmpty) {
       owner = savedOwner;
     } else {
-      final savedPhone = prefs.getString('profile_phone')?.trim() ?? '';
-      if (savedPhone.isNotEmpty) {
-        try {
-          final deviceId = await _ensureDeviceId(prefs);
-          final session = await api.deviceStart(
-            phone: savedPhone,
-            deviceId: deviceId,
-            displayName: _currentProfileDisplayName,
-          );
-          await prefs.setString('actor_profile', session.profileKey);
-          await prefs.setString('profile_phone', session.phone);
-          await prefs.setString('profile_display_name', session.displayName);
-          _currentProfileDisplayName = session.displayName;
-          owner = session.profileKey;
-        } catch (_) {
-          owner = await _promptForInitialProfile(api);
-        }
-      } else {
-        owner = await _promptForInitialProfile(api);
-      }
+      owner = await _promptForInitialProfile(api);
     }
     if (!mounted || owner == null || owner.isEmpty) {
       return;
@@ -355,6 +345,24 @@ class _HomePageState extends State<HomePage> {
     final value = 'dev-${DateTime.now().microsecondsSinceEpoch}-$random';
     await prefs.setString('device_id', value);
     return value;
+  }
+
+  Future<String> _restoreProfileByPhone(
+    ApiClient api,
+    SharedPreferences prefs,
+    String phone,
+  ) async {
+    final deviceId = await _ensureDeviceId(prefs);
+    final session = await api.deviceStart(
+      phone: phone,
+      deviceId: deviceId,
+      displayName: _currentProfileDisplayName,
+    );
+    await prefs.setString('actor_profile', session.profileKey);
+    await prefs.setString('profile_phone', session.phone);
+    await prefs.setString('profile_display_name', session.displayName);
+    _currentProfileDisplayName = session.displayName;
+    return session.profileKey;
   }
 
   Future<String?> _promptForInitialProfile(ApiClient api) async {

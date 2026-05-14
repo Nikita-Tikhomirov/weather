@@ -44,28 +44,105 @@ class PhoneProfileMessengerTest extends TestCase
     }
 
     #[Test]
-    public function device_start_rejects_existing_phone_from_other_device(): void
+    public function phone_reinstall_keeps_direct_chat_history_available(): void
     {
-        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+        $nik = $this->withHeaders(['X-Api-Key' => 'prod-key'])
             ->postJson('/auth/device-start', [
                 'phone' => '+7 999 111 22 33',
-                'device_id' => 'device-a',
+                'device_id' => 'nik-device-a',
                 'display_name' => 'Nikita',
+            ])
+            ->assertStatus(200)
+            ->json('user.profile_key');
+
+        $silach = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 999 444 55 66',
+                'device_id' => 'silach-device-a',
+                'display_name' => 'Silach',
+            ])
+            ->assertStatus(200)
+            ->json('user.profile_key');
+
+        $conversationKey = collect([$nik, $silach])->sort()->values()->implode(':');
+        $conversationKey = 'dm:'.$conversationKey;
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/messages/send', [
+                'actor_profile' => $silach,
+                'conversation_key' => $conversationKey,
+                'message_type' => 'text',
+                'text' => 'history survives reinstall',
+                'client_message_id' => 'silach-1',
+            ])
+            ->assertStatus(200);
+
+        $restoredNik = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 999 111 22 33',
+                'device_id' => 'nik-device-after-reinstall',
+                'display_name' => 'Nikita',
+            ])
+            ->assertStatus(200)
+            ->json('user.profile_key');
+
+        $this->assertSame($nik, $restoredNik);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/chat/messages?actor_profile='.$restoredNik.'&conversation_key='.$conversationKey.'&limit=20')
+            ->assertStatus(200)
+            ->assertJsonPath('messages.0.text', 'history survives reinstall');
+    }
+
+    #[Test]
+    public function contacts_return_conversation_keys_that_load_history(): void
+    {
+        $nik = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 999 111 22 33',
+                'device_id' => 'nik-device',
+                'display_name' => 'Nikita',
+            ])
+            ->assertStatus(200)
+            ->json('user.profile_key');
+
+        $silach = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 999 444 55 66',
+                'device_id' => 'silach-device',
+                'display_name' => 'Silach',
+            ])
+            ->assertStatus(200)
+            ->json('user.profile_key');
+
+        $contact = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/contacts/resolve', [
+                'actor_profile' => $nik,
+                'phones' => ['+7 999 444 55 66'],
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('contacts.0.profile_key', $silach)
+            ->json('contacts.0');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/messages/send', [
+                'actor_profile' => $silach,
+                'conversation_key' => $contact['conversation_key'],
+                'message_type' => 'text',
+                'text' => 'opened from phone contact',
+                'client_message_id' => 'silach-contact-1',
             ])
             ->assertStatus(200);
 
         $this->withHeaders(['X-Api-Key' => 'prod-key'])
-            ->postJson('/auth/device-start', [
-                'phone' => '+7 999 111 22 33',
-                'device_id' => 'device-b',
-                'display_name' => 'Other',
-            ])
-            ->assertStatus(400)
-            ->assertJsonPath('ok', false);
+            ->getJson('/chat/messages?actor_profile='.$nik.'&conversation_key='.$contact['conversation_key'].'&limit=20')
+            ->assertStatus(200)
+            ->assertJsonPath('messages.0.conversation_key', $contact['conversation_key'])
+            ->assertJsonPath('messages.0.text', 'opened from phone contact');
     }
 
     #[Test]
-    public function admin_rebind_marker_allows_existing_phone_on_new_device_once(): void
+    public function device_start_restores_existing_phone_from_new_device(): void
     {
         $first = $this->withHeaders(['X-Api-Key' => 'prod-key'])
             ->postJson('/auth/device-start', [
@@ -76,8 +153,28 @@ class PhoneProfileMessengerTest extends TestCase
             ->assertStatus(200)
             ->json('user.profile_key');
 
-        $this->artisan('profile:reset-device', ['phone' => '+7 999 111 22 33'])
-            ->assertSuccessful();
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 999 111 22 33',
+                'device_id' => 'device-b',
+                'display_name' => 'Other',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('user.profile_key', $first);
+    }
+
+    #[Test]
+    public function phone_profile_can_move_between_devices_without_losing_profile_key(): void
+    {
+        $first = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 999 111 22 33',
+                'device_id' => 'device-a',
+                'display_name' => 'Nikita',
+            ])
+            ->assertStatus(200)
+            ->json('user.profile_key');
 
         $second = $this->withHeaders(['X-Api-Key' => 'prod-key'])
             ->postJson('/auth/device-start', [
@@ -91,13 +188,16 @@ class PhoneProfileMessengerTest extends TestCase
 
         $this->assertSame($first, $second);
 
-        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+        $third = $this->withHeaders(['X-Api-Key' => 'prod-key'])
             ->postJson('/auth/device-start', [
                 'phone' => '+7 999 111 22 33',
                 'device_id' => 'device-c',
                 'display_name' => 'Other',
             ])
-            ->assertStatus(400);
+            ->assertStatus(200)
+            ->json('user.profile_key');
+
+        $this->assertSame($first, $third);
     }
 
     #[Test]

@@ -56,3 +56,7 @@ dependencies {
     implementation "com.google.firebase:firebase-installations"
     implementation "com.google.firebase:firebase-messaging"
 }
+
+flutter {
+    source "../.."
+}
