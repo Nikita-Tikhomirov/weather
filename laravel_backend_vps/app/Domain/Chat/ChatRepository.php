@@ -13,6 +13,7 @@ final class ChatRepository
 
     public function bootstrap(string $actor): array
     {
+        $actor = $this->resolveLegacyProfile($actor);
         $this->ensureActor($actor);
         $contacts = [];
         $conversations = [];
@@ -56,6 +57,7 @@ final class ChatRepository
 
     public function createGroupConversation(string $actor, string $title, array $members): array
     {
+        $actor = $this->resolveLegacyProfile($actor);
         $this->ensureActor($actor);
         $profiles = [$actor];
         foreach ($members as $member) {
@@ -127,6 +129,7 @@ final class ChatRepository
 
     public function listMessages(string $actor, string $conversationKey, ?string $cursor, int $limit): array
     {
+        $actor = $this->resolveLegacyProfile($actor);
         $conversation = $this->resolveConversationForActor($actor, $conversationKey);
         $responseConversationKey = $this->responseConversationKey(
             $conversationKey,
@@ -168,6 +171,7 @@ final class ChatRepository
         ?array $attachments,
         ?string $clientMessageId,
     ): array {
+        $actor = $this->resolveLegacyProfile($actor);
         $conversation = $this->resolveConversationForActor($actor, $conversationKey);
         $type = $this->normalizeMessageType($messageType);
         $normalizedText = trim($text);
@@ -235,6 +239,7 @@ final class ChatRepository
 
     public function setReaction(string $actor, string $messageId, string $reaction): array
     {
+        $actor = $this->resolveLegacyProfile($actor);
         $this->ensureActor($actor);
         $id = trim($messageId);
         if ($id === '') {
@@ -263,6 +268,7 @@ final class ChatRepository
 
     public function conversationMembers(string $actor, string $conversationKey): array
     {
+        $actor = $this->resolveLegacyProfile($actor);
         $conversation = $this->resolveConversationForActor($actor, $conversationKey);
         return DB::table('chat_conversation_members')
             ->where('conversation_id', (int) $conversation->id)
@@ -276,6 +282,7 @@ final class ChatRepository
 
     public function editMessage(string $actor, string $messageId, string $text): array
     {
+        $actor = $this->resolveLegacyProfile($actor);
         $this->ensureActor($actor);
         $id = trim($messageId);
         $normalizedText = trim($text);
@@ -296,6 +303,7 @@ final class ChatRepository
 
     public function deleteMessage(string $actor, string $messageId): array
     {
+        $actor = $this->resolveLegacyProfile($actor);
         $this->ensureActor($actor);
         $id = trim($messageId);
         if ($id === '') {
