@@ -481,7 +481,7 @@ final class ChatRepository
 
     private function mapMessageRow(object $row, string $conversationKey, ?string $viewer = null): array
     {
-        $meta = $this->decodeJsonMap($row->image_meta_json ?? null);
+        $meta = $this->decodeJsonObject($row->image_meta_json ?? null);
         $attachments = DB::table('chat_message_attachments')
             ->where('message_id', (string) $row->id)
             ->orderBy('sort_order')
@@ -490,7 +490,7 @@ final class ChatRepository
             ->map(fn ($item): array => [
                 'kind' => (string) $item->kind,
                 'asset_url' => (string) $item->asset_url,
-                'image_meta' => $this->decodeJsonMap($item->image_meta_json ?? null),
+                'image_meta' => $this->decodeJsonObject($item->image_meta_json ?? null),
                 'sort_order' => (int) $item->sort_order,
             ])
             ->values()
@@ -608,16 +608,16 @@ final class ChatRepository
         return $out;
     }
 
-    private function decodeJsonMap(mixed $value): array
+    private function decodeJsonObject(mixed $value): object
     {
         if (is_array($value)) {
-            return $value;
+            return (object) (array_is_list($value) ? [] : $value);
         }
         if (!is_string($value) || trim($value) === '') {
-            return [];
+            return (object) [];
         }
         $decoded = json_decode($value, true);
-        return is_array($decoded) ? $decoded : [];
+        return (object) (is_array($decoded) && !array_is_list($decoded) ? $decoded : []);
     }
 
     private function nowIso(): string

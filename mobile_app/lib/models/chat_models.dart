@@ -71,11 +71,14 @@ class ChatAttachment {
   final int sortOrder;
 
   factory ChatAttachment.fromJson(Map<String, dynamic> json) {
+    final rawImageMeta = json['image_meta'];
+    final imageMeta = rawImageMeta is Map
+        ? Map<String, dynamic>.from(rawImageMeta)
+        : const <String, dynamic>{};
     return ChatAttachment(
       kind: (json['kind'] ?? 'image').toString(),
       assetUrl: (json['asset_url'] ?? json['image_url'] ?? '').toString(),
-      imageMeta:
-          (json['image_meta'] as Map?)?.cast<String, dynamic>() ?? const {},
+      imageMeta: imageMeta,
       sortOrder: int.tryParse((json['sort_order'] ?? 0).toString()) ?? 0,
     );
   }

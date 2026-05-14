@@ -57,6 +57,10 @@ jobs:
 
           rm -rf "$APP_DIR/lib"
           cp -R mobile_app/lib "$APP_DIR/lib"
+          if [ -d mobile_app/test ]; then
+            rm -rf "$APP_DIR/test"
+            cp -R mobile_app/test "$APP_DIR/test"
+          fi
           cp mobile_app/pubspec.yaml "$APP_DIR/pubspec.yaml"
           if [ -f mobile_app/android/build.gradle ]; then
             cp mobile_app/android/build.gradle "$APP_DIR/android/build.gradle"
@@ -89,6 +93,11 @@ jobs:
         run: |
           cd /tmp/family_todo_mobile
           flutter pub get
+
+      - name: Flutter tests
+        run: |
+          cd /tmp/family_todo_mobile
+          flutter test
 
       - name: Restore fallback release keystore cache
         uses: actions/cache@v4

@@ -227,6 +227,51 @@ class PhoneProfileMessengerTest extends TestCase
     }
 
     #[Test]
+    public function image_messages_return_object_metadata_for_mobile_parser(): void
+    {
+        $nik = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 967 981 24 38',
+                'device_id' => 'nik-device',
+                'display_name' => 'Nikita',
+            ])
+            ->assertStatus(200)
+            ->json('user.profile_key');
+
+        $silach = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 920 655 56 44',
+                'device_id' => 'silach-device',
+                'display_name' => 'Silach',
+            ])
+            ->assertStatus(200)
+            ->json('user.profile_key');
+
+        $dynamicKey = collect([$nik, $silach])->sort()->values()->implode(':');
+        $dynamicKey = 'dm:'.$dynamicKey;
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/messages/send', [
+                'actor_profile' => $nik,
+                'conversation_key' => $dynamicKey,
+                'message_type' => 'image',
+                'attachments' => [
+                    ['kind' => 'image', 'asset_url' => 'content://media/photo/1', 'image_meta' => [], 'sort_order' => 0],
+                ],
+                'client_message_id' => 'legacy-empty-meta-1',
+            ])
+            ->assertStatus(200);
+
+        $content = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/chat/messages?actor_profile=nik&conversation_key='.$dynamicKey.'&limit=20')
+            ->assertStatus(200)
+            ->getContent();
+
+        $this->assertStringContainsString('"image_meta":{}', $content);
+        $this->assertStringNotContainsString('"image_meta":[]', $content);
+    }
+
+    #[Test]
     public function device_start_restores_existing_phone_from_new_device(): void
     {
         $first = $this->withHeaders(['X-Api-Key' => 'prod-key'])
