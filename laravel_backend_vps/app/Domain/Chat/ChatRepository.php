@@ -128,6 +128,10 @@ final class ChatRepository
     public function listMessages(string $actor, string $conversationKey, ?string $cursor, int $limit): array
     {
         $conversation = $this->resolveConversationForActor($actor, $conversationKey);
+        $responseConversationKey = $this->responseConversationKey(
+            $conversationKey,
+            (string) $conversation->conversation_key,
+        );
         $query = DB::table('chat_messages')
             ->where('conversation_id', (int) $conversation->id)
             ->orderByDesc('created_at')
@@ -141,12 +145,13 @@ final class ChatRepository
         $rows = $query->get();
         $mapped = [];
         foreach ($rows as $row) {
-            $mapped[] = $this->mapMessageRow($row, (string) $conversation->conversation_key, $actor);
+            $mapped[] = $this->mapMessageRow($row, $responseConversationKey, $actor);
         }
 
         $mapped = array_reverse($mapped);
         return [
-            'conversation_key' => (string) $conversation->conversation_key,
+            'conversation_key' => $responseConversationKey,
+            'resolved_conversation_key' => (string) $conversation->conversation_key,
             'messages' => $mapped,
             'next_cursor' => count($rows) === $limit && $mapped !== [] ? (string) $mapped[0]['created_at'] : null,
         ];
@@ -430,6 +435,15 @@ final class ChatRepository
         }
         sort($members);
         return $members;
+    }
+
+    private function responseConversationKey(string $requestedKey, string $resolvedKey): string
+    {
+        $trimmed = trim($requestedKey);
+        if ($this->parseDirectMembers($trimmed) !== null) {
+            return $trimmed;
+        }
+        return $resolvedKey;
     }
 
     private function mapMessageRow(object $row, string $conversationKey, ?string $viewer = null): array

@@ -61,6 +61,7 @@ class ChatController extends Controller
             return $this->json(200, [
                 'ok' => true,
                 'conversation_key' => $result['conversation_key'],
+                'resolved_conversation_key' => $result['resolved_conversation_key'],
                 'messages' => $result['messages'],
                 'next_cursor' => $result['next_cursor'],
             ]);
