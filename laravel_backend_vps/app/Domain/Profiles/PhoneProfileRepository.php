@@ -98,6 +98,7 @@ final class PhoneProfileRepository
                 'profile_key' => (string)$row->profile_key,
                 'phone' => (string)$row->phone_normalized,
                 'display_name' => (string)$row->display_name,
+                'conversation_key' => $this->directConversationKey($actor, (string)$row->profile_key),
             ])
             ->values()
             ->all();
@@ -116,6 +117,9 @@ final class PhoneProfileRepository
                 'phone' => (string)$row->phone_normalized,
                 'display_name' => (string)$row->display_name,
                 'role' => (string)$row->role,
+                'conversation_key' => (string)$row->profile_key === $actor
+                    ? ''
+                    : $this->directConversationKey($actor, (string)$row->profile_key),
             ])
             ->values()
             ->all();
@@ -250,5 +254,12 @@ final class PhoneProfileRepository
     private function nowIso(): string
     {
         return now()->format('Y-m-d\\TH:i:s');
+    }
+
+    private function directConversationKey(string $a, string $b): string
+    {
+        $members = [trim($a), trim($b)];
+        sort($members);
+        return sprintf('dm:%s:%s', $members[0], $members[1]);
     }
 }

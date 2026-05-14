@@ -12,7 +12,8 @@ const _notificationChannelId = 'family_updates';
 const _notificationChannelName = 'Семейные уведомления';
 const _notificationChannelDescription =
     'Пуш-уведомления о задачах и напоминаниях';
-const _appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '0.1.6');
+const _appVersion =
+    String.fromEnvironment('APP_VERSION', defaultValue: '0.1.6');
 
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();
@@ -47,7 +48,7 @@ class FcmService {
   final String actorProfile;
   final void Function(String text) onForegroundText;
   final void Function(String text) onDiagnosticsChanged;
-  final Future<void> Function() onOpenPush;
+  final Future<void> Function(Map<String, dynamic> data) onOpenPush;
 
   StreamSubscription<String>? _tokenRefreshSub;
   StreamSubscription<RemoteMessage>? _onMessageSub;
@@ -118,20 +119,20 @@ class FcmService {
 
     _onMessageSub =
         FirebaseMessaging.onMessage.listen((RemoteMessage msg) async {
-      await onOpenPush();
+      await onOpenPush(msg.data);
       final title = msg.notification?.title ?? 'Семейные задачи';
       final body = msg.notification?.body ?? 'Появились новые изменения';
       await _showForegroundNotification(title: title, body: body);
       onForegroundText('$title: $body');
     });
 
-    _onOpenSub = FirebaseMessaging.onMessageOpenedApp.listen((_) async {
-      await onOpenPush();
+    _onOpenSub = FirebaseMessaging.onMessageOpenedApp.listen((msg) async {
+      await onOpenPush(msg.data);
     });
 
     final initial = await messaging.getInitialMessage();
     if (initial != null) {
-      await onOpenPush();
+      await onOpenPush(initial.data);
     }
   }
 
@@ -289,7 +290,8 @@ class FcmService {
       }
     } catch (error) {
       _playServicesNativeStatus = 'native_status_error';
-      _lastTokenError = _mergeErrors(_lastTokenError, 'play_services_status:$error');
+      _lastTokenError =
+          _mergeErrors(_lastTokenError, 'play_services_status:$error');
     }
     try {
       final installationId = await _firebaseInstallationsChannel
@@ -317,7 +319,8 @@ class FcmService {
       'app=$_appVersion',
       'platform=${Platform.isAndroid ? 'android' : (Platform.isIOS ? 'ios' : 'other')}',
       'play=$_playServicesState',
-      if (_playServicesNativeStatus.isNotEmpty) 'playNative=$_playServicesNativeStatus',
+      if (_playServicesNativeStatus.isNotEmpty)
+        'playNative=$_playServicesNativeStatus',
       if (_packageName.isNotEmpty) 'pkg=$_packageName',
       'project=famillytodo-2758f',
       'appId=1:223906415067:android:68a62bb31cc4471895a7fe',
@@ -437,7 +440,8 @@ class FcmService {
     final parts = <String>[
       errorText,
       'step=$_lastStep',
-      if (_playServicesNativeStatus.isNotEmpty) 'play_native=$_playServicesNativeStatus',
+      if (_playServicesNativeStatus.isNotEmpty)
+        'play_native=$_playServicesNativeStatus',
       if (_packageName.isNotEmpty) 'package=$_packageName',
       if (_installationId.isNotEmpty)
         'fis=${_installationId.substring(0, _installationId.length < 24 ? _installationId.length : 24)}',

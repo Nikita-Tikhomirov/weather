@@ -939,13 +939,20 @@ class _HomePageState extends State<HomePage> {
           _fcmDiagnostics = text;
         });
       },
-      onOpenPush: () async {
+      onOpenPush: (data) async {
         final store = _store;
         if (store == null) {
           return;
         }
         await _safeSyncDelta(store, showErrors: false);
         store.setPage(4); // Switch to Messenger tab
+        final conversationKey = (data['conversation_key'] ?? '').trim();
+        if ((data['entity'] ?? '') == 'chat_message' &&
+            conversationKey.isNotEmpty &&
+            !_isProjectConversation(conversationKey)) {
+          await _openConversation(store, conversationKey);
+          return;
+        }
         await _refreshActiveConversation(store, useNetwork: true, quiet: true);
       },
     );
@@ -1355,6 +1362,7 @@ class _HomePageState extends State<HomePage> {
     required bool useNetwork,
     required bool quiet,
   }) async {
+    conversationKey = _canonicalConversationKey(conversationKey);
     final db = store.repository.db;
     final api = store.repository.api;
     final actor = store.owner.value;
@@ -1378,20 +1386,27 @@ class _HomePageState extends State<HomePage> {
         conversationKey: conversationKey,
         limit: 100,
       );
+      final canonicalKey = snapshot.messages.isEmpty
+          ? conversationKey
+          : _canonicalConversationKey(snapshot.messages.first.conversationKey);
       await db.upsertMessages(snapshot.messages);
       if (snapshot.nextCursor != null && snapshot.nextCursor!.isNotEmpty) {
         await db.saveChatCursor(
-          conversationKey: conversationKey,
+          conversationKey: canonicalKey,
           cursor: snapshot.nextCursor!,
         );
       }
 
-      final merged = await db.readMessages(conversationKey: conversationKey);
+      final merged = await db.readMessages(conversationKey: canonicalKey);
       final beforeMerged =
-          _chatMessagesByConversation[conversationKey] ?? const <ChatMessage>[];
+          _chatMessagesByConversation[canonicalKey] ?? const <ChatMessage>[];
       if (mounted && !_sameMessages(beforeMerged, merged)) {
         setState(() {
-          _chatMessagesByConversation[conversationKey] = merged;
+          _chatMessagesByConversation[canonicalKey] = merged;
+          if (_activeConversationKey == conversationKey &&
+              canonicalKey != conversationKey) {
+            _activeConversationKey = canonicalKey;
+          }
         });
       }
     } catch (error) {
@@ -1408,6 +1423,7 @@ class _HomePageState extends State<HomePage> {
     if (!mounted) {
       return;
     }
+    conversationKey = _canonicalConversationKey(conversationKey);
     // Clean up project bridge when switching to regular conversation
     if (_isProjectConversation(_activeConversationKey)) {
       _projectBridge?.dispose();
@@ -1426,12 +1442,18 @@ class _HomePageState extends State<HomePage> {
     await _chatRealtime?.tick();
   }
 
-  Future<void> _openDirectContact(TaskStore store, ChatContact contact) async {
-    var key = contact.conversationKey;
-    if (key.isEmpty) {
-      final members = [store.owner.value, contact.profileKey]..sort();
-      key = 'dm:${members[0]}:${members[1]}';
+  String _canonicalConversationKey(String key) {
+    final trimmed = key.trim();
+    final parts = trimmed.split(':');
+    if (parts.length == 3 && parts[0] == 'dm') {
+      final members = [parts[1], parts[2]]..sort();
+      return 'dm:${members[0]}:${members[1]}';
     }
+    return trimmed;
+  }
+
+  Future<void> _openDirectContact(TaskStore store, ChatContact contact) async {
+    final key = _directConversationKeyFor(store.owner.value, contact);
     final existing =
         _chatConversations.any((item) => item.conversationKey == key);
     if (!existing) {
@@ -1448,6 +1470,28 @@ class _HomePageState extends State<HomePage> {
       });
     }
     await _openConversation(store, key);
+  }
+
+  String _directConversationKeyFor(String actor, ChatContact contact) {
+    final existing = _chatConversations.cast<ChatConversation?>().firstWhere(
+          (item) =>
+              item != null &&
+              item.kind == 'direct' &&
+              item.members.contains(actor) &&
+              item.members.contains(contact.profileKey),
+          orElse: () => null,
+        );
+    if (existing != null) {
+      return existing.conversationKey;
+    }
+
+    final remoteKey = contact.conversationKey.trim();
+    if (remoteKey.startsWith('dm:')) {
+      return remoteKey;
+    }
+
+    final members = [actor, contact.profileKey]..sort();
+    return 'dm:${members[0]}:${members[1]}';
   }
 
   Future<void> _openCreateGroupSheet(TaskStore store) async {

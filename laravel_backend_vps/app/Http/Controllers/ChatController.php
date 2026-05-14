@@ -60,7 +60,7 @@ class ChatController extends Controller
 
             return $this->json(200, [
                 'ok' => true,
-                'conversation_key' => $conversationKey,
+                'conversation_key' => $result['conversation_key'],
                 'messages' => $result['messages'],
                 'next_cursor' => $result['next_cursor'],
             ]);
@@ -132,7 +132,7 @@ class ChatController extends Controller
                     'entity' => 'chat_message',
                     'action' => 'created',
                     'actor_profile' => $actor,
-                    'conversation_key' => $conversationKey,
+                    'conversation_key' => (string)$message['conversation_key'],
                     'message_id' => (string)$message['id'],
                 ];
                 $this->pushOutbox->enqueueRawToRecipients($eventId, $recipients, $title, $body, $data);

@@ -53,6 +53,61 @@ class TunnelServerLauncherTests(unittest.IsolatedAsyncioTestCase):
         await mobile_writer.wait_closed()
         await launcher_writer.wait_closed()
 
+    async def test_launcher_ping_reports_missing_launcher(self) -> None:
+        probe_reader, probe_writer = await asyncio.open_connection(
+            "127.0.0.1",
+            self.port,
+        )
+        probe_writer.write(
+            json.dumps({"type": "launcher_ping", "project_id": "launcher"}).encode(
+                "utf-8"
+            )
+            + b"\n"
+        )
+        await probe_writer.drain()
+
+        reply = await _read_json(probe_reader)
+        self.assertEqual(reply["type"], "error")
+
+        probe_writer.close()
+        await probe_writer.wait_closed()
+
+    async def test_launcher_ping_checks_registered_launcher_without_starting_bridge(
+        self,
+    ) -> None:
+        launcher_reader, launcher_writer = await asyncio.open_connection(
+            "127.0.0.1",
+            self.port,
+        )
+        launcher_writer.write(
+            json.dumps({"type": "launcher", "project_id": "launcher"}).encode("utf-8")
+            + b"\n"
+        )
+        await launcher_writer.drain()
+        self.assertEqual((await _read_json(launcher_reader))["type"], "status")
+
+        probe_reader, probe_writer = await asyncio.open_connection(
+            "127.0.0.1",
+            self.port,
+        )
+        probe_writer.write(
+            json.dumps({"type": "launcher_ping", "project_id": "launcher"}).encode(
+                "utf-8"
+            )
+            + b"\n"
+        )
+        await probe_writer.drain()
+
+        ping = await _read_json(launcher_reader)
+        self.assertEqual(ping["type"], "ping")
+        reply = await _read_json(probe_reader)
+        self.assertEqual(reply["type"], "status")
+
+        probe_writer.close()
+        launcher_writer.close()
+        await probe_writer.wait_closed()
+        await launcher_writer.wait_closed()
+
     async def test_mobile_attach_notifies_bridge(self) -> None:
         bridge_reader, bridge_writer = await asyncio.open_connection(
             "127.0.0.1",

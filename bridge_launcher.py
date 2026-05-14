@@ -19,6 +19,7 @@ if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 RECONNECT_DELAY_SECONDS = 5
+HEARTBEAT_SECONDS = 10
 
 
 class BridgeLauncher:
@@ -61,6 +62,7 @@ class BridgeLauncher:
             f"[launcher] connected to {self.tunnel_host}:{self.tunnel_port}",
             flush=True,
         )
+        heartbeat_task = asyncio.create_task(self._heartbeat_loop(writer))
 
         try:
             while True:
@@ -90,10 +92,37 @@ class BridgeLauncher:
                         + b"\n"
                     )
                     await writer.drain()
+                elif msg.get("type") == "ping":
+                    writer.write(
+                        json.dumps(
+                            {"type": "pong", "text": "launcher pong"},
+                            ensure_ascii=False,
+                        ).encode("utf-8")
+                        + b"\n"
+                    )
+                    await writer.drain()
         finally:
+            heartbeat_task.cancel()
+            try:
+                await heartbeat_task
+            except asyncio.CancelledError:
+                pass
             writer.close()
             await writer.wait_closed()
             print("[launcher] disconnected", flush=True)
+
+    async def _heartbeat_loop(self, writer: asyncio.StreamWriter) -> None:
+        """Keep the tunnel socket active so broken connections are detected."""
+        while True:
+            await asyncio.sleep(HEARTBEAT_SECONDS)
+            writer.write(
+                json.dumps(
+                    {"type": "heartbeat", "text": "heartbeat"},
+                    ensure_ascii=False,
+                ).encode("utf-8")
+                + b"\n"
+            )
+            await writer.drain()
 
     def start_bridge(self) -> bool:
         """Kill any stale bridge process, then start a fresh one."""

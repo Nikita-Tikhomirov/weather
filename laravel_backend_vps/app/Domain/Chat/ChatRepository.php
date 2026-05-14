@@ -146,6 +146,7 @@ final class ChatRepository
 
         $mapped = array_reverse($mapped);
         return [
+            'conversation_key' => (string) $conversation->conversation_key,
             'messages' => $mapped,
             'next_cursor' => count($rows) === $limit && $mapped !== [] ? (string) $mapped[0]['created_at'] : null,
         ];

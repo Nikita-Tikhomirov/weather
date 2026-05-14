@@ -70,6 +70,8 @@ class TunnelServer:
                 await self._handle_mobile(project_id, reader, writer)
             elif msg_type == 'launcher':
                 await self._handle_launcher(reader, writer)
+            elif msg_type == 'launcher_ping':
+                await self._handle_launcher_ping(writer)
             elif msg_type == 'start_bridge':
                 await self._handle_start_bridge(project_id, writer)
             else:
@@ -170,6 +172,47 @@ class TunnelServer:
                 'text': 'Bridge launcher is not connected',
                 'project_id': project_id,
             })
+
+    async def _handle_launcher_ping(self, writer: asyncio.StreamWriter):
+        """Health endpoint for the Windows watchdog; does not start a bridge."""
+        alive = await self._ping_launchers()
+        if alive:
+            self._send_json(writer, {
+                'type': 'status',
+                'text': 'Bridge launcher is connected',
+                'project_id': 'launcher',
+            })
+        else:
+            self._send_json(writer, {
+                'type': 'error',
+                'text': 'Bridge launcher is not connected',
+                'project_id': 'launcher',
+            })
+
+    async def _ping_launchers(self) -> bool:
+        if not self._launcher_writers:
+            return False
+
+        payload = json.dumps(
+            {'type': 'ping', 'project_id': 'launcher'},
+            ensure_ascii=False,
+        ).encode('utf-8') + b'\n'
+        delivered = False
+        dead = []
+        for launcher in self._launcher_writers:
+            try:
+                if launcher.is_closing():
+                    dead.append(launcher)
+                    continue
+                launcher.write(payload)
+                await launcher.drain()
+                delivered = True
+            except Exception:
+                dead.append(launcher)
+        for launcher in dead:
+            if launcher in self._launcher_writers:
+                self._launcher_writers.remove(launcher)
+        return delivered
 
     async def _request_bridge_start(self, project_id: str) -> bool:
         if not self._launcher_writers:
