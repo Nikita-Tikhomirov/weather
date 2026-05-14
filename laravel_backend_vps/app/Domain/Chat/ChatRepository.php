@@ -331,7 +331,11 @@ final class ChatRepository
             // Dynamic group already stored.
         } else {
             $members = $this->parseDirectMembers($key);
-            if ($members === null || !in_array($actor, $members, true)) {
+            if ($members === null) {
+                throw new InvalidArgumentException('Actor is not a member of this conversation');
+            }
+            $members = $this->resolveLegacyDirectMembers($members);
+            if (!in_array($actor, $members, true)) {
                 throw new InvalidArgumentException('Actor is not a member of this conversation');
             }
             $key = $this->directConversationKey($members[0], $members[1]);
@@ -435,6 +439,27 @@ final class ChatRepository
         }
         sort($members);
         return $members;
+    }
+
+    private function resolveLegacyDirectMembers(array $members): array
+    {
+        return array_map(fn (string $profile): string => $this->resolveLegacyProfile($profile), $members);
+    }
+
+    private function resolveLegacyProfile(string $profile): string
+    {
+        $key = trim($profile);
+        $phone = match ($key) {
+            'nik' => '79679812438',
+            'misha' => '79206555644',
+            'nastya' => '79109764267',
+            default => '',
+        };
+        if ($phone === '') {
+            return $key;
+        }
+        $dynamic = DB::table('messenger_users')->where('phone_normalized', $phone)->value('profile_key');
+        return is_string($dynamic) && trim($dynamic) !== '' ? trim($dynamic) : $key;
     }
 
     private function responseConversationKey(string $requestedKey, string $resolvedKey): string

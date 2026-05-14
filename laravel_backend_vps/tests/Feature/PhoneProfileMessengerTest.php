@@ -142,6 +142,49 @@ class PhoneProfileMessengerTest extends TestCase
     }
 
     #[Test]
+    public function legacy_static_direct_key_loads_dynamic_phone_history(): void
+    {
+        $nik = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 967 981 24 38',
+                'device_id' => 'nik-device',
+                'display_name' => 'Nikita',
+            ])
+            ->assertStatus(200)
+            ->json('user.profile_key');
+
+        $silach = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 920 655 56 44',
+                'device_id' => 'silach-device',
+                'display_name' => 'Silach',
+            ])
+            ->assertStatus(200)
+            ->json('user.profile_key');
+
+        $dynamicKey = collect([$nik, $silach])->sort()->values()->implode(':');
+        $dynamicKey = 'dm:'.$dynamicKey;
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/messages/send', [
+                'actor_profile' => $silach,
+                'conversation_key' => $dynamicKey,
+                'message_type' => 'text',
+                'text' => 'legacy key opens real history',
+                'client_message_id' => 'legacy-key-1',
+            ])
+            ->assertStatus(200);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/chat/messages?actor_profile='.$nik.'&conversation_key=dm:misha:nik&limit=20')
+            ->assertStatus(200)
+            ->assertJsonPath('conversation_key', 'dm:misha:nik')
+            ->assertJsonPath('resolved_conversation_key', $dynamicKey)
+            ->assertJsonPath('messages.0.conversation_key', 'dm:misha:nik')
+            ->assertJsonPath('messages.0.text', 'legacy key opens real history');
+    }
+
+    #[Test]
     public function device_start_restores_existing_phone_from_new_device(): void
     {
         $first = $this->withHeaders(['X-Api-Key' => 'prod-key'])
