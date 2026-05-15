@@ -613,6 +613,16 @@ class TunnelClient:
                         if caption:
                             session.write(f"{caption}\n\nФайл фото: {rel_text}")
                         continue
+                    if msg.get("type") == "list_files":
+                        writer.write(
+                            json.dumps(
+                                self._list_files(project_id, project_dir, msg),
+                                ensure_ascii=False,
+                            ).encode("utf-8")
+                            + b"\n"
+                        )
+                        await writer.drain()
+                        continue
                     if msg.get("type") == "send":
                         text = str(msg.get("text", ""))
                         if text and session and session.running:
@@ -626,6 +636,86 @@ class TunnelClient:
                 continue
             reconnect_attempt = 0
             await asyncio.sleep(RECONNECT_DELAY_SECONDS)
+
+    def _list_files(
+        self, project_id: str, project_dir: str, msg: dict
+    ) -> dict:
+        """Return a ProjectFileNode tree for the requested path."""
+        import os as _os
+
+        base = Path(project_dir).resolve()
+        rel = str(msg.get("path", "")).strip().lstrip("/").lstrip("\\")
+        recursive = bool(msg.get("recursive", False))
+        target = (base / rel).resolve() if rel else base
+
+        # Security: stay inside project directory
+        try:
+            target.relative_to(base)
+        except ValueError:
+            return {"type": "files", "project_id": project_id, "files": [], "path": rel}
+
+        def _build_node(entry: Path, depth: int = 0) -> dict | None:
+            # Skip hidden files and deepseek internal state
+            name = entry.name
+            if name.startswith(".") or name == "__pycache__":
+                if name != ".gitignore":  # Keep .gitignore visible
+                    return None
+            try:
+                rel_path = entry.relative_to(base).as_posix()
+            except ValueError:
+                return None
+            if entry.is_dir():
+                children = []
+                if recursive:
+                    try:
+                        for child in sorted(entry.iterdir()):
+                            node = _build_node(child, depth + 1)
+                            if node is not None:
+                                children.append(node)
+                    except PermissionError:
+                        pass
+                return {
+                    "name": name,
+                    "path": rel_path,
+                    "is_dir": True,
+                    "size": 0,
+                    "children": children,
+                }
+            else:
+                try:
+                    size = entry.stat().st_size
+                except OSError:
+                    size = 0
+                return {
+                    "name": name,
+                    "path": rel_path,
+                    "is_dir": False,
+                    "size": size,
+                }
+
+        if not target.exists():
+            return {"type": "files", "project_id": project_id, "files": [], "path": rel}
+
+        if target.is_dir():
+            nodes = []
+            try:
+                for child in sorted(target.iterdir()):
+                    node = _build_node(child)
+                    if node is not None:
+                        nodes.append(node)
+            except PermissionError:
+                pass
+            # Sort: directories first
+            nodes.sort(key=lambda n: (not n["is_dir"], n["name"].lower()))
+            return {"type": "files", "project_id": project_id, "files": nodes, "path": rel}
+        else:
+            node = _build_node(target)
+            return {
+                "type": "files",
+                "project_id": project_id,
+                "files": [node] if node else [],
+                "path": rel,
+            }
 
     async def stop(self) -> None:
         for task in self._tasks:
