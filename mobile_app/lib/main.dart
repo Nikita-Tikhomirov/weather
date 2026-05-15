@@ -16,6 +16,7 @@ import 'domain/task_draft.dart';
 import 'domain/task_domain_service.dart';
 import 'models/chat_models.dart';
 import 'models/project_contact.dart';
+import 'models/project_file.dart';
 import 'models/task_item.dart';
 import 'services/desktop_process_host_service.dart';
 import 'services/desktop_theme_service.dart';
@@ -260,6 +261,8 @@ class _HomePageState extends State<HomePage> {
   List<ProjectContact> _projectContacts = const <ProjectContact>[];
   ProjectBridgeService? _projectBridge;
   final List<BridgeMessage> _projectMessages = <BridgeMessage>[];
+  List<ProjectFileNode> _projectFiles = const <ProjectFileNode>[];
+  String _projectFileTreePath = '';
   List<ChatConversation> _chatConversations = const <ChatConversation>[];
   List<StickerPack> _chatStickerPacks = const <StickerPack>[];
   final Map<String, List<ChatMessage>> _chatMessagesByConversation =
@@ -1320,6 +1323,12 @@ class _HomePageState extends State<HomePage> {
             setState(() {
               _projectContacts =
                   msg.projects.map((p) => ProjectContact.fromJson(p)).toList();
+            });
+          }
+          if (msg.isFiles && msg.files.isNotEmpty) {
+            setState(() {
+              _projectFiles = msg.files;
+              _projectFileTreePath = '';
             });
           }
           setState(() => _projectMessages.add(msg));
@@ -2691,6 +2700,11 @@ class _HomePageState extends State<HomePage> {
                 icon: const Icon(Icons.settings),
                 onPressed: () => _openBridgeSettings(),
               ),
+              IconButton(
+                tooltip: 'Файлы проекта',
+                icon: const Icon(Icons.folder_open),
+                onPressed: () => _openProjectFileManager(project),
+              ),
             ],
           ),
         ),
@@ -2904,6 +2918,82 @@ class _HomePageState extends State<HomePage> {
     _projectBridge?.sendText(text);
 
     // Show the message immediately in the UI
+    if (mounted) {
+      setState(() {
+        _projectMessages.add(BridgeMessage(
+          type: 'send',
+          text: text,
+        ));
+      });
+    }
+  }
+
+  void _openProjectFileManager(ProjectContact project) {
+    // Request file tree, then show bottom sheet
+    _projectFiles = [];
+    _projectFileTreePath = '';
+    _projectBridge?.requestFileTree();
+    setState(() {
+      _projectMessages.add(BridgeMessage(
+        type: 'status',
+        text: 'Запрашиваю файлы проекта...',
+      ));
+    });
+
+    // Show bottom sheet immediately; it will update when files arrive
+    if (!mounted) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return _ProjectFileBrowser(
+              project: project,
+              files: _projectFiles,
+              currentPath: _projectFileTreePath,
+              onNavigate: (path) {
+                setState(() {
+                  _projectFileTreePath = path;
+                });
+                setSheetState(() {});
+                _projectBridge?.requestFileList(path);
+              },
+              onRefresh: () {
+                _projectFiles = [];
+                _projectFileTreePath = '';
+                setSheetState(() {});
+                _projectBridge?.requestFileTree();
+              },
+              onLinkToChat: (filePath) {
+                final text = 'Файл: $filePath';
+                _chatInputCtl.text = text;
+                // Close sheet
+                Navigator.of(sheetContext).pop();
+                // Send as project message
+                _sendProjectMessageText(text);
+              },
+              onOpenFile: (filePath) {
+                _projectBridge?.requestFileList(filePath);
+                setState(() {
+                  _projectFileTreePath = filePath;
+                });
+                setSheetState(() {});
+              },
+            );
+          },
+        );
+      },
+    ).then((_) {
+      // Sheet closed
+    });
+  }
+
+  void _sendProjectMessageText(String text) {
+    final bridge = _projectBridge;
+    if (bridge == null) return;
+    bridge.sendText(text);
     if (mounted) {
       setState(() {
         _projectMessages.add(BridgeMessage(
@@ -5399,6 +5489,207 @@ class _FamilyView extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ProjectFileBrowser extends StatelessWidget {
+  const _ProjectFileBrowser({
+    required this.project,
+    required this.files,
+    required this.currentPath,
+    required this.onNavigate,
+    required this.onRefresh,
+    required this.onLinkToChat,
+    required this.onOpenFile,
+  });
+
+  final ProjectContact project;
+  final List<ProjectFileNode> files;
+  final String currentPath;
+  final void Function(String path) onNavigate;
+  final VoidCallback onRefresh;
+  final void Function(String filePath) onLinkToChat;
+  final void Function(String dirPath) onOpenFile;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    const pad = EdgeInsets.only(left: 16, right: 16, bottom: 8);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) {
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Файлы — ${project.name}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (currentPath.isNotEmpty)
+                          Text(
+                            currentPath,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: cs.onSurface.withOpacity(0.6),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (currentPath.isNotEmpty)
+                    IconButton(
+                      tooltip: 'Наверх',
+                      icon: const Icon(Icons.arrow_upward),
+                      onPressed: () {
+                        final parent = _parentPath(currentPath);
+                        if (parent == null) {
+                          onNavigate('');
+                          onRefresh();
+                        } else {
+                          onOpenFile(parent);
+                        }
+                      },
+                    ),
+                  IconButton(
+                    tooltip: 'Обновить',
+                    icon: const Icon(Icons.refresh),
+                    onPressed: onRefresh,
+                  ),
+                  IconButton(
+                    tooltip: 'Закрыть',
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            if (files.isEmpty)
+              const Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: CircularProgressIndicator(strokeWidth: 3),
+                        ),
+                        SizedBox(height: 16),
+                        Text('Загрузка файлов...'),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollController,
+                  padding: const EdgeInsets.only(top: 4),
+                  itemCount: files.length,
+                  itemBuilder: (context, index) {
+                    final node = files[index];
+                    return _FileNodeTile(
+                      node: node,
+                      onTap: () {
+                        if (node.isDir) {
+                          onOpenFile(node.path);
+                        }
+                      },
+                      onLink: () => onLinkToChat(node.path),
+                    );
+                  },
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Return the parent directory path, or null if already at root.
+  static String? _parentPath(String path) {
+    final trimmed = path.endsWith('/') || path.endsWith('\\')
+        ? path.substring(0, path.length - 1)
+        : path;
+    final lastSep = _lastSeparator(trimmed);
+    if (lastSep < 0) return null;
+    return trimmed.substring(0, lastSep);
+  }
+
+  static int _lastSeparator(String path) {
+    final slash = path.lastIndexOf('/');
+    final backslash = path.lastIndexOf('\\');
+    return slash > backslash ? slash : backslash;
+  }
+}
+
+class _FileNodeTile extends StatelessWidget {
+  const _FileNodeTile({
+    required this.node,
+    required this.onTap,
+    required this.onLink,
+  });
+
+  final ProjectFileNode node;
+  final VoidCallback onTap;
+  final VoidCallback onLink;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Icon(
+        node.isDir ? Icons.folder : Icons.insert_drive_file_outlined,
+        color: node.isDir ? Colors.amber.shade700 : cs.primary,
+      ),
+      title: Text(
+        node.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: node.isDir
+          ? null
+          : Text(
+              node.sizeLabel,
+              style: TextStyle(
+                fontSize: 11,
+                color: cs.onSurface.withOpacity(0.5),
+              ),
+            ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Ссылка в чат',
+            icon: const Icon(Icons.attachment, size: 20),
+            onPressed: onLink,
+          ),
+          if (node.isDir)
+            const Icon(Icons.chevron_right, size: 20),
+        ],
+      ),
+      onTap: onTap,
     );
   }
 }

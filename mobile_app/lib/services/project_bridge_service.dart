@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/project_contact.dart';
+import '../models/project_file.dart';
 
 /// Message received from the project bridge server.
 class BridgeMessage {
@@ -20,6 +21,7 @@ class BridgeMessage {
     this.imageBase64 = '',
     this.imageMimeType = '',
     this.imageFilename = '',
+    this.files = const [],
   });
 
   final String type;
@@ -32,6 +34,7 @@ class BridgeMessage {
   final String imageBase64;
   final String imageMimeType;
   final String imageFilename;
+  final List<ProjectFileNode> files;
 
   factory BridgeMessage.fromJson(Map<String, dynamic> json) {
     return BridgeMessage(
@@ -52,6 +55,11 @@ class BridgeMessage {
       imageBase64: (json['data_base64'] ?? '').toString(),
       imageMimeType: (json['mime_type'] ?? '').toString(),
       imageFilename: (json['filename'] ?? '').toString(),
+      files: (json['files'] as List<dynamic>?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(ProjectFileNode.fromJson)
+              .toList() ??
+          const [],
     );
   }
 
@@ -64,6 +72,7 @@ class BridgeMessage {
   bool get isProjects => type == 'projects';
   bool get isHistory => type == 'history';
   bool get isSessionInfo => type == 'session_info';
+  bool get isFiles => type == 'files';
 }
 
 /// Manages TCP connection to the remote Project Bridge Server running on PC.
@@ -351,6 +360,35 @@ class ProjectBridgeService {
       return;
     }
     _sendRaw('${jsonEncode({'type': 'stop'})}\n');
+  }
+
+  /// Request file tree from the project (recursive listing).
+  void requestFileTree({String path = ''}) {
+    if (!isConnected) {
+      _scheduleReconnect();
+      return;
+    }
+    final payload = <String, dynamic>{
+      'type': 'list_files',
+      'recursive': true,
+    };
+    if (path.isNotEmpty) {
+      payload['path'] = path;
+    }
+    _sendRaw('${jsonEncode(payload)}\n');
+  }
+
+  /// Request file listing for a single directory (non-recursive).
+  void requestFileList(String path) {
+    if (!isConnected) {
+      _scheduleReconnect();
+      return;
+    }
+    _sendRaw('${jsonEncode({
+          'type': 'list_files',
+          'path': path,
+          'recursive': false,
+        })}\n');
   }
 
   void _sendRaw(String data) {
