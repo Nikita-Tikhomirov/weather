@@ -17,6 +17,9 @@ class BridgeMessage {
     this.sessionId = '',
     this.projects = const [],
     this.messages = const [],
+    this.imageBase64 = '',
+    this.imageMimeType = '',
+    this.imageFilename = '',
   });
 
   final String type;
@@ -26,6 +29,9 @@ class BridgeMessage {
   final String sessionId;
   final List<Map<String, dynamic>> projects;
   final List<BridgeMessage> messages;
+  final String imageBase64;
+  final String imageMimeType;
+  final String imageFilename;
 
   factory BridgeMessage.fromJson(Map<String, dynamic> json) {
     return BridgeMessage(
@@ -43,9 +49,13 @@ class BridgeMessage {
               .map(BridgeMessage.fromJson)
               .toList() ??
           const [],
+      imageBase64: (json['data_base64'] ?? '').toString(),
+      imageMimeType: (json['mime_type'] ?? '').toString(),
+      imageFilename: (json['filename'] ?? '').toString(),
     );
   }
 
+  bool get isImage => type == 'image';
   bool get isOutput => type == 'output';
   bool get isStatus => type == 'status';
   bool get isError => type == 'error';

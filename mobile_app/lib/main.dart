@@ -9,6 +9,7 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'domain/task_draft.dart';
 import 'domain/task_domain_service.dart';
@@ -1102,20 +1103,32 @@ class _HomePageState extends State<HomePage> {
           );
         }
         if (imageUris.isNotEmpty) {
+          final attachments = <ChatAttachment>[];
           for (var i = 0; i < imageUris.length; i++) {
             final uri = imageUris[i];
-            final attachments = [
-              ChatAttachment(
+            try {
+              final file = File(uri);
+              final bytes = await file.readAsBytes();
+              final uploaded = await api.chatUploadSticker(
+                actorProfile: store.owner.value,
+                bytes: bytes,
+                filename: 'shared_image.jpg',
+              );
+              attachments.add(ChatAttachment(
                 kind: 'image',
-                assetUrl: uri,
-                imageMeta: const {},
-                sortOrder: i,
-              )
-            ];
+                assetUrl: uploaded.assetUrl,
+                imageMeta: uploaded.imageMeta,
+                sortOrder: attachments.length,
+              ));
+            } catch (_) {
+              // skip images that fail to read or upload
+            }
+          }
+          if (attachments.isNotEmpty) {
             await api.chatSendMessage(
               actorProfile: store.owner.value,
               conversationKey: conversationKey,
-              messageType: 'image',
+              messageType: attachments.length == 1 ? 'image' : 'image_group',
               attachments: attachments,
             );
           }
@@ -2729,6 +2742,7 @@ class _HomePageState extends State<HomePage> {
                     final msg = messages[messages.length - 1 - index];
                     final isMe = msg.isSent || msg.type == 'send';
                     final isStatus = msg.isStatus || msg.isPong;
+                    final isImage = msg.isImage;
 
                     if (isStatus) {
                       return Padding(
@@ -2739,6 +2753,55 @@ class _HomePageState extends State<HomePage> {
                           style: TextStyle(
                             fontSize: 11,
                             color: Theme.of(context).disabledColor,
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (isImage && msg.imageBase64.isNotEmpty) {
+                      return Align(
+                        alignment: isMe
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Theme.of(context).dividerColor,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: isMe
+                                ? CrossAxisAlignment.end
+                                : CrossAxisAlignment.start,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.memory(
+                                  base64Decode(msg.imageBase64),
+                                  width: 200,
+                                  fit: BoxFit.cover,
+                                  errorBuilder:
+                                      (context, error, stackTrace) =>
+                                          const Icon(Icons.broken_image,
+                                              size: 48),
+                                ),
+                              ),
+                              if (msg.imageFilename.isNotEmpty)
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.only(top: 4, left: 4),
+                                  child: Text(
+                                    msg.imageFilename,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Theme.of(context).disabledColor,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       );
@@ -4005,6 +4068,7 @@ class _ChatMessagesList extends StatefulWidget {
     required this.onLongPress,
     required this.onImageTap,
     this.replyToMessageId,
+    this.onQuoteTap,
   });
 
   final List<ChatMessage> messages;
@@ -4017,6 +4081,7 @@ class _ChatMessagesList extends StatefulWidget {
   final void Function(ChatMessage message) onLongPress;
   final void Function(ChatMessage message, int index) onImageTap;
   final String? replyToMessageId;
+  final void Function(String quoteText)? onQuoteTap;
 
   @override
   State<_ChatMessagesList> createState() => _ChatMessagesListState();
@@ -4084,6 +4149,27 @@ class _ChatMessagesListState extends State<_ChatMessagesList> {
     );
   }
 
+  void _navigateToQuote(String quoteText) {
+    // Normalize the quote text: remove [photo:...] and [voice] markers
+    var cleaned = quoteText
+        .replaceAll(RegExp(r'\[photo:.+?\]\s*'), '')
+        .replaceAll('[voice] ', '')
+        .trim();
+    // Extract the part after "Name: "
+    final colonIdx = cleaned.indexOf(': ');
+    final quotedCore =
+        colonIdx >= 0 ? cleaned.substring(colonIdx + 2).trim() : cleaned;
+    if (quotedCore.isEmpty) return;
+    // Find first message where textFor(msg) starts with or contains quotedCore
+    for (final msg in widget.messages) {
+      final msgText = widget.textFor(msg);
+      if (msgText.startsWith(quotedCore) || msgText.contains(quotedCore)) {
+        scrollToMessage(msg.id);
+        return;
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
@@ -4104,7 +4190,25 @@ class _ChatMessagesListState extends State<_ChatMessagesList> {
           imageUrl: widget.imageUrlFor(message),
           onLongPress: () => widget.onLongPress(message),
           onImageTap: (index) => widget.onImageTap(message, index),
-          onQuoteTap: null, // wired when scroll target available
+          onQuoteTap: () {
+            final t = widget.textFor(message);
+            if (t.startsWith('> ') &&
+                t.contains('\n') &&
+                message.messageType == 'text') {
+              final parts = t.split('\n');
+              final qLines = <String>[];
+              var inReply = false;
+              for (final line in parts) {
+                if (!inReply && line.startsWith('> ')) {
+                  qLines.add(line.substring(2));
+                } else {
+                  inReply = true;
+                }
+              }
+              final quote = qLines.join('\n');
+              if (quote.isNotEmpty) _navigateToQuote(quote);
+            }
+          },
         );
       },
     );
@@ -4270,7 +4374,7 @@ class _ChatMessageBubble extends StatelessWidget {
           ),
           if (replyText.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(replyText, style: const TextStyle(fontSize: 15)),
+            _buildTextWithLinks(replyText, context),
           ],
         ],
       );
@@ -4308,7 +4412,48 @@ class _ChatMessageBubble extends StatelessWidget {
         ],
       );
     }
+    if (message.messageType == 'text') {
+      return _buildTextWithLinks(text, context);
+    }
     return Text(text);
+  }
+
+  static final RegExp _urlRegex = RegExp(r'(https?://[^\s]+|www\.[^\s]+\.[^\s]+)');
+
+  Widget _buildTextWithLinks(String text, BuildContext context) {
+    final matches = _urlRegex.allMatches(text);
+    if (matches.isEmpty) {
+      return Text(text);
+    }
+    final spans = <InlineSpan>[];
+    int lastEnd = 0;
+    for (final match in matches) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(text: text.substring(lastEnd, match.start)));
+      }
+      final url = match.group(0)!;
+      final uri = Uri.tryParse(url.startsWith('www.') ? 'https://$url' : url);
+      spans.add(
+        TextSpan(
+          text: url,
+          style: const TextStyle(
+            color: Colors.blue,
+            decoration: TextDecoration.underline,
+          ),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () {
+              if (uri != null) {
+                launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+        ),
+      );
+      lastEnd = match.end;
+    }
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastEnd)));
+    }
+    return Text.rich(TextSpan(children: spans));
   }
 
   List<String> _messageImageUrls() {

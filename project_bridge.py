@@ -332,8 +332,8 @@ class ProjectSession:
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         return f"{safe_stem}_{stamp}{ext}"
 
-    def _broadcast(self, msg_type: str, text: str) -> None:
-        event = self._append_event(msg_type, text)
+    def _broadcast(self, msg_type: str, text: str, **extra) -> None:
+        event = self._append_event(msg_type, text, **extra)
         if not self.writers:
             _log("session", f"{self.project_id} broadcast with 0 writers!")
             return
@@ -380,7 +380,7 @@ class ProjectSession:
             + b"\n"
         )
 
-    def _append_event(self, msg_type: str, text: str) -> dict:
+    def _append_event(self, msg_type: str, text: str, **extra) -> dict:
         event = {
             "type": msg_type,
             "text": text,
@@ -388,6 +388,7 @@ class ProjectSession:
             "session_id": self.session_id,
             "ts": int(time.time()),
         }
+        event.update(extra)
         try:
             self._session_dir.mkdir(parents=True, exist_ok=True)
             with self._session_log_path().open("a", encoding="utf-8") as handle:
@@ -600,6 +601,14 @@ class TunnelClient:
                         session._broadcast(
                             "status",
                             f"Фото сохранено: {rel_text}",
+                        )
+                        # Echo image data back so mobile can display it inline
+                        session._broadcast(
+                            "image",
+                            str(saved.name),
+                            data_base64=data_base64,
+                            mime_type=mime_type,
+                            filename=str(saved.name),
                         )
                         if caption:
                             session.write(f"{caption}\n\nФайл фото: {rel_text}")
