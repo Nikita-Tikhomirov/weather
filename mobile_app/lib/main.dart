@@ -2889,6 +2889,11 @@ class _HomePageState extends State<HomePage> {
                 onPressed: _sendProjectPhotos,
                 icon: const Icon(Icons.image_outlined),
               ),
+              IconButton(
+                tooltip: 'Файлы проекта',
+                onPressed: () => _openProjectFileManager(project),
+                icon: const Icon(Icons.folder_open),
+              ),
               const SizedBox(width: 4),
               Expanded(
                 child: TextField(
