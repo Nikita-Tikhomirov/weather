@@ -1,6 +1,6 @@
 # Laravel Migration Progress
 
-Last update: 2026-04-23 (Europe/Moscow)
+Last update: 2026-05-15 (Europe/Moscow)
 
 ## Current Mode
 - Deployment mode: IP-only (no domain)
@@ -12,8 +12,8 @@ Last update: 2026-04-23 (Europe/Moscow)
 - [x] Phase 0: contract freeze + migration checklist approved
 - [x] Phase 1: VPS prepared, Laravel installed, nginx/php-fpm running on server
 - [x] Phase 2: data layer parity in Laravel (tables + domain rules)
-- [~] Phase 3: API compatibility layer (`/sync_*` + `/sync/*`) + push outbox wiring in progress
-- [ ] Phase 4: dual-run verification + client cutover sequence
+- [x] Phase 3: API compatibility layer (`/sync_*` + `/sync/*`) + push outbox wiring complete
+- [~] Phase 4: dual-run verification + client cutover sequence
 
 ## Completed In This Checkpoint
 1. Switched desktop/backend runtime default to VPS IP:
@@ -88,6 +88,25 @@ Last update: 2026-04-23 (Europe/Moscow)
    - server verification:
      - `php artisan test --testsuite=Unit,Feature` -> `PASS` (16 tests, 50 assertions)
      - live smoke `/sync_push.php` and `/push_outbox_retry.php` -> push contract active, currently `disabled=true` until FCM credentials are set in `.env`
+10. FCM credentials configured and push pipeline verified (2026-05-15):
+   - FCM credentials in `.env`: `FCM_PROJECT_ID`, `FCM_CLIENT_EMAIL`, `FCM_PRIVATE_KEY`
+   - `php artisan optimize:clear` executed, all caches rebuilt
+   - push outbox stats: 639 sent, 31 failed (invalid device tokens, properly marked `unregistered`)
+   - device_tokens: 33 registered devices, inactive tokens correctly marked
+   - push_outbox retry endpoint: active, returns `{"ok":true,"result":{"disabled":false,...}}`
+   - FCM key format: stored with escaped `\n` in `.env`, converted to real newlines by `FcmPushGateway::privateKey()` via `str_replace('\n', "\n", ...)`
+11. Full smoke verification (2026-05-15):
+   - `GET /health` -> `{"ok":true}` PASS
+   - `GET /sync/pull` (snapshot) -> PASS, returns tasks with `owner_key` field
+   - `GET /sync/pull.php` (legacy) -> PASS
+   - `GET /sync/changes?cursor=...` -> PASS
+   - `GET /sync_changes.php` (legacy) -> PASS
+   - `POST /devices/register` with `actor_profile=nik` -> PASS (`{"ok":true,...}`)
+   - `POST /push_outbox_retry.php` -> PASS
+   - API auth: `RequireApiKey` middleware active, `dev-local-key` bypass works, family-mode (empty `sync.api_key`) passes through
+   - `php artisan test --testsuite=Unit,Feature` -> 40 passed, 187 assertions (all PASS)
+   - DB schema verified: `tasks` uses `owner_key`, `device_tokens` uses `profile_key`, `family_tasks` uses `participants_json`
+   - 404 on `/health.php` is expected (nginx rewrite covers only legacy sync endpoints, not health)
 
 ## Known Constraints
 - IP mode currently uses HTTP (no TLS).
@@ -95,15 +114,19 @@ Last update: 2026-04-23 (Europe/Moscow)
 - Domain + HTTPS can be added later without changing migration phases.
 
 ## Next Step (Resume From Here)
-1. Set FCM credentials on VPS Laravel `.env`:
-   - `FCM_PROJECT_ID`
-   - `FCM_CLIENT_EMAIL`
-   - `FCM_PRIVATE_KEY` (escaped `\n`)
-2. Run:
-   - `php artisan optimize:clear`
-   - live test: register device token from app, push one event, verify `push.sent > 0`
-3. Then continue Phase 4 dual-run/cutover checklist.
+1. Phase 4 dual-run verification:
+   - Verify desktop Flutter client (`family_todo_mobile.exe`) syncs correctly against VPS Laravel backend
+   - Verify Android APK syncs correctly against VPS
+   - Verify Telegram bot outbox works through Laravel backend
+   - Verify push delivery end-to-end (APK receives FCM notification on task change)
+2. Client cutover:
+   - Once dual-run verification passes, switch all clients to use only Laravel backend
+   - Archive or remove old `backend_api/` PHP flat-file endpoints
+3. Domain + HTTPS (optional, independent of phases):
+   - Configure domain for VPS IP
+   - Enable Let's Encrypt TLS
+   - Remove `android:usesCleartextTraffic="true"` from AndroidManifest
 
 ## Quick Resume Prompt
 If context resets, start with:
-"Continue from `docs/laravel_migration_progress.md`, finish FCM env setup on VPS and verify mobile push delivery."
+"Continue from `docs/laravel_migration_progress.md`, begin Phase 4 dual-run verification."

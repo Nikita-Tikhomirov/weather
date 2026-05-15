@@ -10,6 +10,10 @@ dist/
 # Local browser bundle (too large for GitHub regular git)
 chrome-win64/
 
+# Temporary VPS diagnostic scripts (may contain credentials)
+_vps_*.py
+_vps_*.sh
+
 # Local runtime secrets
 sync_runtime.local.json
 backend_api/config.php
