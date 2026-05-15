@@ -264,6 +264,7 @@ class _HomePageState extends State<HomePage> {
   final List<BridgeMessage> _projectMessages = <BridgeMessage>[];
   List<ProjectFileNode> _projectFiles = const <ProjectFileNode>[];
   String _projectFileTreePath = '';
+  void Function(void Function())? _fileSheetSetState;
   List<ChatConversation> _chatConversations = const <ChatConversation>[];
   List<StickerPack> _chatStickerPacks = const <StickerPack>[];
   final Map<String, List<ChatMessage>> _chatMessagesByConversation =
@@ -1331,6 +1332,7 @@ class _HomePageState extends State<HomePage> {
               _projectFiles = msg.files;
               _projectFileTreePath = '';
             });
+            _fileSheetSetState?.call(() {});
           }
           setState(() => _projectMessages.add(msg));
         }
@@ -2966,6 +2968,7 @@ class _HomePageState extends State<HomePage> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            _fileSheetSetState = setSheetState;
             return _ProjectFileBrowser(
               project: project,
               files: _projectFiles,
@@ -3001,7 +3004,7 @@ class _HomePageState extends State<HomePage> {
         );
       },
     ).then((_) {
-      // Sheet closed
+      _fileSheetSetState = null;
     });
   }
 
