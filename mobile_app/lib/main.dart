@@ -2251,6 +2251,17 @@ class _HomePageState extends State<HomePage> {
                   _openStickerSheet(store);
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.folder_open),
+                title: const Text('Файлы проекта'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  final project = _projectByConversationKey(_activeConversationKey);
+                  if (project != null) {
+                    _openProjectFileManager(project);
+                  }
+                },
+              ),
             ],
           ),
         );
@@ -2969,10 +2980,8 @@ class _HomePageState extends State<HomePage> {
               onLinkToChat: (filePath) {
                 final text = 'Файл: $filePath';
                 _chatInputCtl.text = text;
-                // Close sheet
+                // Close sheet so user can continue editing before sending
                 Navigator.of(sheetContext).pop();
-                // Send as project message
-                _sendProjectMessageText(text);
               },
               onOpenFile: (filePath) {
                 _projectBridge?.requestFileList(filePath);
@@ -5614,6 +5623,8 @@ class _ProjectFileBrowser extends StatelessWidget {
                       onTap: () {
                         if (node.isDir) {
                           onOpenFile(node.path);
+                        } else {
+                          _showFileDetail(context, node, onLinkToChat);
                         }
                       },
                       onLink: () => onLinkToChat(node.path),
@@ -5622,6 +5633,68 @@ class _ProjectFileBrowser extends StatelessWidget {
                 ),
               ),
           ],
+        );
+      },
+    );
+  }
+
+  static void _showFileDetail(
+    BuildContext context,
+    ProjectFileNode node,
+    void Function(String) onLinkToChat,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final cs = Theme.of(sheetContext).colorScheme;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.insert_drive_file_outlined,
+                        size: 40, color: cs.primary),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(node.name,
+                              style: const TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 4),
+                          Text(node.sizeLabel,
+                              style: TextStyle(
+                                  color: cs.onSurface.withOpacity(0.6))),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(node.path,
+                    style: TextStyle(
+                        fontSize: 12, color: cs.onSurface.withOpacity(0.5))),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      Navigator.of(sheetContext).pop();
+                      onLinkToChat(node.path);
+                    },
+                    icon: const Icon(Icons.attachment),
+                    label: const Text('Ссылка в чат'),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
