@@ -22,6 +22,8 @@ class BridgeMessage {
     this.imageMimeType = '',
     this.imageFilename = '',
     this.files = const [],
+    this.filePath = '',
+    this.fileSize = 0,
   });
 
   final String type;
@@ -35,6 +37,8 @@ class BridgeMessage {
   final String imageMimeType;
   final String imageFilename;
   final List<ProjectFileNode> files;
+  final String filePath;
+  final int fileSize;
 
   factory BridgeMessage.fromJson(Map<String, dynamic> json) {
     return BridgeMessage(
@@ -60,6 +64,8 @@ class BridgeMessage {
               .map(ProjectFileNode.fromJson)
               .toList() ??
           const [],
+      filePath: (json['path'] ?? '').toString(),
+      fileSize: int.tryParse((json['size'] ?? 0).toString()) ?? 0,
     );
   }
 
@@ -73,6 +79,11 @@ class BridgeMessage {
   bool get isHistory => type == 'history';
   bool get isSessionInfo => type == 'session_info';
   bool get isFiles => type == 'files';
+  bool get isFileContent => type == 'file_content';
+
+  String get fileContentText => text;
+  String get fileContentPath => projectId.isNotEmpty ? '$projectId:$text' : text;
+  String get fileContentError => text.startsWith('Error:') ? text : '';
 }
 
 /// Manages TCP connection to the remote Project Bridge Server running on PC.
@@ -388,6 +399,18 @@ class ProjectBridgeService {
           'type': 'list_files',
           'path': path,
           'recursive': false,
+        })}\n');
+  }
+
+  /// Request file content for viewing.
+  void requestFileContent(String path) {
+    if (!isConnected) {
+      _scheduleReconnect();
+      return;
+    }
+    _sendRaw('${jsonEncode({
+          'type': 'read_file',
+          'path': path,
         })}\n');
   }
 

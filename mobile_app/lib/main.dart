@@ -1334,6 +1334,15 @@ class _HomePageState extends State<HomePage> {
             });
             _fileSheetSetState?.call(() {});
           }
+          if (msg.isFileContent) {
+            setState(() {
+              _projectMessages.add(msg);
+            });
+            if (mounted) {
+              _showFileContentViewer(msg);
+            }
+            return;
+          }
           setState(() => _projectMessages.add(msg));
         }
       },
@@ -2640,9 +2649,9 @@ class _HomePageState extends State<HomePage> {
 
     return Column(
       children: [
-        // Chat header with back button
+        // Chat header — two rows: [back avatar buttons] / [name + connection]
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
@@ -2650,74 +2659,88 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () {
-                  setState(() => _activeConversationKey = '');
-                  _projectBridge?.dispose();
-                  _projectBridge = null;
-                  _projectMessages.clear();
-                },
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () {
+                      setState(() => _activeConversationKey = '');
+                      _projectBridge?.dispose();
+                      _projectBridge = null;
+                      _projectMessages.clear();
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                  CircleAvatar(
+                    radius: 18,
+                    child: Icon(_projectIcon(project.icon), size: 20),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    tooltip: 'Запустить bridge',
+                    icon: const Icon(Icons.power_settings_new),
+                    onPressed: () => _requestProjectBridgeStart(project),
+                  ),
+                  IconButton(
+                    tooltip: 'Новая сессия',
+                    icon: const Icon(Icons.add_to_queue),
+                    onPressed: _startNewProjectSession,
+                  ),
+                  IconButton(
+                    tooltip: 'Остановить DeepSeek',
+                    icon: const Icon(Icons.stop_circle_outlined),
+                    onPressed: _stopProjectPrompt,
+                  ),
+                  IconButton(
+                    tooltip: 'Настроить сервер',
+                    icon: const Icon(Icons.settings),
+                    onPressed: () => _openBridgeSettings(),
+                  ),
+                  IconButton(
+                    tooltip: 'Файлы проекта',
+                    icon: const Icon(Icons.folder_open),
+                    onPressed: () => _openProjectFileManager(project),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              CircleAvatar(
-                child: Icon(_projectIcon(project.icon)),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              Padding(
+                padding: const EdgeInsets.only(left: 48, bottom: 4),
+                child: Row(
                   children: [
-                    Text(
-                      project.name,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    FutureBuilder<String>(
-                      future: ProjectBridgeService.getServerAddress(),
-                      builder: (context, snapshot) {
-                        final addr = snapshot.data ?? '...';
-                        return Text(
-                          bridge?.isConnected == true
-                              ? 'Подключено • $addr'
-                              : 'Подключение к $addr...',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: bridge?.isConnected == true
-                                ? Colors.green
-                                : Colors.grey,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            project.name,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 13),
                           ),
-                        );
-                      },
+                          FutureBuilder<String>(
+                            future: ProjectBridgeService.getServerAddress(),
+                            builder: (context, snapshot) {
+                              final addr = snapshot.data ?? '...';
+                              return Text(
+                                bridge?.isConnected == true
+                                    ? 'Подключено • $addr'
+                                    : 'Подключение к $addr...',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: bridge?.isConnected == true
+                                      ? Colors.green
+                                      : Colors.grey,
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-              IconButton(
-                tooltip: 'Запустить bridge',
-                icon: const Icon(Icons.power_settings_new),
-                onPressed: () => _requestProjectBridgeStart(project),
-              ),
-              IconButton(
-                tooltip: 'Новая сессия',
-                icon: const Icon(Icons.add_to_queue),
-                onPressed: _startNewProjectSession,
-              ),
-              IconButton(
-                tooltip: 'Остановить DeepSeek',
-                icon: const Icon(Icons.stop_circle_outlined),
-                onPressed: _stopProjectPrompt,
-              ),
-              IconButton(
-                tooltip: 'Настроить сервер',
-                icon: const Icon(Icons.settings),
-                onPressed: () => _openBridgeSettings(),
-              ),
-              IconButton(
-                tooltip: 'Файлы проекта',
-                icon: const Icon(Icons.folder_open),
-                onPressed: () => _openProjectFileManager(project),
               ),
             ],
           ),
@@ -2992,6 +3015,10 @@ class _HomePageState extends State<HomePage> {
                 // Close sheet so user can continue editing before sending
                 Navigator.of(sheetContext).pop();
               },
+              onViewFile: (filePath) {
+                _projectBridge?.requestFileContent(filePath);
+                Navigator.of(sheetContext).pop();
+              },
               onOpenFile: (filePath) {
                 _projectBridge?.requestFileList(filePath);
                 setState(() {
@@ -3006,6 +3033,100 @@ class _HomePageState extends State<HomePage> {
     ).then((_) {
       _fileSheetSetState = null;
     });
+  }
+
+  void _showFileContentViewer(BridgeMessage msg) {
+    final content = msg.text;
+    final path = msg.filePath.isNotEmpty ? msg.filePath : msg.projectId;
+    final hasError = content.isEmpty || content.startsWith('Error:');
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.4,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            return SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            path.isNotEmpty ? path.split('/').last : 'Файл',
+                            style: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        if (!hasError)
+                          IconButton(
+                            tooltip: 'Копировать всё',
+                            icon: const Icon(Icons.copy),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: content));
+                              ScaffoldMessenger.of(sheetContext).showSnackBar(
+                                const SnackBar(
+                                    content: Text('Скопировано в буфер'),
+                                    duration: Duration(seconds: 1)),
+                              );
+                            },
+                          ),
+                        IconButton(
+                          tooltip: 'Закрыть',
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.of(sheetContext).pop(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (path.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(path,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: Theme.of(sheetContext)
+                                  .colorScheme
+                                  .onSurface
+                                  .withOpacity(0.5))),
+                    ),
+                  const Divider(),
+                  Expanded(
+                    child: hasError
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(content.isEmpty
+                                  ? 'Файл пуст'
+                                  : content.replaceFirst('Error: ', '')),
+                            ),
+                          )
+                        : SingleChildScrollView(
+                            controller: scrollController,
+                            padding: const EdgeInsets.all(12),
+                            child: SelectableText(
+                              content,
+                              style: const TextStyle(
+                                fontFamily: 'monospace',
+                                fontSize: 13,
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   void _sendProjectMessageText(String text) {
@@ -4198,6 +4319,10 @@ class _ChatMessagesList extends StatefulWidget {
 
 class _ChatMessagesListState extends State<_ChatMessagesList> {
   final ScrollController _controller = ScrollController();
+  final Map<String, GlobalKey> _itemKeys = <String, GlobalKey>{};
+
+  GlobalKey _keyFor(String id) =>
+      _itemKeys.putIfAbsent(id, () => GlobalKey(debugLabel: 'msg-$id'));
 
   @override
   void initState() {
@@ -4244,17 +4369,13 @@ class _ChatMessagesListState extends State<_ChatMessagesList> {
   }
 
   void scrollToMessage(String messageId) {
-    if (!_controller.hasClients) return;
-    final index = widget.messages.indexWhere((m) => m.id == messageId);
-    if (index < 0) return;
-    final itemHeight = 80.0;
-    final estimatedOffset = index * itemHeight;
-    final maxScroll = _controller.position.maxScrollExtent;
-    final target = estimatedOffset.clamp(0.0, maxScroll);
-    _controller.animateTo(
-      target,
+    final key = _itemKeys[messageId];
+    if (key?.currentContext == null) return;
+    Scrollable.ensureVisible(
+      key!.currentContext!,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOut,
+      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
     );
   }
 
@@ -4289,7 +4410,7 @@ class _ChatMessagesListState extends State<_ChatMessagesList> {
         final message = widget.messages[index];
         final mine = message.senderProfile == widget.owner;
         return _ChatMessageBubble(
-          key: ValueKey(message.id),
+          key: _keyFor(message.id),
           message: message,
           mine: mine,
           compact: widget.compact,
@@ -5520,6 +5641,7 @@ class _ProjectFileBrowser extends StatelessWidget {
     required this.onRefresh,
     required this.onLinkToChat,
     required this.onOpenFile,
+    this.onViewFile,
   });
 
   final ProjectContact project;
@@ -5529,6 +5651,7 @@ class _ProjectFileBrowser extends StatelessWidget {
   final VoidCallback onRefresh;
   final void Function(String filePath) onLinkToChat;
   final void Function(String dirPath) onOpenFile;
+  final void Function(String path)? onViewFile;
 
   @override
   Widget build(BuildContext context) {
@@ -5633,7 +5756,8 @@ class _ProjectFileBrowser extends StatelessWidget {
                         if (node.isDir) {
                           onOpenFile(node.path);
                         } else {
-                          _showFileDetail(context, node, onLinkToChat);
+                          _showFileDetail(context, node, onLinkToChat,
+                              onViewFile: onViewFile);
                         }
                       },
                       onLink: () => onLinkToChat(node.path),
@@ -5650,8 +5774,9 @@ class _ProjectFileBrowser extends StatelessWidget {
   static void _showFileDetail(
     BuildContext context,
     ProjectFileNode node,
-    void Function(String) onLinkToChat,
-  ) {
+    void Function(String) onLinkToChat, {
+    void Function(String)? onViewFile,
+  }) {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -5690,6 +5815,21 @@ class _ProjectFileBrowser extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 12, color: cs.onSurface.withOpacity(0.5))),
                 const SizedBox(height: 20),
+                if (onViewFile != null) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.of(sheetContext).pop();
+                        onViewFile!(node.path);
+                      },
+                      icon: const Icon(Icons.visibility),
+                      label: const Text('Просмотр'),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(

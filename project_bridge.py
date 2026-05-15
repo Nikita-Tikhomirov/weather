@@ -623,6 +623,16 @@ class TunnelClient:
                         )
                         await writer.drain()
                         continue
+                    if msg.get("type") == "read_file":
+                        writer.write(
+                            json.dumps(
+                                self._read_file(project_id, project_dir, msg),
+                                ensure_ascii=False,
+                            ).encode("utf-8")
+                            + b"\n"
+                        )
+                        await writer.drain()
+                        continue
                     if msg.get("type") == "send":
                         text = str(msg.get("text", ""))
                         if text and session and session.running:
@@ -716,6 +726,33 @@ class TunnelClient:
                 "files": [node] if node else [],
                 "path": rel,
             }
+
+    def _read_file(
+        self, project_id: str, project_dir: str, msg: dict
+    ) -> dict:
+        """Read a file's content and return it as text (up to 64 KB)."""
+        base = Path(project_dir).resolve()
+        rel = str(msg.get("path", "")).strip().lstrip("/").lstrip("\\")
+        target = (base / rel).resolve() if rel else None
+        if target is None or not target.exists() or not target.is_file():
+            return {"type": "file_content", "project_id": project_id, "path": rel, "text": "", "error": "File not found"}
+        try:
+            target.relative_to(base)
+        except ValueError:
+            return {"type": "file_content", "project_id": project_id, "path": rel, "text": "", "error": "Access denied"}
+        try:
+            raw = target.read_bytes()
+            # Try UTF-8 first, fallback to latin-1
+            try:
+                text = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                text = raw.decode("latin-1")
+            # Truncate to 64 KB
+            if len(text) > 65536:
+                text = text[:65536] + "\n... (truncated)"
+            return {"type": "file_content", "project_id": project_id, "path": rel, "text": text, "size": len(raw)}
+        except Exception as exc:
+            return {"type": "file_content", "project_id": project_id, "path": rel, "text": "", "error": str(exc)}
 
     async def stop(self) -> None:
         for task in self._tasks:
