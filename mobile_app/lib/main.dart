@@ -28,6 +28,7 @@ import 'services/fcm_service.dart';
 import 'services/local_db.dart';
 import 'state/task_store.dart';
 
+/// Human-readable labels for actor profiles shown in UI.
 const kProfileLabels = {
   'nik': 'Ник',
   'nastya': 'Настя',
