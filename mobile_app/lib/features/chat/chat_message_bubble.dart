@@ -370,10 +370,10 @@ class ChatMessageBubble extends StatelessWidget {
             padding: EdgeInsets.only(bottom: i < urls.length - 1 ? 8 : 0),
             child: GestureDetector(
               onTap: () {
-                // Open video externally via platform channel
-                final url = _bubbleAssetUrl(urls[i]);
-                const ch = MethodChannel('family_todo_mobile/voice');
-                ch.invokeMethod('playVoice', {'url': url});
+                final uri = Uri.tryParse(_bubbleAssetUrl(urls[i]));
+                if (uri != null) {
+                  launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
               },
               child: Stack(
                 alignment: Alignment.center,
