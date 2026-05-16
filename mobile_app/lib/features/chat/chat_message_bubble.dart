@@ -111,12 +111,16 @@ class ChatMessageBubble extends StatelessWidget {
       }
       final quoteText = quoteLines.join('\n');
       final replyText = replyLines.join('\n');
-      // Check for photo preview
+      // Check for media preview markers
       final photoMatch = RegExp(r'\[photo:(.+?)\]').firstMatch(quoteText);
+      final videoMatch = RegExp(r'\[video:(.+?)\]').firstMatch(quoteText);
       final hasVoice = quoteText.contains('[voice]');
+      final hasAudio = quoteText.contains('[audio]');
       final cleanQuote = quoteText
           .replaceAll(RegExp(r'\[photo:.+?\]\s*'), '')
-          .replaceAll('[voice] ', '');
+          .replaceAll(RegExp(r'\[video:.+?\]\s*'), '')
+          .replaceAll('[voice] ', '')
+          .replaceAll('[audio] ', '');
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -147,11 +151,32 @@ class ChatMessageBubble extends StatelessWidget {
                         ),
                       ),
                     ),
+                  if (videoMatch != null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Image.network(
+                          _bubbleAssetUrl(videoMatch.group(1)!),
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              const Icon(Icons.videocam, size: 40, color: Color(0xFF6B7280)),
+                        ),
+                      ),
+                    ),
                   if (hasVoice)
                     const Padding(
                       padding: EdgeInsets.only(right: 8),
                       child:
                           Icon(Icons.mic, size: 24, color: Color(0xFF6B7280)),
+                    ),
+                  if (hasAudio)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 8),
+                      child:
+                          Icon(Icons.audiotrack, size: 24, color: Color(0xFF6B7280)),
                     ),
                   Expanded(
                     child: Text(
@@ -173,6 +198,13 @@ class ChatMessageBubble extends StatelessWidget {
     }
     if (message.messageType == 'voice') {
       return _buildVoiceBubble(context);
+    }
+    if (message.messageType == 'video' ||
+        message.messageType == 'video_group') {
+      return _buildVideoBubble(context);
+    }
+    if (message.messageType == 'audio') {
+      return _buildAudioBubble(context);
     }
     if (message.messageType == 'sticker') {
       if (stickerAssetUrl.isNotEmpty &&
@@ -320,6 +352,103 @@ class ChatMessageBubble extends StatelessWidget {
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: mine ? cs.onPrimaryContainer : cs.onSurface),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoBubble(BuildContext context) {
+    final urls = _messageImageUrls();
+    if (urls.isEmpty) {
+      return Text(text.isEmpty ? 'Видео' : text);
+    }
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < urls.length; i++)
+          Padding(
+            padding: EdgeInsets.only(bottom: i < urls.length - 1 ? 8 : 0),
+            child: GestureDetector(
+              onTap: () => onImageTap(i),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      _bubbleAssetUrl(urls[i]),
+                      fit: BoxFit.cover,
+                      width: compact ? 260 : 420,
+                      height: compact ? 180 : 280,
+                      errorBuilder: (_, __, ___) => Container(
+                        width: compact ? 260 : 420,
+                        height: compact ? 180 : 280,
+                        decoration: BoxDecoration(
+                          color: cs.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.videocam, size: 48),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.play_arrow,
+                      color: Colors.white,
+                      size: 36,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        if (text.trim().isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(text),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildAudioBubble(BuildContext context) {
+    final urls = _messageImageUrls();
+    final audioUrl = urls.isNotEmpty ? urls.first : _bubbleAssetUrl(imageUrl);
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: () {
+        const ch = MethodChannel('family_todo_mobile/voice');
+        ch.invokeMethod('playVoice', {'url': audioUrl});
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: mine ? cs.primaryContainer : cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.audiotrack,
+                size: 28,
+                color: mine ? cs.onPrimaryContainer : cs.onSurfaceVariant),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                text.isNotEmpty ? text : 'Аудио',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: mine ? cs.onPrimaryContainer : cs.onSurface,
+                ),
+              ),
             ),
           ],
         ),

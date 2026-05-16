@@ -108,15 +108,22 @@ function recipient_adults_except_actor(string $actor): array
 function recipients_for_push(string $actor, string $entity, string $action, array $payload): array
 {
     // Notification contract:
-    // - family_task CRUD routes to all 4 profiles (nik, nastya, misha, arisha)
-    // - personal task routes only to task owner profile
+    // - family_task CRUD routes to all family profiles except the actor
+    // - personal task routes only to task owner (skip if owner is the actor)
     if ($entity === 'family_task') {
-        return FAMILY_NOTIFICATION_PROFILES;
+        return array_values(array_filter(
+            FAMILY_NOTIFICATION_PROFILES,
+            static fn (string $profile): bool => $profile !== $actor,
+        ));
     }
 
     $owner = trim((string)($payload['owner_key'] ?? $actor));
     if ($owner === '') {
         $owner = $actor;
+    }
+    // Don't push own task changes back to the actor
+    if ($owner === $actor) {
+        return [];
     }
     if (in_array($owner, ALLOWED_PROFILES, true)) {
         return [$owner];

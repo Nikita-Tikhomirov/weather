@@ -13,7 +13,9 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private var sharedText: String? = null
     private var sharedImageUris: ArrayList<String>? = null
+    private var sharedVideoUris: ArrayList<String>? = null
     private var shareChannel: MethodChannel? = null
+    private var pendingSharePayload: Map<String, Any>? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -80,6 +82,15 @@ class MainActivity : FlutterActivity() {
         )
         shareChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
+                "ready" -> {
+                    // Flutter is ready to receive share data — deliver any pending share
+                    val pending = pendingSharePayload
+                    pendingSharePayload = null
+                    if (pending != null) {
+                        shareChannel?.invokeMethod("onShareReceived", pending)
+                    }
+                    result.success(true)
+                }
                 "saveImage" -> {
                     val url = call.argument<String>("url") ?: return@setMethodCallHandler result.error("NO_URL", null, null)
                     Thread {
@@ -128,25 +139,14 @@ class MainActivity : FlutterActivity() {
         val type = intent.type ?: return
         sharedText = null
         sharedImageUris = null
+        sharedVideoUris = null
 
         if (type.startsWith("text/plain")) {
             sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
         } else if (type.startsWith("image/")) {
-            if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
-                val uris = intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
-                if (uris != null) {
-                    sharedImageUris = ArrayList()
-                    for (uri in uris) {
-                        sharedImageUris!!.add(uri.toString())
-                    }
-                }
-            } else {
-                val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
-                if (uri != null) {
-                    sharedImageUris = ArrayList()
-                    sharedImageUris!!.add(uri.toString())
-                }
-            }
+            sharedImageUris = extractUris(intent)
+        } else if (type.startsWith("video/")) {
+            sharedVideoUris = extractUris(intent)
         }
 
         val payload = mutableMapOf<String, Any>()
@@ -156,8 +156,32 @@ class MainActivity : FlutterActivity() {
         if (sharedImageUris != null) {
             payload["imageUris"] = sharedImageUris!!
         }
+        if (sharedVideoUris != null) {
+            payload["videoUris"] = sharedVideoUris!!
+        }
         if (payload.isNotEmpty()) {
+            // Buffer if Flutter hasn't registered the share handler yet;
+            // it will be delivered once the Flutter side sends the "ready" signal.
+            pendingSharePayload = payload
             shareChannel?.invokeMethod("onShareReceived", payload)
         }
+    }
+
+    private fun extractUris(intent: Intent): ArrayList<String> {
+        val uris = ArrayList<String>()
+        if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
+            val list = intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+            if (list != null) {
+                for (uri in list) {
+                    uris.add(uri.toString())
+                }
+            }
+        } else {
+            val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+            if (uri != null) {
+                uris.add(uri.toString())
+            }
+        }
+        return uris
     }
 }

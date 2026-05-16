@@ -80,11 +80,13 @@ class _HomePageState extends State<HomePage> {
       <String, List<ChatMessage>>{};
   String _activeConversationKey = '';
   String _currentProfileDisplayName = '';
+  String _currentProfilePhone = '';
   ChatMessage? _replyToMessage;
   bool _isRecording = false;
   String? _voicePath;
   Timer? _voiceTimer;
   int _voiceSec = 0;
+  Map<String, dynamic>? _pendingPushData;
 
   bool get _isDesktopWindows =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
@@ -100,6 +102,8 @@ class _HomePageState extends State<HomePage> {
     final savedOwner = prefs.getString('actor_profile')?.trim() ?? '';
     _currentProfileDisplayName =
         prefs.getString('profile_display_name')?.trim() ?? '';
+    _currentProfilePhone =
+        prefs.getString('profile_phone')?.trim() ?? '';
     final api = ApiClient(
       baseUrl: const String.fromEnvironment(
         'API_BASE_URL',
@@ -149,6 +153,23 @@ class _HomePageState extends State<HomePage> {
       return;
     }
     setState(() => _store = store);
+
+    // Process push notification that arrived before initialization completed
+    final pending = _pendingPushData;
+    if (pending != null) {
+      _pendingPushData = null;
+      // Re-invoke onOpenPush logic for the pending data
+      await _safeSyncDelta(store, showErrors: false);
+      store.setPage(4);
+      final conversationKey = (pending['conversation_key'] ?? '').trim();
+      if ((pending['entity'] ?? '') == 'chat_message' &&
+          conversationKey.isNotEmpty &&
+          !_isProjectConversation(conversationKey)) {
+        await _openConversation(store, conversationKey);
+      } else {
+        await _refreshActiveConversation(store, useNetwork: true, quiet: true);
+      }
+    }
   }
 
   Future<String> _ensureDeviceId(SharedPreferences prefs) async {
@@ -177,6 +198,7 @@ class _HomePageState extends State<HomePage> {
     await prefs.setString('profile_phone', session.phone);
     await prefs.setString('profile_display_name', session.displayName);
     _currentProfileDisplayName = session.displayName;
+    _currentProfilePhone = session.phone;
     return session.profileKey;
   }
 
@@ -245,6 +267,7 @@ class _HomePageState extends State<HomePage> {
                       if (mounted) {
                         setState(() {
                           _currentProfileDisplayName = session.displayName;
+                          _currentProfilePhone = session.phone;
                         });
                       }
                       if (dialogContext.mounted) {
@@ -765,6 +788,8 @@ class _HomePageState extends State<HomePage> {
       onOpenPush: (data) async {
         final store = _store;
         if (store == null) {
+          // Store for later processing once initialization completes
+          _pendingPushData = Map<String, dynamic>.from(data);
           return;
         }
         await _safeSyncDelta(store, showErrors: false);
@@ -862,6 +887,9 @@ class _HomePageState extends State<HomePage> {
       final imageUris =
           (args['imageUris'] as List?)?.map((e) => e.toString()).toList() ??
               const [];
+      final videoUris =
+          (args['videoUris'] as List?)?.map((e) => e.toString()).toList() ??
+              const [];
 
       // Wait a moment for UI to settle
       await Future.delayed(const Duration(milliseconds: 500));
@@ -947,6 +975,37 @@ class _HomePageState extends State<HomePage> {
             );
           }
         }
+        if (videoUris.isNotEmpty) {
+          final attachments = <ChatAttachment>[];
+          for (var i = 0; i < videoUris.length; i++) {
+            final uri = videoUris[i];
+            try {
+              final file = File(uri);
+              final bytes = await file.readAsBytes();
+              final uploaded = await api.chatUploadSticker(
+                actorProfile: store.owner.value,
+                bytes: bytes,
+                filename: 'shared_video.mp4',
+              );
+              attachments.add(ChatAttachment(
+                kind: 'video',
+                assetUrl: uploaded.assetUrl,
+                imageMeta: uploaded.imageMeta,
+                sortOrder: attachments.length,
+              ));
+            } catch (_) {
+              // skip videos that fail to read or upload
+            }
+          }
+          if (attachments.isNotEmpty) {
+            await api.chatSendMessage(
+              actorProfile: store.owner.value,
+              conversationKey: conversationKey,
+              messageType: attachments.length == 1 ? 'video' : 'video_group',
+              attachments: attachments,
+            );
+          }
+        }
         setState(() => _activeConversationKey = conversationKey);
         await _refreshConversation(store, conversationKey,
             useNetwork: true, quiet: true);
@@ -954,6 +1013,8 @@ class _HomePageState extends State<HomePage> {
         // silently ignore share errors
       }
     });
+    // Signal to Android that Flutter is ready to receive share data
+    channel.invokeMethod('ready');
   }
 
   Future<void> _initChat(TaskStore store) async {
@@ -1572,8 +1633,18 @@ class _HomePageState extends State<HomePage> {
                 ? replyTo.attachments.first.assetUrl
                 : '');
         finalText = '> $senderLabel: [photo:$url] ${replyTo.text}\n$text';
+      } else if (replyTo.messageType == 'video' ||
+                 replyTo.messageType == 'video_group') {
+        final url = (replyTo.imageUrl ?? '').isNotEmpty
+            ? replyTo.imageUrl!
+            : (replyTo.attachments.isNotEmpty
+                ? replyTo.attachments.first.assetUrl
+                : '');
+        finalText = '> $senderLabel: [video:$url] ${replyTo.text}\n$text';
       } else if (replyTo.messageType == 'voice') {
         finalText = '> $senderLabel: [voice] ${replyTo.text}\n$text';
+      } else if (replyTo.messageType == 'audio') {
+        finalText = '> $senderLabel: [audio] ${replyTo.text}\n$text';
       } else {
         finalText =
             '> $senderLabel: ${replyTo.text.split('\n').join('\n> ')}\n$text';
@@ -2034,6 +2105,55 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _pickAndSendVideo(TaskStore store) async {
+    final video = await _imagePicker.pickVideo(
+      source: ImageSource.gallery,
+    );
+    if (video == null) return;
+
+    final actor = store.owner.value;
+    final api = store.repository.api;
+    final db = store.repository.db;
+    final conversationKey = _activeConversationKey;
+
+    try {
+      final bytes = await video.readAsBytes();
+      final uploaded = await api.chatUploadSticker(
+        actorProfile: actor,
+        bytes: bytes,
+        filename: video.name,
+      );
+      final meta = Map<String, dynamic>.from(uploaded.imageMeta);
+
+      final attachment = ChatAttachment(
+        kind: 'video',
+        assetUrl: uploaded.assetUrl,
+        imageMeta: meta,
+        sortOrder: 0,
+      );
+
+      final message = await api.chatSendMessage(
+        actorProfile: actor,
+        conversationKey: conversationKey,
+        messageType: 'video',
+        attachments: [attachment],
+        clientMessageId: 'vid-${DateTime.now().microsecondsSinceEpoch}',
+      );
+      await db.upsertMessages([message]);
+      await _refreshConversation(
+        store,
+        conversationKey,
+        useNetwork: true,
+        quiet: true,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка отправки видео: $error')),
+      );
+    }
+  }
+
   Future<void> _openAttachMenu(TaskStore store) async {
     if (!mounted) return;
     await showModalBottomSheet<void>(
@@ -2059,6 +2179,14 @@ class _HomePageState extends State<HomePage> {
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _sendPhotos(store, source: ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.videocam_outlined),
+                title: const Text('Видео'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _pickAndSendVideo(store);
                 },
               ),
               ListTile(
@@ -2180,10 +2308,15 @@ class _HomePageState extends State<HomePage> {
       return _buildProjectChatView(store, compact: compact);
     }
 
+    // Only Nikita (+79679812438) sees project contacts
+    final visibleProjects = _currentProfilePhone == '+79679812438'
+        ? _projectContacts
+        : const <ProjectContact>[];
+
     return MessengerPage(
       conversations: _chatConversations,
       contacts: _phoneContacts.isEmpty ? _chatContacts : _phoneContacts,
-      projects: _projectContacts,
+      projects: visibleProjects,
       messages: messages,
       activeConversationKey: _activeConversationKey,
       owner: store.owner.value,
@@ -2745,6 +2878,13 @@ class _HomePageState extends State<HomePage> {
       final ms = (message.imageMeta['duration_ms'] as int?) ?? 0;
       final d = Duration(milliseconds: ms);
       return '🎤 ${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
+    }
+    if (message.messageType == 'video' ||
+        message.messageType == 'video_group') {
+      return message.text.isNotEmpty ? message.text : 'Видео';
+    }
+    if (message.messageType == 'audio') {
+      return message.text.isNotEmpty ? message.text : 'Аудио';
     }
     return message.text;
   }

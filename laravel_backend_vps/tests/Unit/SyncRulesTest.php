@@ -34,10 +34,27 @@ class SyncRulesTest extends TestCase
     }
 
     #[Test]
-    public function family_task_targets_all_profiles(): void
+    public function family_task_targets_excludes_actor(): void
     {
         $targets = SyncRules::recipientsForPush('nastya', 'family_task', 'upsert', []);
+        $this->assertSame(['nik', 'misha', 'arisha'], $targets);
+    }
+
+    #[Test]
+    public function family_task_targets_all_when_actor_not_in_list(): void
+    {
+        $targets = SyncRules::recipientsForPush('stranger', 'family_task', 'upsert', []);
         $this->assertSame(['nik', 'nastya', 'misha', 'arisha'], $targets);
+    }
+
+    #[Test]
+    public function personal_task_skips_push_when_owner_is_actor(): void
+    {
+        $targets = SyncRules::recipientsForPush('nik', 'task', 'upsert', [
+            'owner_key' => 'nik',
+            'is_family' => false,
+        ]);
+        $this->assertSame([], $targets);
     }
 
     #[Test]
