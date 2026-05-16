@@ -658,6 +658,55 @@ class TunnelClient:
         recursive = bool(msg.get("recursive", False))
         target = (base / rel).resolve() if rel else base
 
+        # Directories to skip: dependency / build / cache folders
+        # that are never interesting and slow down the file manager.
+        _SKIP_DIRS: set[str] = {
+            "node_modules",
+            "vendor",
+            ".venv",
+            "venv",
+            ".tox",
+            ".eggs",
+            "__pycache__",
+            ".pytest_cache",
+            ".mypy_cache",
+            ".ruff_cache",
+            ".git",
+            ".dart_tool",
+            "build",
+            "dist",
+            "target",
+            ".next",
+            ".nuxt",
+            ".output",
+            "bower_components",
+            ".gradle",
+            ".idea",
+            ".vscode",
+            ".vs",
+            "packages",
+            "Pods",
+            ".symlinks",
+            "storage",
+            "coverage",
+            ".nyc_output",
+            ".sass-cache",
+            ".parcel-cache",
+            ".turbo",
+            ".cache",
+            "cache",
+            ".angular",
+            "tmp",
+            ".serverless",
+            ".terraform",
+            ".cdk.staging",
+            ".vercel",
+            ".netlify",
+        }
+        _SKIP_PATHS: set[str] = {
+            "bootstrap/cache",
+        }
+
         # Security: stay inside project directory
         try:
             target.relative_to(base)
@@ -665,14 +714,18 @@ class TunnelClient:
             return {"type": "files", "project_id": project_id, "files": [], "path": rel}
 
         def _build_node(entry: Path, depth: int = 0) -> dict | None:
-            # Skip hidden files and deepseek internal state
             name = entry.name
+            if name in _SKIP_DIRS:
+                return None
+            # Skip hidden files and deepseek internal state
             if name.startswith(".") or name == "__pycache__":
                 if name != ".gitignore":  # Keep .gitignore visible
                     return None
             try:
                 rel_path = entry.relative_to(base).as_posix()
             except ValueError:
+                return None
+            if rel_path in _SKIP_PATHS:
                 return None
             if entry.is_dir():
                 children = []
