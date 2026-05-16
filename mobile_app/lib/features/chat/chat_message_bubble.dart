@@ -382,10 +382,25 @@ class ChatMessageBubble extends StatelessWidget {
           Padding(
             padding: EdgeInsets.only(bottom: i < urls.length - 1 ? 8 : 0),
             child: GestureDetector(
-              onTap: () {
+              onTap: () async {
                 final uri = Uri.tryParse(_bubbleAssetUrl(urls[i]));
-                if (uri != null) {
-                  launchUrl(uri, mode: LaunchMode.externalApplication);
+                if (uri == null) return;
+                try {
+                  final ok = await launchUrl(
+                    uri,
+                    mode: LaunchMode.externalApplication,
+                  );
+                  if (!ok && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Не удалось открыть видео')),
+                    );
+                  }
+                } catch (_) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Ошибка воспроизведения')),
+                    );
+                  }
                 }
               },
               child: Stack(
