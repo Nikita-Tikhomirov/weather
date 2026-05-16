@@ -2106,11 +2106,29 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  bool _videoUploading = false;
+
   Future<void> _pickAndSendVideo(TaskStore store) async {
     final video = await _imagePicker.pickVideo(
       source: ImageSource.gallery,
     );
     if (video == null) return;
+
+    // Check file size before proceeding
+    try {
+      final sizeBytes = await video.length();
+      const maxBytes = 190 * 1024 * 1024; // 190MB (server limit is 200MB)
+      if (sizeBytes > maxBytes) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Видео слишком большое. Максимум 190 МБ.')),
+          );
+        }
+        return;
+      }
+    } catch (_) {
+      // Can't check size, proceed anyway
+    }
 
     // Optional video caption
     String caption = '';
@@ -2148,6 +2166,10 @@ class _HomePageState extends State<HomePage> {
     final db = store.repository.db;
     final conversationKey = _activeConversationKey;
 
+    if (mounted) {
+      setState(() => _videoUploading = true);
+    }
+
     try {
       final bytes = await video.readAsBytes();
       final uploaded = await api.chatUploadSticker(
@@ -2184,6 +2206,10 @@ class _HomePageState extends State<HomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Ошибка отправки видео: $error')),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _videoUploading = false);
+      }
     }
   }
 
