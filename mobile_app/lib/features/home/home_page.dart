@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../app/app_labels.dart';
 import '../../app/app_theme.dart';
 import '../../domain/task_domain_service.dart';
+import '../chat/chat_photo_viewer.dart';
 import '../chat/messenger_page.dart';
 import '../family/family_view.dart';
 import '../projects/project_file_browser.dart';
@@ -2792,50 +2793,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _openPhotoViewer(ChatMessage message, int initialIndex) {
-    final urls = _messageImageUrls(message);
-    if (urls.isEmpty) {
-      return;
-    }
-    final controller = PageController(initialPage: initialIndex);
-    showDialog<void>(
+    showChatPhotoViewer(
       context: context,
-      builder: (dialogContext) {
-        return Dialog.fullscreen(
-          backgroundColor: Colors.black,
-          child: Stack(
-            children: [
-              PageView.builder(
-                controller: controller,
-                itemCount: urls.length,
-                itemBuilder: (context, index) {
-                  return InteractiveViewer(
-                    child: Center(
-                      child: Image.network(urls[index], fit: BoxFit.contain),
-                    ),
-                  );
-                },
-              ),
-              Positioned(
-                top: 24,
-                right: 12,
-                child: Row(
-                  children: [
-                    IconButton.filled(
-                      onPressed: () => _saveImageToGallery(urls[0]),
-                      icon: const Icon(Icons.download),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton.filled(
-                      onPressed: () => Navigator.of(dialogContext).pop(),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+      urls: _messageImageUrls(message),
+      initialIndex: initialIndex,
+      onSaveImage: _saveImageToGallery,
     );
   }
 
