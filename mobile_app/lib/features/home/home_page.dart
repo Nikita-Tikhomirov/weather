@@ -2112,6 +2112,37 @@ class _HomePageState extends State<HomePage> {
     );
     if (video == null) return;
 
+    // Optional video caption
+    String caption = '';
+    if (mounted) {
+      final captionCtl = TextEditingController();
+      final result = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Подпись к видео'),
+          content: TextField(
+            controller: captionCtl,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: 'Добавить подпись (необязательно)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, ''),
+              child: const Text('Пропустить'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, captionCtl.text.trim()),
+              child: const Text('Готово'),
+            ),
+          ],
+        ),
+      );
+      if (result != null) caption = result;
+    }
+
     final actor = store.owner.value;
     final api = store.repository.api;
     final db = store.repository.db;
@@ -2137,6 +2168,7 @@ class _HomePageState extends State<HomePage> {
         actorProfile: actor,
         conversationKey: conversationKey,
         messageType: 'video',
+        text: caption,
         attachments: [attachment],
         clientMessageId: 'vid-${DateTime.now().microsecondsSinceEpoch}',
       );

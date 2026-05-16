@@ -359,11 +359,24 @@ class ChatMessageBubble extends StatelessWidget {
     );
   }
 
+  List<String> _attachmentUrlsForKinds(List<String> kinds) {
+    final attachments = message.attachments
+        .where((item) =>
+            kinds.contains(item.kind) && item.assetUrl.trim().isNotEmpty)
+        .toList()
+      ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
+    if (attachments.isNotEmpty) {
+      return attachments.map((item) => item.assetUrl).toList();
+    }
+    return imageUrl.trim().isEmpty ? const [] : [imageUrl];
+  }
+
   Widget _buildVideoBubble(BuildContext context) {
-    final urls = _messageImageUrls();
+    final urls = _attachmentUrlsForKinds(['video']);
     final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 0; i < urls.length; i++)
           Padding(
@@ -415,7 +428,7 @@ class ChatMessageBubble extends StatelessWidget {
   }
 
   Widget _buildAudioBubble(BuildContext context) {
-    final urls = _messageImageUrls();
+    final urls = _attachmentUrlsForKinds(['audio']);
     final audioUrl = urls.isNotEmpty ? urls.first : _bubbleAssetUrl(imageUrl);
     final cs = Theme.of(context).colorScheme;
     return GestureDetector(
