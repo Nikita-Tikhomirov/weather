@@ -1663,8 +1663,9 @@ class _HomePageState extends State<HomePage> {
               conversationKey: conversationKey,
               messageType: 'text',
               text: finalText,
-              clientMessageId:
-                  'mobile-${DateTime.now().microsecondsSinceEpoch}',
+              clientMessageId: replyTo != null
+                  ? 'reply-${replyTo.id}-${DateTime.now().microsecondsSinceEpoch}'
+                  : 'mobile-${DateTime.now().microsecondsSinceEpoch}',
             )
           : await api.chatEditMessage(
               actorProfile: actor,

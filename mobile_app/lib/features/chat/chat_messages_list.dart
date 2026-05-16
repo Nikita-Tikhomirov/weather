@@ -149,22 +149,40 @@ class ChatMessagesListState extends State<ChatMessagesList> {
           onImageTap: (index) => widget.onImageTap(message, index),
           onQuoteTap: () {
             final t = widget.textFor(message);
-            if (t.startsWith('> ') &&
+            if (!(t.startsWith('> ') &&
                 t.contains('\n') &&
-                message.messageType == 'text') {
-              final parts = t.split('\n');
-              final qLines = <String>[];
-              var inReply = false;
-              for (final line in parts) {
-                if (!inReply && line.startsWith('> ')) {
-                  qLines.add(line.substring(2));
-                } else {
-                  inReply = true;
+                message.messageType == 'text')) {
+              return;
+            }
+
+            // Try ID-based navigation first: extract quoted message ID from clientMessageId
+            final cid = message.clientMessageId ?? '';
+            if (cid.startsWith('reply-')) {
+              final parts = cid.split('-');
+              // Format: reply-{quotedId}-{timestamp}
+              if (parts.length >= 3) {
+                final quotedId = parts[1];
+                // Validate it looks like a ULID or UUID (alphanumeric)
+                if (quotedId.isNotEmpty && RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(quotedId)) {
+                  scrollToMessage(quotedId);
+                  return;
                 }
               }
-              final quote = qLines.join('\n');
-              if (quote.isNotEmpty) _navigateToQuote(quote, excludeMessageId: message.id);
             }
+
+            // Fallback: text-based search
+            final parts = t.split('\n');
+            final qLines = <String>[];
+            var inReply = false;
+            for (final line in parts) {
+              if (!inReply && line.startsWith('> ')) {
+                qLines.add(line.substring(2));
+              } else {
+                inReply = true;
+              }
+            }
+            final quote = qLines.join('\n');
+            if (quote.isNotEmpty) _navigateToQuote(quote, excludeMessageId: message.id);
           },
         );
       },
