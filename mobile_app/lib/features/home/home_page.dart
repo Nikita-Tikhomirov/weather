@@ -17,6 +17,8 @@ import '../../domain/task_domain_service.dart';
 import '../chat/chat_messages_list.dart';
 import '../family/family_view.dart';
 import '../projects/project_file_browser.dart';
+import '../projects/project_chat_view.dart';
+import '../projects/project_icons.dart';
 import '../tasks/calendar_view.dart';
 import '../tasks/dashboard_view.dart';
 import '../tasks/tasks_board.dart';
@@ -2265,7 +2267,7 @@ class _HomePageState extends State<HomePage> {
                   ...projects.map((project) {
                     return ListTile(
                       leading: CircleAvatar(
-                        child: Icon(_projectIcon(project.icon)),
+                        child: Icon(projectIcon(project.icon)),
                       ),
                       title: Text(project.name),
                       subtitle: Text(project.path,
@@ -2441,322 +2443,36 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  IconData _projectIcon(String icon) {
-    switch (icon) {
-      case 'code':
-        return Icons.code;
-      case 'folder':
-        return Icons.folder;
-      case 'terminal':
-      default:
-        return Icons.terminal;
-    }
-  }
-
   Widget _buildProjectChatView(TaskStore store, {required bool compact}) {
     final project = _projectByConversationKey(_activeConversationKey);
     if (project == null) {
       return const Center(child: Text('Проект не найден'));
     }
 
-    final bridge = _projectBridge;
-    final messages = _projectMessages;
-
-    return Column(
-      children: [
-        // Chat header — two rows: [back avatar buttons] / [name + connection]
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: Theme.of(context).dividerColor,
-              ),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () {
-                      setState(() => _activeConversationKey = '');
-                      _projectBridge?.dispose();
-                      _projectBridge = null;
-                      _projectMessages.clear();
-                    },
-                  ),
-                  const SizedBox(width: 4),
-                  CircleAvatar(
-                    radius: 18,
-                    child: Icon(_projectIcon(project.icon), size: 20),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: 'Запустить bridge',
-                    icon: const Icon(Icons.power_settings_new),
-                    onPressed: () => _requestProjectBridgeStart(project),
-                  ),
-                  IconButton(
-                    tooltip: 'Новая сессия',
-                    icon: const Icon(Icons.add_to_queue),
-                    onPressed: _startNewProjectSession,
-                  ),
-                  IconButton(
-                    tooltip: 'Остановить DeepSeek',
-                    icon: const Icon(Icons.stop_circle_outlined),
-                    onPressed: _stopProjectPrompt,
-                  ),
-                  IconButton(
-                    tooltip: 'Настроить сервер',
-                    icon: const Icon(Icons.settings),
-                    onPressed: () => _openBridgeSettings(),
-                  ),
-                  IconButton(
-                    tooltip: 'Файлы проекта',
-                    icon: const Icon(Icons.folder_open),
-                    onPressed: () => _openProjectFileManager(project),
-                  ),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 48, bottom: 4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            project.name,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 13),
-                          ),
-                          FutureBuilder<String>(
-                            future: ProjectBridgeService.getServerAddress(),
-                            builder: (context, snapshot) {
-                              final addr = snapshot.data ?? '...';
-                              return Text(
-                                bridge?.isConnected == true
-                                    ? 'Подключено • $addr'
-                                    : 'Подключение к $addr...',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: bridge?.isConnected == true
-                                      ? Colors.green
-                                      : Colors.grey,
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Messages list
-        Expanded(
-          child: messages.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.terminal,
-                        size: 48,
-                        color: Theme.of(context).disabledColor,
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Терминал проекта',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Напишите сообщение для взаимодействия\nс AI-ассистентом в проекте',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Theme.of(context).disabledColor,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          _projectBridge?.dispose();
-                          _projectBridge = null;
-                          _projectMessages.clear();
-                          _openProjectContact(store, project);
-                        },
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Переподключиться'),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  reverse: true,
-                  padding: const EdgeInsets.all(12),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final msg = messages[messages.length - 1 - index];
-                    final isMe = msg.isSent || msg.type == 'send';
-                    final isStatus = msg.isStatus || msg.isPong;
-                    final isImage = msg.isImage;
-
-                    if (isStatus) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Text(
-                          msg.text,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Theme.of(context).disabledColor,
-                          ),
-                        ),
-                      );
-                    }
-
-                    if (isImage && msg.imageBase64.isNotEmpty) {
-                      return Align(
-                        alignment:
-                            isMe ? Alignment.centerRight : Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Theme.of(context).dividerColor,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: isMe
-                                ? CrossAxisAlignment.end
-                                : CrossAxisAlignment.start,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.memory(
-                                  base64Decode(msg.imageBase64),
-                                  width: 200,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      const Icon(Icons.broken_image, size: 48),
-                                ),
-                              ),
-                              if (msg.imageFilename.isNotEmpty)
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.only(top: 4, left: 4),
-                                  child: Text(
-                                    msg.imageFilename,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: Theme.of(context).disabledColor,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-
-                    return Align(
-                      alignment:
-                          isMe ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isMe
-                              ? Theme.of(context).colorScheme.primaryContainer
-                              : Theme.of(context)
-                                  .colorScheme
-                                  .surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: isMe
-                              ? CrossAxisAlignment.end
-                              : CrossAxisAlignment.start,
-                          children: [
-                            if (!isMe)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 2),
-                                child: Text(
-                                  project.name,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
-                                  ),
-                                ),
-                              ),
-                            SelectableText(
-                              msg.text,
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-        // Input bar
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-          child: Row(
-            children: [
-              IconButton(
-                tooltip: 'Фото в vision',
-                onPressed: _sendProjectPhotos,
-                icon: const Icon(Icons.image_outlined),
-              ),
-              IconButton(
-                tooltip: 'Файлы проекта',
-                onPressed: () => _openProjectFileManager(project),
-                icon: const Icon(Icons.folder_open),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: TextField(
-                  controller: _chatInputCtl,
-                  minLines: 1,
-                  maxLines: 4,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _sendProjectMessage(),
-                  decoration: const InputDecoration(
-                    hintText: 'Сообщение',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(24)),
-                    ),
-                    isDense: true,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton.filled(
-                tooltip: 'Отправить',
-                onPressed: _sendProjectMessage,
-                icon: const Icon(Icons.send),
-              ),
-            ],
-          ),
-        ),
-      ],
+    return ProjectChatView(
+      project: project,
+      bridge: _projectBridge,
+      messages: _projectMessages,
+      chatInputController: _chatInputCtl,
+      onBack: () {
+        setState(() => _activeConversationKey = '');
+        _projectBridge?.dispose();
+        _projectBridge = null;
+        _projectMessages.clear();
+      },
+      onRequestBridgeStart: () => _requestProjectBridgeStart(project),
+      onStartNewSession: _startNewProjectSession,
+      onStopProjectPrompt: _stopProjectPrompt,
+      onOpenBridgeSettings: _openBridgeSettings,
+      onOpenProjectFiles: () => _openProjectFileManager(project),
+      onReconnect: () {
+        _projectBridge?.dispose();
+        _projectBridge = null;
+        _projectMessages.clear();
+        _openProjectContact(store, project);
+      },
+      onSendPhotos: _sendProjectPhotos,
+      onSendMessage: _sendProjectMessage,
     );
   }
 
