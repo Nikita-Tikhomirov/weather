@@ -2166,12 +2166,40 @@ class _HomePageState extends State<HomePage> {
     final db = store.repository.db;
     final conversationKey = _activeConversationKey;
 
-    if (mounted) {
-      setState(() => _videoUploading = true);
-    }
+    // Show upload progress
+    final progressCtl = ValueNotifier<String>('Чтение видео...');
+    final uploadDialog = mounted
+        ? showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => PopScope(
+              canPop: false,
+              child: AlertDialog(
+                title: const Text('Отправка видео'),
+                content: ValueListenableBuilder<String>(
+                  valueListenable: progressCtl,
+                  builder: (_, status, __) => Row(
+                    children: [
+                      const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(child: Text(status)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          )
+        : null;
 
     try {
+      progressCtl.value = 'Чтение видео...';
       final bytes = await video.readAsBytes();
+
+      progressCtl.value = 'Загрузка на сервер...';
       final uploaded = await api.chatUploadSticker(
         actorProfile: actor,
         bytes: bytes,
@@ -2179,6 +2207,7 @@ class _HomePageState extends State<HomePage> {
       );
       final meta = Map<String, dynamic>.from(uploaded.imageMeta);
 
+      progressCtl.value = 'Отправка сообщения...';
       final attachment = ChatAttachment(
         kind: 'video',
         assetUrl: uploaded.assetUrl,
@@ -2207,6 +2236,9 @@ class _HomePageState extends State<HomePage> {
         SnackBar(content: Text('Ошибка отправки видео: $error')),
       );
     } finally {
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
       if (mounted) {
         setState(() => _videoUploading = false);
       }
