@@ -183,7 +183,8 @@ class ChatController extends Controller
             }
 
             $ext = strtolower((string)$upload->getClientOriginalExtension());
-            if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            $allowed = ['jpg', 'jpeg', 'png', 'webp', 'mp4', 'mov', 'webm', 'mkv', 'mp3', 'm4a', 'ogg', 'wav'];
+            if (!in_array($ext, $allowed, true)) {
                 $ext = 'png';
             }
 

@@ -361,9 +361,6 @@ class ChatMessageBubble extends StatelessWidget {
 
   Widget _buildVideoBubble(BuildContext context) {
     final urls = _messageImageUrls();
-    if (urls.isEmpty) {
-      return Text(text.isEmpty ? 'Видео' : text);
-    }
     final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,32 +369,30 @@ class ChatMessageBubble extends StatelessWidget {
           Padding(
             padding: EdgeInsets.only(bottom: i < urls.length - 1 ? 8 : 0),
             child: GestureDetector(
-              onTap: () => onImageTap(i),
+              onTap: () {
+                // Open video externally via platform channel
+                final url = _bubbleAssetUrl(urls[i]);
+                const ch = MethodChannel('family_todo_mobile/voice');
+                ch.invokeMethod('playVoice', {'url': url});
+              },
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      _bubbleAssetUrl(urls[i]),
-                      fit: BoxFit.cover,
-                      width: compact ? 260 : 420,
-                      height: compact ? 180 : 280,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: compact ? 260 : 420,
-                        height: compact ? 180 : 280,
-                        decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.videocam, size: 48),
-                      ),
+                  Container(
+                    width: compact ? 260 : 420,
+                    height: compact ? 180 : 280,
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.videocam, size: 56, color: Color(0xFF6B7280)),
                     ),
                   ),
                   Container(
                     width: 56,
                     height: 56,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: Colors.black54,
                       shape: BoxShape.circle,
                     ),

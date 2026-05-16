@@ -98,32 +98,31 @@ class ChatMessagesListState extends State<ChatMessagesList> {
   }
 
   void _navigateToQuote(String quoteText, {String? excludeMessageId}) {
+    // Clean media markers from the quote text
     var cleaned = quoteText
         .replaceAll(RegExp(r'\[photo:.+?\]\s*'), '')
         .replaceAll(RegExp(r'\[video:.+?\]\s*'), '')
         .replaceAll('[voice] ', '')
         .replaceAll('[audio] ', '')
         .trim();
+    // Extract text after "Name: "
     final colonIdx = cleaned.indexOf(': ');
-    final quotedCore = colonIdx >= 0 ? cleaned.substring(colonIdx + 2).trim() : cleaned;
+    final quotedCore =
+        colonIdx >= 0 ? cleaned.substring(colonIdx + 2).trim() : cleaned;
     if (quotedCore.isEmpty) return;
-
-    // Search for the original message (not a reply itself)
-    // Look for exact text match, preferring later messages (closer to the reply)
-    final messages = widget.messages;
-    for (var i = messages.length - 1; i >= 0; i--) {
-      final msg = messages[i];
+    // Find first message whose text matches the quoted content
+    for (final msg in widget.messages) {
       if (excludeMessageId != null && msg.id == excludeMessageId) continue;
       final msgText = widget.textFor(msg);
-      // Skip messages that are themselves replies
-      if (msg.messageType == 'text' && msgText.trimLeft().startsWith('> ')) continue;
-      final normalizedMsg = msgText.trim();
-      if (normalizedMsg == quotedCore || normalizedMsg.startsWith(quotedCore)) {
-        // Only match if the found text is at least half the quoted text length
-        if (normalizedMsg.length >= quotedCore.length ~/ 2) {
-          scrollToMessage(msg.id);
-          return;
-        }
+      // Skip messages that are themselves replies (they start with "> ")
+      if (msg.messageType == 'text' && msgText.trimLeft().startsWith('> ')) {
+        continue;
+      }
+      if (msgText == quotedCore ||
+          msgText.startsWith(quotedCore) ||
+          msgText.contains(quotedCore)) {
+        scrollToMessage(msg.id);
+        return;
       }
     }
   }

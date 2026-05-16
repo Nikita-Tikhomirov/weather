@@ -2308,15 +2308,10 @@ class _HomePageState extends State<HomePage> {
       return _buildProjectChatView(store, compact: compact);
     }
 
-    // Only Nikita (+79679812438) sees project contacts
-    final visibleProjects = _currentProfilePhone == '+79679812438'
-        ? _projectContacts
-        : const <ProjectContact>[];
-
     return MessengerPage(
       conversations: _chatConversations,
       contacts: _phoneContacts.isEmpty ? _chatContacts : _phoneContacts,
-      projects: visibleProjects,
+      projects: _projectContacts,
       messages: messages,
       activeConversationKey: _activeConversationKey,
       owner: store.owner.value,
