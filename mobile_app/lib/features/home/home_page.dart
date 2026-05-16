@@ -14,11 +14,10 @@ import '../../app/app_labels.dart';
 import '../../app/app_theme.dart';
 import '../../domain/task_draft.dart';
 import '../../domain/task_domain_service.dart';
-import '../chat/chat_messages_list.dart';
+import '../chat/messenger_page.dart';
 import '../family/family_view.dart';
 import '../projects/project_file_browser.dart';
 import '../projects/project_chat_view.dart';
-import '../projects/project_icons.dart';
 import '../tasks/calendar_view.dart';
 import '../tasks/dashboard_view.dart';
 import '../tasks/tasks_board.dart';
@@ -2180,7 +2179,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildMessengerPage(TaskStore store, {required bool compact}) {
-    final conversations = _chatConversations;
     final messages = _chatMessagesByConversation[_activeConversationKey] ??
         const <ChatMessage>[];
 
@@ -2188,258 +2186,50 @@ class _HomePageState extends State<HomePage> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_activeConversationKey.isEmpty) {
-      final contacts = _phoneContacts.isEmpty ? _chatContacts : _phoneContacts;
-      final projects = _projectContacts;
-      return Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Контакты',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Обновить контакты',
-                  icon: const Icon(Icons.refresh),
-                  onPressed: () => _loadPhoneContacts(store),
-                ),
-                IconButton.filled(
-                  tooltip: 'Создать группу',
-                  icon: const Icon(Icons.group_add_outlined),
-                  onPressed: () => _openCreateGroupSheet(store),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              children: [
-                // Regular contacts
-                if (contacts.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text('Нет зарегистрированных контактов из телефона'),
-                  )
-                else
-                  ...List.generate(contacts.length, (index) {
-                    final contact = contacts[index];
-                    return ListTile(
-                      leading: const CircleAvatar(child: Icon(Icons.person)),
-                      title: Text(_contactLabel(contact)),
-                      subtitle: Text(contact.phone),
-                      trailing: IconButton(
-                        tooltip: 'Добавить в семью',
-                        icon: const Icon(Icons.family_restroom_outlined),
-                        onPressed: () => _addContactToFamily(store, contact),
-                      ),
-                      onTap: () => _openDirectContact(store, contact),
-                    );
-                  }),
-                // Projects section
-                if (projects.isNotEmpty) ...[
-                  const Divider(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
-                    child: Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Проекты (терминалы)',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Настроить сервер',
-                          icon: const Icon(Icons.settings, size: 20),
-                          onPressed: () => _openBridgeSettings(),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ...projects.map((project) {
-                    return ListTile(
-                      leading: CircleAvatar(
-                        child: Icon(projectIcon(project.icon)),
-                      ),
-                      title: Text(project.name),
-                      subtitle: Text(project.path,
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
-                      trailing: const Icon(Icons.terminal),
-                      onTap: () => _openProjectContact(store, project),
-                    );
-                  }),
-                ],
-              ],
-            ),
-          ),
-        ],
-      );
-    }
-
-    // Project conversation view
     if (_isProjectConversation(_activeConversationKey)) {
       return _buildProjectChatView(store, compact: compact);
     }
 
-    return Column(
-      children: [
-        SizedBox(
-          height: 76,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ActionChip(
-                  avatar: const Icon(Icons.arrow_back, size: 18),
-                  label: const Text('Контакты'),
-                  onPressed: () {
-                    setState(() => _activeConversationKey = '');
-                  },
-                ),
-              ),
-              for (final conversation in conversations)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(
-                        _conversationLabel(conversation, store.owner.value)),
-                    selected:
-                        _activeConversationKey == conversation.conversationKey,
-                    onSelected: (_) =>
-                        _openConversation(store, conversation.conversationKey),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ChatMessagesList(
-            key: ValueKey(_activeConversationKey),
-            messages: messages,
-            owner: store.owner.value,
-            compact: compact,
-            textFor: _chatMessageText,
-            senderLabelFor: _profileLabel,
-            stickerAssetFor: _chatStickerAssetUrl,
-            imageUrlFor: _chatImageUrl,
-            onLongPress: (message) => _openMessageActions(store, message),
-            onImageTap: _openPhotoViewer,
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_replyToMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.reply_outlined, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Ответ: ${_chatMessageText(_replyToMessage!)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _replyToMessage = null;
-                          });
-                        },
-                        child: const Text('Отмена'),
-                      ),
-                    ],
-                  ),
-                ),
-              if (_editingMessageId != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.edit_outlined, size: 18),
-                      const SizedBox(width: 8),
-                      const Expanded(child: Text('Редактирование сообщения')),
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _editingMessageId = null;
-                            _chatInputCtl.clear();
-                          });
-                        },
-                        child: const Text('Отмена'),
-                      ),
-                    ],
-                  ),
-                ),
-              Row(
-                children: [
-                  IconButton(
-                    tooltip: 'Вложение',
-                    icon: const Icon(Icons.attach_file),
-                    onPressed: () => _openAttachMenu(store),
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _chatInputCtl,
-                      minLines: 1,
-                      maxLines: 4,
-                      textInputAction: TextInputAction.newline,
-                      onSubmitted: _editingMessageId != null
-                          ? (_) => _sendTextMessage(store)
-                          : null,
-                      decoration: InputDecoration(
-                        hintText: _editingMessageId == null
-                            ? 'Сообщение'
-                            : 'Изменить сообщение',
-                        border: const OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(24)),
-                        ),
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  GestureDetector(
-                    onLongPressStart: (_) => _startRecord(store),
-                    onLongPressEnd: (_) => _stopRecord(store),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: _isRecording ? Colors.red : Colors.transparent,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Icon(
-                        _isRecording ? Icons.mic : Icons.mic_none,
-                        color: _isRecording ? Colors.white : null,
-                      ),
-                    ),
-                  ),
-                  IconButton.filled(
-                    tooltip: 'Отправить',
-                    onPressed: () => _sendTextMessage(store),
-                    icon: const Icon(Icons.send),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
+    return MessengerPage(
+      conversations: _chatConversations,
+      contacts: _phoneContacts.isEmpty ? _chatContacts : _phoneContacts,
+      projects: _projectContacts,
+      messages: messages,
+      activeConversationKey: _activeConversationKey,
+      owner: store.owner.value,
+      compact: compact,
+      chatInputController: _chatInputCtl,
+      replyToMessage: _replyToMessage,
+      editingMessageId: _editingMessageId,
+      isRecording: _isRecording,
+      conversationLabel: _conversationLabel,
+      contactLabel: _contactLabel,
+      chatMessageText: _chatMessageText,
+      profileLabel: _profileLabel,
+      stickerAssetFor: _chatStickerAssetUrl,
+      imageUrlFor: _chatImageUrl,
+      onRefreshContacts: () => _loadPhoneContacts(store),
+      onCreateGroup: () => _openCreateGroupSheet(store),
+      onAddContactToFamily: (contact) => _addContactToFamily(store, contact),
+      onOpenDirectContact: (contact) => _openDirectContact(store, contact),
+      onOpenProjectContact: (project) => _openProjectContact(store, project),
+      onOpenBridgeSettings: _openBridgeSettings,
+      onBackToContacts: () => setState(() => _activeConversationKey = ''),
+      onOpenConversation: (conversationKey) =>
+          _openConversation(store, conversationKey),
+      onOpenMessageActions: (message) => _openMessageActions(store, message),
+      onImageTap: _openPhotoViewer,
+      onClearReply: () => setState(() => _replyToMessage = null),
+      onCancelEdit: () {
+        setState(() {
+          _editingMessageId = null;
+          _chatInputCtl.clear();
+        });
+      },
+      onOpenAttachMenu: () => _openAttachMenu(store),
+      onStartRecord: () => _startRecord(store),
+      onStopRecord: () => _stopRecord(store),
+      onSendText: () => _sendTextMessage(store),
     );
   }
 
