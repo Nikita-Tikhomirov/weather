@@ -203,6 +203,15 @@ final class ChatRepository
         if ($type === 'image_group' && $normalizedAttachments === []) {
             throw new InvalidArgumentException('attachments are required for message_type=image_group');
         }
+        if ($type === 'video' && $normalizedAttachments === []) {
+            throw new InvalidArgumentException('attachments are required for message_type=video');
+        }
+        if ($type === 'video_group' && $normalizedAttachments === []) {
+            throw new InvalidArgumentException('attachments are required for message_type=video_group');
+        }
+        if ($type === 'audio' && $normalizedAttachments === []) {
+            throw new InvalidArgumentException('attachments are required for message_type=audio');
+        }
 
         $id = (string) Str::ulid();
         $createdAt = $this->nowIso();
@@ -541,7 +550,7 @@ final class ChatRepository
     private function normalizeMessageType(string $value): string
     {
         $type = trim($value);
-        return in_array($type, ['text', 'sticker', 'image', 'image_group', 'voice'], true) ? $type : 'text';
+        return in_array($type, ['text', 'sticker', 'image', 'image_group', 'voice', 'video', 'video_group', 'audio'], true) ? $type : 'text';
     }
 
     private function ensureActor(string $actor): void

@@ -298,6 +298,12 @@ class ChatController extends Controller
         if ($type === 'voice') {
             return '🎤 Голосовое сообщение';
         }
+        if ($type === 'video' || $type === 'video_group') {
+            return '📹 Видео';
+        }
+        if ($type === 'audio') {
+            return '🎵 Аудио';
+        }
 
         $text = trim((string)($message['text'] ?? ''));
         if ($text === '') {
