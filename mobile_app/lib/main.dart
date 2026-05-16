@@ -4,16 +4,22 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import 'app/app_labels.dart';
+import 'app/app_theme.dart';
 import 'domain/task_draft.dart';
 import 'domain/task_domain_service.dart';
+import 'features/chat/chat_messages_list.dart';
+import 'features/family/family_view.dart';
+import 'features/projects/project_file_browser.dart';
+import 'features/tasks/calendar_view.dart';
+import 'features/tasks/dashboard_view.dart';
+import 'features/tasks/tasks_board.dart';
 import 'models/chat_models.dart';
 import 'models/project_contact.dart';
 import 'models/project_file.dart';
@@ -28,143 +34,6 @@ import 'services/fcm_service.dart';
 import 'services/local_db.dart';
 import 'state/task_store.dart';
 
-/// Human-readable labels for actor profiles shown in UI.
-const kProfileLabels = {
-  'nik': 'Ник',
-  'nastya': 'Настя',
-  'misha': 'Миша',
-  'arisha': 'Ариша',
-  'family': 'Семья',
-};
-
-const kWorkflowLabels = {
-  'todo': 'К выполнению',
-  'in_progress': 'В работе',
-  'in_review': 'На проверке',
-  'done': 'Выполнено',
-};
-
-String profileLabel(String key) => kProfileLabels[key] ?? key;
-String workflowLabel(String key) => kWorkflowLabels[key] ?? key;
-
-class AppThemeOption {
-  const AppThemeOption({
-    required this.key,
-    required this.name,
-    required this.seed,
-    required this.scaffold,
-    this.brightness = Brightness.light,
-  });
-
-  final String key;
-  final String name;
-  final Color seed;
-  final Color scaffold;
-  final Brightness brightness;
-}
-
-const _appThemeOptions = <AppThemeOption>[
-  AppThemeOption(
-    key: 'ocean',
-    name: 'Океан',
-    seed: Color(0xFF118AB2),
-    scaffold: Color(0xFFF7FAFC),
-  ),
-  AppThemeOption(
-    key: 'mint',
-    name: 'Мята',
-    seed: Color(0xFF2A9D8F),
-    scaffold: Color(0xFFF3FBF8),
-  ),
-  AppThemeOption(
-    key: 'coral',
-    name: 'Коралл',
-    seed: Color(0xFFE76F51),
-    scaffold: Color(0xFFFFF7F4),
-  ),
-  AppThemeOption(
-    key: 'iris',
-    name: 'Ирис',
-    seed: Color(0xFF6D5BD0),
-    scaffold: Color(0xFFF8F7FF),
-  ),
-  AppThemeOption(
-    key: 'forest',
-    name: 'Лес',
-    seed: Color(0xFF2D6A4F),
-    scaffold: Color(0xFFF5FAF6),
-  ),
-  AppThemeOption(
-    key: 'sky_dark',
-    name: 'Ночь',
-    seed: Color(0xFF60A5FA),
-    scaffold: Color(0xFF0F172A),
-    brightness: Brightness.dark,
-  ),
-  AppThemeOption(
-    key: 'graphite',
-    name: 'Графит',
-    seed: Color(0xFF94A3B8),
-    scaffold: Color(0xFF111827),
-    brightness: Brightness.dark,
-  ),
-  AppThemeOption(
-    key: 'plum',
-    name: 'Слива',
-    seed: Color(0xFFC084FC),
-    scaffold: Color(0xFF1E1B2E),
-    brightness: Brightness.dark,
-  ),
-  AppThemeOption(
-    key: 'pine',
-    name: 'Хвоя',
-    seed: Color(0xFF34D399),
-    scaffold: Color(0xFF10201A),
-    brightness: Brightness.dark,
-  ),
-  AppThemeOption(
-    key: 'amber',
-    name: 'Янтарь',
-    seed: Color(0xFFF59E0B),
-    scaffold: Color(0xFF211A10),
-    brightness: Brightness.dark,
-  ),
-];
-
-AppThemeOption _themeOptionByKey(String key) {
-  return _appThemeOptions.firstWhere(
-    (option) => option.key == key,
-    orElse: () => _appThemeOptions.first,
-  );
-}
-
-ThemeData _buildAppTheme(AppThemeOption option) {
-  final colorScheme = ColorScheme.fromSeed(
-    seedColor: option.seed,
-    brightness: option.brightness,
-  );
-  return ThemeData(
-    colorScheme: colorScheme,
-    scaffoldBackgroundColor: option.scaffold,
-    useMaterial3: true,
-  );
-}
-
-const _monthNamesRu = [
-  'Январь',
-  'Февраль',
-  'Март',
-  'Апрель',
-  'Май',
-  'Июнь',
-  'Июль',
-  'Август',
-  'Сентябрь',
-  'Октябрь',
-  'Ноябрь',
-  'Декабрь',
-];
-const _weekDayNamesRu = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 const _reminderOptions = <int, String>{
   1440: 'За 24 часа',
   720: 'За 12 часов',
@@ -188,7 +57,7 @@ class FamilyTodoApp extends StatefulWidget {
 }
 
 class _FamilyTodoAppState extends State<FamilyTodoApp> {
-  String _themeKey = _appThemeOptions.first.key;
+  String _themeKey = appThemeOptions.first.key;
 
   @override
   void initState() {
@@ -202,11 +71,11 @@ class _FamilyTodoAppState extends State<FamilyTodoApp> {
     if (!mounted) {
       return;
     }
-    setState(() => _themeKey = _themeOptionByKey(saved).key);
+    setState(() => _themeKey = themeOptionByKey(saved).key);
   }
 
   Future<void> _setTheme(String key) async {
-    final normalized = _themeOptionByKey(key).key;
+    final normalized = themeOptionByKey(key).key;
     setState(() => _themeKey = normalized);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('app_theme_key', normalized);
@@ -214,11 +83,11 @@ class _FamilyTodoAppState extends State<FamilyTodoApp> {
 
   @override
   Widget build(BuildContext context) {
-    final option = _themeOptionByKey(_themeKey);
+    final option = themeOptionByKey(_themeKey);
     return MaterialApp(
       title: 'Семейные задачи',
       debugShowCheckedModeBanner: false,
-      theme: _buildAppTheme(option),
+      theme: buildAppTheme(option),
       home: HomePage(
         selectedThemeKey: option.key,
         onThemeChanged: _setTheme,
@@ -272,7 +141,6 @@ class _HomePageState extends State<HomePage> {
   String _activeConversationKey = '';
   String _currentProfileDisplayName = '';
   ChatMessage? _replyToMessage;
-  String? _replyToMessageId;
   bool _isRecording = false;
   String? _voicePath;
   Timer? _voiceTimer;
@@ -776,7 +644,7 @@ class _HomePageState extends State<HomePage> {
           return ValueListenableBuilder<DashboardVm>(
             valueListenable: store.dashboard,
             builder: (context, vm, __) {
-              return _DashboardView(
+              return DashboardView(
                 vm: vm,
                 labelFor: _profileLabel,
                 onOpenCalendar: () async {
@@ -815,7 +683,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   Expanded(
-                    child: _DesktopTasksBoard(
+                    child: DesktopTasksBoard(
                       byStatus: byStatus,
                       labelFor: _profileLabel,
                       selectionMode: false,
@@ -854,7 +722,7 @@ class _HomePageState extends State<HomePage> {
           return ValueListenableBuilder<List<TaskItem>>(
             valueListenable: store.allTasksView,
             builder: (context, tasks, __) {
-              return _DesktopCalendarView(
+              return DesktopCalendarView(
                 month: _desktopMonth,
                 selectedDate: selectedDate,
                 allTasks: tasks,
@@ -906,7 +774,7 @@ class _HomePageState extends State<HomePage> {
               return ValueListenableBuilder<List<TaskItem>>(
                 valueListenable: store.familyTasksView,
                 builder: (context, tasks, __) {
-                  return _FamilyView(
+                  return FamilyView(
                     familyTasks: tasks,
                     familyFilter: familyFilter,
                     labelFor: _profileLabel,
@@ -1797,7 +1665,6 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _editingMessageId = null;
         _replyToMessage = null;
-        _replyToMessageId = null;
       });
       await _refreshConversation(
         store,
@@ -2055,7 +1922,6 @@ class _HomePageState extends State<HomePage> {
     } else if (action == 'reply') {
       setState(() {
         _replyToMessage = message;
-        _replyToMessageId = message.id;
       });
     } else if (action == 'share') {
       await _shareMessage(store, message);
@@ -2268,7 +2134,8 @@ class _HomePageState extends State<HomePage> {
                 title: const Text('Файлы проекта'),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
-                  final project = _projectByConversationKey(_activeConversationKey);
+                  final project =
+                      _projectByConversationKey(_activeConversationKey);
                   if (project != null) {
                     _openProjectFileManager(project);
                   }
@@ -2505,7 +2372,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         Expanded(
-          child: _ChatMessagesList(
+          child: ChatMessagesList(
             key: ValueKey(_activeConversationKey),
             messages: messages,
             owner: store.owner.value,
@@ -2541,7 +2408,6 @@ class _HomePageState extends State<HomePage> {
                         onPressed: () {
                           setState(() {
                             _replyToMessage = null;
-                            _replyToMessageId = null;
                           });
                         },
                         child: const Text('Отмена'),
@@ -2776,9 +2642,7 @@ class _HomePageState extends State<HomePage> {
                           _projectBridge?.dispose();
                           _projectBridge = null;
                           _projectMessages.clear();
-                          if (project != null) {
-                            _openProjectContact(store, project);
-                          }
+                          _openProjectContact(store, project);
                         },
                         icon: const Icon(Icons.refresh),
                         label: const Text('Переподключиться'),
@@ -2812,9 +2676,8 @@ class _HomePageState extends State<HomePage> {
 
                     if (isImage && msg.imageBase64.isNotEmpty) {
                       return Align(
-                        alignment: isMe
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
+                        alignment:
+                            isMe ? Alignment.centerRight : Alignment.centerLeft,
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(4),
@@ -2835,10 +2698,8 @@ class _HomePageState extends State<HomePage> {
                                   base64Decode(msg.imageBase64),
                                   width: 200,
                                   fit: BoxFit.cover,
-                                  errorBuilder:
-                                      (context, error, stackTrace) =>
-                                          const Icon(Icons.broken_image,
-                                              size: 48),
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Icon(Icons.broken_image, size: 48),
                                 ),
                               ),
                               if (msg.imageFilename.isNotEmpty)
@@ -2992,7 +2853,7 @@ class _HomePageState extends State<HomePage> {
         return StatefulBuilder(
           builder: (context, setSheetState) {
             _fileSheetSetState = setSheetState;
-            return _ProjectFileBrowser(
+            return ProjectFileBrowser(
               project: project,
               files: _projectFiles,
               currentPath: _projectFileTreePath,
@@ -3094,7 +2955,7 @@ class _HomePageState extends State<HomePage> {
                               color: Theme.of(sheetContext)
                                   .colorScheme
                                   .onSurface
-                                  .withOpacity(0.5))),
+                                  .withValues(alpha: 0.5))),
                     ),
                   const Divider(),
                   Expanded(
@@ -3127,20 +2988,6 @@ class _HomePageState extends State<HomePage> {
         );
       },
     );
-  }
-
-  void _sendProjectMessageText(String text) {
-    final bridge = _projectBridge;
-    if (bridge == null) return;
-    bridge.sendText(text);
-    if (mounted) {
-      setState(() {
-        _projectMessages.add(BridgeMessage(
-          type: 'send',
-          text: text,
-        ));
-      });
-    }
   }
 
   Future<void> _requestProjectBridgeStart(ProjectContact project) async {
@@ -3485,7 +3332,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _saveImageToGallery(String url) async {
     try {
       const channel = MethodChannel('family_todo_mobile/share');
-      final ok = await channel.invokeMethod<bool>('saveImage', {'url': url});
+      await channel.invokeMethod<bool>('saveImage', {'url': url});
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Фото сохранено в галерею')),
@@ -3958,7 +3805,7 @@ class _HomePageState extends State<HomePage> {
       onSelected: widget.onThemeChanged,
       itemBuilder: (context) {
         return [
-          for (final option in _appThemeOptions)
+          for (final option in appThemeOptions)
             PopupMenuItem<String>(
               value: option.key,
               child: Row(
@@ -4088,7 +3935,7 @@ class _HomePageState extends State<HomePage> {
                                     return ValueListenableBuilder<DashboardVm>(
                                       valueListenable: store.dashboard,
                                       builder: (context, vm, _) {
-                                        return _DashboardView(
+                                        return DashboardView(
                                           vm: vm,
                                           labelFor: _profileLabel,
                                           onOpenCalendar: () async {
@@ -4111,7 +3958,7 @@ class _HomePageState extends State<HomePage> {
                                         Map<String, List<TaskItem>>>(
                                       valueListenable: store.personalByStatus,
                                       builder: (context, byStatus, _) {
-                                        return _TasksBoard(
+                                        return TasksBoard(
                                           byStatus: byStatus,
                                           labelFor: _profileLabel,
                                           selectionMode: false,
@@ -4159,7 +4006,7 @@ class _HomePageState extends State<HomePage> {
                                       valueListenable:
                                           store.tasksForSelectedDate,
                                       builder: (context, tasks, _) {
-                                        return _CalendarView(
+                                        return CalendarView(
                                           selectedDate: selectedDate,
                                           tasksForSelectedDate: tasks,
                                           labelFor: _profileLabel,
@@ -4188,7 +4035,7 @@ class _HomePageState extends State<HomePage> {
                                           valueListenable:
                                               store.familyTasksView,
                                           builder: (context, tasks, __) {
-                                            return _FamilyView(
+                                            return FamilyView(
                                               familyTasks: tasks,
                                               familyFilter: familyFilter,
                                               labelFor: _profileLabel,
@@ -4282,1840 +4129,5 @@ class _HomePageState extends State<HomePage> {
     _desktopThemeService?.state.dispose();
     _store?.dispose();
     super.dispose();
-  }
-}
-
-class _ChatMessagesList extends StatefulWidget {
-  const _ChatMessagesList({
-    super.key,
-    required this.messages,
-    required this.owner,
-    required this.compact,
-    required this.textFor,
-    required this.senderLabelFor,
-    required this.stickerAssetFor,
-    required this.imageUrlFor,
-    required this.onLongPress,
-    required this.onImageTap,
-    this.replyToMessageId,
-    this.onQuoteTap,
-  });
-
-  final List<ChatMessage> messages;
-  final String owner;
-  final bool compact;
-  final String Function(ChatMessage message) textFor;
-  final String Function(String profile) senderLabelFor;
-  final String Function(ChatMessage message) stickerAssetFor;
-  final String Function(ChatMessage message) imageUrlFor;
-  final void Function(ChatMessage message) onLongPress;
-  final void Function(ChatMessage message, int index) onImageTap;
-  final String? replyToMessageId;
-  final void Function(String quoteText)? onQuoteTap;
-
-  @override
-  State<_ChatMessagesList> createState() => _ChatMessagesListState();
-}
-
-class _ChatMessagesListState extends State<_ChatMessagesList> {
-  final ScrollController _controller = ScrollController();
-  final Map<String, GlobalKey> _itemKeys = <String, GlobalKey>{};
-
-  GlobalKey _keyFor(String id) =>
-      _itemKeys.putIfAbsent(id, () => GlobalKey(debugLabel: 'msg-$id'));
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-  }
-
-  @override
-  void didUpdateWidget(covariant _ChatMessagesList oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final oldLast =
-        oldWidget.messages.isEmpty ? '' : oldWidget.messages.last.id;
-    final newLast = widget.messages.isEmpty ? '' : widget.messages.last.id;
-    if (oldLast != newLast ||
-        oldWidget.messages.length != widget.messages.length) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _scrollToBottom() {
-    if (!_controller.hasClients) {
-      return;
-    }
-    void jump() {
-      if (!_controller.hasClients) {
-        return;
-      }
-      _controller.animateTo(
-        _controller.position.maxScrollExtent + 96,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOut,
-      );
-    }
-
-    jump();
-    Future<void>.delayed(const Duration(milliseconds: 300), jump);
-    Future<void>.delayed(const Duration(milliseconds: 900), jump);
-  }
-
-  void scrollToMessage(String messageId) {
-    final key = _itemKeys[messageId];
-    if (key?.currentContext == null) return;
-    Scrollable.ensureVisible(
-      key!.currentContext!,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
-    );
-  }
-
-  void _navigateToQuote(String quoteText) {
-    // Normalize the quote text: remove [photo:...] and [voice] markers
-    var cleaned = quoteText
-        .replaceAll(RegExp(r'\[photo:.+?\]\s*'), '')
-        .replaceAll('[voice] ', '')
-        .trim();
-    // Extract the part after "Name: "
-    final colonIdx = cleaned.indexOf(': ');
-    final quotedCore =
-        colonIdx >= 0 ? cleaned.substring(colonIdx + 2).trim() : cleaned;
-    if (quotedCore.isEmpty) return;
-    // Find first message where textFor(msg) starts with or contains quotedCore
-    for (final msg in widget.messages) {
-      final msgText = widget.textFor(msg);
-      if (msgText.startsWith(quotedCore) || msgText.contains(quotedCore)) {
-        scrollToMessage(msg.id);
-        return;
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      controller: _controller,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemCount: widget.messages.length,
-      itemBuilder: (context, index) {
-        final message = widget.messages[index];
-        final mine = message.senderProfile == widget.owner;
-        return _ChatMessageBubble(
-          key: _keyFor(message.id),
-          message: message,
-          mine: mine,
-          compact: widget.compact,
-          text: widget.textFor(message),
-          senderLabel: widget.senderLabelFor(message.senderProfile),
-          stickerAssetUrl: widget.stickerAssetFor(message),
-          imageUrl: widget.imageUrlFor(message),
-          onLongPress: () => widget.onLongPress(message),
-          onImageTap: (index) => widget.onImageTap(message, index),
-          onQuoteTap: () {
-            final t = widget.textFor(message);
-            if (t.startsWith('> ') &&
-                t.contains('\n') &&
-                message.messageType == 'text') {
-              final parts = t.split('\n');
-              final qLines = <String>[];
-              var inReply = false;
-              for (final line in parts) {
-                if (!inReply && line.startsWith('> ')) {
-                  qLines.add(line.substring(2));
-                } else {
-                  inReply = true;
-                }
-              }
-              final quote = qLines.join('\n');
-              if (quote.isNotEmpty) _navigateToQuote(quote);
-            }
-          },
-        );
-      },
-    );
-  }
-}
-
-class _ChatMessageBubble extends StatelessWidget {
-  const _ChatMessageBubble({
-    super.key,
-    required this.message,
-    required this.mine,
-    required this.compact,
-    required this.text,
-    required this.senderLabel,
-    required this.stickerAssetUrl,
-    required this.imageUrl,
-    required this.onLongPress,
-    required this.onImageTap,
-    this.onQuoteTap,
-  });
-
-  final ChatMessage message;
-  final bool mine;
-  final bool compact;
-  final String text;
-  final String senderLabel;
-  final String stickerAssetUrl;
-  final String imageUrl;
-  final VoidCallback onLongPress;
-  final void Function(int index) onImageTap;
-  final VoidCallback? onQuoteTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final deleted = message.isDeleted;
-    return Align(
-      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-      child: GestureDetector(
-        onLongPress: onLongPress,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          constraints: BoxConstraints(maxWidth: compact ? 320 : 560),
-          decoration: BoxDecoration(
-            color: deleted
-                ? Theme.of(context).colorScheme.surfaceContainerHighest
-                : mine
-                    ? Theme.of(context).colorScheme.primaryContainer
-                    : Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            crossAxisAlignment:
-                mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-            children: [
-              Text(
-                senderLabel,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                ),
-              ),
-              const SizedBox(height: 4),
-              _buildContent(context, deleted, text),
-              const SizedBox(height: 4),
-              if (message.reactions.isNotEmpty) _buildReactionsRow(context),
-              if (message.reactions.isNotEmpty) const SizedBox(height: 4),
-              Text(
-                _messageFooter(),
-                style: TextStyle(
-                    fontSize: 10,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.5)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContent(BuildContext context, bool deleted, String text) {
-    if (deleted) {
-      return const Text(
-        'Сообщение удалено',
-        style: TextStyle(fontStyle: FontStyle.italic, color: Color(0xFF9CA3AF)),
-      );
-    }
-    // Reply quote
-    if (text.startsWith('> ') &&
-        text.contains('\n') &&
-        message.messageType == 'text') {
-      final parts = text.split('\n');
-      final quoteLines = <String>[];
-      final replyLines = <String>[];
-      bool inReply = false;
-      for (final line in parts) {
-        if (!inReply && line.startsWith('> ')) {
-          quoteLines.add(line.substring(2));
-        } else {
-          inReply = true;
-          replyLines.add(line);
-        }
-      }
-      final quoteText = quoteLines.join('\n');
-      final replyText = replyLines.join('\n');
-      // Check for photo preview
-      final photoMatch = RegExp(r'\[photo:(.+?)\]').firstMatch(quoteText);
-      final hasVoice = quoteText.contains('[voice]');
-      final cleanQuote = quoteText
-          .replaceAll(RegExp(r'\[photo:.+?\]\s*'), '')
-          .replaceAll('[voice] ', '');
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.only(left: 8),
-            decoration: const BoxDecoration(
-              border:
-                  Border(left: BorderSide(color: Color(0xFF3B82F6), width: 3)),
-            ),
-            child: GestureDetector(
-              onTap: onQuoteTap,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (photoMatch != null)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: Image.network(
-                          _bubbleAssetUrl(photoMatch.group(1)!),
-                          width: 40,
-                          height: 40,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const Icon(Icons.broken_image, size: 40),
-                        ),
-                      ),
-                    ),
-                  if (hasVoice)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 8),
-                      child:
-                          Icon(Icons.mic, size: 24, color: Color(0xFF6B7280)),
-                    ),
-                  Expanded(
-                    child: Text(
-                      cleanQuote,
-                      style: const TextStyle(
-                          fontSize: 13, color: Color(0xFF6B7280)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (replyText.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            _buildTextWithLinks(replyText, context),
-          ],
-        ],
-      );
-    }
-    if (message.messageType == 'voice') {
-      return _buildVoiceBubble(context);
-    }
-    if (message.messageType == 'sticker') {
-      if (stickerAssetUrl.isNotEmpty &&
-          !stickerAssetUrl.startsWith('emoji://')) {
-        return Image.network(
-          stickerAssetUrl,
-          fit: BoxFit.contain,
-          width: compact ? 160 : 220,
-          height: compact ? 160 : 220,
-          errorBuilder: (context, error, stackTrace) {
-            return Text(text, style: const TextStyle(fontSize: 34));
-          },
-        );
-      }
-      return Text(text, style: const TextStyle(fontSize: 34));
-    }
-    if (message.messageType == 'image' ||
-        message.messageType == 'image_group') {
-      final urls = _messageImageUrls();
-      if (urls.isEmpty) {
-        return Text(text.isEmpty ? 'Изображение' : text);
-      }
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildImageGrid(urls),
-          if (text.trim().isNotEmpty) const SizedBox(height: 6),
-          if (text.trim().isNotEmpty) Text(text),
-        ],
-      );
-    }
-    if (message.messageType == 'text') {
-      return _buildTextWithLinks(text, context);
-    }
-    return Text(text);
-  }
-
-  static final RegExp _urlRegex = RegExp(r'(https?://[^\s]+|www\.[^\s]+\.[^\s]+)');
-
-  Widget _buildTextWithLinks(String text, BuildContext context) {
-    final matches = _urlRegex.allMatches(text);
-    if (matches.isEmpty) {
-      return Text(text);
-    }
-    final spans = <InlineSpan>[];
-    int lastEnd = 0;
-    for (final match in matches) {
-      if (match.start > lastEnd) {
-        spans.add(TextSpan(text: text.substring(lastEnd, match.start)));
-      }
-      final url = match.group(0)!;
-      final uri = Uri.tryParse(url.startsWith('www.') ? 'https://$url' : url);
-      spans.add(
-        TextSpan(
-          text: url,
-          style: const TextStyle(
-            color: Colors.blue,
-            decoration: TextDecoration.underline,
-          ),
-          recognizer: TapGestureRecognizer()
-            ..onTap = () {
-              if (uri != null) {
-                launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-        ),
-      );
-      lastEnd = match.end;
-    }
-    if (lastEnd < text.length) {
-      spans.add(TextSpan(text: text.substring(lastEnd)));
-    }
-    return Text.rich(TextSpan(children: spans));
-  }
-
-  List<String> _messageImageUrls() {
-    final attachments = message.attachments
-        .where(
-            (item) => item.kind == 'image' && item.assetUrl.trim().isNotEmpty)
-        .toList()
-      ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
-    if (attachments.isNotEmpty) {
-      return attachments.map((item) => item.assetUrl).toList();
-    }
-    return imageUrl.trim().isEmpty ? const [] : [imageUrl];
-  }
-
-  Widget _buildImageGrid(List<String> urls) {
-    return Wrap(
-      spacing: 4,
-      runSpacing: 4,
-      children: [
-        for (var i = 0; i < urls.length; i++)
-          GestureDetector(
-            onTap: () => onImageTap(i),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                _bubbleAssetUrl(urls[i]),
-                fit: BoxFit.cover,
-                width: urls.length == 1
-                    ? (compact ? 260 : 420)
-                    : (compact ? 120 : 160),
-                height: urls.length == 1 ? null : (compact ? 120 : 160),
-                errorBuilder: (context, error, stackTrace) {
-                  return SelectableText(
-                    urls[i],
-                    style:
-                        const TextStyle(decoration: TextDecoration.underline),
-                  );
-                },
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildVoiceBubble(BuildContext context) {
-    final ms = (message.imageMeta['duration_ms'] as int?) ?? 0;
-    final d = Duration(milliseconds: ms);
-    final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: () {
-        const ch = MethodChannel('family_todo_mobile/voice');
-        ch.invokeMethod('playVoice', {'url': _bubbleAssetUrl(imageUrl)});
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: mine ? cs.primaryContainer : cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.play_arrow,
-                size: 24,
-                color: mine ? cs.onPrimaryContainer : cs.onSurfaceVariant),
-            const SizedBox(width: 8),
-            Text(
-              '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}',
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: mine ? cs.onPrimaryContainer : cs.onSurface),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _bubbleAssetUrl(String raw) {
-    final value = raw.trim();
-    if (value.startsWith('http://') || value.startsWith('https://')) {
-      return value;
-    }
-    if (value.startsWith('/')) {
-      return 'http://31.129.97.211$value';
-    }
-    return value;
-  }
-
-  Widget _buildReactionsRow(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Wrap(
-      spacing: 6,
-      runSpacing: 4,
-      children: message.reactions.map((reaction) {
-        final isMyReaction = message.myReaction == reaction.reaction;
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: isMyReaction
-                ? cs.primaryContainer.withOpacity(0.5)
-                : cs.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
-            border:
-                isMyReaction ? Border.all(color: cs.primary, width: 1) : null,
-          ),
-          child: Text(
-            '${reaction.reaction} ${reaction.count}',
-            style: TextStyle(
-              fontSize: 13,
-              color: isMyReaction
-                  ? const Color(0xFF1D4ED8)
-                  : const Color(0xFF475569),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  String _messageFooter() {
-    if ((message.editedAt ?? '').isNotEmpty) {
-      return '${message.createdAt} · изменено';
-    }
-    return message.createdAt;
-  }
-}
-
-class _DashboardView extends StatelessWidget {
-  const _DashboardView({
-    required this.vm,
-    required this.labelFor,
-    required this.onOpenCalendar,
-  });
-
-  final DashboardVm vm;
-  final String Function(String profile) labelFor;
-  final Future<void> Function() onOpenCalendar;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(12),
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                title: 'На дату',
-                value: '${vm.todayTotal}',
-                hint: vm.todayKey,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _MetricCard(
-                title: 'Сделано',
-                value: '${vm.doneToday}',
-                hint: 'Выполнено',
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                title: 'Семейных',
-                value: '${vm.familyToday}',
-                hint: 'Семейные',
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _MetricCard(
-                title: 'Просрочено',
-                value: '${vm.overdue}',
-                hint: 'Просрочка',
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: onOpenCalendar,
-          icon: const Icon(Icons.calendar_month),
-          label: const Text('Выбрать дату'),
-        ),
-        const SizedBox(height: 12),
-        Text('Ближайшие задачи', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
-        for (final task in vm.upcoming)
-          Card(
-            child: ListTile(
-              title: Text(task.title),
-              subtitle: Text(
-                '${task.dueDate} ${task.time} - ${labelFor(task.ownerKey)} - ${workflowLabel(task.workflowStatus)}',
-              ),
-              trailing:
-                  task.isFamily ? const Icon(Icons.family_restroom) : null,
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.title,
-    required this.value,
-    required this.hint,
-  });
-
-  final String title;
-  final String value;
-  final String hint;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 6),
-            Text(value, style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 4),
-            Text(hint, style: Theme.of(context).textTheme.bodySmall),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CalendarView extends StatelessWidget {
-  const _CalendarView({
-    required this.selectedDate,
-    required this.tasksForSelectedDate,
-    required this.labelFor,
-    required this.onDateChange,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  final DateTime selectedDate;
-  final List<TaskItem> tasksForSelectedDate;
-  final String Function(String profile) labelFor;
-  final void Function(DateTime) onDateChange;
-  final Future<void> Function(TaskItem) onEdit;
-  final Future<void> Function(TaskItem) onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final start = selectedDate.subtract(const Duration(days: 3));
-    final days = List.generate(10, (index) => start.add(Duration(days: index)));
-
-    return Column(
-      children: [
-        SizedBox(
-          height: 86,
-          child: ListView.separated(
-            padding: const EdgeInsets.all(12),
-            scrollDirection: Axis.horizontal,
-            itemCount: days.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              final date = days[index];
-              final isCurrent = date.year == selectedDate.year &&
-                  date.month == selectedDate.month &&
-                  date.day == selectedDate.day;
-              return ChoiceChip(
-                selected: isCurrent,
-                label: Text(
-                  '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}',
-                ),
-                onSelected: (_) => onDateChange(date),
-              );
-            },
-          ),
-        ),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            children: [
-              if (tasksForSelectedDate.isEmpty)
-                const Card(
-                  child: ListTile(title: Text('На выбранную дату задач нет')),
-                ),
-              for (final item in tasksForSelectedDate)
-                _TaskCard(
-                  item: item,
-                  labelFor: labelFor,
-                  onEdit: () => onEdit(item),
-                  onDelete: () => onDelete(item),
-                  onDoneToggle: () async {},
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _TasksBoard extends StatelessWidget {
-  const _TasksBoard({
-    required this.byStatus,
-    required this.labelFor,
-    required this.selectionMode,
-    required this.selectedIds,
-    required this.onToggleSelect,
-    required this.onDrop,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onDoneToggle,
-  });
-
-  final Map<String, List<TaskItem>> byStatus;
-  final String Function(String profile) labelFor;
-  final bool selectionMode;
-  final Set<String> selectedIds;
-  final void Function(String) onToggleSelect;
-  final Future<void> Function(TaskItem, String) onDrop;
-  final Future<void> Function(TaskItem) onEdit;
-  final Future<void> Function(TaskItem) onDelete;
-  final Future<void> Function(TaskItem) onDoneToggle;
-
-  static const _titles = {
-    'todo': 'К выполнению',
-    'in_progress': 'В работе',
-    'in_review': 'На проверке',
-    'done': 'Выполнено',
-  };
-
-  static const _colors = {
-    'todo': Color(0xFFE3F2FD),
-    'in_progress': Color(0xFFE8F5E9),
-    'in_review': Color(0xFFFFF3E0),
-    'done': Color(0xFFEDE7F6),
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      children: _titles.keys.map((status) {
-        final items = byStatus[status] ?? const <TaskItem>[];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          color: _colors[status],
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: DragTarget<TaskItem>(
-              onAcceptWithDetails: (details) => onDrop(details.data, status),
-              builder: (context, candidate, rejected) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${_titles[status]} (${items.length})',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    for (final item in items)
-                      LongPressDraggable<TaskItem>(
-                        data: item,
-                        feedback: Material(
-                          color: Colors.transparent,
-                          child: SizedBox(
-                            width: 260,
-                            child: _TaskCard(
-                              item: item,
-                              labelFor: labelFor,
-                              onEdit: () async {},
-                              onDelete: () async {},
-                              onDoneToggle: () async {},
-                            ),
-                          ),
-                        ),
-                        childWhenDragging: const SizedBox.shrink(),
-                        child: _TaskCard(
-                          item: item,
-                          labelFor: labelFor,
-                          selectionMode: selectionMode,
-                          selected: selectedIds.contains(item.id),
-                          onSelectionToggle: () => onToggleSelect(item.id),
-                          onEdit: () => onEdit(item),
-                          onDelete: () => onDelete(item),
-                          onDoneToggle: () => onDoneToggle(item),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-class _DesktopTasksBoard extends StatelessWidget {
-  const _DesktopTasksBoard({
-    required this.byStatus,
-    required this.labelFor,
-    required this.selectionMode,
-    required this.selectedIds,
-    required this.onToggleSelect,
-    required this.onDropStatus,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onDoneToggle,
-  });
-
-  final Map<String, List<TaskItem>> byStatus;
-  final String Function(String profile) labelFor;
-  final bool selectionMode;
-  final Set<String> selectedIds;
-  final void Function(String) onToggleSelect;
-  final Future<void> Function(TaskItem, String) onDropStatus;
-  final Future<void> Function(TaskItem) onEdit;
-  final Future<void> Function(TaskItem) onDelete;
-  final Future<void> Function(TaskItem) onDoneToggle;
-
-  static const _titles = {
-    'todo': 'К выполнению',
-    'in_progress': 'В работе',
-    'in_review': 'На проверке',
-    'done': 'Выполнено',
-  };
-
-  static Color _columnColor(String status) {
-    switch (status) {
-      case 'todo':
-        return const Color(0xFF3B82F6);
-      case 'in_progress':
-        return const Color(0xFFF59E0B);
-      case 'in_review':
-        return const Color(0xFF8B5CF6);
-      case 'done':
-        return const Color(0xFF10B981);
-      default:
-        return const Color(0xFF6B7280);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (ctx, constraints) {
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          child: SizedBox(
-            width: 4 * 340,
-            height: constraints.maxHeight,
-            child: Row(
-              children: _titles.keys.map((status) {
-                final items = byStatus[status] ?? const <TaskItem>[];
-                final colColor = _columnColor(status);
-                return SizedBox(
-                  width: 330,
-                  child: Card(
-                    margin: const EdgeInsets.only(right: 10),
-                    elevation: 0,
-                    color: Theme.of(ctx).colorScheme.surfaceContainerLow,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: colColor.withAlpha(25),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: colColor, width: 1),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    '${_titles[status]} (${items.length})',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      color: colColor,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Expanded(
-                            child: DragTarget<TaskItem>(
-                              onAcceptWithDetails: (details) =>
-                                  onDropStatus(details.data, status),
-                              builder: (dragCtx, candidateData, rejectedData) {
-                                final isHovering = candidateData.isNotEmpty;
-                                if (items.isEmpty && !isHovering) {
-                                  return Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(20),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.inbox_outlined,
-                                              size: 32,
-                                              color: colColor.withAlpha(100)),
-                                          const SizedBox(height: 8),
-                                          Text('Нет задач',
-                                              style: TextStyle(
-                                                  color: Theme.of(dragCtx)
-                                                      .colorScheme
-                                                      .onSurface
-                                                      .withOpacity(0.4))),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                }
-                                return ListView(
-                                  children: [
-                                    if (isHovering)
-                                      Container(
-                                        height: 60,
-                                        margin:
-                                            const EdgeInsets.only(bottom: 8),
-                                        decoration: BoxDecoration(
-                                          border: Border.all(
-                                              color: colColor,
-                                              width: 2,
-                                              strokeAlign:
-                                                  BorderSide.strokeAlignInside),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          color: colColor.withAlpha(15),
-                                        ),
-                                        child: Center(
-                                            child: Icon(Icons.add,
-                                                color: colColor)),
-                                      ),
-                                    for (final item in items)
-                                      LongPressDraggable<TaskItem>(
-                                        data: item,
-                                        feedback: Material(
-                                          color: Colors.transparent,
-                                          child: SizedBox(
-                                            width: 280,
-                                            child: _TaskCard(
-                                              item: item,
-                                              labelFor: labelFor,
-                                              onEdit: () async {},
-                                              onDelete: () async {},
-                                              onDoneToggle: () async {},
-                                            ),
-                                          ),
-                                        ),
-                                        childWhenDragging:
-                                            const SizedBox.shrink(),
-                                        child: _TaskCard(
-                                          item: item,
-                                          labelFor: labelFor,
-                                          selectionMode: selectionMode,
-                                          selected:
-                                              selectedIds.contains(item.id),
-                                          onSelectionToggle: () =>
-                                              onToggleSelect(item.id),
-                                          onEdit: () => onEdit(item),
-                                          onDelete: () => onDelete(item),
-                                          onDoneToggle: () =>
-                                              onDoneToggle(item),
-                                        ),
-                                      ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _DesktopCalendarView extends StatelessWidget {
-  const _DesktopCalendarView({
-    required this.month,
-    required this.selectedDate,
-    required this.allTasks,
-    required this.monthGrid,
-    required this.onGoPrevMonth,
-    required this.onGoNextMonth,
-    required this.onGoToday,
-    required this.onSelectDate,
-    required this.onDropToDay,
-    required this.onDropToStatus,
-    required this.onOpenEditor,
-    required this.onDelete,
-    required this.onAddForDate,
-  });
-
-  final DateTime month;
-  final DateTime selectedDate;
-  final List<TaskItem> allTasks;
-  final List<DateTime> monthGrid;
-  final VoidCallback onGoPrevMonth;
-  final VoidCallback onGoNextMonth;
-  final VoidCallback onGoToday;
-  final void Function(DateTime) onSelectDate;
-  final Future<void> Function(TaskItem, DateTime) onDropToDay;
-  final Future<void> Function(TaskItem, String) onDropToStatus;
-  final Future<void> Function(DateTime, TaskItem) onOpenEditor;
-  final Future<void> Function(TaskItem) onDelete;
-  final Future<void> Function(DateTime) onAddForDate;
-
-  static const _statusTitles = {
-    'todo': 'К выполнению',
-    'in_progress': 'В работе',
-    'in_review': 'На проверке',
-    'done': 'Выполнено',
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final byDate = <String, List<TaskItem>>{};
-    for (final task in allTasks) {
-      byDate.putIfAbsent(task.dueDate, () => <TaskItem>[]).add(task);
-    }
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: onGoPrevMonth,
-                icon: const Icon(Icons.chevron_left),
-              ),
-              Text(
-                '${_monthNamesRu[month.month - 1]} ${month.year}',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              IconButton(
-                onPressed: onGoNextMonth,
-                icon: const Icon(Icons.chevron_right),
-              ),
-              const SizedBox(width: 8),
-              OutlinedButton(
-                  onPressed: onGoToday, child: const Text('Сегодня')),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              for (final label in _weekDayNamesRu)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(
-                      label,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.labelMedium,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          Expanded(
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: 1.14,
-              ),
-              itemCount: monthGrid.length,
-              itemBuilder: (context, index) {
-                final day = monthGrid[index];
-                final key =
-                    '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
-                final dayTasks = byDate[key] ?? const <TaskItem>[];
-                final isCurrentMonth = day.month == month.month;
-                final isSelected = day.year == selectedDate.year &&
-                    day.month == selectedDate.month &&
-                    day.day == selectedDate.day;
-                final visible = dayTasks.take(3).toList();
-                final overflow = dayTasks.length - visible.length;
-                return DragTarget<TaskItem>(
-                  onAcceptWithDetails: (details) =>
-                      onDropToDay(details.data, day),
-                  builder: (context, _, __) {
-                    return InkWell(
-                      onTap: () => onSelectDate(day),
-                      onDoubleTap: () async {
-                        await _openDayPopup(context, day, dayTasks);
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? const Color(0xFFEAF2FF)
-                              : const Color(0xFFFFFFFF),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isCurrentMonth
-                                ? const Color(0xFFD9E2EF)
-                                : const Color(0xFFEDEFF3),
-                          ),
-                        ),
-                        padding: const EdgeInsets.all(6),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${day.day}',
-                              style: TextStyle(
-                                color: isCurrentMonth
-                                    ? const Color(0xFF111827)
-                                    : const Color(0xFF9CA3AF),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            for (final item in visible)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 3),
-                                child: LongPressDraggable<TaskItem>(
-                                  data: item,
-                                  feedback: Material(
-                                    color: Colors.transparent,
-                                    child: Chip(label: Text(item.title)),
-                                  ),
-                                  child: Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFDBEAFE),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      item.title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 11),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            if (overflow > 0)
-                              TextButton(
-                                onPressed: () =>
-                                    _openDayPopup(context, day, dayTasks),
-                                child: Text('+$overflow еще'),
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 58,
-            child: Row(
-              children: _statusTitles.keys.map((status) {
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: DragTarget<TaskItem>(
-                      onAcceptWithDetails: (details) =>
-                          onDropToStatus(details.data, status),
-                      builder: (context, _, __) {
-                        return DecoratedBox(
-                          decoration: BoxDecoration(
-                            border: Border.all(color: const Color(0xFFD9E2EF)),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Center(
-                            child: Text(_statusTitles[status]!),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _openDayPopup(
-    BuildContext context,
-    DateTime day,
-    List<TaskItem> dayTasks,
-  ) async {
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(
-            '${day.day.toString().padLeft(2, '0')}.${day.month.toString().padLeft(2, '0')}.${day.year}',
-          ),
-          content: SizedBox(
-            width: 520,
-            child: dayTasks.isEmpty
-                ? const Text('На эту дату задач нет')
-                : ListView(
-                    shrinkWrap: true,
-                    children: [
-                      for (final task in dayTasks)
-                        ListTile(
-                          dense: true,
-                          title: Text(task.title),
-                          subtitle: Text(
-                            '${task.time} · ${workflowLabel(task.workflowStatus)}',
-                          ),
-                          trailing: Wrap(
-                            spacing: 4,
-                            children: [
-                              IconButton(
-                                onPressed: () => onOpenEditor(day, task),
-                                icon: const Icon(Icons.edit_outlined),
-                              ),
-                              IconButton(
-                                onPressed: () => onDelete(task),
-                                icon: const Icon(Icons.delete_outline),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Закрыть'),
-            ),
-            FilledButton.icon(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await onAddForDate(day);
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Добавить'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _FamilyView extends StatelessWidget {
-  const _FamilyView({
-    required this.familyTasks,
-    required this.familyFilter,
-    required this.labelFor,
-    required this.onFilterChanged,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  final List<TaskItem> familyTasks;
-  final String familyFilter;
-  final String Function(String profile) labelFor;
-  final void Function(String) onFilterChanged;
-  final Future<void> Function(TaskItem) onEdit;
-  final Future<void> Function(TaskItem) onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-          child: SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'upcoming', label: Text('Предстоящие')),
-              ButtonSegment(value: 'overdue', label: Text('Просроченные')),
-              ButtonSegment(value: 'done', label: Text('Выполненные')),
-              ButtonSegment(value: 'all', label: Text('Все')),
-            ],
-            selected: <String>{familyFilter},
-            onSelectionChanged: (values) => onFilterChanged(values.first),
-          ),
-        ),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(12),
-            children: [
-              Text(
-                'Семейные задачи',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              if (familyTasks.isEmpty)
-                const Card(
-                  child: ListTile(
-                    title: Text('Под выбранный фильтр задач нет'),
-                  ),
-                ),
-              for (final item in familyTasks)
-                _TaskCard(
-                  item: item,
-                  labelFor: labelFor,
-                  onEdit: () => onEdit(item),
-                  onDelete: () => onDelete(item),
-                  onDoneToggle: () async {},
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ProjectFileBrowser extends StatelessWidget {
-  const _ProjectFileBrowser({
-    required this.project,
-    required this.files,
-    required this.currentPath,
-    required this.onNavigate,
-    required this.onRefresh,
-    required this.onLinkToChat,
-    required this.onOpenFile,
-    this.onViewFile,
-  });
-
-  final ProjectContact project;
-  final List<ProjectFileNode> files;
-  final String currentPath;
-  final void Function(String path) onNavigate;
-  final VoidCallback onRefresh;
-  final void Function(String filePath) onLinkToChat;
-  final void Function(String dirPath) onOpenFile;
-  final void Function(String path)? onViewFile;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    const pad = EdgeInsets.only(left: 16, right: 16, bottom: 8);
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.75,
-      minChildSize: 0.4,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (context, scrollController) {
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Файлы — ${project.name}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        if (currentPath.isNotEmpty)
-                          Text(
-                            currentPath,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: cs.onSurface.withOpacity(0.6),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (currentPath.isNotEmpty)
-                    IconButton(
-                      tooltip: 'Наверх',
-                      icon: const Icon(Icons.arrow_upward),
-                      onPressed: () {
-                        final parent = _parentPath(currentPath);
-                        if (parent == null) {
-                          onNavigate('');
-                          onRefresh();
-                        } else {
-                          onOpenFile(parent);
-                        }
-                      },
-                    ),
-                  IconButton(
-                    tooltip: 'Обновить',
-                    icon: const Icon(Icons.refresh),
-                    onPressed: onRefresh,
-                  ),
-                  IconButton(
-                    tooltip: 'Закрыть',
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            if (files.isEmpty)
-              const Expanded(
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 48,
-                          height: 48,
-                          child: CircularProgressIndicator(strokeWidth: 3),
-                        ),
-                        SizedBox(height: 16),
-                        Text('Загрузка файлов...'),
-                      ],
-                    ),
-                  ),
-                ),
-              )
-            else
-              Expanded(
-                child: ListView.builder(
-                  controller: scrollController,
-                  padding: const EdgeInsets.only(top: 4),
-                  itemCount: files.length,
-                  itemBuilder: (context, index) {
-                    final node = files[index];
-                    return _FileNodeTile(
-                      node: node,
-                      onTap: () {
-                        if (node.isDir) {
-                          onOpenFile(node.path);
-                        } else {
-                          _showFileDetail(context, node, onLinkToChat,
-                              onViewFile: onViewFile);
-                        }
-                      },
-                      onLink: () => onLinkToChat(node.path),
-                    );
-                  },
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  static void _showFileDetail(
-    BuildContext context,
-    ProjectFileNode node,
-    void Function(String) onLinkToChat, {
-    void Function(String)? onViewFile,
-  }) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        final cs = Theme.of(sheetContext).colorScheme;
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.insert_drive_file_outlined,
-                        size: 40, color: cs.primary),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(node.name,
-                              style: const TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 4),
-                          Text(node.sizeLabel,
-                              style: TextStyle(
-                                  color: cs.onSurface.withOpacity(0.6))),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(node.path,
-                    style: TextStyle(
-                        fontSize: 12, color: cs.onSurface.withOpacity(0.5))),
-                const SizedBox(height: 20),
-                if (onViewFile != null) ...[
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.of(sheetContext).pop();
-                        onViewFile!(node.path);
-                      },
-                      icon: const Icon(Icons.visibility),
-                      label: const Text('Просмотр'),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () {
-                      Navigator.of(sheetContext).pop();
-                      onLinkToChat(node.path);
-                    },
-                    icon: const Icon(Icons.attachment),
-                    label: const Text('Ссылка в чат'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// Return the parent directory path, or null if already at root.
-  static String? _parentPath(String path) {
-    final trimmed = path.endsWith('/') || path.endsWith('\\')
-        ? path.substring(0, path.length - 1)
-        : path;
-    final lastSep = _lastSeparator(trimmed);
-    if (lastSep < 0) return null;
-    return trimmed.substring(0, lastSep);
-  }
-
-  static int _lastSeparator(String path) {
-    final slash = path.lastIndexOf('/');
-    final backslash = path.lastIndexOf('\\');
-    return slash > backslash ? slash : backslash;
-  }
-}
-
-class _FileNodeTile extends StatelessWidget {
-  const _FileNodeTile({
-    required this.node,
-    required this.onTap,
-    required this.onLink,
-  });
-
-  final ProjectFileNode node;
-  final VoidCallback onTap;
-  final VoidCallback onLink;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return ListTile(
-      leading: Icon(
-        node.isDir ? Icons.folder : Icons.insert_drive_file_outlined,
-        color: node.isDir ? Colors.amber.shade700 : cs.primary,
-      ),
-      title: Text(
-        node.name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: node.isDir
-          ? null
-          : Text(
-              node.sizeLabel,
-              style: TextStyle(
-                fontSize: 11,
-                color: cs.onSurface.withOpacity(0.5),
-              ),
-            ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            tooltip: 'Ссылка в чат',
-            icon: const Icon(Icons.attachment, size: 20),
-            onPressed: onLink,
-          ),
-          if (node.isDir)
-            const Icon(Icons.chevron_right, size: 20),
-        ],
-      ),
-      onTap: onTap,
-    );
-  }
-}
-
-class _TaskCard extends StatelessWidget {
-  const _TaskCard({
-    required this.item,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onDoneToggle,
-    this.labelFor,
-    this.selectionMode = false,
-    this.selected = false,
-    this.onSelectionToggle,
-  });
-
-  final TaskItem item;
-  final bool selectionMode;
-  final bool selected;
-  final VoidCallback? onSelectionToggle;
-  final String Function(String profile)? labelFor;
-  final Future<void> Function() onEdit;
-  final Future<void> Function() onDelete;
-  final Future<void> Function() onDoneToggle;
-
-  static Color _statusColor(String status) {
-    switch (status) {
-      case 'todo':
-        return const Color(0xFF3B82F6);
-      case 'in_progress':
-        return const Color(0xFFF59E0B);
-      case 'in_review':
-        return const Color(0xFF8B5CF6);
-      case 'done':
-        return const Color(0xFF10B981);
-      default:
-        return const Color(0xFF6B7280);
-    }
-  }
-
-  static Widget _statusChip(String status, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: _statusColor(status).withAlpha(30),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _statusColor(status), width: 1),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: _statusColor(status),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final resolveLabel = labelFor ?? profileLabel;
-    final statusColor = _statusColor(item.workflowStatus);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBg = isDark ? const Color(0xFF1F2937) : const Color(0xFFFFFFFF);
-    final textColor = Theme.of(context).colorScheme.onSurface;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: statusColor.withAlpha(25),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-        border: Border(
-          left: BorderSide(color: statusColor, width: 4),
-        ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: selectionMode ? onSelectionToggle : () => onEdit(),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (selectionMode)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Checkbox(
-                        value: selected,
-                        onChanged: (_) => onSelectionToggle?.call(),
-                      ),
-                    ),
-                  Expanded(
-                    child: Text(
-                      item.title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _statusChip(
-                    item.workflowStatus,
-                    workflowLabel(item.workflowStatus),
-                  ),
-                ],
-              ),
-              if (item.dueDate.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Icon(Icons.calendar_today, size: 14, color: statusColor),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${item.dueDate} ${item.time}'.trim(),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: textColor.withOpacity(0.6),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              if (item.details.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  item.details,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      fontSize: 13, color: textColor.withOpacity(0.7)),
-                ),
-              ],
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  if (item.assignees.isNotEmpty)
-                    ...item.assignees.take(3).map((assignee) {
-                      final initials = resolveLabel(assignee).isNotEmpty
-                          ? resolveLabel(assignee).substring(0, 1).toUpperCase()
-                          : '?';
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: CircleAvatar(
-                          radius: 11,
-                          backgroundColor: statusColor.withAlpha(40),
-                          child: Text(
-                            initials,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: statusColor,
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      resolveLabel(item.ownerKey),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: textColor.withOpacity(0.45),
-                      ),
-                    ),
-                  ),
-                  if (!selectionMode) ...[
-                    IconButton(
-                      tooltip: 'Выполнить/отменить',
-                      iconSize: 20,
-                      icon: Icon(
-                        item.workflowStatus == 'done'
-                            ? Icons.undo
-                            : Icons.check_circle,
-                        color: statusColor,
-                      ),
-                      onPressed: () => onDoneToggle(),
-                    ),
-                    IconButton(
-                      tooltip: 'Удалить',
-                      iconSize: 20,
-                      icon: Icon(Icons.delete_outline,
-                          color: textColor.withOpacity(0.5)),
-                      onPressed: () => onDelete(),
-                    ),
-                  ],
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
