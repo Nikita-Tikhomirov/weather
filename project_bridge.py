@@ -350,7 +350,9 @@ class ProjectSession:
             f"=== END HISTORY ===\n\n"
             f"User: {current_prompt}"
         )
-        result = self._compact_for_cli(full)
+        # Do NOT compact_for_cli — it destroys newlines needed for conversation structure.
+        # Only collapse multiple spaces, keep newlines intact.
+        result = re.sub(r"[ \t]+", " ", full).strip()
         _log("session", f"{self.project_id} context: {len(blocks)} blocks, {len(turns)} turns, {len(result)} chars")
         return result
 
