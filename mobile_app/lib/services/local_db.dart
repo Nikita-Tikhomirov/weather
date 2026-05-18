@@ -24,7 +24,7 @@ class LocalDb {
     final dbPath = p.join(basePath, 'family_todo_mobile.db');
     final db = await openDatabase(
       dbPath,
-      version: 5,
+      version: 6,
       onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE tasks(
@@ -61,6 +61,7 @@ class LocalDb {
           );
         ''');
         await _createChatTables(db);
+        await _createProjectMessagesTable(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -91,6 +92,9 @@ class LocalDb {
           await _addColumnIfMissing(db, 'chat_messages', 'my_reaction', 'TEXT');
           await db.delete('chat_messages');
           await db.delete('chat_conversations');
+        }
+        if (oldVersion < 6) {
+          await _createProjectMessagesTable(db);
         }
       },
     );
@@ -446,6 +450,60 @@ class LocalDb {
     );
   }
 
+  // ── Project messages (bridge chat) ────────────────────────────
+
+  Future<void> saveProjectMessage({
+    required String id,
+    required String projectId,
+    required String sessionId,
+    required String type,
+    required String text,
+    String? dataBase64,
+    String? mimeType,
+    String? filename,
+    required int ts,
+  }) async {
+    await _db.insert(
+      'project_messages',
+      {
+        'id': id,
+        'project_id': projectId,
+        'session_id': sessionId,
+        'type': type,
+        'text': text,
+        'data_base64': dataBase64,
+        'mime_type': mimeType,
+        'filename': filename,
+        'ts': ts,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> loadProjectMessages({
+    required String projectId,
+    int limit = 300,
+  }) async {
+    final rows = await _db.query(
+      'project_messages',
+      where: 'project_id = ?',
+      whereArgs: [projectId],
+      orderBy: 'ts ASC, id ASC',
+      limit: limit,
+    );
+    return rows;
+  }
+
+  Future<void> clearProjectMessages(String projectId) async {
+    await _db.delete(
+      'project_messages',
+      where: 'project_id = ?',
+      whereArgs: [projectId],
+    );
+  }
+
+  // ── Chat cursors ──────────────────────────────────────────────
+
   Future<String?> readChatCursor(String conversationKey) async {
     final rows = await _db.query(
       'chat_meta',
@@ -457,6 +515,26 @@ class LocalDb {
       return null;
     }
     return rows.first['v']?.toString();
+  }
+
+  static Future<void> _createProjectMessagesTable(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS project_messages(
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        text TEXT NOT NULL,
+        data_base64 TEXT,
+        mime_type TEXT,
+        filename TEXT,
+        ts INTEGER NOT NULL
+      );
+    ''');
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_project_messages_project_ts
+      ON project_messages(project_id, ts);
+    ''');
   }
 
   static Future<void> _createChatTables(DatabaseExecutor db) async {

@@ -74,6 +74,8 @@ class _HomePageState extends State<HomePage> {
   List<ProjectFileNode> _projectFiles = const <ProjectFileNode>[];
   String _projectFileTreePath = '';
   void Function(void Function())? _fileSheetSetState;
+  String? _activeProjectSessionId;
+  final Map<String, String> _projectSessionIds = <String, String>{};
   List<ChatConversation> _chatConversations = const <ChatConversation>[];
   List<StickerPack> _chatStickerPacks = const <StickerPack>[];
   final Map<String, List<ChatMessage>> _chatMessagesByConversation =
@@ -1168,27 +1170,69 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
+    final db = store.repository.db;
+    final projectId = project.id;
+
     // Set active conversation to project key
     setState(() {
       _activeConversationKey = project.conversationKey;
-      _projectMessages.clear();
     });
 
-    // Stop existing bridge if any
-    _projectBridge?.dispose();
-    _projectBridge = null;
+    // Restore saved session id for this project
+    final savedSessionId = await _loadProjectSessionId(projectId);
+    _activeProjectSessionId = savedSessionId;
+
+    // Load persisted messages from database
+    final savedRows = await db.loadProjectMessages(projectId: projectId, limit: 300);
+    final restoredMessages = savedRows.map((row) {
+      return BridgeMessage(
+        type: (row['type'] ?? '').toString(),
+        text: (row['text'] ?? '').toString(),
+        projectId: (row['project_id'] ?? '').toString(),
+        sessionId: (row['session_id'] ?? '').toString(),
+        imageBase64: (row['data_base64'] ?? '').toString(),
+        imageMimeType: (row['mime_type'] ?? '').toString(),
+        imageFilename: (row['filename'] ?? '').toString(),
+      );
+    }).toList();
+
+    setState(() {
+      _projectMessages
+        ..clear()
+        ..addAll(restoredMessages);
+    });
+
+    // Only dispose existing bridge if connecting to a different project
+    if (_projectBridge != null && _projectBridge!.activeProjectId != projectId) {
+      _projectBridge?.dispose();
+      _projectBridge = null;
+    }
+    // If bridge already connected to this project, just reuse it
+    if (_projectBridge != null && _projectBridge!.isConnected) {
+      return;
+    }
 
     // Connect to the remote bridge server running on PC
     final bridge = ProjectBridgeService(
       onMessage: (msg) {
         if (mounted) {
+          // Persist incoming message to database
+          _saveProjectMessageToDb(db, msg);
           if (msg.isHistory) {
-            setState(() {
-              _projectMessages
-                ..clear()
-                ..addAll(msg.messages);
-            });
+            // History replay: only add messages we don't already have
+            final existingTexts = _projectMessages.map((m) => m.text).toSet();
+            final newMsgs = msg.messages.where((m) => !existingTexts.contains(m.text)).toList();
+            if (newMsgs.isNotEmpty) {
+              setState(() => _projectMessages.addAll(newMsgs));
+            }
             return;
+          }
+          if (msg.isSessionInfo && msg.sessionId.isNotEmpty) {
+            _activeProjectSessionId = msg.sessionId;
+            _saveProjectSessionId(projectId, msg.sessionId);
+            if (_projectBridge != null) {
+              _projectBridge!.currentSessionId = msg.sessionId;
+            }
           }
           if (msg.isProjects && msg.projects.isNotEmpty) {
             setState(() {
@@ -1204,9 +1248,7 @@ class _HomePageState extends State<HomePage> {
             _fileSheetSetState?.call(() {});
           }
           if (msg.isFileContent) {
-            setState(() {
-              _projectMessages.add(msg);
-            });
+            setState(() => _projectMessages.add(msg));
             if (mounted) {
               _showFileContentViewer(msg);
             }
@@ -1229,8 +1271,7 @@ class _HomePageState extends State<HomePage> {
 
     setState(() => _projectBridge = bridge);
 
-    // Remember the selected project before connecting so reconnects can resume it.
-    bridge.startProject(project);
+    bridge.startProject(project, resumeSessionId: savedSessionId);
     await ProjectBridgeService.requestBridgeStart(project);
     final ok = await bridge.connect();
     if (!ok) return;
@@ -1247,6 +1288,55 @@ class _HomePageState extends State<HomePage> {
           orElse: () => null,
         );
   }
+
+  // ── Project session persistence helpers ─────────────────────
+
+  void _saveProjectMessageToDb(LocalDb db, BridgeMessage msg) {
+    final projectId = msg.projectId.isNotEmpty
+        ? msg.projectId
+        : _projectByConversationKey(_activeConversationKey)?.id ?? '';
+    if (projectId.isEmpty) return;
+    final sessionId = msg.sessionId.isNotEmpty
+        ? msg.sessionId
+        : (_activeProjectSessionId ?? '');
+    final id = '${msg.type}_${msg.text.hashCode}_${DateTime.now().microsecondsSinceEpoch}';
+    db.saveProjectMessage(
+      id: id,
+      projectId: projectId,
+      sessionId: sessionId,
+      type: msg.type,
+      text: msg.text,
+      dataBase64: msg.imageBase64.isNotEmpty ? msg.imageBase64 : null,
+      mimeType: msg.imageMimeType.isNotEmpty ? msg.imageMimeType : null,
+      filename: msg.imageFilename.isNotEmpty ? msg.imageFilename : null,
+      ts: DateTime.now().millisecondsSinceEpoch,
+    );
+  }
+
+  Future<String?> _loadProjectSessionId(String projectId) async {
+    if (_projectSessionIds.containsKey(projectId)) {
+      return _projectSessionIds[projectId];
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString('project_session_$projectId');
+    if (saved != null && saved.isNotEmpty) {
+      _projectSessionIds[projectId] = saved;
+      return saved;
+    }
+    return null;
+  }
+
+  Future<void> _saveProjectSessionId(String projectId, String sessionId) async {
+    _projectSessionIds[projectId] = sessionId;
+    final prefs = await SharedPreferences.getInstance();
+    if (sessionId.isEmpty) {
+      await prefs.remove('project_session_$projectId');
+    } else {
+      await prefs.setString('project_session_$projectId', sessionId);
+    }
+  }
+
+  // ── Existing methods ─────────────────────────────────────────
 
   Future<void> _refreshActiveConversation(
     TaskStore store, {
@@ -2455,9 +2545,8 @@ class _HomePageState extends State<HomePage> {
       chatInputController: _chatInputCtl,
       onBack: () {
         setState(() => _activeConversationKey = '');
-        _projectBridge?.dispose();
-        _projectBridge = null;
-        _projectMessages.clear();
+        // Keep bridge connection alive so session persists.
+        // Messages are already saved to DB and will be restored on re-entry.
       },
       onRequestBridgeStart: () => _requestProjectBridgeStart(project),
       onStartNewSession: _startNewProjectSession,
@@ -2465,9 +2554,9 @@ class _HomePageState extends State<HomePage> {
       onOpenBridgeSettings: _openBridgeSettings,
       onOpenProjectFiles: () => _openProjectFileManager(project),
       onReconnect: () {
+        // Reconnect without clearing history.
         _projectBridge?.dispose();
         _projectBridge = null;
-        _projectMessages.clear();
         _openProjectContact(store, project);
       },
       onSendPhotos: _sendProjectPhotos,
@@ -2484,14 +2573,21 @@ class _HomePageState extends State<HomePage> {
 
     _projectBridge?.sendText(text);
 
-    // Show the message immediately in the UI
+    // Show the message immediately in the UI and persist to DB
     if (mounted) {
+      final store = _store;
+      final sentMsg = BridgeMessage(
+        type: 'send',
+        text: text,
+        projectId: _projectByConversationKey(_activeConversationKey)?.id ?? '',
+        sessionId: _activeProjectSessionId ?? '',
+      );
       setState(() {
-        _projectMessages.add(BridgeMessage(
-          type: 'send',
-          text: text,
-        ));
+        _projectMessages.add(sentMsg);
       });
+      if (store != null) {
+        _saveProjectMessageToDb(store.repository.db, sentMsg);
+      }
     }
   }
 
@@ -2679,6 +2775,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _startNewProjectSession() {
+    final store = _store;
+    if (store == null) return;
+    final project = _projectByConversationKey(_activeConversationKey);
+    if (project == null) return;
+
+    // Clear all persisted messages for this project
+    store.repository.db.clearProjectMessages(project.id);
+    _activeProjectSessionId = null;
+    _projectSessionIds.remove(project.id);
+    _saveProjectSessionId(project.id, '');
+
     _projectBridge?.startNewSession();
     if (!mounted) {
       return;

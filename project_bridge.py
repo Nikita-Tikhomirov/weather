@@ -147,6 +147,24 @@ class ProjectSession:
         self._broadcast("session_info", f"Новая сессия: {self.session_id}")
         return self.session_id
 
+    def resume_session(self, session_id: str) -> bool:
+        """Resume a specific session by its id."""
+        sid = str(session_id).strip()
+        if not sid:
+            return False
+        # Validate session log exists
+        expected_path = self._session_dir / f"{sid}.jsonl"
+        if not expected_path.exists():
+            _log("session", f"Session {sid} not found for {self.project_id}, keeping current")
+            return False
+        self.session_id = sid
+        try:
+            self._latest_session_path.write_text(sid, encoding="utf-8")
+        except Exception as exc:
+            _log("session", f"Failed to save latest session for {self.project_id}: {exc}")
+        _log("session", f"Resumed {self.project_id} session={sid}")
+        return True
+
     def load_history(self, limit: int = HISTORY_REPLAY_LIMIT) -> list[dict]:
         path = self._session_log_path()
         if not path.exists():
@@ -206,10 +224,14 @@ class ProjectSession:
             npm = Path(os.path.expandvars(r"%APPDATA%\npm"))
             js = npm / "node_modules" / "deepseek-tui" / "bin" / "deepseek-tui.js"
             is_node = exe.lower().endswith("node.exe") or exe.lower().endswith("node")
+            # Build base args with --resume to maintain session continuity
+            base_args = ["--yolo", "-w", self.project_dir]
+            if self.session_id:
+                base_args.extend(["--resume", self.session_id])
             if is_node and js.exists():
-                argv = [exe, str(js), "--yolo", "-w", self.project_dir, "exec", "--auto", exec_prompt]
+                argv = [exe, str(js)] + base_args + ["exec", "--auto", exec_prompt]
             else:
-                argv = [exe, "--yolo", "-w", self.project_dir, "exec", "--auto", exec_prompt]
+                argv = [exe] + base_args + ["exec", "--auto", exec_prompt]
             _log("session", f"{self.project_id} exec: {prompt[:80]}")
             self._broadcast("status", "DeepSeek начал выполнение...")
 
@@ -260,30 +282,32 @@ class ProjectSession:
         if not turns:
             return prompt
 
-        context_parts = []
+        # Build structured conversation history
+        history_blocks = []
         total_chars = 0
         for turn in reversed(turns[-MAX_MEMORY_TURNS:]):
             user_text = str(turn.get("user", "")).strip()
             assistant_text = str(turn.get("assistant", "")).strip()
             if not user_text and not assistant_text:
                 continue
-            block = f"Пользователь: {user_text}\nDeepSeek: {assistant_text}"
+            block = f"User: {user_text}\nAssistant: {assistant_text}"
             total_chars += len(block)
             if total_chars > MAX_MEMORY_CHARS:
                 break
-            context_parts.append(block)
+            history_blocks.append(block)
 
-        if not context_parts:
+        if not history_blocks:
             return prompt
 
-        context = " || ".join(reversed(context_parts))
+        history_text = "\n---\n".join(reversed(history_blocks))
         return (
-            "Ответь на текущий запрос пользователя. Используй память только как "
-            "контекст, если текущий запрос ссылается на прошлые сообщения. "
-            "Текущий запрос пользователя: "
-            f"{prompt} "
-            "Память предыдущих сообщений в этом проектном чате: "
-            f"{context}"
+            f"Continue the conversation. Below is the conversation history "
+            f"between User and Assistant. Use it as context to understand "
+            f"what was discussed before. Respond to the latest user message.\n\n"
+            f"=== CONVERSATION HISTORY ===\n"
+            f"{history_text}\n"
+            f"=== END HISTORY ===\n\n"
+            f"Latest user message: {prompt}"
         )
 
     @staticmethod
@@ -569,6 +593,9 @@ class TunnelClient:
                         continue
                     if msg.get("type") == "mobile_attached":
                         if session and session.running:
+                            req_session_id = str(msg.get('session_id', '')).strip()
+                            if req_session_id:
+                                session.resume_session(req_session_id)
                             session.send_session_info(writer)
                             session.send_history(writer)
                         continue

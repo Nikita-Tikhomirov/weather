@@ -109,8 +109,17 @@ class ProjectBridgeService {
   ProjectContact? _activeProject;
   final List<String> _pendingSends = <String>[];
   final StringBuffer _buffer = StringBuffer();
+  
+  /// Current session id (set by session_info messages from bridge).
+  String? currentSessionId;
+
+  /// Cached resume session id to use after reconnect.
+  String? _pendingResumeSessionId;
 
   bool get isConnected => _socket != null && _running;
+
+  /// The project id currently active (or last started) on this bridge.
+  String? get activeProjectId => _activeProject?.id;
 
   /// Resolve server address from SharedPreferences.
   static Future<String> getServerAddress() async {
@@ -288,17 +297,26 @@ class ProjectBridgeService {
   }
 
   /// Start a project session via tunnel (connect to PC bridge).
-  void startProject(ProjectContact project) {
+  /// If [resumeSessionId] is provided, the bridge will try to resume that session.
+  void startProject(ProjectContact project, {String? resumeSessionId}) {
     _activeProject = project;
+    if (resumeSessionId != null && resumeSessionId.isNotEmpty) {
+      _pendingResumeSessionId = resumeSessionId;
+    }
     if (!isConnected) {
       _scheduleReconnect();
       return;
     }
-    final message = jsonEncode({
+    final payload = <String, dynamic>{
       'type': 'connect',
       'project_id': project.id,
-    });
-    _sendRaw('$message\n');
+    };
+    final sid = _pendingResumeSessionId;
+    if (sid != null && sid.isNotEmpty) {
+      payload['session_id'] = sid;
+      _pendingResumeSessionId = null;
+    }
+    _sendRaw('${jsonEncode(payload)}\n');
   }
 
   /// Send text to the current project session.

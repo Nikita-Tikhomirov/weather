@@ -67,7 +67,8 @@ class TunnelServer:
             if msg_type == 'register':
                 await self._handle_bridge(project_id, reader, writer)
             elif msg_type == 'connect':
-                await self._handle_mobile(project_id, reader, writer)
+                session_id = msg.get('session_id', '').strip()
+                await self._handle_mobile(project_id, reader, writer, session_id=session_id)
             elif msg_type == 'launcher':
                 await self._handle_launcher(reader, writer)
             elif msg_type == 'launcher_ping':
@@ -236,7 +237,7 @@ class TunnelServer:
                 self._launcher_writers.remove(launcher)
         return delivered
 
-    async def _handle_mobile(self, project_id: str, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    async def _handle_mobile(self, project_id: str, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, session_id: str = ''):
         """Mobile client connects. Messages from mobile go to bridge."""
         bridge = self._bridges.get(project_id)
         if not bridge:
@@ -266,7 +267,11 @@ class TunnelServer:
         try:
             b_writer.write(
                 json.dumps(
-                    {'type': 'mobile_attached', 'project_id': project_id},
+                    {
+                        'type': 'mobile_attached',
+                        'project_id': project_id,
+                        'session_id': session_id,
+                    },
                     ensure_ascii=False,
                 ).encode('utf-8') + b'\n'
             )
