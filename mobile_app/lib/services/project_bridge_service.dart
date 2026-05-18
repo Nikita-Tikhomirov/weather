@@ -24,6 +24,9 @@ class BridgeMessage {
     this.files = const [],
     this.filePath = '',
     this.fileSize = 0,
+    this.append = false,
+    this.isFinal = false,
+    this.streamId = '',
   });
 
   final String type;
@@ -39,6 +42,9 @@ class BridgeMessage {
   final List<ProjectFileNode> files;
   final String filePath;
   final int fileSize;
+  final bool append;
+  final bool isFinal;
+  final String streamId;
 
   factory BridgeMessage.fromJson(Map<String, dynamic> json) {
     return BridgeMessage(
@@ -66,6 +72,47 @@ class BridgeMessage {
           const [],
       filePath: (json['path'] ?? '').toString(),
       fileSize: int.tryParse((json['size'] ?? 0).toString()) ?? 0,
+      append: json['append'] == true,
+      isFinal: json['final'] == true,
+      streamId: (json['stream_id'] ?? '').toString(),
+    );
+  }
+
+  BridgeMessage copyWith({
+    String? type,
+    String? text,
+    bool? tuiRunning,
+    String? projectId,
+    String? sessionId,
+    List<Map<String, dynamic>>? projects,
+    List<BridgeMessage>? messages,
+    String? imageBase64,
+    String? imageMimeType,
+    String? imageFilename,
+    List<ProjectFileNode>? files,
+    String? filePath,
+    int? fileSize,
+    bool? append,
+    bool? isFinal,
+    String? streamId,
+  }) {
+    return BridgeMessage(
+      type: type ?? this.type,
+      text: text ?? this.text,
+      tuiRunning: tuiRunning ?? this.tuiRunning,
+      projectId: projectId ?? this.projectId,
+      sessionId: sessionId ?? this.sessionId,
+      projects: projects ?? this.projects,
+      messages: messages ?? this.messages,
+      imageBase64: imageBase64 ?? this.imageBase64,
+      imageMimeType: imageMimeType ?? this.imageMimeType,
+      imageFilename: imageFilename ?? this.imageFilename,
+      files: files ?? this.files,
+      filePath: filePath ?? this.filePath,
+      fileSize: fileSize ?? this.fileSize,
+      append: append ?? this.append,
+      isFinal: isFinal ?? this.isFinal,
+      streamId: streamId ?? this.streamId,
     );
   }
 

@@ -405,6 +405,7 @@ class ProjectSession:
             _log("session", f"{self.project_id} runtime thread={self._runtime_thread_id}")
 
         self._current_turn_id = _RUNTIME.send_turn(self._runtime_thread_id, prompt)
+        answer_parts: list[str] = []
         for event in _RUNTIME.stream_events(self._runtime_thread_id, self._runtime_seq):
             seq = int(event.get("seq") or 0)
             if seq > self._runtime_seq:
@@ -415,8 +416,27 @@ class ProjectSession:
                 kind = str(payload.get("kind") or "")
                 delta = str(payload.get("delta") or "")
                 if kind == "agent_message" and delta:
+                    answer_parts.append(delta)
                     _log("session", f"{self.project_id} out: {delta[:120]}")
-                    self._broadcast("output", delta)
+                    self._broadcast(
+                        "output",
+                        delta,
+                        persist=False,
+                        append=True,
+                        stream_id=self._current_turn_id,
+                    )
+            elif event_name == "item.completed":
+                item = payload.get("item") if isinstance(payload.get("item"), dict) else {}
+                if item.get("kind") == "agent_message":
+                    final_text = str(item.get("detail") or item.get("summary") or "".join(answer_parts))
+                    if final_text:
+                        self._broadcast(
+                            "output",
+                            final_text,
+                            append=False,
+                            final=True,
+                            stream_id=self._current_turn_id,
+                        )
             elif event_name == "item.failed":
                 self._broadcast("error", str(payload.get("error") or "DeepSeek item failed"))
             elif event_name in ("turn.completed", "turn.interrupted", "turn.failed", "turn.canceled"):
@@ -503,8 +523,12 @@ class ProjectSession:
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         return f"{safe_stem}_{stamp}{ext}"
 
-    def _broadcast(self, msg_type: str, text: str, **extra) -> None:
-        event = self._append_event(msg_type, text, **extra)
+    def _broadcast(self, msg_type: str, text: str, persist: bool = True, **extra) -> None:
+        event = (
+            self._append_event(msg_type, text, **extra)
+            if persist
+            else self._make_event(msg_type, text, **extra)
+        )
         if not self.writers:
             _log("session", f"{self.project_id} broadcast with 0 writers!")
             return
@@ -551,7 +575,7 @@ class ProjectSession:
             + b"\n"
         )
 
-    def _append_event(self, msg_type: str, text: str, **extra) -> dict:
+    def _make_event(self, msg_type: str, text: str, **extra) -> dict:
         event = {
             "type": msg_type,
             "text": text,
@@ -560,6 +584,10 @@ class ProjectSession:
             "ts": int(time.time()),
         }
         event.update(extra)
+        return event
+
+    def _append_event(self, msg_type: str, text: str, **extra) -> dict:
+        event = self._make_event(msg_type, text, **extra)
         try:
             self._session_dir.mkdir(parents=True, exist_ok=True)
             with self._session_log_path().open("a", encoding="utf-8") as handle:

@@ -1216,8 +1216,6 @@ class _HomePageState extends State<HomePage> {
     final bridge = ProjectBridgeService(
       onMessage: (msg) {
         if (mounted) {
-          // Persist incoming message to database
-          _saveProjectMessageToDb(db, msg);
           if (msg.isHistory) {
             // History replay: only add messages we don't already have
             final existingTexts = _projectMessages.map((m) => m.text).toSet();
@@ -1227,6 +1225,12 @@ class _HomePageState extends State<HomePage> {
             }
             return;
           }
+          if (msg.isOutput && msg.streamId.isNotEmpty) {
+            _applyStreamingProjectOutput(db, msg);
+            return;
+          }
+          // Persist incoming non-stream message to database.
+          _saveProjectMessageToDb(db, msg);
           if (msg.isSessionInfo && msg.sessionId.isNotEmpty) {
             _activeProjectSessionId = msg.sessionId;
             _saveProjectSessionId(projectId, msg.sessionId);
@@ -1275,6 +1279,28 @@ class _HomePageState extends State<HomePage> {
     await ProjectBridgeService.requestBridgeStart(project);
     final ok = await bridge.connect();
     if (!ok) return;
+  }
+
+  void _applyStreamingProjectOutput(LocalDb db, BridgeMessage msg) {
+    var handled = false;
+    setState(() {
+      final lastIndex = _projectMessages.lastIndexWhere(
+        (item) => item.isOutput && item.streamId == msg.streamId,
+      );
+      if (lastIndex >= 0) {
+        final current = _projectMessages[lastIndex];
+        _projectMessages[lastIndex] = msg.isFinal
+            ? msg.copyWith(append: false)
+            : current.copyWith(text: current.text + msg.text);
+        handled = true;
+      } else {
+        _projectMessages.add(msg);
+        handled = true;
+      }
+    });
+    if (handled && msg.isFinal) {
+      _saveProjectMessageToDb(db, msg.copyWith(append: false));
+    }
   }
 
   bool _isProjectConversation(String key) => key.startsWith('project:');

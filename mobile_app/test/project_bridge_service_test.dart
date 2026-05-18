@@ -247,6 +247,27 @@ void main() {
     expect(message.messages.last.text, 'answer');
   });
 
+  test('streaming output metadata parses append and final flags', () {
+    final delta = BridgeMessage.fromJson({
+      'type': 'output',
+      'text': 'О',
+      'append': true,
+      'stream_id': 'turn_1',
+    });
+    final finalMessage = BridgeMessage.fromJson({
+      'type': 'output',
+      'text': 'Ответ целиком',
+      'final': true,
+      'stream_id': 'turn_1',
+    });
+
+    expect(delta.isOutput, isTrue);
+    expect(delta.append, isTrue);
+    expect(delta.streamId, 'turn_1');
+    expect(finalMessage.isFinal, isTrue);
+    expect(finalMessage.append, isFalse);
+  });
+
   test('incoming utf8 split across tcp chunks is decoded after full line', () async {
     final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
     final messages = <BridgeMessage>[];

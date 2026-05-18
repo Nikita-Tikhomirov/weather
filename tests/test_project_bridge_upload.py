@@ -42,6 +42,20 @@ class ProjectBridgeUploadTests(unittest.TestCase):
             self.assertEqual(history[0]["type"], "output")
             self.assertEqual(history[0]["text"], "hello from deepseek")
 
+    def test_non_persisted_stream_delta_is_not_saved_to_session_log(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            session = ProjectSession("cifra", tmp)
+
+            session._broadcast(
+                "output",
+                "tok",
+                persist=False,
+                append=True,
+                stream_id="turn_1",
+            )
+
+            self.assertEqual(session.load_history(limit=10), [])
+
     def test_new_session_switches_latest_log(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             session = ProjectSession("cifra", tmp)
