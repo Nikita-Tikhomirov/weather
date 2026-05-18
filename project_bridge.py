@@ -114,6 +114,8 @@ class ProjectSession:
         self._current_proc: subprocess.Popen | None = None
         # Defer session-id loading to start() so we can report errors
         self._init_error: str | None = None
+        # When True, the next prompt starts a fresh session (no --continue)
+        self._fresh_session: bool = False
 
     def start(self) -> bool:
         if not self._get_deepseek_exe():
@@ -144,6 +146,7 @@ class ProjectSession:
         self.session_id = self._new_session_id()
         self._session_dir.mkdir(parents=True, exist_ok=True)
         self._latest_session_path.write_text(self.session_id, encoding="utf-8")
+        self._fresh_session = True  # Next prompt starts fresh, not --continue
         self._broadcast("session_info", f"Новая сессия: {self.session_id}")
         return self.session_id
 
@@ -220,14 +223,23 @@ class ProjectSession:
                 self._broadcast("error", "deepseek-tui не найден в PATH")
                 return
 
-            exec_prompt = self._compact_for_cli(self._build_prompt_with_memory(prompt))
+            # With --continue, deepseek-tui manages full session context natively.
+            # Only inject memory for fresh sessions (fallback).
+            if self._fresh_session:
+                exec_prompt = self._compact_for_cli(self._build_prompt_with_memory(prompt))
+            else:
+                exec_prompt = self._compact_for_cli(prompt)
             npm = Path(os.path.expandvars(r"%APPDATA%\npm"))
             js = npm / "node_modules" / "deepseek-tui" / "bin" / "deepseek-tui.js"
             is_node = exe.lower().endswith("node.exe") or exe.lower().endswith("node")
-            # Build base args with --resume to maintain session continuity
-            base_args = ["--yolo", "-w", self.project_dir]
-            if self.session_id:
-                base_args.extend(["--resume", self.session_id])
+            # Build base args: --continue resumes the most recent session in this workspace.
+            # deepseek-tui handles full conversation context natively.
+            # Skip --continue for the first prompt after start_new_session().
+            if self._fresh_session:
+                base_args = ["--yolo", "-w", self.project_dir]
+                self._fresh_session = False
+            else:
+                base_args = ["--yolo", "-c", "-w", self.project_dir]
             if is_node and js.exists():
                 argv = [exe, str(js)] + base_args + ["exec", "--auto", exec_prompt]
             else:
