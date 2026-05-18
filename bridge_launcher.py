@@ -136,12 +136,15 @@ class BridgeLauncher:
         log_file = log_path.open("a", encoding="utf-8")
         script = self.project_root / "project_bridge.py"
         tunnel = f"{self.tunnel_host}:{self.tunnel_port}"
+        env = os.environ.copy()
+        env.setdefault("PYTHONIOENCODING", "utf-8:backslashreplace")
         self._bridge_process = subprocess.Popen(
             [sys.executable, str(script), "--tunnel", tunnel],
             cwd=str(self.project_root),
             stdout=log_file,
             stderr=subprocess.STDOUT,
             text=True,
+            env=env,
         )
         print(
             f"[launcher] started project_bridge.py pid={self._bridge_process.pid}",

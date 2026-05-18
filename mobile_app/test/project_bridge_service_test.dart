@@ -247,6 +247,45 @@ void main() {
     expect(message.messages.last.text, 'answer');
   });
 
+  test('incoming utf8 split across tcp chunks is decoded after full line', () async {
+    final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    final messages = <BridgeMessage>[];
+    final connected = Completer<void>();
+
+    final sub = server.listen((socket) async {
+      connected.complete();
+      final payload = utf8.encode('${jsonEncode({
+            'type': 'output',
+            'text': 'Привет из TUI',
+          })}\n');
+      final splitIndex = payload.indexOf(0xd0) + 1;
+      socket.add(payload.sublist(0, splitIndex));
+      await socket.flush();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      socket.add(payload.sublist(splitIndex));
+      await socket.flush();
+    });
+
+    SharedPreferences.setMockInitialValues({
+      'bridge_host': '127.0.0.1:${server.port}',
+    });
+
+    final service = ProjectBridgeService(
+      onMessage: messages.add,
+      onStatusChange: (_, __) {},
+    );
+
+    expect(await service.connect(), isTrue);
+    await connected.future.timeout(const Duration(seconds: 2));
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(messages.single.text, 'Привет из TUI');
+
+    service.dispose();
+    await sub.cancel();
+    await server.close();
+  });
+
   test('new session and stop commands are sent to the bridge', () async {
     final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
     final received = <Map<String, dynamic>>[];

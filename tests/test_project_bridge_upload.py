@@ -1,9 +1,12 @@
 import base64
+import io
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from project_bridge import ProjectSession
+from project_bridge import ProjectSession, _log
 
 
 class ProjectBridgeUploadTests(unittest.TestCase):
@@ -50,6 +53,16 @@ class ProjectBridgeUploadTests(unittest.TestCase):
 
             self.assertNotEqual(first_id, second_id)
             self.assertEqual(session.load_history(limit=10)[-1]["text"], "new")
+
+    def test_log_never_crashes_on_unencodable_tui_output(self) -> None:
+        stream = io.BytesIO()
+        stdout = io.TextIOWrapper(stream, encoding="cp1251", errors="strict")
+
+        with patch.object(sys, "stdout", stdout):
+            _log("session", "tui replacement char \ufffd")
+
+        stdout.flush()
+        self.assertIn(b"tui replacement char", stream.getvalue())
 
 
 if __name__ == "__main__":

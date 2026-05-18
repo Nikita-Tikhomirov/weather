@@ -19,6 +19,7 @@ import threading
 import time
 import wexpect
 import uuid
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
@@ -87,6 +88,148 @@ IMAGE_EXTENSIONS = {
     "image/webp": ".webp",
     "image/gif": ".gif",
 }
+RUNTIME_HOST = "127.0.0.1"
+RUNTIME_PORT = 7879
+RUNTIME_URL = f"http://{RUNTIME_HOST}:{RUNTIME_PORT}"
+
+
+class DeepseekRuntime:
+    """Local DeepSeek runtime API supervisor used instead of terminal key scraping."""
+
+    def __init__(self) -> None:
+        self._process: subprocess.Popen | None = None
+        self._lock = threading.Lock()
+
+    def ensure_running(self, cwd: str) -> None:
+        if self._health_ok():
+            return
+        with self._lock:
+            if self._health_ok():
+                return
+            exe = self._find_deepseek_binary()
+            if not exe:
+                raise RuntimeError("deepseek runtime binary not found")
+            state_dir = Path(cwd) / ".deepseek" / "state"
+            state_dir.mkdir(parents=True, exist_ok=True)
+            out = (state_dir / "deepseek_runtime.log").open("a", encoding="utf-8")
+            err = (state_dir / "deepseek_runtime.err.log").open("a", encoding="utf-8")
+            self._process = subprocess.Popen(
+                [
+                    exe,
+                    "serve",
+                    "--http",
+                    "--host",
+                    RUNTIME_HOST,
+                    "--port",
+                    str(RUNTIME_PORT),
+                ],
+                cwd=cwd,
+                stdout=out,
+                stderr=err,
+                text=True,
+            )
+            deadline = time.time() + 10
+            while time.time() < deadline:
+                if self._health_ok():
+                    return
+                time.sleep(0.25)
+            raise RuntimeError("deepseek runtime did not become healthy")
+
+    def create_thread(self, workspace: str, title: str) -> str:
+        payload = {
+            "workspace": workspace,
+            "mode": "agent",
+            "auto_approve": True,
+            "allow_shell": True,
+            "title": title,
+        }
+        data = self._request_json("POST", "/v1/threads", payload)
+        thread_id = str(data.get("id", "")).strip()
+        if not thread_id:
+            raise RuntimeError("deepseek runtime did not return thread id")
+        return thread_id
+
+    def send_turn(self, thread_id: str, prompt: str) -> str:
+        data = self._request_json(
+            "POST",
+            f"/v1/threads/{thread_id}/turns",
+            {"prompt": prompt},
+        )
+        turn = data.get("turn") if isinstance(data, dict) else None
+        turn_id = str((turn or {}).get("id", "")).strip()
+        if not turn_id:
+            raise RuntimeError("deepseek runtime did not return turn id")
+        return turn_id
+
+    def interrupt_turn(self, thread_id: str, turn_id: str) -> None:
+        self._request_json(
+            "POST",
+            f"/v1/threads/{thread_id}/turns/{turn_id}/interrupt",
+            {},
+        )
+
+    def stream_events(self, thread_id: str, since_seq: int):
+        request = urllib.request.Request(
+            f"{RUNTIME_URL}/v1/threads/{thread_id}/events?since_seq={since_seq}",
+            method="GET",
+        )
+        with urllib.request.urlopen(request, timeout=300) as response:
+            event_name = ""
+            data_lines: list[str] = []
+            while True:
+                raw = response.readline()
+                if not raw:
+                    break
+                line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
+                if line.startswith("event:"):
+                    event_name = line.split(":", 1)[1].strip()
+                elif line.startswith("data:"):
+                    data_lines.append(line.split(":", 1)[1].strip())
+                elif line == "" and data_lines:
+                    try:
+                        event = json.loads("\n".join(data_lines))
+                    except json.JSONDecodeError:
+                        event = {}
+                    if event_name:
+                        event["event"] = event_name
+                    yield event
+                    event_name = ""
+                    data_lines = []
+
+    def _request_json(self, method: str, path: str, payload: dict | None = None) -> dict:
+        body = None
+        headers = {}
+        if payload is not None:
+            body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            headers["Content-Type"] = "application/json"
+        request = urllib.request.Request(
+            f"{RUNTIME_URL}{path}",
+            data=body,
+            headers=headers,
+            method=method,
+        )
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return json.loads(response.read().decode("utf-8", errors="replace"))
+
+    def _health_ok(self) -> bool:
+        try:
+            data = self._request_json("GET", "/health")
+            return data.get("status") == "ok"
+        except Exception:
+            return False
+
+    @staticmethod
+    def _find_deepseek_binary() -> str | None:
+        npm = Path(os.path.expandvars(r"%APPDATA%\npm"))
+        downloaded = npm / "node_modules" / "deepseek-tui" / "bin" / "downloads" / "deepseek-tui.exe"
+        if downloaded.exists():
+            return str(downloaded)
+        import shutil
+
+        return shutil.which("deepseek-tui.exe") or shutil.which("deepseek-tui")
+
+
+_RUNTIME = DeepseekRuntime()
 
 
 def _ts() -> str:
@@ -94,7 +237,18 @@ def _ts() -> str:
 
 
 def _log(tag: str, msg: str) -> None:
-    print(f"[{_ts()}] [{tag}] {msg}", flush=True)
+    line = f"[{_ts()}] [{tag}] {msg}"
+    try:
+        print(line, flush=True)
+    except UnicodeEncodeError:
+        safe_line = line.encode(
+            getattr(sys.stdout, "encoding", None) or "utf-8",
+            errors="backslashreplace",
+        ).decode(
+            getattr(sys.stdout, "encoding", None) or "utf-8",
+            errors="replace",
+        )
+        print(safe_line, flush=True)
 
 
 class ProjectSession:
@@ -111,13 +265,16 @@ class ProjectSession:
         self._session_dir = self._state_dir / "sessions" / self._safe_project_id
         self._latest_session_path = self._session_dir / "latest.txt"
         self.session_id = ""
+        self._runtime_thread_id = ""
+        self._runtime_seq = 0
+        self._current_turn_id = ""
         self._pty_child = None  # wexpect spawn object (persistent PTY)
         self._pty_exe: str | None = None
         self._init_error: str | None = None
         self._fresh_session: bool = False
 
     def start(self) -> bool:
-        if not self._get_deepseek_exe():
+        if not _RUNTIME._find_deepseek_binary():
             _log("session", f"deepseek-tui not found for {self.project_id}")
             return False
         if not Path(self.project_dir).exists():
@@ -146,6 +303,9 @@ class ProjectSession:
         self._session_dir.mkdir(parents=True, exist_ok=True)
         self._latest_session_path.write_text(self.session_id, encoding="utf-8")
         self._fresh_session = True
+        self._runtime_thread_id = ""
+        self._runtime_seq = 0
+        self._save_runtime_thread()
         self._kill_pty()
         self._broadcast("session_info", f"Новая сессия: {self.session_id}")
         return self.session_id
@@ -161,6 +321,7 @@ class ProjectSession:
             _log("session", f"Session {sid} not found for {self.project_id}, keeping current")
             return False
         self.session_id = sid
+        self._load_runtime_thread()
         try:
             self._latest_session_path.write_text(sid, encoding="utf-8")
         except Exception as exc:
@@ -188,16 +349,16 @@ class ProjectSession:
         return items
 
     def stop_current_prompt(self) -> bool:
-        """Send Ctrl+C to the PTY process to stop the current prompt."""
-        child = self._pty_child
-        if not child or not child.isalive():
+        """Interrupt the currently running DeepSeek turn."""
+        if not self._runtime_thread_id or not self._current_turn_id:
             self._broadcast("status", "Нет активного процесса DeepSeek.")
             return False
         try:
-            child.sendcontrol('c')
+            _RUNTIME.interrupt_turn(self._runtime_thread_id, self._current_turn_id)
             self._broadcast("status", "Останавливаю DeepSeek...")
             return True
-        except Exception:
+        except Exception as exc:
+            _log("session", f"{self.project_id} interrupt failed: {exc}")
             return False
 
     def save_upload(self, filename: str, mime_type: str, data_base64: str) -> Path:
@@ -220,27 +381,49 @@ class ProjectSession:
             self._broadcast("status", "DeepSeek занят. Дождитесь завершения.")
             return
         try:
-            exe = self._get_deepseek_exe()
-            if not exe:
-                self._broadcast("error", "deepseek-tui не найден в PATH")
-                return
             if self._fresh_session:
                 self._fresh_session = False
-                self._kill_pty()
-            self._ensure_pty(exe)
-            child = self._pty_child
-            if not child or not child.isalive():
-                self._broadcast("error", "Не удалось запустить deepseek-tui")
-                return
+                self._runtime_thread_id = ""
+                self._runtime_seq = 0
+                self._save_runtime_thread()
             _log("session", f"{self.project_id} send: {prompt[:80]}")
             self._broadcast("status", "DeepSeek выполняет...")
-            # Send message via PTY
-            child.sendline(prompt)
-            # Read and stream response
-            self._read_pty_output()
+            self._run_runtime_turn(prompt)
             self._broadcast("status", "Готово.")
         finally:
+            self._current_turn_id = ""
             self._lock.release()
+
+    def _run_runtime_turn(self, prompt: str) -> None:
+        _RUNTIME.ensure_running(self.project_dir)
+        if not self._runtime_thread_id:
+            self._runtime_thread_id = _RUNTIME.create_thread(
+                self.project_dir,
+                f"{self.project_id} bridge session {self.session_id}",
+            )
+            self._save_runtime_thread()
+            _log("session", f"{self.project_id} runtime thread={self._runtime_thread_id}")
+
+        self._current_turn_id = _RUNTIME.send_turn(self._runtime_thread_id, prompt)
+        for event in _RUNTIME.stream_events(self._runtime_thread_id, self._runtime_seq):
+            seq = int(event.get("seq") or 0)
+            if seq > self._runtime_seq:
+                self._runtime_seq = seq
+            event_name = str(event.get("event") or "")
+            payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+            if event_name == "item.delta":
+                kind = str(payload.get("kind") or "")
+                delta = str(payload.get("delta") or "")
+                if kind == "agent_message" and delta:
+                    _log("session", f"{self.project_id} out: {delta[:120]}")
+                    self._broadcast("output", delta)
+            elif event_name == "item.failed":
+                self._broadcast("error", str(payload.get("error") or "DeepSeek item failed"))
+            elif event_name in ("turn.completed", "turn.interrupted", "turn.failed", "turn.canceled"):
+                self._save_runtime_thread()
+                if event_name == "turn.failed":
+                    self._broadcast("error", "DeepSeek turn failed")
+                break
 
     def _ensure_pty(self, exe: str) -> None:
         """Spawn the persistent deepseek-tui PTY process if not running."""
@@ -251,13 +434,18 @@ class ProjectSession:
         npm = Path(os.path.expandvars(r"%APPDATA%\npm"))
         js = npm / "node_modules" / "deepseek-tui" / "bin" / "deepseek-tui.js"
         is_node = exe.lower().endswith("node.exe") or exe.lower().endswith("node")
+        flags = f'--yolo --no-alt-screen --skip-onboarding -w "{self.project_dir}"'
         if is_node and js.exists():
-            cmd = f'"{exe}" "{js}" --yolo -w "{self.project_dir}"'
+            cmd = f'"{exe}" "{js}" {flags}'
         else:
-            cmd = f'"{exe}" --yolo -w "{self.project_dir}"'
+            cmd = f'"{exe}" {flags}'
         _log("session", f"{self.project_id} spawning PTY: {cmd[:100]}")
         self._pty_child = wexpect.spawn(cmd, cwd=self.project_dir, timeout=300, encoding='utf-8', codec_errors='replace')
         time.sleep(2)
+        if not self._pty_child.isalive():
+            startup_output = clean_line(self._pty_child.before or "")
+            if startup_output:
+                _log("session", f"{self.project_id} PTY exited at startup: {startup_output[:500]}")
 
     def _read_pty_output(self) -> None:
         """Read TUI output after sending a message, streaming cleaned lines.
@@ -383,11 +571,48 @@ class ProjectSession:
     def _session_log_path(self) -> Path:
         return self._session_dir / f"{self.session_id}.jsonl"
 
+    def _runtime_thread_path(self) -> Path:
+        return self._session_dir / f"{self.session_id}.runtime.json"
+
+    def _load_runtime_thread(self) -> None:
+        self._runtime_thread_id = ""
+        self._runtime_seq = 0
+        path = self._runtime_thread_path()
+        if not path.exists():
+            return
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            _log("session", f"Runtime thread load failed for {self.project_id}: {exc}")
+            return
+        self._runtime_thread_id = str(data.get("thread_id") or "").strip()
+        self._runtime_seq = int(data.get("seq") or 0)
+
+    def _save_runtime_thread(self) -> None:
+        if not self.session_id:
+            return
+        try:
+            self._session_dir.mkdir(parents=True, exist_ok=True)
+            self._runtime_thread_path().write_text(
+                json.dumps(
+                    {
+                        "thread_id": self._runtime_thread_id,
+                        "seq": self._runtime_seq,
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+        except Exception as exc:
+            _log("session", f"Runtime thread save failed for {self.project_id}: {exc}")
+
     def _load_or_create_session_id(self) -> str:
         try:
             if self._latest_session_path.exists():
                 raw = self._latest_session_path.read_text(encoding="utf-8").strip()
                 if re.fullmatch(r"[0-9]{8}_[0-9]{6}_[A-Za-z0-9_-]{8}", raw):
+                    self.session_id = raw
+                    self._load_runtime_thread()
                     return raw
         except Exception as exc:
             _log("session", f"Latest session load failed for {self.project_id}: {exc}")
@@ -397,6 +622,8 @@ class ProjectSession:
             self._latest_session_path.write_text(session_id, encoding="utf-8")
         except Exception as exc:
             _log("session", f"Latest session save failed for {self.project_id}: {exc}")
+        self.session_id = session_id
+        self._load_runtime_thread()
         return session_id
 
     @staticmethod

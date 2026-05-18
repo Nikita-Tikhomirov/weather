@@ -108,7 +108,7 @@ class ProjectBridgeService {
   Timer? _reconnectTimer;
   ProjectContact? _activeProject;
   final List<String> _pendingSends = <String>[];
-  final StringBuffer _buffer = StringBuffer();
+  final BytesBuilder _buffer = BytesBuilder(copy: false);
   
   /// Current session id (set by session_info messages from bridge).
   String? currentSessionId;
@@ -268,19 +268,24 @@ class ProjectBridgeService {
   }
 
   void _onData(Uint8List data) {
-    _buffer.write(utf8.decode(data));
-    // Process complete lines
+    _buffer.add(data);
+
+    // TCP chunks may split multibyte UTF-8 characters. Decode only complete
+    // newline-terminated frames so Cyrillic TUI output cannot break the stream.
     while (true) {
-      final content = _buffer.toString();
-      final newlineIndex = content.indexOf('\n');
+      final content = _buffer.toBytes();
+      final newlineIndex = content.indexOf(10);
       if (newlineIndex < 0) {
         break;
       }
-      final line = content.substring(0, newlineIndex).trim();
+
+      final lineBytes = content.sublist(0, newlineIndex);
       _buffer.clear();
       if (newlineIndex + 1 < content.length) {
-        _buffer.write(content.substring(newlineIndex + 1));
+        _buffer.add(content.sublist(newlineIndex + 1));
       }
+
+      final line = utf8.decode(lineBytes, allowMalformed: true).trim();
 
       if (line.isEmpty) {
         continue;
