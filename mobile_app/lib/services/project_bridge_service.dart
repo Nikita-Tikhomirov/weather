@@ -27,6 +27,7 @@ class BridgeMessage {
     this.append = false,
     this.isFinal = false,
     this.streamId = '',
+    this.runtimeKind = '',
   });
 
   final String type;
@@ -45,6 +46,7 @@ class BridgeMessage {
   final bool append;
   final bool isFinal;
   final String streamId;
+  final String runtimeKind;
 
   factory BridgeMessage.fromJson(Map<String, dynamic> json) {
     return BridgeMessage(
@@ -75,6 +77,7 @@ class BridgeMessage {
       append: json['append'] == true,
       isFinal: json['final'] == true,
       streamId: (json['stream_id'] ?? '').toString(),
+      runtimeKind: (json['runtime_kind'] ?? '').toString(),
     );
   }
 
@@ -95,6 +98,7 @@ class BridgeMessage {
     bool? append,
     bool? isFinal,
     String? streamId,
+    String? runtimeKind,
   }) {
     return BridgeMessage(
       type: type ?? this.type,
@@ -113,6 +117,7 @@ class BridgeMessage {
       append: append ?? this.append,
       isFinal: isFinal ?? this.isFinal,
       streamId: streamId ?? this.streamId,
+      runtimeKind: runtimeKind ?? this.runtimeKind,
     );
   }
 

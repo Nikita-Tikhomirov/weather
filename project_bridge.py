@@ -405,38 +405,50 @@ class ProjectSession:
             _log("session", f"{self.project_id} runtime thread={self._runtime_thread_id}")
 
         self._current_turn_id = _RUNTIME.send_turn(self._runtime_thread_id, prompt)
-        answer_parts: list[str] = []
+        item_parts: dict[str, list[str]] = {}
+        item_kinds: dict[str, str] = {}
         for event in _RUNTIME.stream_events(self._runtime_thread_id, self._runtime_seq):
             seq = int(event.get("seq") or 0)
             if seq > self._runtime_seq:
                 self._runtime_seq = seq
             event_name = str(event.get("event") or "")
+            item_id = str(event.get("item_id") or "")
             payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
             if event_name == "item.delta":
                 kind = str(payload.get("kind") or "")
                 delta = str(payload.get("delta") or "")
-                if kind == "agent_message" and delta:
-                    answer_parts.append(delta)
+                if delta:
+                    if item_id:
+                        item_parts.setdefault(item_id, []).append(delta)
+                        item_kinds[item_id] = kind
                     _log("session", f"{self.project_id} out: {delta[:120]}")
                     self._broadcast(
                         "output",
                         delta,
                         persist=False,
                         append=True,
-                        stream_id=self._current_turn_id,
+                        stream_id=item_id or self._current_turn_id,
+                        runtime_kind=kind,
                     )
             elif event_name == "item.completed":
                 item = payload.get("item") if isinstance(payload.get("item"), dict) else {}
-                if item.get("kind") == "agent_message":
-                    final_text = str(item.get("detail") or item.get("summary") or "".join(answer_parts))
-                    if final_text:
-                        self._broadcast(
-                            "output",
-                            final_text,
-                            append=False,
-                            final=True,
-                            stream_id=self._current_turn_id,
-                        )
+                kind = str(item.get("kind") or item_kinds.get(item_id) or "")
+                if kind == "user_message":
+                    continue
+                final_text = str(
+                    item.get("detail")
+                    or item.get("summary")
+                    or "".join(item_parts.get(item_id, []))
+                )
+                if final_text:
+                    self._broadcast(
+                        "output",
+                        final_text,
+                        append=False,
+                        final=True,
+                        stream_id=item_id or self._current_turn_id,
+                        runtime_kind=kind,
+                    )
             elif event_name == "item.failed":
                 self._broadcast("error", str(payload.get("error") or "DeepSeek item failed"))
             elif event_name in ("turn.completed", "turn.interrupted", "turn.failed", "turn.canceled"):

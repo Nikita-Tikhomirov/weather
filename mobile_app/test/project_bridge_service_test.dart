@@ -253,6 +253,7 @@ void main() {
       'text': 'О',
       'append': true,
       'stream_id': 'turn_1',
+      'runtime_kind': 'agent_reasoning',
     });
     final finalMessage = BridgeMessage.fromJson({
       'type': 'output',
@@ -264,6 +265,7 @@ void main() {
     expect(delta.isOutput, isTrue);
     expect(delta.append, isTrue);
     expect(delta.streamId, 'turn_1');
+    expect(delta.runtimeKind, 'agent_reasoning');
     expect(finalMessage.isFinal, isTrue);
     expect(finalMessage.append, isFalse);
   });
