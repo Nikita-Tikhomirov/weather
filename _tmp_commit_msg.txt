@@ -1,1 +1,1 @@
-feat: persistent project chat sessions with session_id tracking
+chore: trigger APK rebuild with session persistence changes
