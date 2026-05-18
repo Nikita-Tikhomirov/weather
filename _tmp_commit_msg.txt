@@ -1,1 +1,1 @@
-chore: trigger APK rebuild with session persistence changes
+fix: use --prompt instead of exec --auto for session context continuity

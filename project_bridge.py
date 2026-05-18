@@ -1,10 +1,9 @@
 """
 Project Bridge - runs DeepSeek TUI prompts for project chats.
 
-The full-screen TUI does not behave like a line-oriented shell when driven over
-stdin: prompts stay in its Draft box and screen updates often have no newlines.
-The bridge therefore uses DeepSeek TUI's exec mode, which reliably runs prompts
-and tools for a workspace.
+The bridge uses DeepSeek TUI's --prompt mode with --continue flag,
+which loads the full session context for conversation continuity.
+Each message runs as a one-shot prompt within the persistent session.
 
 Usage: python project_bridge.py [--tunnel 31.129.97.211:9877]
 """
@@ -73,8 +72,6 @@ DEFAULT_PROJECTS = [
     },
 ]
 
-MAX_MEMORY_TURNS = 12
-MAX_MEMORY_CHARS = 12000
 RECONNECT_DELAY_SECONDS = 1
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 MAX_TUNNEL_LINE_BYTES = 32 * 1024 * 1024
@@ -97,7 +94,7 @@ def _log(tag: str, msg: str) -> None:
 
 
 class ProjectSession:
-    """Serializes DeepSeek exec prompts for one project."""
+    """Runs DeepSeek TUI --prompt for one project with session continuity."""
 
     def __init__(self, project_id: str, project_dir: str):
         self.project_id = project_id
@@ -106,7 +103,6 @@ class ProjectSession:
         self.writers: list = []
         self._lock = threading.Lock()
         self._state_dir = Path(project_dir) / ".deepseek" / "state"
-        self._memory_path = self._state_dir / f"bridge_memory_{self._safe_id(project_id)}.json"
         self._safe_project_id = self._safe_id(project_id)
         self._session_dir = self._state_dir / "sessions" / self._safe_project_id
         self._latest_session_path = self._session_dir / "latest.txt"
@@ -223,27 +219,21 @@ class ProjectSession:
                 self._broadcast("error", "deepseek-tui не найден в PATH")
                 return
 
-            # With --continue, deepseek-tui manages full session context natively.
-            # Only inject memory for fresh sessions (fallback).
-            if self._fresh_session:
-                exec_prompt = self._compact_for_cli(self._build_prompt_with_memory(prompt))
-            else:
-                exec_prompt = self._compact_for_cli(prompt)
+            # Use --prompt (not exec) so deepseek-tui loads the full session
+            # context when --continue is active. exec --auto is stateless.
+            prompt_arg = self._compact_for_cli(prompt)
             npm = Path(os.path.expandvars(r"%APPDATA%\npm"))
             js = npm / "node_modules" / "deepseek-tui" / "bin" / "deepseek-tui.js"
             is_node = exe.lower().endswith("node.exe") or exe.lower().endswith("node")
-            # Build base args: --continue resumes the most recent session in this workspace.
-            # deepseek-tui handles full conversation context natively.
-            # Skip --continue for the first prompt after start_new_session().
             if self._fresh_session:
                 base_args = ["--yolo", "-w", self.project_dir]
                 self._fresh_session = False
             else:
                 base_args = ["--yolo", "-c", "-w", self.project_dir]
             if is_node and js.exists():
-                argv = [exe, str(js)] + base_args + ["exec", "--auto", exec_prompt]
+                argv = [exe, str(js)] + base_args + ["--prompt", prompt_arg]
             else:
-                argv = [exe] + base_args + ["exec", "--auto", exec_prompt]
+                argv = [exe] + base_args + ["--prompt", prompt_arg]
             _log("session", f"{self.project_id} exec: {prompt[:80]}")
             self._broadcast("status", "DeepSeek начал выполнение...")
 
@@ -276,7 +266,6 @@ class ProjectSession:
 
             code = proc.wait()
             if code == 0:
-                self._remember(prompt, "\n".join(output_lines))
                 if not emitted:
                     self._broadcast(
                         "status",
@@ -289,71 +278,9 @@ class ProjectSession:
             self._current_proc = None
             self._lock.release()
 
-    def _build_prompt_with_memory(self, prompt: str) -> str:
-        turns = self._load_memory()
-        if not turns:
-            return prompt
-
-        # Build structured conversation history
-        history_blocks = []
-        total_chars = 0
-        for turn in reversed(turns[-MAX_MEMORY_TURNS:]):
-            user_text = str(turn.get("user", "")).strip()
-            assistant_text = str(turn.get("assistant", "")).strip()
-            if not user_text and not assistant_text:
-                continue
-            block = f"User: {user_text}\nAssistant: {assistant_text}"
-            total_chars += len(block)
-            if total_chars > MAX_MEMORY_CHARS:
-                break
-            history_blocks.append(block)
-
-        if not history_blocks:
-            return prompt
-
-        history_text = "\n---\n".join(reversed(history_blocks))
-        return (
-            f"Continue the conversation. Below is the conversation history "
-            f"between User and Assistant. Use it as context to understand "
-            f"what was discussed before. Respond to the latest user message.\n\n"
-            f"=== CONVERSATION HISTORY ===\n"
-            f"{history_text}\n"
-            f"=== END HISTORY ===\n\n"
-            f"Latest user message: {prompt}"
-        )
-
     @staticmethod
     def _compact_for_cli(text: str) -> str:
         return re.sub(r"\s+", " ", text).strip()
-
-    def _remember(self, user_text: str, assistant_text: str) -> None:
-        turns = self._load_memory()
-        turns.append(
-            {
-                "user": user_text,
-                "assistant": assistant_text,
-                "ts": int(__import__("time").time()),
-            }
-        )
-        turns = turns[-MAX_MEMORY_TURNS:]
-        try:
-            self._memory_path.parent.mkdir(parents=True, exist_ok=True)
-            self._memory_path.write_text(
-                json.dumps(turns, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
-        except Exception as exc:
-            _log("session", f"Memory save failed for {self.project_id}: {exc}")
-
-    def _load_memory(self) -> list:
-        try:
-            if not self._memory_path.exists():
-                return []
-            data = json.loads(self._memory_path.read_text(encoding="utf-8"))
-            return data if isinstance(data, list) else []
-        except Exception as exc:
-            _log("session", f"Memory load failed for {self.project_id}: {exc}")
-            return []
 
     @staticmethod
     def _safe_upload_name(filename: str, mime_type: str) -> str:
