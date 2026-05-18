@@ -1,9 +1,9 @@
 """
 Project Bridge - runs DeepSeek TUI prompts for project chats.
 
-The bridge uses DeepSeek TUI's --prompt mode with --continue flag,
-which loads the full session context for conversation continuity.
-Each message runs as a one-shot prompt within the persistent session.
+The bridge reads the full conversation history from the session log
+and injects it as context into each prompt. deepseek-tui exec --auto
+is stateless across invocations, so we build the context ourselves.
 
 Usage: python project_bridge.py [--tunnel 31.129.97.211:9877]
 """
@@ -219,21 +219,23 @@ class ProjectSession:
                 self._broadcast("error", "deepseek-tui не найден в PATH")
                 return
 
-            # Use --prompt (not exec) so deepseek-tui loads the full session
-            # context when --continue is active. exec --auto is stateless.
-            prompt_arg = self._compact_for_cli(prompt)
+            # Build prompt with full conversation history from session log.
+            # This is the only reliable way: deepseek-tui --prompt / exec --auto
+            # are both stateless across invocations. We inject the full context.
+            if self._fresh_session:
+                full_prompt = self._compact_for_cli(prompt)
+                self._fresh_session = False
+            else:
+                full_prompt = self._build_context_prompt(prompt)
+
             npm = Path(os.path.expandvars(r"%APPDATA%\npm"))
             js = npm / "node_modules" / "deepseek-tui" / "bin" / "deepseek-tui.js"
             is_node = exe.lower().endswith("node.exe") or exe.lower().endswith("node")
-            if self._fresh_session:
-                base_args = ["--yolo", "-w", self.project_dir]
-                self._fresh_session = False
-            else:
-                base_args = ["--yolo", "-c", "-w", self.project_dir]
+            base_args = ["--yolo", "-w", self.project_dir]
             if is_node and js.exists():
-                argv = [exe, str(js)] + base_args + ["--prompt", prompt_arg]
+                argv = [exe, str(js)] + base_args + ["exec", "--auto", full_prompt]
             else:
-                argv = [exe] + base_args + ["--prompt", prompt_arg]
+                argv = [exe] + base_args + ["exec", "--auto", full_prompt]
             _log("session", f"{self.project_id} exec: {prompt[:80]}")
             self._broadcast("status", "DeepSeek начал выполнение...")
 
@@ -277,6 +279,73 @@ class ProjectSession:
         finally:
             self._current_proc = None
             self._lock.release()
+
+    def _build_context_prompt(self, current_prompt: str) -> str:
+        """Build a prompt that includes the full conversation history."""
+        raw_events = self.load_history(limit=300)
+        if not raw_events:
+            return self._compact_for_cli(current_prompt)
+
+        # Parse events into user/assistant turns.
+        # The last "send" event is the current prompt — exclude it from history.
+        turns: list[tuple[str, str]] = []  # (role, text)
+        pending_output: list[str] = []
+
+        for ev in raw_events:
+            t = str(ev.get("type", ""))
+            text = str(ev.get("text", "")).strip()
+            if not text:
+                continue
+
+            if t == "send":
+                if pending_output:
+                    turns.append(("assistant", "\n".join(pending_output)))
+                    pending_output = []
+                turns.append(("user", text))
+            elif t in ("output",):
+                pending_output.append(text)
+            elif t in ("status", "error"):
+                # Flush pending output on session boundaries
+                if "завершил" in text.lower() or "останавливаю" in text.lower():
+                    if pending_output:
+                        turns.append(("assistant", "\n".join(pending_output)))
+                        pending_output = []
+
+        # Flush remaining output
+        if pending_output:
+            turns.append(("assistant", "\n".join(pending_output)))
+
+        # Remove the last "user" turn (it's the current prompt, already in the log)
+        if turns and turns[-1][0] == "user":
+            turns.pop()
+
+        if not turns:
+            return self._compact_for_cli(current_prompt)
+
+        # Take last 30 turns (15 exchanges), keep total under ~8000 chars
+        recent = turns[-30:]
+        blocks = []
+        total = 0
+        for role, text in reversed(recent):
+            block = f"User: {text}" if role == "user" else f"Assistant: {text}"
+            total += len(block)
+            if total > 8000:
+                break
+            blocks.append(block)
+
+        if not blocks:
+            return self._compact_for_cli(current_prompt)
+
+        history_text = "\n\n".join(reversed(blocks))
+        full = (
+            f"Continue the conversation. Use the history below as context. "
+            f"Respond to the latest user message.\n\n"
+            f"=== HISTORY ===\n\n"
+            f"{history_text}\n\n"
+            f"=== END HISTORY ===\n\n"
+            f"User: {current_prompt}"
+        )
+        return self._compact_for_cli(full)
 
     @staticmethod
     def _compact_for_cli(text: str) -> str:
