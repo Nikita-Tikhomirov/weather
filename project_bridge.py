@@ -1,9 +1,9 @@
 """
 Project Bridge - runs DeepSeek TUI prompts for project chats.
 
-The bridge reads the full conversation history from the session log
-(.jsonl) and injects it as context into each deepseek-tui exec --auto
-prompt. This provides session continuity despite exec being stateless.
+The bridge spawns deepseek-tui in a PTY (pseudo-terminal) via wexpect,
+maintaining one persistent process per project. Messages are typed into
+the TUI and responses are streamed back. Full session continuity.
 
 Usage: python project_bridge.py [--tunnel 31.129.97.211:9877]
 """
@@ -17,6 +17,7 @@ import subprocess
 import sys
 import threading
 import time
+import wexpect
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -35,12 +36,15 @@ ANSI_RE = re.compile(
 )
 
 
+_FRAME_CHARS = set("─│┌└┐┘├┤┬┴┼╭╮╰╯═║╒╓╔╕╖╗╘╙╚╛╜╝╞╟╠╡╢╣╤╥╦╧╨╩╪╫╬")
+
 def clean_line(text: str) -> str:
     """Strip terminal control sequences and cosmetic frame-only lines."""
     s = ANSI_RE.sub("", text).strip()
     if not s:
         return ""
-    if s.startswith(("─", "│", "┌", "└")):
+    # Skip pure frame-drawing lines
+    if all(c in _FRAME_CHARS or c == ' ' for c in s):
         return ""
     return s
 
@@ -94,7 +98,7 @@ def _log(tag: str, msg: str) -> None:
 
 
 class ProjectSession:
-    """Runs deepseek-tui exec with full conversation history from session log."""
+    """Maintains a persistent deepseek-tui PTY process for real session continuity."""
 
     def __init__(self, project_id: str, project_dir: str):
         self.project_id = project_id
@@ -107,9 +111,9 @@ class ProjectSession:
         self._session_dir = self._state_dir / "sessions" / self._safe_project_id
         self._latest_session_path = self._session_dir / "latest.txt"
         self.session_id = ""
-        # Defer session-id loading to start() so we can report errors
+        self._pty_child = None  # wexpect spawn object (persistent PTY)
+        self._pty_exe: str | None = None
         self._init_error: str | None = None
-        # When True, the next prompt starts a fresh session (no --continue)
         self._fresh_session: bool = False
 
     def start(self) -> bool:
@@ -141,7 +145,8 @@ class ProjectSession:
         self.session_id = self._new_session_id()
         self._session_dir.mkdir(parents=True, exist_ok=True)
         self._latest_session_path.write_text(self.session_id, encoding="utf-8")
-        self._fresh_session = True  # Next prompt starts fresh, not --continue
+        self._fresh_session = True
+        self._kill_pty()
         self._broadcast("session_info", f"Новая сессия: {self.session_id}")
         return self.session_id
 
@@ -183,8 +188,17 @@ class ProjectSession:
         return items
 
     def stop_current_prompt(self) -> bool:
-        self._broadcast("status", "Остановка через exec невозможна. Нажмите Новую сессию.")
-        return False
+        """Send Ctrl+C to the PTY process to stop the current prompt."""
+        child = self._pty_child
+        if not child or not child.isalive():
+            self._broadcast("status", "Нет активного процесса DeepSeek.")
+            return False
+        try:
+            child.sendcontrol('c')
+            self._broadcast("status", "Останавливаю DeepSeek...")
+            return True
+        except Exception:
+            return False
 
     def save_upload(self, filename: str, mime_type: str, data_base64: str) -> Path:
         raw = base64.b64decode(data_base64, validate=True)
@@ -199,179 +213,89 @@ class ProjectSession:
         target.write_bytes(raw)
         return target
 
+    # ── PTY-based persistent process ────────────────────────────
+
     def _run_prompt(self, prompt: str) -> None:
         if not self._lock.acquire(blocking=False):
-            self._broadcast(
-                "status",
-                "DeepSeek занят. Дождитесь завершения текущего запроса.",
-            )
+            self._broadcast("status", "DeepSeek занят. Дождитесь завершения.")
             return
-
         try:
             exe = self._get_deepseek_exe()
             if not exe:
                 self._broadcast("error", "deepseek-tui не найден в PATH")
                 return
-
-            # Build prompt with full conversation history from session log
             if self._fresh_session:
-                full_prompt = self._compact_for_cli(prompt)
                 self._fresh_session = False
-                self._broadcast("status", "Новая сессия")
-            else:
-                full_prompt = self._build_context_prompt(prompt)
-                # Diagnostic: tell the user how much context was loaded
-                ctx_chars = len(full_prompt) - len(prompt)
-                if ctx_chars > 50:
-                    self._broadcast("status", f"Сессия загружена (+{ctx_chars} символов истории)")
-                else:
-                    self._broadcast("status", "Контекст пуст — начинаю с чистого листа")
-
-            npm = Path(os.path.expandvars(r"%APPDATA%\npm"))
-            js = npm / "node_modules" / "deepseek-tui" / "bin" / "deepseek-tui.js"
-            is_node = exe.lower().endswith("node.exe") or exe.lower().endswith("node")
-            if is_node and js.exists():
-                argv = [exe, str(js), "--yolo", "-w", self.project_dir, "exec", "--auto", full_prompt]
-            else:
-                argv = [exe, "--yolo", "-w", self.project_dir, "exec", "--auto", full_prompt]
-            _log("session", f"{self.project_id} exec: {prompt[:80]}")
-            self._broadcast("status", "DeepSeek начал выполнение...")
-
-            try:
-                proc = subprocess.Popen(
-                    argv,
-                    cwd=self.project_dir,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    bufsize=1,
-                )
-            except Exception as exc:
-                self._broadcast("error", f"Не удалось запустить deepseek-tui: {exc}")
+                self._kill_pty()
+            self._ensure_pty(exe)
+            child = self._pty_child
+            if not child or not child.isalive():
+                self._broadcast("error", "Не удалось запустить deepseek-tui")
                 return
-
-            emitted = False
-            assert proc.stdout is not None
-            for raw_line in proc.stdout:
-                clean = clean_line(raw_line)
-                if clean:
-                    emitted = True
-                    _log("session", f"{self.project_id} out: {clean[:120]}")
-                    self._broadcast("output", clean)
-
-            code = proc.wait()
-            if code == 0:
-                if not emitted:
-                    self._broadcast(
-                        "status",
-                        "DeepSeek завершил выполнение без текстового вывода.",
-                    )
-                self._broadcast("status", "DeepSeek завершил выполнение.")
-            else:
-                self._broadcast("error", f"deepseek-tui завершился с кодом {code}")
+            _log("session", f"{self.project_id} send: {prompt[:80]}")
+            self._broadcast("status", "DeepSeek выполняет...")
+            # Send message via PTY
+            child.sendline(prompt)
+            # Read and stream response
+            self._read_pty_output()
+            self._broadcast("status", "Готово.")
         finally:
             self._lock.release()
 
-    def _build_context_prompt(self, current_prompt: str) -> str:
-        """Build a prompt with full conversation history from session log."""
-        log_path = self._session_log_path()
-        _log("session", f"{self.project_id} reading history from {log_path} (exists={log_path.exists()})")
-        raw_events = self.load_history(limit=300)
-        _log("session", f"{self.project_id} loaded {len(raw_events)} events from current session")
-        if not raw_events:
-            raw_events = self._load_latest_session_history(limit=300)
-            _log("session", f"{self.project_id} fallback scan found {len(raw_events)} events")
-        if not raw_events:
-            _log("session", f"{self.project_id} NO HISTORY FOUND — session log is empty or missing")
-            return self._compact_for_cli(current_prompt)
+    def _ensure_pty(self, exe: str) -> None:
+        """Spawn the persistent deepseek-tui PTY process if not running."""
+        if self._pty_child and self._pty_child.isalive():
+            return
+        self._kill_pty()
+        self._pty_exe = exe
+        npm = Path(os.path.expandvars(r"%APPDATA%\npm"))
+        js = npm / "node_modules" / "deepseek-tui" / "bin" / "deepseek-tui.js"
+        is_node = exe.lower().endswith("node.exe") or exe.lower().endswith("node")
+        if is_node and js.exists():
+            cmd = f'"{exe}" "{js}" --yolo -w "{self.project_dir}"'
+        else:
+            cmd = f'"{exe}" --yolo -w "{self.project_dir}"'
+        _log("session", f"{self.project_id} spawning PTY: {cmd[:100]}")
+        self._pty_child = wexpect.spawn(cmd, cwd=self.project_dir, timeout=300, encoding='utf-8', codec_errors='replace')
+        time.sleep(2)
 
-        # Parse events into user/assistant turns
-        turns: list[tuple[str, str]] = []
-        pending_output: list[str] = []
-
-        for ev in raw_events:
-            t = str(ev.get("type", ""))
-            text = str(ev.get("text", "")).strip()
-            if not text:
-                continue
-            if t == "send":
-                if pending_output:
-                    turns.append(("assistant", "\n".join(pending_output)))
-                    pending_output = []
-                turns.append(("user", text))
-            elif t in ("output",):
-                pending_output.append(text)
-            elif t in ("status", "error"):
-                if "завершил" in text.lower() or "останавливаю" in text.lower():
-                    if pending_output:
-                        turns.append(("assistant", "\n".join(pending_output)))
-                        pending_output = []
-
-        if pending_output:
-            turns.append(("assistant", "\n".join(pending_output)))
-        if turns and turns[-1][0] == "user":
-            turns.pop()
-        if not turns:
-            return self._compact_for_cli(current_prompt)
-
-        # Take last 30 turns, keep under ~8000 chars
-        recent = turns[-30:]
-        blocks = []
-        total = 0
-        for role, text in reversed(recent):
-            block = f"User: {text}" if role == "user" else f"Assistant: {text}"
-            total += len(block)
-            if total > 8000:
-                break
-            blocks.append(block)
-        if not blocks:
-            return self._compact_for_cli(current_prompt)
-
-        history_text = "\n\n".join(reversed(blocks))
-        full = (
-            f"Continue the conversation. Use the history below as context. "
-            f"Respond to the latest user message.\n\n"
-            f"=== HISTORY ===\n\n"
-            f"{history_text}\n\n"
-            f"=== END HISTORY ===\n\n"
-            f"User: {current_prompt}"
-        )
-        # Preserve newlines — critical for conversation structure
-        return re.sub(r"[ \t]+", " ", full).strip()
-
-    def _load_latest_session_history(self, limit: int = 300) -> list[dict]:
-        """Scan all session log files and load the newest one."""
-        try:
-            if not self._session_dir.exists():
-                return []
-            files = sorted(
-                self._session_dir.glob("*.jsonl"),
-                key=lambda p: p.stat().st_mtime, reverse=True,
-            )
-            for f in files:
-                try:
-                    lines = f.read_text(encoding="utf-8").splitlines()
-                    items = []
-                    for line in lines[-limit:]:
-                        try:
-                            item = json.loads(line)
-                        except json.JSONDecodeError:
-                            continue
-                        if isinstance(item, dict):
-                            items.append(item)
-                    if items:
-                        return items
-                except Exception:
+    def _read_pty_output(self) -> None:
+        """Read TUI output after sending a message, streaming cleaned lines."""
+        child = self._pty_child
+        if not child:
+            return
+        idle_count = 0
+        last_pos = 0
+        while idle_count < 30 and child.isalive():
+            try:
+                idx = child.expect([wexpect.TIMEOUT], timeout=1)
+                new_data = child.before[last_pos:] if len(child.before) > last_pos else ""
+                last_pos = len(child.before)
+                if new_data:
+                    for line in new_data.split('\n'):
+                        clean = clean_line(line)
+                        if clean and len(clean) > 1:
+                            _log("session", f"{self.project_id} out: {clean[:120]}")
+                            self._broadcast("output", clean)
+                            idle_count = 0
                     continue
-        except Exception:
-            pass
-        return []
+                idle_count += 1
+            except wexpect.TIMEOUT:
+                idle_count += 1
+            except Exception as exc:
+                _log("session", f"{self.project_id} read error: {exc}")
+                break
+        _log("session", f"{self.project_id} response complete (idle={idle_count})")
 
-    @staticmethod
-    def _compact_for_cli(text: str) -> str:
-        return re.sub(r"\s+", " ", text).strip()
+    def _kill_pty(self) -> None:
+        """Kill the PTY process."""
+        child = self._pty_child
+        if child:
+            try:
+                child.terminate(force=True)
+            except Exception:
+                pass
+            self._pty_child = None
 
     @staticmethod
     def _safe_upload_name(filename: str, mime_type: str) -> str:
@@ -404,6 +328,7 @@ class ProjectSession:
 
     def stop(self) -> None:
         self.running = False
+        self._kill_pty()
 
     def send_session_info(self, writer) -> None:
         writer.write(
