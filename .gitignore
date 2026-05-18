@@ -19,5 +19,6 @@ sync_runtime.local.json
 backend_api/config.php
 
 # Local DeepSeek bridge runtime state
+.deepseek/
 .deepseek/state/bridge_memory*.json
 .tmp_deepseek_*/
