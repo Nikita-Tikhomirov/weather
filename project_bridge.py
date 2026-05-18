@@ -282,12 +282,18 @@ class ProjectSession:
 
     def _build_context_prompt(self, current_prompt: str) -> str:
         """Build a prompt that includes the full conversation history."""
+        # Try the current session log first.
         raw_events = self.load_history(limit=300)
+
+        # If empty, scan all session logs for this project and use the newest.
         if not raw_events:
+            raw_events = self._load_latest_session_history(limit=300)
+
+        if not raw_events:
+            _log("session", f"{self.project_id} context: no history found, sending raw prompt")
             return self._compact_for_cli(current_prompt)
 
         # Parse events into user/assistant turns.
-        # The last "send" event is the current prompt — exclude it from history.
         turns: list[tuple[str, str]] = []  # (role, text)
         pending_output: list[str] = []
 
@@ -305,21 +311,20 @@ class ProjectSession:
             elif t in ("output",):
                 pending_output.append(text)
             elif t in ("status", "error"):
-                # Flush pending output on session boundaries
                 if "завершил" in text.lower() or "останавливаю" in text.lower():
                     if pending_output:
                         turns.append(("assistant", "\n".join(pending_output)))
                         pending_output = []
 
-        # Flush remaining output
         if pending_output:
             turns.append(("assistant", "\n".join(pending_output)))
 
-        # Remove the last "user" turn (it's the current prompt, already in the log)
+        # Remove the last "user" turn (it's the current prompt, already logged)
         if turns and turns[-1][0] == "user":
             turns.pop()
 
         if not turns:
+            _log("session", f"{self.project_id} context: {len(raw_events)} events but 0 usable turns")
             return self._compact_for_cli(current_prompt)
 
         # Take last 30 turns (15 exchanges), keep total under ~8000 chars
@@ -345,7 +350,39 @@ class ProjectSession:
             f"=== END HISTORY ===\n\n"
             f"User: {current_prompt}"
         )
-        return self._compact_for_cli(full)
+        result = self._compact_for_cli(full)
+        _log("session", f"{self.project_id} context: {len(blocks)} blocks, {len(turns)} turns, {len(result)} chars")
+        return result
+
+    def _load_latest_session_history(self, limit: int = 300) -> list[dict]:
+        """Fallback: scan all session log files and load the newest one."""
+        try:
+            if not self._session_dir.exists():
+                return []
+            files = sorted(
+                self._session_dir.glob("*.jsonl"),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+            for f in files:
+                try:
+                    lines = f.read_text(encoding="utf-8").splitlines()
+                    items = []
+                    for line in lines[-limit:]:
+                        try:
+                            item = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        if isinstance(item, dict):
+                            items.append(item)
+                    if items:
+                        _log("session", f"{self.project_id} loaded history from {f.name} ({len(items)} events)")
+                        return items
+                except Exception:
+                    continue
+        except Exception as exc:
+            _log("session", f"{self.project_id} scan history failed: {exc}")
+        return []
 
     @staticmethod
     def _compact_for_cli(text: str) -> str:
