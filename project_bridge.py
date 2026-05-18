@@ -217,8 +217,15 @@ class ProjectSession:
             if self._fresh_session:
                 full_prompt = self._compact_for_cli(prompt)
                 self._fresh_session = False
+                self._broadcast("status", "Новая сессия")
             else:
                 full_prompt = self._build_context_prompt(prompt)
+                # Diagnostic: tell the user how much context was loaded
+                ctx_chars = len(full_prompt) - len(prompt)
+                if ctx_chars > 50:
+                    self._broadcast("status", f"Сессия загружена (+{ctx_chars} символов истории)")
+                else:
+                    self._broadcast("status", "Контекст пуст — начинаю с чистого листа")
 
             npm = Path(os.path.expandvars(r"%APPDATA%\npm"))
             js = npm / "node_modules" / "deepseek-tui" / "bin" / "deepseek-tui.js"
@@ -269,10 +276,15 @@ class ProjectSession:
 
     def _build_context_prompt(self, current_prompt: str) -> str:
         """Build a prompt with full conversation history from session log."""
+        log_path = self._session_log_path()
+        _log("session", f"{self.project_id} reading history from {log_path} (exists={log_path.exists()})")
         raw_events = self.load_history(limit=300)
+        _log("session", f"{self.project_id} loaded {len(raw_events)} events from current session")
         if not raw_events:
             raw_events = self._load_latest_session_history(limit=300)
+            _log("session", f"{self.project_id} fallback scan found {len(raw_events)} events")
         if not raw_events:
+            _log("session", f"{self.project_id} NO HISTORY FOUND — session log is empty or missing")
             return self._compact_for_cli(current_prompt)
 
         # Parse events into user/assistant turns
