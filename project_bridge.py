@@ -260,31 +260,36 @@ class ProjectSession:
         time.sleep(2)
 
     def _read_pty_output(self) -> None:
-        """Read TUI output after sending a message, streaming cleaned lines."""
+        """Read TUI output after sending a message, streaming cleaned lines.
+
+        wexpect.expect([TIMEOUT]) always raises wexpect.TIMEOUT — the data
+        lands in child.before *before* the exception.  Process it inside the
+        except handler so we don't silently discard every line.
+        """
         child = self._pty_child
         if not child:
             return
         idle_count = 0
-        last_pos = 0
         while idle_count < 30 and child.isalive():
             try:
-                idx = child.expect([wexpect.TIMEOUT], timeout=1)
-                new_data = child.before[last_pos:] if len(child.before) > last_pos else ""
-                last_pos = len(child.before)
-                if new_data:
-                    for line in new_data.split('\n'):
-                        clean = clean_line(line)
-                        if clean and len(clean) > 1:
-                            _log("session", f"{self.project_id} out: {clean[:120]}")
-                            self._broadcast("output", clean)
-                            idle_count = 0
-                    continue
-                idle_count += 1
+                child.expect([wexpect.TIMEOUT], timeout=1)
             except wexpect.TIMEOUT:
-                idle_count += 1
+                pass
             except Exception as exc:
                 _log("session", f"{self.project_id} read error: {exc}")
                 break
+
+            # child.before holds the data received during the last expect window
+            raw = child.before or ""
+            if raw:
+                for line in raw.split("\n"):
+                    clean = clean_line(line)
+                    if clean and len(clean) > 1:
+                        _log("session", f"{self.project_id} out: {clean[:120]}")
+                        self._broadcast("output", clean)
+                        idle_count = 0
+            else:
+                idle_count += 1
         _log("session", f"{self.project_id} response complete (idle={idle_count})")
 
     def _kill_pty(self) -> None:
