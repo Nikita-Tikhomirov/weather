@@ -1,0 +1,4 @@
+{"type": "session_info", "text": "Новая сессия: 20260513_162810_3cfe7170", "project_id": "cifra", "session_id": "20260513_162810_3cfe7170", "ts": 1778678890}
+{"type": "output", "text": "new", "project_id": "cifra", "session_id": "20260513_162810_3cfe7170", "ts": 1778678890}
+{"type": "output", "text": "hello from deepseek", "project_id": "cifra", "session_id": "20260513_162810_3cfe7170", "ts": 1778678899}
+{"type": "output", "text": "old", "project_id": "cifra", "session_id": "20260513_162810_3cfe7170", "ts": 1778678899}

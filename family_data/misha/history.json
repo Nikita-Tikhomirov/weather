@@ -1,263 +1,5 @@
 [
   {
-    "action": "restore_items",
-    "payload": {
-      "items": [
-        {
-          "id": 6,
-          "title": "Работа по ecopfr.ru",
-          "text": "Работа по ecopfr.ru",
-          "details": "",
-          "day": "пятница",
-          "time": "11:00",
-          "priority": "medium",
-          "tags": [
-            "работа"
-          ],
-          "recurring": null,
-          "reminder_offsets": [
-            60,
-            30,
-            10
-          ],
-          "done": false,
-          "created_at": "2026-04-17T09:48:12"
-        }
-      ]
-    },
-    "created_at": "2026-04-17T09:48:34"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        6
-      ]
-    },
-    "created_at": "2026-04-17T10:00:33"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 6,
-      "before": {
-        "id": 6,
-        "title": "полить  ростения",
-        "text": "полить  ростения",
-        "details": "полить   свой   сад",
-        "day": "суббота",
-        "time": "13:00",
-        "priority": "high",
-        "tags": [
-          "домашние    дела"
-        ],
-        "recurring": null,
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "done": false,
-        "created_at": "2026-04-17T10:00:33"
-      }
-    },
-    "created_at": "2026-04-18T11:01:56"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 6,
-      "before": {
-        "id": 6,
-        "title": "полить  ростения",
-        "text": "полить  ростения",
-        "details": "полить   свой   сад",
-        "day": "суббота",
-        "time": "13:00",
-        "priority": "high",
-        "tags": [
-          "домашние    дела"
-        ],
-        "recurring": null,
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "done": true,
-        "created_at": "2026-04-17T10:00:33",
-        "done_at": "2026-04-18T11:01:56"
-      }
-    },
-    "created_at": "2026-04-18T11:02:21"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 2,
-      "before": {
-        "id": 2,
-        "title": "Выпустить крыс",
-        "text": "Выпустить крыс",
-        "details": "Любимых пупсиков",
-        "day": "четверг",
-        "time": "21:00",
-        "priority": "high",
-        "tags": [
-          "домашние дела"
-        ],
-        "recurring": "daily",
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "done": false,
-        "created_at": "2026-04-16T14:56:50",
-        "last_done_date": "2026-04-16",
-        "done_at": "2026-04-16T22:20:07"
-      }
-    },
-    "created_at": "2026-04-18T11:03:04"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 2,
-      "before": {
-        "id": 2,
-        "title": "Выпустить крыс",
-        "text": "Выпустить крыс",
-        "details": "Любимых пупсиков",
-        "day": "четверг",
-        "time": "21:00",
-        "priority": "high",
-        "tags": [
-          "домашние дела"
-        ],
-        "recurring": "daily",
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "done": false,
-        "created_at": "2026-04-16T14:56:50",
-        "last_done_date": "2026-04-18",
-        "done_at": "2026-04-18T11:03:04"
-      }
-    },
-    "created_at": "2026-04-18T11:03:27"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 3,
-      "before": {
-        "id": 3,
-        "title": "Домашнее задание",
-        "text": "Домашнее задание",
-        "details": "",
-        "day": "четверг",
-        "time": "19:00",
-        "priority": "medium",
-        "tags": [
-          "обучение"
-        ],
-        "recurring": "daily",
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "done": false,
-        "created_at": "2026-04-16T14:58:02",
-        "last_done_date": "2026-04-16",
-        "done_at": "2026-04-16T22:17:13"
-      }
-    },
-    "created_at": "2026-04-18T11:03:51"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 3,
-      "before": {
-        "id": 3,
-        "title": "Домашнее задание",
-        "text": "Домашнее задание",
-        "details": "",
-        "day": "четверг",
-        "time": "19:00",
-        "priority": "medium",
-        "tags": [
-          "обучение"
-        ],
-        "recurring": "daily",
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "done": false,
-        "created_at": "2026-04-16T14:58:02",
-        "last_done_date": "2026-04-18",
-        "done_at": "2026-04-18T11:03:51"
-      }
-    },
-    "created_at": "2026-04-18T11:04:16"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 4,
-      "before": {
-        "id": 4,
-        "title": "Убратся у крыс",
-        "text": "Убратся у крыс",
-        "details": "у сваих жопсиков",
-        "day": "четверг",
-        "time": "21:20",
-        "priority": "high",
-        "tags": [
-          "домашние дела"
-        ],
-        "recurring": "daily",
-        "reminder_offsets": [
-          5
-        ],
-        "done": false,
-        "created_at": "2026-04-16T15:18:42"
-      }
-    },
-    "created_at": "2026-04-18T11:04:37"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 5,
-      "before": {
-        "id": 5,
-        "title": "читать энциклопедию",
-        "text": "читать энциклопедию",
-        "details": "про лечение",
-        "day": "пятница",
-        "time": "19:00",
-        "priority": "medium",
-        "tags": [],
-        "recurring": null,
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "done": false,
-        "created_at": "2026-04-16T22:48:44"
-      }
-    },
-    "created_at": "2026-04-18T11:06:23"
-  },
-  {
     "action": "update_item",
     "payload": {
       "id": 5,
@@ -861,5 +603,214 @@
       ]
     },
     "created_at": "2026-04-19T22:03:09"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        1
+      ]
+    },
+    "created_at": "2026-04-21T10:38:18"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        2
+      ]
+    },
+    "created_at": "2026-04-21T10:39:28"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 2,
+          "title": "42342",
+          "text": "42342",
+          "details": "",
+          "due_date": "2026-04-21",
+          "day": "вторник",
+          "time": "11:00",
+          "priority": "medium",
+          "tags": [],
+          "status": "active",
+          "done": false,
+          "workflow_status": "todo",
+          "sort_order": 2,
+          "done_at": null,
+          "is_family": false,
+          "participants": [],
+          "start_at": null,
+          "duration_minutes": 0,
+          "created_at": "2026-04-21T10:42:56",
+          "updated_at": "2026-04-21T10:39:28",
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": null
+        }
+      ]
+    },
+    "created_at": "2026-04-21T10:42:57"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 1,
+          "title": "123",
+          "text": "123",
+          "details": "",
+          "due_date": "2026-04-21",
+          "day": "вторник",
+          "time": "10:00",
+          "priority": "medium",
+          "tags": [],
+          "status": "active",
+          "done": false,
+          "workflow_status": "todo",
+          "sort_order": 1,
+          "done_at": null,
+          "is_family": false,
+          "participants": [],
+          "start_at": null,
+          "duration_minutes": 0,
+          "created_at": "2026-04-21T10:43:28",
+          "updated_at": "2026-04-21T10:38:18",
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": null
+        }
+      ]
+    },
+    "created_at": "2026-04-21T10:43:36"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        1
+      ]
+    },
+    "created_at": "2026-04-21T11:15:56"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 1,
+          "title": "лоилот",
+          "text": "лоилот",
+          "details": "",
+          "due_date": "2026-04-21",
+          "day": "вторник",
+          "time": "19:00",
+          "priority": "medium",
+          "tags": [],
+          "status": "active",
+          "done": false,
+          "workflow_status": "todo",
+          "sort_order": 1,
+          "done_at": null,
+          "is_family": false,
+          "participants": [],
+          "start_at": null,
+          "duration_minutes": 0,
+          "created_at": "2026-04-21T11:16:17",
+          "updated_at": "2026-04-21T11:15:56",
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": null
+        }
+      ]
+    },
+    "created_at": "2026-04-21T11:16:18"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        1
+      ]
+    },
+    "created_at": "2026-04-21T16:23:29"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 1,
+      "before": {
+        "id": 1,
+        "title": "выпустить крыс",
+        "text": "выпустить крыс",
+        "details": "своих жопсиков",
+        "due_date": "2026-04-21",
+        "day": "вторник",
+        "time": "08:00",
+        "priority": "medium",
+        "tags": [],
+        "status": "done",
+        "done": true,
+        "workflow_status": "done",
+        "sort_order": 1,
+        "done_at": null,
+        "is_family": false,
+        "participants": [],
+        "start_at": null,
+        "duration_minutes": 0,
+        "created_at": "2026-04-21T16:25:40",
+        "updated_at": "2026-04-21T16:24:29",
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": null,
+        "recurrence_rule": null,
+        "generated_from_rule": false,
+        "legacy_day": null
+      }
+    },
+    "created_at": "2026-04-21T16:25:40"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        2
+      ]
+    },
+    "created_at": "2026-04-21T16:28:06"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        3
+      ]
+    },
+    "created_at": "2026-04-21T16:35:49"
   }
 ]

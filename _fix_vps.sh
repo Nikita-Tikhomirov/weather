@@ -1,0 +1,1 @@
+sed -i "s/throw new InvalidArgumentException('Phone is already linked to another device');/\/\/ Auto-rebind to new device/" /var/www/laravel_backend_vps/app/Domain/Profiles/PhoneProfileRepository.php && echo FIXED && grep -n 'Auto-rebind\|already linked' /var/www/laravel_backend_vps/app/Domain/Profiles/PhoneProfileRepository.php

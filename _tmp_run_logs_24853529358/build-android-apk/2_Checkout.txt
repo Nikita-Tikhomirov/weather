@@ -1,0 +1,74 @@
+﻿2026-04-23T19:03:39.4478154Z ##[group]Run actions/checkout@v4
+2026-04-23T19:03:39.4479308Z with:
+2026-04-23T19:03:39.4480020Z   repository: Nikita-Tikhomirov/weather
+2026-04-23T19:03:39.4481383Z   token: ***
+2026-04-23T19:03:39.4482037Z   ssh-strict: true
+2026-04-23T19:03:39.4482722Z   ssh-user: git
+2026-04-23T19:03:39.4483412Z   persist-credentials: true
+2026-04-23T19:03:39.4484229Z   clean: true
+2026-04-23T19:03:39.4484918Z   sparse-checkout-cone-mode: true
+2026-04-23T19:03:39.4485771Z   fetch-depth: 1
+2026-04-23T19:03:39.4486439Z   fetch-tags: false
+2026-04-23T19:03:39.4487176Z   show-progress: true
+2026-04-23T19:03:39.4487888Z   lfs: false
+2026-04-23T19:03:39.4488528Z   submodules: false
+2026-04-23T19:03:39.4489234Z   set-safe-directory: true
+2026-04-23T19:03:39.4490178Z env:
+2026-04-23T19:03:39.4491105Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-04-23T19:03:39.4492022Z ##[endgroup]
+2026-04-23T19:03:39.5504842Z Syncing repository: Nikita-Tikhomirov/weather
+2026-04-23T19:03:39.5507408Z ##[group]Getting Git version info
+2026-04-23T19:03:39.5508597Z Working directory is '/home/runner/work/weather/weather'
+2026-04-23T19:03:39.5510533Z [command]/usr/bin/git version
+2026-04-23T19:03:39.5518389Z git version 2.53.0
+2026-04-23T19:03:39.5540092Z ##[endgroup]
+2026-04-23T19:03:39.5552913Z Temporarily overriding HOME='/home/runner/work/_temp/b818338b-2f47-4b5d-871b-820405643ee8' before making global git config changes
+2026-04-23T19:03:39.5556264Z Adding repository directory to the temporary git global config as a safe directory
+2026-04-23T19:03:39.5559109Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/weather/weather
+2026-04-23T19:03:39.5590210Z Deleting the contents of '/home/runner/work/weather/weather'
+2026-04-23T19:03:39.5594375Z ##[group]Initializing the repository
+2026-04-23T19:03:39.5598947Z [command]/usr/bin/git init /home/runner/work/weather/weather
+2026-04-23T19:03:39.5659343Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-04-23T19:03:39.5662307Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-04-23T19:03:39.5664910Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-04-23T19:03:39.5666894Z hint: call:
+2026-04-23T19:03:39.5667789Z hint:
+2026-04-23T19:03:39.5668931Z hint: 	git config --global init.defaultBranch <name>
+2026-04-23T19:03:39.5670865Z hint:
+2026-04-23T19:03:39.5672366Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-04-23T19:03:39.5674790Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-04-23T19:03:39.5676749Z hint:
+2026-04-23T19:03:39.5677813Z hint: 	git branch -m <name>
+2026-04-23T19:03:39.5678579Z hint:
+2026-04-23T19:03:39.5679597Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-04-23T19:03:39.5681537Z Initialized empty Git repository in /home/runner/work/weather/weather/.git/
+2026-04-23T19:03:39.5685040Z [command]/usr/bin/git remote add origin https://github.com/Nikita-Tikhomirov/weather
+2026-04-23T19:03:39.5735772Z ##[endgroup]
+2026-04-23T19:03:39.5737506Z ##[group]Disabling automatic garbage collection
+2026-04-23T19:03:39.5739252Z [command]/usr/bin/git config --local gc.auto 0
+2026-04-23T19:03:39.5770497Z ##[endgroup]
+2026-04-23T19:03:39.5772210Z ##[group]Setting up auth
+2026-04-23T19:03:39.5777619Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-04-23T19:03:39.5810546Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-04-23T19:03:39.6095086Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-04-23T19:03:39.6126201Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-04-23T19:03:39.6354257Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-04-23T19:03:39.6388352Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-04-23T19:03:39.6616667Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-04-23T19:03:39.6651575Z ##[endgroup]
+2026-04-23T19:03:39.6653292Z ##[group]Fetching the repository
+2026-04-23T19:03:39.6661423Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +6df16e9b64cbaf7750decc3d84ef764b9534d6f0:refs/remotes/origin/master
+2026-04-23T19:03:40.0194038Z From https://github.com/Nikita-Tikhomirov/weather
+2026-04-23T19:03:40.0196428Z  * [new ref]         6df16e9b64cbaf7750decc3d84ef764b9534d6f0 -> origin/master
+2026-04-23T19:03:40.0222692Z ##[endgroup]
+2026-04-23T19:03:40.0224428Z ##[group]Determining the checkout info
+2026-04-23T19:03:40.0226455Z ##[endgroup]
+2026-04-23T19:03:40.0231278Z [command]/usr/bin/git sparse-checkout disable
+2026-04-23T19:03:40.0269362Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-04-23T19:03:40.0296509Z ##[group]Checking out the ref
+2026-04-23T19:03:40.0299695Z [command]/usr/bin/git checkout --progress --force -B master refs/remotes/origin/master
+2026-04-23T19:03:40.0495232Z Reset branch 'master'
+2026-04-23T19:03:40.0497089Z branch 'master' set up to track 'origin/master'.
+2026-04-23T19:03:40.0505408Z ##[endgroup]
+2026-04-23T19:03:40.0541995Z [command]/usr/bin/git log -1 --format=%H
+2026-04-23T19:03:40.0566383Z 6df16e9b64cbaf7750decc3d84ef764b9534d6f0

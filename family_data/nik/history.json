@@ -1,416 +1,5 @@
 [
   {
-    "action": "update_item",
-    "payload": {
-      "id": 21,
-      "before": {
-        "id": 21,
-        "title": "Стирка",
-        "text": "Стирка",
-        "details": "",
-        "day": "пятница",
-        "time": "16:00",
-        "priority": "medium",
-        "tags": [],
-        "recurring": null,
-        "reminder_offsets": [
-          30,
-          10
-        ],
-        "done": false,
-        "created_at": "2026-04-17T03:06:36"
-      }
-    },
-    "created_at": "2026-04-17T16:42:28"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 18,
-      "before": {
-        "id": 18,
-        "title": "Работа по ecopfr.ru",
-        "text": "Работа по ecopfr.ru",
-        "details": "",
-        "day": "пятница",
-        "time": "11:00",
-        "priority": "medium",
-        "tags": [
-          "работа"
-        ],
-        "recurring": null,
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "done": false,
-        "created_at": "2026-04-16T17:25:10"
-      }
-    },
-    "created_at": "2026-04-17T21:15:38"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 19,
-      "before": {
-        "id": 19,
-        "title": "Тренировка",
-        "text": "Тренировка",
-        "details": "Ноги",
-        "day": "пятница",
-        "time": "19:00",
-        "priority": "high",
-        "tags": [
-          "тренировка"
-        ],
-        "recurring": null,
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "done": false,
-        "created_at": "2026-04-16T22:22:34"
-      }
-    },
-    "created_at": "2026-04-17T21:15:57"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        25
-      ]
-    },
-    "created_at": "2026-04-18T11:31:43"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 25,
-      "before": {
-        "id": 25,
-        "title": "Работа по Stylish-house.com",
-        "text": "Работа по Stylish-house.com",
-        "details": "",
-        "due_date": "2026-04-18",
-        "day": "суббота",
-        "time": "20:10",
-        "priority": "high",
-        "tags": [
-          "работа"
-        ],
-        "status": "active",
-        "done": false,
-        "done_at": null,
-        "created_at": "2026-04-18T11:31:43",
-        "updated_at": null,
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "series_id": null,
-        "recurrence_rule": null,
-        "generated_from_rule": false,
-        "legacy_day": "суббота"
-      }
-    },
-    "created_at": "2026-04-18T12:22:18"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 25,
-      "before": {
-        "id": 25,
-        "title": "Работа по Stylish-house.com",
-        "text": "Работа по Stylish-house.com",
-        "details": "",
-        "due_date": "2026-04-19",
-        "day": "воскресенье",
-        "time": "20:10",
-        "priority": "high",
-        "tags": [
-          "работа"
-        ],
-        "status": "active",
-        "done": false,
-        "done_at": null,
-        "created_at": "2026-04-18T11:31:43",
-        "updated_at": "2026-04-18T12:22:18",
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "series_id": null,
-        "recurrence_rule": null,
-        "generated_from_rule": false,
-        "legacy_day": "воскресенье"
-      }
-    },
-    "created_at": "2026-04-18T12:25:56"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 23,
-      "before": {
-        "id": 23,
-        "title": "врач у миши",
-        "text": "врач у миши",
-        "details": "",
-        "due_date": "2026-04-21",
-        "day": "вторник",
-        "time": "09:20",
-        "priority": "high",
-        "tags": [
-          "здоровье"
-        ],
-        "status": "active",
-        "done": false,
-        "done_at": null,
-        "created_at": "2026-04-17T15:17:50",
-        "updated_at": null,
-        "reminder_offsets": [
-          600,
-          60,
-          30
-        ],
-        "series_id": null,
-        "recurrence_rule": null,
-        "generated_from_rule": false,
-        "legacy_day": "вторник"
-      }
-    },
-    "created_at": "2026-04-18T12:32:16"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        26
-      ]
-    },
-    "created_at": "2026-04-18T12:33:05"
-  },
-  {
-    "action": "restore_items",
-    "payload": {
-      "items": [
-        {
-          "id": 26,
-          "title": "Врач у Миши",
-          "text": "Врач у Миши",
-          "details": "",
-          "due_date": "2026-04-21",
-          "day": "вторник",
-          "time": "09:20",
-          "priority": "high",
-          "tags": [
-            "здоровье"
-          ],
-          "status": "active",
-          "done": false,
-          "done_at": null,
-          "created_at": "2026-04-18T12:33:05",
-          "updated_at": null,
-          "reminder_offsets": [
-            600,
-            60,
-            30
-          ],
-          "series_id": null,
-          "recurrence_rule": null,
-          "generated_from_rule": false,
-          "legacy_day": "вторник"
-        }
-      ]
-    },
-    "created_at": "2026-04-18T12:33:10"
-  },
-  {
-    "action": "restore_items",
-    "payload": {
-      "items": [
-        {
-          "id": 24,
-          "title": "прпоп",
-          "text": "прпоп",
-          "details": "",
-          "due_date": "2026-04-20",
-          "day": "понедельник",
-          "time": "22:30",
-          "priority": "medium",
-          "tags": [],
-          "status": "active",
-          "done": false,
-          "done_at": null,
-          "created_at": "2026-04-17T15:24:07",
-          "updated_at": null,
-          "reminder_offsets": [
-            60,
-            30,
-            10
-          ],
-          "series_id": null,
-          "recurrence_rule": null,
-          "generated_from_rule": false,
-          "legacy_day": "понедельник"
-        }
-      ]
-    },
-    "created_at": "2026-04-18T12:33:22"
-  },
-  {
-    "action": "update_item",
-    "payload": {
-      "id": 20,
-      "before": {
-        "id": 20,
-        "title": "пастирать крысам",
-        "text": "пастирать крысам",
-        "details": "",
-        "due_date": "2026-04-24",
-        "day": "пятница",
-        "time": "22:00",
-        "priority": "high",
-        "tags": [
-          "домашние дела"
-        ],
-        "status": "active",
-        "done": false,
-        "done_at": null,
-        "created_at": "2026-04-16T22:30:53",
-        "updated_at": null,
-        "reminder_offsets": [
-          60,
-          30,
-          10
-        ],
-        "series_id": null,
-        "recurrence_rule": null,
-        "generated_from_rule": false,
-        "legacy_day": "пятница"
-      }
-    },
-    "created_at": "2026-04-18T12:34:16"
-  },
-  {
-    "action": "add",
-    "payload": {
-      "created_ids": [
-        26
-      ]
-    },
-    "created_at": "2026-04-18T17:08:44"
-  },
-  {
-    "action": "restore_items",
-    "payload": {
-      "items": [
-        {
-          "id": 18,
-          "title": "Работа по ecopfr.ru",
-          "text": "Работа по ecopfr.ru",
-          "details": "",
-          "due_date": "2026-04-24",
-          "day": "пятница",
-          "time": "11:00",
-          "priority": "medium",
-          "tags": [
-            "работа"
-          ],
-          "status": "done",
-          "done": true,
-          "done_at": "2026-04-17T21:15:38",
-          "created_at": "2026-04-16T17:25:10",
-          "updated_at": null,
-          "reminder_offsets": [
-            60,
-            30,
-            10
-          ],
-          "series_id": null,
-          "recurrence_rule": null,
-          "generated_from_rule": false,
-          "legacy_day": "пятница"
-        }
-      ]
-    },
-    "created_at": "2026-04-18T17:09:43"
-  },
-  {
-    "action": "restore_items",
-    "payload": {
-      "items": [
-        {
-          "id": 21,
-          "title": "Стирка",
-          "text": "Стирка",
-          "details": "",
-          "due_date": "2026-04-24",
-          "day": "пятница",
-          "time": "17:00",
-          "priority": "medium",
-          "tags": [],
-          "status": "done",
-          "done": true,
-          "done_at": "2026-04-17T16:49:33",
-          "created_at": "2026-04-17T03:06:36",
-          "updated_at": null,
-          "reminder_offsets": [
-            17,
-            10
-          ],
-          "series_id": null,
-          "recurrence_rule": null,
-          "generated_from_rule": false,
-          "legacy_day": "пятница"
-        }
-      ]
-    },
-    "created_at": "2026-04-18T17:09:48"
-  },
-  {
-    "action": "restore_items",
-    "payload": {
-      "items": [
-        {
-          "id": 22,
-          "title": "Работа по stylish",
-          "text": "Работа по stylish",
-          "details": "шаблоны + расчеты",
-          "due_date": "2026-04-24",
-          "day": "пятница",
-          "time": "13:00",
-          "priority": "medium",
-          "tags": [
-            "работа"
-          ],
-          "status": "active",
-          "done": false,
-          "done_at": null,
-          "created_at": "2026-04-17T03:15:14",
-          "updated_at": null,
-          "reminder_offsets": [
-            60,
-            30,
-            10
-          ],
-          "series_id": null,
-          "recurrence_rule": null,
-          "generated_from_rule": false,
-          "legacy_day": "пятница"
-        }
-      ]
-    },
-    "created_at": "2026-04-18T17:09:57"
-  },
-  {
     "action": "add",
     "payload": {
       "created_ids": [
@@ -794,5 +383,502 @@
       ]
     },
     "created_at": "2026-04-20T11:48:31"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 30,
+          "title": "Тест",
+          "text": "Тест",
+          "details": "123",
+          "due_date": "2026-04-20",
+          "day": "понедельник",
+          "time": "19:00",
+          "priority": "medium",
+          "tags": [
+            "работа"
+          ],
+          "status": "active",
+          "done": false,
+          "workflow_status": "todo",
+          "sort_order": 5,
+          "done_at": null,
+          "is_family": false,
+          "participants": [],
+          "start_at": null,
+          "duration_minutes": null,
+          "created_at": "2026-04-20T11:48:31",
+          "updated_at": "2026-04-20T13:24:39",
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": "понедельник"
+        }
+      ]
+    },
+    "created_at": "2026-04-20T13:25:10"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 1,
+          "title": "во кормить крыс",
+          "text": "во кормить крыс",
+          "details": "",
+          "due_date": "2026-04-22",
+          "day": "среда",
+          "time": "20:15",
+          "priority": "medium",
+          "tags": [],
+          "status": "active",
+          "done": false,
+          "workflow_status": "todo",
+          "sort_order": 1,
+          "done_at": null,
+          "is_family": false,
+          "participants": [],
+          "start_at": null,
+          "duration_minutes": 0,
+          "created_at": "2026-04-21T10:23:40",
+          "updated_at": "2026-04-21T10:21:52",
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": null
+        }
+      ]
+    },
+    "created_at": "2026-04-21T10:23:40"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        2
+      ]
+    },
+    "created_at": "2026-04-21T10:29:17"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 1,
+      "before": {
+        "id": 1,
+        "title": "таск тест",
+        "text": "таск тест",
+        "details": "тест",
+        "due_date": "2026-04-21",
+        "day": "вторник",
+        "time": "13:00",
+        "priority": "medium",
+        "tags": [],
+        "status": "active",
+        "done": false,
+        "workflow_status": "todo",
+        "sort_order": 1,
+        "done_at": null,
+        "is_family": false,
+        "participants": [],
+        "start_at": null,
+        "duration_minutes": 0,
+        "created_at": "2026-04-21T10:35:25",
+        "updated_at": "2026-04-21T10:34:30",
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": null,
+        "recurrence_rule": null,
+        "generated_from_rule": false,
+        "legacy_day": null
+      }
+    },
+    "created_at": "2026-04-21T10:35:32"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 1,
+          "title": "таск тест",
+          "text": "таск тест",
+          "details": "тест",
+          "due_date": "2026-04-21",
+          "day": "вторник",
+          "time": "13:00",
+          "priority": "medium",
+          "tags": [],
+          "status": "done",
+          "done": true,
+          "workflow_status": "done",
+          "sort_order": 1,
+          "done_at": null,
+          "is_family": false,
+          "participants": [],
+          "start_at": null,
+          "duration_minutes": 0,
+          "created_at": "2026-04-21T10:36:23",
+          "updated_at": "2026-04-21T10:35:32",
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": null
+        }
+      ]
+    },
+    "created_at": "2026-04-21T10:36:25"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        1
+      ]
+    },
+    "created_at": "2026-04-21T10:37:12"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 1,
+          "title": "во кормить крыс",
+          "text": "во кормить крыс",
+          "details": "",
+          "due_date": "2026-04-22",
+          "day": "среда",
+          "time": "20:15",
+          "priority": "medium",
+          "tags": [],
+          "status": "active",
+          "done": false,
+          "workflow_status": "todo",
+          "sort_order": 1,
+          "done_at": null,
+          "is_family": false,
+          "participants": [],
+          "start_at": null,
+          "duration_minutes": 0,
+          "created_at": "2026-04-21T11:12:54",
+          "updated_at": "2026-04-21T10:58:55",
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": null
+        }
+      ]
+    },
+    "created_at": "2026-04-21T11:12:55"
+  },
+  {
+    "action": "add",
+    "payload": {
+      "created_ids": [
+        2
+      ]
+    },
+    "created_at": "2026-04-21T11:14:44"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 1,
+          "title": "во кормить крыс",
+          "text": "во кормить крыс",
+          "details": "",
+          "due_date": "2026-04-22",
+          "day": "среда",
+          "time": "20:15",
+          "priority": "medium",
+          "tags": [],
+          "status": "active",
+          "done": false,
+          "workflow_status": "todo",
+          "sort_order": 1,
+          "done_at": null,
+          "is_family": false,
+          "participants": [],
+          "start_at": null,
+          "duration_minutes": 0,
+          "created_at": "2026-04-21T11:34:37",
+          "updated_at": "2026-04-21T10:58:55",
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": null
+        }
+      ]
+    },
+    "created_at": "2026-04-21T11:34:39"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 1,
+          "title": "во кормить крыс",
+          "text": "во кормить крыс",
+          "details": "",
+          "due_date": "2026-04-22",
+          "day": "среда",
+          "time": "20:15",
+          "priority": "medium",
+          "tags": [],
+          "status": "active",
+          "done": false,
+          "workflow_status": "todo",
+          "sort_order": 1,
+          "done_at": null,
+          "is_family": false,
+          "participants": [],
+          "start_at": null,
+          "duration_minutes": 0,
+          "created_at": "2026-04-21T12:26:38",
+          "updated_at": "2026-04-21T12:20:47",
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": "среда"
+        }
+      ]
+    },
+    "created_at": "2026-04-21T12:37:23"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 1,
+          "title": "во кормить крыс",
+          "text": "во кормить крыс",
+          "details": "",
+          "due_date": "2026-04-22",
+          "day": "среда",
+          "time": "20:15",
+          "priority": "medium",
+          "tags": [],
+          "status": "active",
+          "done": false,
+          "workflow_status": "todo",
+          "sort_order": 1,
+          "done_at": null,
+          "is_family": false,
+          "participants": [],
+          "start_at": null,
+          "duration_minutes": 0,
+          "created_at": "2026-04-21T14:22:41",
+          "updated_at": "2026-04-21T13:46:11",
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": null
+        }
+      ]
+    },
+    "created_at": "2026-04-21T14:22:43"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 1,
+          "title": "во кормить крыс",
+          "text": "во кормить крыс",
+          "details": "",
+          "due_date": "2026-04-22",
+          "day": "среда",
+          "time": "20:15",
+          "priority": "medium",
+          "tags": [],
+          "status": "active",
+          "done": false,
+          "workflow_status": "todo",
+          "sort_order": 1,
+          "done_at": null,
+          "is_family": false,
+          "participants": [],
+          "start_at": null,
+          "duration_minutes": 0,
+          "created_at": "2026-04-21T15:46:13",
+          "updated_at": "2026-04-21T15:32:40",
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": null
+        }
+      ]
+    },
+    "created_at": "2026-04-21T15:46:16"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 1,
+          "title": "во кормить крыс",
+          "text": "во кормить крыс",
+          "details": "",
+          "due_date": "2026-04-22",
+          "day": "среда",
+          "time": "20:15",
+          "priority": "medium",
+          "tags": [],
+          "status": "active",
+          "done": false,
+          "workflow_status": "todo",
+          "sort_order": 1,
+          "done_at": null,
+          "is_family": false,
+          "participants": [],
+          "start_at": null,
+          "duration_minutes": 0,
+          "created_at": "2026-04-21T15:58:20",
+          "updated_at": "2026-04-21T15:32:40",
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": null
+        }
+      ]
+    },
+    "created_at": "2026-04-21T15:58:23"
+  },
+  {
+    "action": "update_item",
+    "payload": {
+      "id": 2,
+      "before": {
+        "id": 2,
+        "title": "Дошить гамак",
+        "text": "Дошить гамак",
+        "details": "крысам негде спать",
+        "due_date": "2026-04-21",
+        "day": "вторник",
+        "time": "20:00",
+        "priority": "medium",
+        "tags": [],
+        "status": "active",
+        "done": false,
+        "workflow_status": "todo",
+        "sort_order": 2,
+        "done_at": null,
+        "is_family": false,
+        "participants": [],
+        "start_at": null,
+        "duration_minutes": 0,
+        "created_at": "2026-04-22T01:09:41",
+        "updated_at": "2026-04-21T16:02:36.115675",
+        "reminder_offsets": [
+          60,
+          30,
+          10
+        ],
+        "series_id": null,
+        "recurrence_rule": null,
+        "generated_from_rule": false,
+        "legacy_day": null
+      }
+    },
+    "created_at": "2026-04-22T01:09:43"
+  },
+  {
+    "action": "restore_items",
+    "payload": {
+      "items": [
+        {
+          "id": 1,
+          "owner_key": "nik",
+          "title": "во кормить крыс",
+          "text": "во кормить крыс",
+          "details": "",
+          "due_date": "2026-04-29",
+          "day": "среда",
+          "time": "20:15",
+          "priority": "medium",
+          "tags": [],
+          "status": "active",
+          "done": false,
+          "workflow_status": "todo",
+          "sort_order": 1,
+          "done_at": null,
+          "is_family": false,
+          "participants": [],
+          "start_at": null,
+          "duration_minutes": 0,
+          "created_at": "2026-04-22T02:46:57",
+          "updated_at": "2026-04-22T02:47:17",
+          "version": 4,
+          "reminder_offsets": [
+            60,
+            30,
+            10
+          ],
+          "series_id": null,
+          "recurrence_rule": null,
+          "generated_from_rule": false,
+          "legacy_day": "среда"
+        }
+      ]
+    },
+    "created_at": "2026-04-22T02:47:24"
   }
 ]

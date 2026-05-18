@@ -1,0 +1,49 @@
+﻿2026-04-23T19:04:41.2161352Z ##[group]Run set -euo pipefail
+2026-04-23T19:04:41.2161701Z [36;1mset -euo pipefail[0m
+2026-04-23T19:04:41.2161957Z [36;1mAPP_DIR="/tmp/family_todo_mobile"[0m
+2026-04-23T19:04:41.2162229Z [36;1mrm -rf "$APP_DIR"[0m
+2026-04-23T19:04:41.2162691Z [36;1mflutter create --platforms=android --project-name family_todo_mobile --org com.example "$APP_DIR"[0m
+2026-04-23T19:04:41.2163227Z [36;1mrm -f "$APP_DIR/android/build.gradle.kts"[0m
+2026-04-23T19:04:41.2163555Z [36;1mrm -f "$APP_DIR/android/app/build.gradle.kts"[0m
+2026-04-23T19:04:41.2163853Z [36;1m[0m
+2026-04-23T19:04:41.2164073Z [36;1mrm -rf "$APP_DIR/lib"[0m
+2026-04-23T19:04:41.2164350Z [36;1mcp -R mobile_app/lib "$APP_DIR/lib"[0m
+2026-04-23T19:04:41.2164693Z [36;1mcp mobile_app/pubspec.yaml "$APP_DIR/pubspec.yaml"[0m
+2026-04-23T19:04:41.2165058Z [36;1mif [ -f mobile_app/android/build.gradle ]; then[0m
+2026-04-23T19:04:41.2165470Z [36;1m  cp mobile_app/android/build.gradle "$APP_DIR/android/build.gradle"[0m
+2026-04-23T19:04:41.2165831Z [36;1mfi[0m
+2026-04-23T19:04:41.2166119Z [36;1mif [ -f mobile_app/android/app/build.gradle ]; then[0m
+2026-04-23T19:04:41.2166562Z [36;1m  cp mobile_app/android/app/build.gradle "$APP_DIR/android/app/build.gradle"[0m
+2026-04-23T19:04:41.2166935Z [36;1mfi[0m
+2026-04-23T19:04:41.2167205Z [36;1mif [ -f mobile_app/android/app/google-services.json ]; then[0m
+2026-04-23T19:04:41.2167723Z [36;1m  cp mobile_app/android/app/google-services.json "$APP_DIR/android/app/google-services.json"[0m
+2026-04-23T19:04:41.2168170Z [36;1mfi[0m
+2026-04-23T19:04:41.2168481Z [36;1mif [ -f mobile_app/android/app/src/main/AndroidManifest.xml ]; then[0m
+2026-04-23T19:04:41.2169286Z [36;1m  cp mobile_app/android/app/src/main/AndroidManifest.xml "$APP_DIR/android/app/src/main/AndroidManifest.xml"[0m
+2026-04-23T19:04:41.2169827Z [36;1mfi[0m
+2026-04-23T19:04:41.2197140Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-04-23T19:04:41.2197510Z env:
+2026-04-23T19:04:41.2197725Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-04-23T19:04:41.2198118Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.18-8/x64
+2026-04-23T19:04:41.2198577Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.18-8/x64
+2026-04-23T19:04:41.2199023Z   FLUTTER_ROOT: /opt/hostedtoolcache/flutter/stable-3.41.7-x64/flutter
+2026-04-23T19:04:41.2199388Z   PUB_CACHE: /home/runner/.pub-cache
+2026-04-23T19:04:41.2199639Z ##[endgroup]
+2026-04-23T19:04:44.3814006Z Creating project ../../../../../tmp/family_todo_mobile...
+2026-04-23T19:04:44.5274298Z Resolving dependencies in `../../../../../tmp/family_todo_mobile`...
+2026-04-23T19:04:44.6401503Z Downloading packages...
+2026-04-23T19:04:45.1299292Z Got dependencies in `../../../../../tmp/family_todo_mobile`.
+2026-04-23T19:04:45.2318309Z Wrote 35 files.
+2026-04-23T19:04:45.2318596Z 
+2026-04-23T19:04:45.2318708Z All done!
+2026-04-23T19:04:45.2333894Z You can find general documentation for Flutter at: https://docs.flutter.dev/
+2026-04-23T19:04:45.2334922Z Detailed API documentation is available at: https://api.flutter.dev/
+2026-04-23T19:04:45.2336011Z If you prefer video documentation, consider: https://www.youtube.com/c/flutterdev
+2026-04-23T19:04:45.2336687Z 
+2026-04-23T19:04:45.2336971Z In order to run your application, type:
+2026-04-23T19:04:45.2341799Z 
+2026-04-23T19:04:45.2342250Z   $ cd ../../../../../tmp/family_todo_mobile
+2026-04-23T19:04:45.2342661Z   $ flutter run
+2026-04-23T19:04:45.2342845Z 
+2026-04-23T19:04:45.2343153Z Your application code is in ../../../../../tmp/family_todo_mobile/lib/main.dart.
+2026-04-23T19:04:45.2343451Z 

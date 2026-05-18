@@ -1,0 +1,76 @@
+﻿2026-04-23T19:04:46.0217596Z ##[group]Run cd /tmp/family_todo_mobile
+2026-04-23T19:04:46.0217955Z [36;1mcd /tmp/family_todo_mobile[0m
+2026-04-23T19:04:46.0218200Z [36;1mflutter pub get[0m
+2026-04-23T19:04:46.0241608Z shell: /usr/bin/bash -e {0}
+2026-04-23T19:04:46.0241848Z env:
+2026-04-23T19:04:46.0242054Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-04-23T19:04:46.0242433Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.18-8/x64
+2026-04-23T19:04:46.0242900Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.18-8/x64
+2026-04-23T19:04:46.0243338Z   FLUTTER_ROOT: /opt/hostedtoolcache/flutter/stable-3.41.7-x64/flutter
+2026-04-23T19:04:46.0243677Z   PUB_CACHE: /home/runner/.pub-cache
+2026-04-23T19:04:46.0243912Z ##[endgroup]
+2026-04-23T19:04:46.2061514Z Resolving dependencies...
+2026-04-23T19:04:46.6891858Z Downloading packages...
+2026-04-23T19:04:48.2601299Z + _flutterfire_internals 1.3.59 (1.3.69 available)
+2026-04-23T19:04:48.2601900Z + args 2.7.0
+2026-04-23T19:04:48.2602340Z + code_assets 1.0.0
+2026-04-23T19:04:48.2602803Z + crypto 3.0.7
+2026-04-23T19:04:48.2603077Z + dbus 0.7.12
+2026-04-23T19:04:48.2603346Z + ffi 2.2.0
+2026-04-23T19:04:48.2603606Z + file 7.0.1
+2026-04-23T19:04:48.2603900Z + firebase_core 3.15.2 (4.7.0 available)
+2026-04-23T19:04:48.2604434Z + firebase_core_platform_interface 6.0.3
+2026-04-23T19:04:48.2604856Z + firebase_core_web 2.24.1 (3.6.0 available)
+2026-04-23T19:04:48.2605282Z + firebase_messaging 15.2.10 (16.2.0 available)
+2026-04-23T19:04:48.2605819Z + firebase_messaging_platform_interface 4.6.10 (4.7.9 available)
+2026-04-23T19:04:48.2606351Z + firebase_messaging_web 3.10.10 (4.1.5 available)
+2026-04-23T19:04:48.2606700Z < flutter_lints 3.0.2 (was 6.0.0) (6.0.0 available)
+2026-04-23T19:04:48.2607300Z + flutter_local_notifications 17.2.4 (21.0.0 available)
+2026-04-23T19:04:48.2607844Z + flutter_local_notifications_linux 4.0.1 (8.0.0 available)
+2026-04-23T19:04:48.2608443Z + flutter_local_notifications_platform_interface 7.2.0 (11.0.0 available)
+2026-04-23T19:04:48.2609017Z + flutter_web_plugins 0.0.0 from sdk flutter
+2026-04-23T19:04:48.2609678Z + glob 2.1.3
+2026-04-23T19:04:48.2609848Z + hooks 1.0.3
+2026-04-23T19:04:48.2610028Z + http 1.6.0
+2026-04-23T19:04:48.2610201Z + http_parser 4.1.2
+2026-04-23T19:04:48.2610666Z < lints 3.0.0 (was 6.1.0) (6.1.0 available)
+2026-04-23T19:04:48.2610944Z + logging 1.3.0
+2026-04-23T19:04:48.2611145Z   meta 1.17.0 (1.18.2 available)
+2026-04-23T19:04:48.2611392Z + native_toolchain_c 0.17.6 (0.18.0 available)
+2026-04-23T19:04:48.2611740Z   path 1.9.1 (from transitive dependency to direct dependency)
+2026-04-23T19:04:48.2612107Z + path_provider_linux 2.2.1
+2026-04-23T19:04:48.2612350Z + path_provider_platform_interface 2.1.2
+2026-04-23T19:04:48.2612615Z + path_provider_windows 2.3.0
+2026-04-23T19:04:48.2612835Z + petitparser 7.0.2
+2026-04-23T19:04:48.2613039Z + platform 3.1.6
+2026-04-23T19:04:48.2613241Z + plugin_platform_interface 2.1.8
+2026-04-23T19:04:48.2613479Z + pub_semver 2.2.0
+2026-04-23T19:04:48.2613661Z + record_use 0.6.0
+2026-04-23T19:04:48.2613869Z + shared_preferences 2.5.5
+2026-04-23T19:04:48.2614110Z + shared_preferences_android 2.4.23
+2026-04-23T19:04:48.2614364Z + shared_preferences_foundation 2.5.6
+2026-04-23T19:04:48.2614621Z + shared_preferences_linux 2.4.1
+2026-04-23T19:04:48.2614871Z + shared_preferences_platform_interface 2.4.2
+2026-04-23T19:04:48.2615144Z + shared_preferences_web 2.4.3
+2026-04-23T19:04:48.2615372Z + shared_preferences_windows 2.4.1
+2026-04-23T19:04:48.2615602Z + sqflite 2.4.2+1
+2026-04-23T19:04:48.2615789Z + sqflite_android 2.4.2+3
+2026-04-23T19:04:48.2616002Z + sqflite_common 2.5.6+1
+2026-04-23T19:04:48.2616217Z + sqflite_common_ffi 2.4.0+3
+2026-04-23T19:04:48.2616433Z + sqflite_darwin 2.4.2
+2026-04-23T19:04:48.2616643Z + sqflite_platform_interface 2.4.0
+2026-04-23T19:04:48.2616867Z + sqlite3 3.3.1
+2026-04-23T19:04:48.2617055Z + synchronized 3.4.0+1
+2026-04-23T19:04:48.2617255Z   test_api 0.7.10 (0.7.11 available)
+2026-04-23T19:04:48.2617493Z + timezone 0.9.4 (0.11.0 available)
+2026-04-23T19:04:48.2617714Z + typed_data 1.4.0
+2026-04-23T19:04:48.2618129Z   vector_math 2.2.0 (2.3.0 available)
+2026-04-23T19:04:48.2618351Z + web 1.1.1
+2026-04-23T19:04:48.2618534Z + xdg_directories 1.1.0
+2026-04-23T19:04:48.2618725Z + xml 6.6.1
+2026-04-23T19:04:48.2618895Z + yaml 3.1.3
+2026-04-23T19:04:48.2619110Z These packages are no longer being depended on:
+2026-04-23T19:04:48.2619380Z - cupertino_icons 1.0.9
+2026-04-23T19:04:48.2619606Z Changed 56 dependencies!
+2026-04-23T19:04:48.2619963Z 16 packages have newer versions incompatible with dependency constraints.
+2026-04-23T19:04:48.2620584Z Try `flutter pub outdated` for more information.

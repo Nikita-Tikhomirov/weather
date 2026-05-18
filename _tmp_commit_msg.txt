@@ -1,0 +1,1 @@
+feat: persistent project chat sessions with session_id tracking
