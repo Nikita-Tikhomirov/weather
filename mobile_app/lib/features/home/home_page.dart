@@ -76,6 +76,9 @@ class _HomePageState extends State<HomePage> {
   List<ProjectFileNode> _projectFiles = const <ProjectFileNode>[];
   String _projectFileTreePath = '';
   void Function(void Function())? _fileSheetSetState;
+  ValueNotifier<String>? _pendingFileContent;
+  String? _pendingFilePath;
+
   String? _activeProjectSessionId;
   final Map<String, String> _projectSessionIds = <String, String>{};
   List<ChatConversation> _chatConversations = const <ChatConversation>[];
@@ -1305,6 +1308,7 @@ class _HomePageState extends State<HomePage> {
           }
           if (msg.isFileContent) {
             setState(() => _projectMessages.add(msg));
+            _onFileContentArrived(msg);
             if (mounted) {
               _showFileContentViewer(msg);
             }
@@ -2981,14 +2985,17 @@ class _HomePageState extends State<HomePage> {
                 _projectBridge?.requestFileTree();
               },
               onLinkToChat: (filePath) {
-                final text = 'Файл: $filePath';
-                _chatInputCtl.text = text;
+                final fullPath = '${project.path}/$filePath';
+                final link = 'Файл: $fullPath';
+                final current = _chatInputCtl.text;
+                _chatInputCtl.text = current.isEmpty ? link : '$current $link';
                 // Close sheet so user can continue editing before sending
                 Navigator.of(sheetContext).pop();
               },
               onViewFile: (filePath) {
                 _projectBridge?.requestFileContent(filePath);
-                Navigator.of(sheetContext).pop();
+                // Show loading dialog over the file manager, update when content arrives
+                _showFileContentOverlay(filePath);
               },
               onOpenFile: (filePath) {
                 _projectBridge?.requestFileList(filePath);
@@ -3004,6 +3011,49 @@ class _HomePageState extends State<HomePage> {
     ).then((_) {
       _fileSheetSetState = null;
     });
+  }
+
+  void _showFileContentOverlay(String path) {
+    final ctl = ValueNotifier<String>('Загрузка содержимого...');
+    showDialog<void>(
+      context: context,
+      useRootNavigator: true,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        title: Text(path, style: const TextStyle(fontSize: 13)),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 400,
+          child: ValueListenableBuilder<String>(
+            valueListenable: ctl,
+            builder: (_, text, __) => SingleChildScrollView(
+              child: SelectableText(
+                text,
+                style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Закрыть'),
+          ),
+        ],
+      ),
+    );
+    // Store reference so bridge response can update it
+    _pendingFileContent = ctl;
+    _pendingFilePath = path;
+  }
+
+  /// Called when a file_content message arrives from the bridge
+  void _onFileContentArrived(BridgeMessage msg) {
+    if (_pendingFileContent == null) return;
+    final path = msg.filePath.isNotEmpty ? msg.filePath : msg.projectId;
+    if (path == _pendingFilePath || msg.fileContentText.isNotEmpty) {
+      _pendingFileContent!.value = msg.fileContentText;
+    }
   }
 
   void _showFileContentViewer(BridgeMessage msg) {

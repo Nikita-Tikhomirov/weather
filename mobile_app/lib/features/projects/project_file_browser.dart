@@ -64,20 +64,21 @@ class ProjectFileBrowser extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (currentPath.isNotEmpty)
-                    IconButton(
-                      tooltip: 'Наверх',
-                      icon: const Icon(Icons.arrow_upward),
-                      onPressed: () {
-                        final parent = _parentPath(currentPath);
-                        if (parent == null) {
-                          onNavigate('');
-                          onRefresh();
-                        } else {
-                          onOpenFile(parent);
-                        }
-                      },
-                    ),
+                  IconButton(
+                    tooltip: currentPath.isEmpty ? 'Корень' : 'Наверх',
+                    icon: const Icon(Icons.arrow_upward),
+                    onPressed: currentPath.isEmpty
+                        ? null
+                        : () {
+                            final parent = _parentPath(currentPath);
+                            if (parent == null) {
+                              onNavigate('');
+                              onRefresh();
+                            } else {
+                              onOpenFile(parent);
+                            }
+                          },
+                  ),
                   IconButton(
                     tooltip: 'Обновить',
                     icon: const Icon(Icons.refresh),

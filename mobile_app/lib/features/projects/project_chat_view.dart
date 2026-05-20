@@ -292,14 +292,17 @@ class _ProjectImageMessage extends StatelessWidget {
           crossAxisAlignment:
               isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.memory(
-                base64Decode(message.imageBase64),
-                width: 200,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    const Icon(Icons.broken_image, size: 48),
+            GestureDetector(
+              onTap: () => _showFullScreen(context),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.memory(
+                  base64Decode(message.imageBase64),
+                  width: 200,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.broken_image, size: 48),
+                ),
               ),
             ),
             if (message.imageFilename.isNotEmpty)
@@ -314,6 +317,30 @@ class _ProjectImageMessage extends StatelessWidget {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showFullScreen(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              child: Image.memory(
+                base64Decode(message.imageBase64),
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.broken_image, size: 48, color: Colors.white),
+              ),
+            ),
+          ),
         ),
       ),
     );
