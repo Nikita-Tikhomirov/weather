@@ -16,6 +16,7 @@ object VoiceChannel {
     fun register(flutterEngine: FlutterEngine, activity: android.app.Activity? = null) {
         var recorder: android.media.MediaRecorder? = null
         var player: android.media.MediaPlayer? = null
+        var currentVoiceUrl: String? = null
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -65,15 +66,23 @@ object VoiceChannel {
                 "playVoice" -> {
                     val url = call.argument<String>("url") ?: return@setMethodCallHandler result.error("NO_URL", null, null)
                     try {
+                        val existing = player
+                        if (existing != null && currentVoiceUrl == url) {
+                            existing.start()
+                            result.success(true)
+                            return@setMethodCallHandler
+                        }
                         player?.release()
+                        currentVoiceUrl = url
                         player = android.media.MediaPlayer().apply {
                             setDataSource(url)
                             setOnPreparedListener { start() }
-                            setOnCompletionListener { release(); player = null }
+                            setOnCompletionListener { release(); player = null; currentVoiceUrl = null }
                             setOnErrorListener { _, what, extra ->
                                 android.util.Log.e("VoiceChannel", "MediaPlayer error what=$what extra=$extra url=$url")
                                 release()
                                 player = null
+                                currentVoiceUrl = null
                                 false
                             }
                             prepareAsync()
@@ -83,10 +92,19 @@ object VoiceChannel {
                         result.error("PLAY_ERR", e.message, null)
                     }
                 }
+                "pauseVoice" -> {
+                    try {
+                        player?.apply { if (isPlaying) pause() }
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("PAUSE_PLAY_ERR", e.message, null)
+                    }
+                }
                 "stopVoice" -> {
                     try {
                         player?.apply { if (isPlaying) stop(); release() }
                         player = null
+                        currentVoiceUrl = null
                         result.success(true)
                     } catch (e: Exception) {
                         result.error("STOP_PLAY_ERR", e.message, null)

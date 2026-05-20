@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_client.dart';
 
@@ -14,6 +16,11 @@ const _notificationChannelDescription =
     'Пуш-уведомления о задачах и напоминаниях';
 const _appVersion =
     String.fromEnvironment('APP_VERSION', defaultValue: '0.1.6');
+const _markReadActionId = 'chat_mark_read';
+const _defaultApiBaseUrl = String.fromEnvironment('API_BASE_URL',
+    defaultValue: 'http://31.129.97.211');
+const _defaultApiKey =
+    String.fromEnvironment('API_KEY', defaultValue: 'dev-local-key');
 
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();
@@ -33,6 +40,18 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     }
   }
   await _ensureNotificationChannel();
+  if (_isChatMessageData(message.data)) {
+    await _showChatNotificationFromData(
+      message.data,
+      title: message.notification?.title,
+      body: message.notification?.body,
+    );
+  }
+}
+
+@pragma('vm:entry-point')
+Future<void> notificationTapBackground(NotificationResponse response) async {
+  await _handleNotificationResponse(response);
 }
 
 class FcmService {
@@ -122,7 +141,11 @@ class FcmService {
       await onOpenPush(msg.data);
       final title = msg.notification?.title ?? 'Семейные задачи';
       final body = msg.notification?.body ?? 'Появились новые изменения';
-      await _showForegroundNotification(title: title, body: body);
+      await _showForegroundNotification(
+        title: title,
+        body: body,
+        data: msg.data,
+      );
       onForegroundText('$title: $body');
     });
 
@@ -476,8 +499,10 @@ class FcmService {
   Future<void> _showForegroundNotification({
     required String title,
     required String body,
+    required Map<String, dynamic> data,
   }) async {
-    const details = NotificationDetails(
+    final payload = jsonEncode(data);
+    final details = NotificationDetails(
       android: AndroidNotificationDetails(
         _notificationChannelId,
         _notificationChannelName,
@@ -486,6 +511,16 @@ class FcmService {
         priority: Priority.high,
         visibility: NotificationVisibility.public,
         icon: '@mipmap/ic_launcher',
+        actions: _isChatMessageData(data)
+            ? const [
+                AndroidNotificationAction(
+                  _markReadActionId,
+                  'Прочитано',
+                  cancelNotification: true,
+                  showsUserInterface: false,
+                ),
+              ]
+            : null,
       ),
     );
 
@@ -494,6 +529,7 @@ class FcmService {
       title,
       body,
       details,
+      payload: payload,
     );
   }
 }
@@ -503,7 +539,11 @@ Future<void> _ensureNotificationChannel() async {
   const initializationSettings = InitializationSettings(
     android: androidSettings,
   );
-  await _localNotifications.initialize(initializationSettings);
+  await _localNotifications.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse: _handleNotificationResponse,
+    onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
+  );
 
   const channel = AndroidNotificationChannel(
     _notificationChannelId,
@@ -517,6 +557,83 @@ Future<void> _ensureNotificationChannel() async {
       .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(channel);
+}
+
+bool _isChatMessageData(Map<String, dynamic> data) {
+  return (data['entity'] ?? data['type'] ?? '').toString() == 'chat_message' &&
+      (data['conversation_key'] ?? '').toString().trim().isNotEmpty;
+}
+
+Future<void> _showChatNotificationFromData(
+  Map<String, dynamic> data, {
+  String? title,
+  String? body,
+}) async {
+  final notificationTitle = (title ?? data['title'] ?? 'Сообщение').toString();
+  final notificationBody =
+      (body ?? data['body'] ?? 'Новое сообщение').toString();
+  const details = NotificationDetails(
+    android: AndroidNotificationDetails(
+      _notificationChannelId,
+      _notificationChannelName,
+      channelDescription: _notificationChannelDescription,
+      importance: Importance.max,
+      priority: Priority.high,
+      visibility: NotificationVisibility.public,
+      icon: '@mipmap/ic_launcher',
+      actions: [
+        AndroidNotificationAction(
+          _markReadActionId,
+          'Прочитано',
+          cancelNotification: true,
+          showsUserInterface: false,
+        ),
+      ],
+    ),
+  );
+  await _localNotifications.show(
+    DateTime.now().millisecondsSinceEpoch.remainder(100000),
+    notificationTitle,
+    notificationBody,
+    details,
+    payload: jsonEncode(data),
+  );
+}
+
+Future<void> _handleNotificationResponse(NotificationResponse response) async {
+  if (response.actionId != _markReadActionId) {
+    return;
+  }
+  final payload = response.payload;
+  if (payload == null || payload.trim().isEmpty) {
+    return;
+  }
+  Map<String, dynamic> data;
+  try {
+    data = Map<String, dynamic>.from(jsonDecode(payload) as Map);
+  } catch (_) {
+    return;
+  }
+  final conversationKey = (data['conversation_key'] ?? '').toString().trim();
+  if (conversationKey.isEmpty) {
+    return;
+  }
+  var actor = (data['recipient_profile'] ?? '').toString().trim();
+  if (actor.isEmpty) {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      actor = prefs.getString('actor_profile')?.trim() ?? '';
+    } catch (_) {}
+  }
+  if (actor.isEmpty) {
+    return;
+  }
+  try {
+    await ApiClient(baseUrl: _defaultApiBaseUrl, apiKey: _defaultApiKey)
+        .chatMarkRead(actorProfile: actor, conversationKey: conversationKey);
+  } catch (_) {
+    // Notification actions must never crash the background isolate.
+  }
 }
 
 FirebaseOptions _firebaseOptionsForCurrentPlatform() {

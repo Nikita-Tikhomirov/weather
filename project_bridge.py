@@ -449,6 +449,7 @@ class ProjectSession:
                         stream_id=item_id or self._current_turn_id,
                         runtime_kind=kind,
                     )
+                    self._broadcast_vision_images_from_text(final_text)
             elif event_name == "item.failed":
                 self._broadcast("error", str(payload.get("error") or "DeepSeek item failed"))
             elif event_name in ("turn.completed", "turn.interrupted", "turn.failed", "turn.canceled"):
@@ -554,6 +555,46 @@ class ProjectSession:
                 dead.append(writer)
         for writer in dead:
             self.writers.remove(writer)
+
+    def _broadcast_vision_images_from_text(self, text: str) -> None:
+        seen: set[str] = set()
+        for match in re.finditer(r"vision[/\\][^\s'\"`)\]]+\.(?:png|jpe?g|webp|gif)", text, re.IGNORECASE):
+            rel = match.group(0).replace("\\", "/").rstrip(".,;:")
+            if rel in seen:
+                continue
+            seen.add(rel)
+            target = (Path(self.project_dir) / rel).resolve()
+            try:
+                target.relative_to(Path(self.project_dir).resolve())
+            except ValueError:
+                continue
+            if not target.exists() or not target.is_file():
+                continue
+            try:
+                raw = target.read_bytes()
+            except Exception as exc:
+                _log("session", f"Vision image read failed {rel}: {exc}")
+                continue
+            if not raw or len(raw) > MAX_UPLOAD_BYTES:
+                continue
+            self._broadcast(
+                "image",
+                target.name,
+                data_base64=base64.b64encode(raw).decode("ascii"),
+                mime_type=self._mime_for_image(target.name),
+                filename=target.name,
+            )
+
+    @staticmethod
+    def _mime_for_image(name: str) -> str:
+        lower = name.lower()
+        if lower.endswith(".png"):
+            return "image/png"
+        if lower.endswith(".webp"):
+            return "image/webp"
+        if lower.endswith(".gif"):
+            return "image/gif"
+        return "image/jpeg"
 
     def stop(self) -> None:
         self.running = False

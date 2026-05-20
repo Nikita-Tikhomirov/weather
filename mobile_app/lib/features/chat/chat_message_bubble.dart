@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -40,21 +42,11 @@ class ChatMessageBubble extends StatelessWidget {
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
       child: GestureDetector(
         onLongPress: onLongPress,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            if (!mine)
-              Padding(
-                padding: const EdgeInsets.only(right: 6, bottom: 8),
-                child: _buildMiniAvatar(),
-              ),
-            Flexible(
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                constraints: BoxConstraints(maxWidth: compact ? 300 : 540),
-                decoration: BoxDecoration(
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          constraints: BoxConstraints(maxWidth: compact ? 300 : 540),
+          decoration: BoxDecoration(
             color: deleted
                 ? Theme.of(context).colorScheme.surfaceContainerHighest
                 : mine
@@ -66,16 +58,24 @@ class ChatMessageBubble extends StatelessWidget {
             crossAxisAlignment:
                 mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
-              Text(
-                senderLabel,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.7),
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                textDirection: mine ? TextDirection.rtl : TextDirection.ltr,
+                children: [
+                  _buildMiniAvatar(radius: 10),
+                  const SizedBox(width: 6),
+                  Text(
+                    senderLabel,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 4),
               _buildContent(context, deleted, text),
@@ -94,28 +94,24 @@ class ChatMessageBubble extends StatelessWidget {
             ],
           ),
         ),
-            ), // Flexible
-          ],
-        ),
       ),
     );
   }
 
-  Widget _buildMiniAvatar() {
+  Widget _buildMiniAvatar({double radius = 14}) {
     if (avatarUrl != null && avatarUrl!.isNotEmpty) {
+      final image = avatarUrl!.startsWith('http')
+          ? NetworkImage(avatarUrl!) as ImageProvider
+          : FileImage(File(avatarUrl!));
       return CircleAvatar(
-        radius: 14,
-        backgroundImage: avatarUrl!.startsWith('http')
-            ? NetworkImage(avatarUrl!)
-            : null,
-        child: avatarUrl!.startsWith('http')
-            ? null
-            : const Icon(Icons.person, size: 16),
+        radius: radius,
+        backgroundImage: image,
+        onBackgroundImageError: (_, __) {},
       );
     }
-    return const CircleAvatar(
-      radius: 14,
-      child: Icon(Icons.person, size: 16),
+    return CircleAvatar(
+      radius: radius,
+      child: Icon(Icons.person, size: radius + 2),
     );
   }
 
@@ -197,8 +193,10 @@ class ChatMessageBubble extends StatelessWidget {
                           width: 40,
                           height: 40,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const Icon(Icons.videocam, size: 40, color: Color(0xFF6B7280)),
+                          errorBuilder: (_, __, ___) => const Icon(
+                              Icons.videocam,
+                              size: 40,
+                              color: Color(0xFF6B7280)),
                         ),
                       ),
                     ),
@@ -211,8 +209,8 @@ class ChatMessageBubble extends StatelessWidget {
                   if (hasAudio)
                     const Padding(
                       padding: EdgeInsets.only(right: 8),
-                      child:
-                          Icon(Icons.audiotrack, size: 24, color: Color(0xFF6B7280)),
+                      child: Icon(Icons.audiotrack,
+                          size: 24, color: Color(0xFF6B7280)),
                     ),
                   Expanded(
                     child: Text(
@@ -423,7 +421,8 @@ class ChatMessageBubble extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Center(
-                      child: Icon(Icons.videocam, size: 56, color: Color(0xFF6B7280)),
+                      child: Icon(Icons.videocam,
+                          size: 56, color: Color(0xFF6B7280)),
                     ),
                   ),
                   Container(
@@ -534,14 +533,20 @@ class ChatMessageBubble extends StatelessWidget {
     final progress = message.uploadProgress.clamp(0.0, 1.0);
     final pct = (progress * 100).round();
     final kind = message.messageType;
+    final isImageUpload = kind == 'image' || kind == 'image_group';
     final label = kind == 'video'
         ? 'Видео'
-        : kind == 'image' || kind == 'image_group'
+        : isImageUpload
             ? 'Фото'
             : 'Файл';
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (isImageUpload) ...[
+          _buildUploadPreviewGrid(context, progress),
+          const SizedBox(height: 8),
+        ],
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -557,6 +562,74 @@ class ChatMessageBubble extends StatelessWidget {
         const SizedBox(height: 6),
         LinearProgressIndicator(value: progress),
       ],
+    );
+  }
+
+  Widget _buildUploadPreviewGrid(BuildContext context, double progress) {
+    final cs = Theme.of(context).colorScheme;
+    final previews = message.attachments
+        .where(
+            (item) => item.kind == 'image' && item.assetUrl.trim().isNotEmpty)
+        .toList()
+      ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
+    final width = previews.length <= 1 ? (compact ? 238.0 : 320.0) : 104.0;
+    final height = previews.length <= 1 ? (compact ? 160.0 : 220.0) : 104.0;
+    return Stack(
+      children: [
+        Wrap(
+          spacing: 4,
+          runSpacing: 4,
+          children: [
+            for (final item in previews)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: width,
+                  height: height,
+                  child: _buildLocalPreview(item.assetUrl),
+                ),
+              ),
+          ],
+        ),
+        Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.20),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: cs.surface.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Text(
+                  '${(progress * 100).round()}%',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLocalPreview(String path) {
+    final file = File(path);
+    if (file.existsSync()) {
+      return Image.file(file, fit: BoxFit.cover);
+    }
+    return Container(
+      color: const Color(0xFFE5E7EB),
+      child: const Center(
+        child: Icon(Icons.image_outlined, color: Color(0xFF6B7280)),
+      ),
     );
   }
 
@@ -615,7 +688,8 @@ class _VoiceBubbleState extends State<_VoiceBubble>
     super.initState();
     _animCtrl = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: widget.durationMs > 0 ? widget.durationMs : 3000),
+      duration: Duration(
+          milliseconds: widget.durationMs > 0 ? widget.durationMs : 3000),
     );
     _animCtrl.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
@@ -630,19 +704,31 @@ class _VoiceBubbleState extends State<_VoiceBubble>
     super.dispose();
   }
 
-  void _togglePlay() {
-    setState(() {
-      _playing = !_playing;
-      if (_playing) {
-        _animCtrl.forward(from: _animCtrl.value);
-        const MethodChannel('family_todo_mobile/voice')
+  Future<void> _togglePlay() async {
+    if (widget.url.trim().isEmpty) {
+      return;
+    }
+    final nextPlaying = !_playing;
+    setState(() => _playing = nextPlaying);
+    try {
+      if (nextPlaying) {
+        if (_animCtrl.value >= 1.0) {
+          _animCtrl.value = 0.0;
+        }
+        _animCtrl.forward();
+        await const MethodChannel('family_todo_mobile/voice')
             .invokeMethod('playVoice', {'url': widget.url});
       } else {
         _animCtrl.stop();
-        const MethodChannel('family_todo_mobile/voice')
+        await const MethodChannel('family_todo_mobile/voice')
             .invokeMethod('pauseVoice');
       }
-    });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _playing = false);
+      }
+      _animCtrl.stop();
+    }
   }
 
   @override
@@ -654,62 +740,92 @@ class _VoiceBubbleState extends State<_VoiceBubble>
         : '0:00';
     final fg = widget.mine ? cs.onPrimaryContainer : cs.onSurfaceVariant;
 
-    return GestureDetector(
-      onTap: _togglePlay,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: widget.mine
-              ? cs.primaryContainer
-              : cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              _playing ? Icons.pause : Icons.play_arrow,
-              size: 24,
-              color: fg,
+    return Container(
+      width: MediaQuery.sizeOf(context).width < 380 ? 228 : 292,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: widget.mine ? cs.primaryContainer : cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          IconButton.filled(
+            visualDensity: VisualDensity.compact,
+            tooltip: _playing ? 'Пауза' : 'Воспроизвести',
+            onPressed: _togglePlay,
+            icon: Icon(_playing ? Icons.pause : Icons.play_arrow),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: AnimatedBuilder(
+              animation: _animCtrl,
+              builder: (context, child) {
+                return CustomPaint(
+                  size: const Size(double.infinity, 38),
+                  painter: _WaveformPainter(
+                    progress: _animCtrl.value,
+                    active: _playing,
+                    color: fg,
+                    inactiveColor: fg.withValues(alpha: 0.28),
+                  ),
+                );
+              },
             ),
-            const SizedBox(width: 8),
-            if (_playing)
-              AnimatedBuilder(
-                animation: _animCtrl,
-                builder: (context, child) {
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: List.generate(4, (i) {
-                      final phase = (i / 4.0 + _animCtrl.value) % 1.0;
-                      final h = 4.0 + 10.0 * (0.5 + 0.5 * (phase < 0.5 ? phase * 2 : 2 - phase * 2));
-                      return Container(
-                        width: 3,
-                        height: h,
-                        margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                        decoration: BoxDecoration(
-                          color: fg,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      );
-                    }),
-                  );
-                },
-              )
-            else ...[
-              const SizedBox(width: 4),
-              Text(
-                timeStr,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: widget.mine ? cs.onPrimaryContainer : cs.onSurface,
-                ),
-              ),
-            ],
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            timeStr,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: widget.mine ? cs.onPrimaryContainer : cs.onSurface,
+            ),
+          ),
+        ],
       ),
     );
+  }
+}
+
+class _WaveformPainter extends CustomPainter {
+  _WaveformPainter({
+    required this.progress,
+    required this.active,
+    required this.color,
+    required this.inactiveColor,
+  });
+
+  final double progress;
+  final bool active;
+  final Color color;
+  final Color inactiveColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const count = 34;
+    final slot = size.width / count;
+    final activePaint = Paint()..color = color;
+    final idlePaint = Paint()..color = inactiveColor;
+    for (var i = 0; i < count; i++) {
+      final seed = ((i * 37) % 13) / 12.0;
+      final pulse = active ? ((progress * 2 + i / count) % 1.0) : 0.0;
+      final wave = active ? (pulse < 0.5 ? pulse * 2 : (1 - pulse) * 2) : 0.0;
+      final h = 7 + (size.height - 8) * (0.25 + seed * 0.45 + wave * 0.30);
+      final x = i * slot + slot * 0.35;
+      final top = (size.height - h) / 2;
+      final rect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(x, top, slot * 0.42, h),
+        const Radius.circular(3),
+      );
+      canvas.drawRRect(rect, i / count <= progress ? activePaint : idlePaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _WaveformPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.active != active ||
+        oldDelegate.color != color ||
+        oldDelegate.inactiveColor != inactiveColor;
   }
 }

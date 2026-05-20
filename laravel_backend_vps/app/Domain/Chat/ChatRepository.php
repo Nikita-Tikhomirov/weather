@@ -323,6 +323,9 @@ final class ChatRepository
     {
         $actor = $this->resolveLegacyProfile($actor);
         $conversation = $this->resolveConversationForActor($actor, $conversationKey);
+        if (!$this->hasTable('chat_read_cursors')) {
+            return;
+        }
         $now = $this->nowIso();
         DB::table('chat_read_cursors')->updateOrInsert(
             ['conversation_id' => (int)$conversation->id, 'profile_key' => $actor],
@@ -356,6 +359,57 @@ final class ChatRepository
             ->where('conversation_id', (int) $conversation->id)
             ->where('profile_key', $profile)
             ->delete();
+    }
+
+    public function renameGroup(string $actor, string $conversationKey, string $title): void
+    {
+        $actor = $this->resolveLegacyProfile($actor);
+        $conversation = $this->resolveConversationForActor($actor, $conversationKey);
+        if ((string) $conversation->kind !== 'group') {
+            throw new InvalidArgumentException('Can only rename group conversations');
+        }
+        $normalizedTitle = trim($title);
+        if ($normalizedTitle === '') {
+            throw new InvalidArgumentException('title is required');
+        }
+        if (mb_strlen($normalizedTitle) > 60) {
+            $normalizedTitle = mb_substr($normalizedTitle, 0, 60);
+        }
+        DB::table('chat_conversations')
+            ->where('id', (int) $conversation->id)
+            ->update(['title' => $normalizedTitle, 'updated_at' => $this->nowIso()]);
+    }
+
+    public function deleteGroup(string $actor, string $conversationKey): void
+    {
+        $actor = $this->resolveLegacyProfile($actor);
+        $conversation = $this->resolveConversationForActor($actor, $conversationKey);
+        if ((string) $conversation->kind !== 'group') {
+            throw new InvalidArgumentException('Can only delete group conversations');
+        }
+        if ((string) $conversation->conversation_key === self::GROUP_KEY) {
+            throw new InvalidArgumentException('Default group cannot be deleted');
+        }
+
+        $conversationId = (int) $conversation->id;
+        $messageIds = DB::table('chat_messages')
+            ->where('conversation_id', $conversationId)
+            ->pluck('id')
+            ->map(static fn ($item): string => (string) $item)
+            ->all();
+
+        DB::transaction(static function () use ($conversationId, $messageIds): void {
+            if ($messageIds !== []) {
+                DB::table('chat_message_attachments')->whereIn('message_id', $messageIds)->delete();
+                DB::table('chat_message_reactions')->whereIn('message_id', $messageIds)->delete();
+            }
+            DB::table('chat_messages')->where('conversation_id', $conversationId)->delete();
+            if (DB::getSchemaBuilder()->hasTable('chat_read_cursors')) {
+                DB::table('chat_read_cursors')->where('conversation_id', $conversationId)->delete();
+            }
+            DB::table('chat_conversation_members')->where('conversation_id', $conversationId)->delete();
+            DB::table('chat_conversations')->where('id', $conversationId)->delete();
+        });
     }
 
     public function editMessage(string $actor, string $messageId, string $text): array
@@ -629,6 +683,11 @@ final class ChatRepository
         }
     }
 
+    private function hasTable(string $table): bool
+    {
+        return DB::getSchemaBuilder()->hasTable($table);
+    }
+
     private function isAllowedProfile(string $profile): bool
     {
         return Profiles::isAllowed($profile) || DB::table('messenger_users')->where('profile_key', $profile)->exists();
@@ -659,7 +718,8 @@ final class ChatRepository
         foreach ($rows as $row) {
             $members = DB::table('chat_conversation_members')
                 ->where('conversation_id', (int) $row->id)
-                ->orderBy('profile_key')
+                ->orderBy('joined_at')
+                ->orderBy('id')
                 ->pluck('profile_key')
                 ->map(static fn ($item): string => (string) $item)
                 ->all();

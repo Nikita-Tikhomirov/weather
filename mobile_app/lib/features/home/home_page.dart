@@ -2369,6 +2369,81 @@ class _HomePageState extends State<HomePage> {
                         fontSize: 18, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 8),
+                  if (isOwner) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final title = await _promptGroupTitle(
+                                conv.title.isNotEmpty ? conv.title : 'Группа',
+                              );
+                              if (title == null || title.trim().isEmpty) {
+                                return;
+                              }
+                              try {
+                                await store.repository.api.renameGroup(
+                                  actorProfile: store.owner.value,
+                                  conversationKey: conv.conversationKey,
+                                  title: title.trim(),
+                                );
+                                if (mounted && sheetContext.mounted) {
+                                  Navigator.of(sheetContext).pop();
+                                  await _refreshChatBootstrap(store);
+                                }
+                              } catch (error) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Ошибка: $error')),
+                                  );
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.edit_outlined),
+                            label: const Text('Назвать'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final ok = await _confirmDeleteGroup(conv);
+                              if (ok != true) {
+                                return;
+                              }
+                              try {
+                                await store.repository.api.deleteGroup(
+                                  actorProfile: store.owner.value,
+                                  conversationKey: conv.conversationKey,
+                                );
+                                if (mounted && sheetContext.mounted) {
+                                  Navigator.of(sheetContext).pop();
+                                  setState(() {
+                                    _chatConversations.removeWhere((item) =>
+                                        item.conversationKey ==
+                                        conv.conversationKey);
+                                    _chatMessagesByConversation
+                                        .remove(conv.conversationKey);
+                                    _activeConversationKey = '';
+                                  });
+                                  await _refreshChatBootstrap(store);
+                                }
+                              } catch (error) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Ошибка: $error')),
+                                  );
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.delete_outline),
+                            label: const Text('Удалить'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   Flexible(
                     child: ListView(
                       shrinkWrap: true,
@@ -2417,6 +2492,59 @@ class _HomePageState extends State<HomePage> {
           );
         });
       },
+    );
+  }
+
+  Future<String?> _promptGroupTitle(String initial) async {
+    if (!mounted) return null;
+    final controller = TextEditingController(text: initial);
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Название группы'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 60,
+          decoration: const InputDecoration(
+            hintText: 'Например: Семья',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Сохранить'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool?> _confirmDeleteGroup(ChatConversation conv) async {
+    if (!mounted) return false;
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Удалить группу?'),
+        content: Text(
+          'Группа "${conv.title.isNotEmpty ? conv.title : 'Группа'}" исчезнет у всех участников вместе с перепиской.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -2527,30 +2655,38 @@ class _HomePageState extends State<HomePage> {
       if (result != null) caption = result;
     }
 
-    // Create optimistic messages immediately
+    // Create one optimistic bubble with local previews and shared progress.
     final msgType = picked.length == 1 ? 'image' : 'image_group';
     final clientId = 'img-${DateTime.now().microsecondsSinceEpoch}';
     final nowIso = DateTime.now().toIso8601String();
     final totalCount = picked.length;
-
-    for (var i = 0; i < totalCount; i++) {
-      final optMsg = ChatMessage(
-        id: '$clientId-$i',
-        conversationKey: conversationKey,
-        senderProfile: actor,
-        messageType: msgType,
-        text: i == 0 ? caption : '',
-        createdAt: nowIso,
-        clientMessageId: clientId,
-        isUploading: true,
-        uploadProgress: 0.0,
-      );
-      final msgs = List<ChatMessage>.from(
-        _chatMessagesByConversation[conversationKey] ?? const [],
-      );
-      msgs.add(optMsg);
-      _chatMessagesByConversation[conversationKey] = msgs;
-    }
+    final localAttachments = [
+      for (var i = 0; i < totalCount; i++)
+        ChatAttachment(
+          kind: 'image',
+          assetUrl: picked[i].path,
+          imageMeta: const {'local_preview': true},
+          sortOrder: i,
+        ),
+    ];
+    final optMsg = ChatMessage(
+      id: clientId,
+      conversationKey: conversationKey,
+      senderProfile: actor,
+      messageType: msgType,
+      text: caption,
+      createdAt: nowIso,
+      attachments: localAttachments,
+      clientMessageId: clientId,
+      isUploading: true,
+      uploadProgress: 0.0,
+      deliveryStatus: 'sending',
+    );
+    final msgs = List<ChatMessage>.from(
+      _chatMessagesByConversation[conversationKey] ?? const [],
+    );
+    msgs.add(optMsg);
+    _chatMessagesByConversation[conversationKey] = msgs;
     if (mounted) setState(() {});
 
     // Upload photos one by one with progress
@@ -2613,19 +2749,14 @@ class _HomePageState extends State<HomePage> {
       int total, double progress) {
     final msgs = _chatMessagesByConversation[conversationKey];
     if (msgs == null) return;
+    final itemProgress = progress.clamp(0.0, 1.0);
+    final overall = ((index + itemProgress) / total).clamp(0.0, 1.0);
     for (var i = 0; i < msgs.length; i++) {
-      if (msgs[i].clientMessageId == clientId &&
-          msgs[i].id == '$clientId-$index') {
-        msgs[i] = ChatMessage(
-          id: msgs[i].id,
-          conversationKey: msgs[i].conversationKey,
-          senderProfile: msgs[i].senderProfile,
-          messageType: msgs[i].messageType,
-          text: msgs[i].text,
-          createdAt: msgs[i].createdAt,
-          clientMessageId: msgs[i].clientMessageId,
+      if (msgs[i].clientMessageId == clientId) {
+        msgs[i] = msgs[i].copyWith(
           isUploading: true,
-          uploadProgress: progress,
+          uploadProgress: overall,
+          deliveryStatus: 'sending',
         );
         _chatMessagesByConversation[conversationKey] = msgs;
         if (mounted) setState(() {});
@@ -3459,6 +3590,17 @@ class _HomePageState extends State<HomePage> {
       );
       if (ok) {
         sent += 1;
+        if (mounted) {
+          setState(() {
+            _projectMessages.add(BridgeMessage(
+              type: 'sent_image',
+              text: caption,
+              imageBase64: base64Encode(bytes),
+              imageMimeType: _projectImageMime(file),
+              imageFilename: file.name,
+            ));
+          });
+        }
       } else {
         failed += 1;
       }
@@ -3470,7 +3612,7 @@ class _HomePageState extends State<HomePage> {
       if (sent > 0) {
         _projectMessages.add(BridgeMessage(
           type: 'send',
-          text: 'Фото отправлено в vision: $sent',
+          text: 'Фото сохранено в vision: $sent',
         ));
       }
       if (failed > 0 || sent == 0) {
@@ -3963,6 +4105,11 @@ class _HomePageState extends State<HomePage> {
                 }
                 return Scaffold(
                   appBar: AppBar(
+                    leading: IconButton(
+                      tooltip: 'Профиль',
+                      icon: const Icon(Icons.person_outline),
+                      onPressed: _openProfile,
+                    ),
                     actions: [
                       _themeMenuButton(),
                       ValueListenableBuilder<bool>(
@@ -4187,10 +4334,6 @@ class _HomePageState extends State<HomePage> {
                       return NavigationBar(
                         selectedIndex: page,
                         onDestinationSelected: (index) {
-                          if (index == 5) {
-                            _openProfile();
-                            return;
-                          }
                           store.setPage(index);
                         },
                         destinations: const [
@@ -4213,10 +4356,6 @@ class _HomePageState extends State<HomePage> {
                           NavigationDestination(
                             icon: Icon(Icons.forum_outlined),
                             label: 'Мессенджер',
-                          ),
-                          NavigationDestination(
-                            icon: Icon(Icons.person_outline),
-                            label: 'Профиль',
                           ),
                         ],
                       );

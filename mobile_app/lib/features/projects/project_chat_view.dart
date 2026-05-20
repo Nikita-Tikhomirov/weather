@@ -279,26 +279,41 @@ class _ProjectImageMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(4),
+        padding: const EdgeInsets.all(8),
+        constraints: const BoxConstraints(maxWidth: 280),
         decoration: BoxDecoration(
+          color: isMe ? cs.primaryContainer : cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Column(
           crossAxisAlignment:
               isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
+            if (!isMe)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  'DeepSeek',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: cs.primary,
+                  ),
+                ),
+              ),
             GestureDetector(
               onTap: () => _showFullScreen(context),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: Image.memory(
                   base64Decode(message.imageBase64),
-                  width: 200,
+                  width: 248,
+                  height: 180,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) =>
                       const Icon(Icons.broken_image, size: 48),
@@ -336,8 +351,10 @@ class _ProjectImageMessage extends StatelessWidget {
               child: Image.memory(
                 base64Decode(message.imageBase64),
                 fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) =>
-                    const Icon(Icons.broken_image, size: 48, color: Colors.white),
+                errorBuilder: (context, error, stackTrace) => const Icon(
+                    Icons.broken_image,
+                    size: 48,
+                    color: Colors.white),
               ),
             ),
           ),

@@ -177,6 +177,55 @@ class ChatApiContractTest extends TestCase
     }
 
     #[Test]
+    public function group_conversation_can_be_renamed_and_deleted(): void
+    {
+        config(['sync.api_key' => 'prod-key']);
+
+        $created = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/conversations', [
+                'actor_profile' => 'nik',
+                'title' => 'Старая группа',
+                'member_profiles' => ['nastya', 'misha'],
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true);
+
+        $conversationKey = data_get($created->json(), 'conversation.conversation_key');
+        $this->assertNotEmpty($conversationKey);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/conversations/rename', [
+                'actor_profile' => 'nik',
+                'conversation_key' => $conversationKey,
+                'title' => 'Нужная группа',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/chat/bootstrap?actor_profile=nik')
+            ->assertStatus(200)
+            ->assertJsonFragment([
+                'conversation_key' => $conversationKey,
+                'title' => 'Нужная группа',
+            ])
+            ->assertJsonPath('conversations.0.members.0', 'nik');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/conversations/delete', [
+                'actor_profile' => 'nik',
+                'conversation_key' => $conversationKey,
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/chat/messages?actor_profile=nik&conversation_key='.$conversationKey)
+            ->assertStatus(400)
+            ->assertJsonPath('ok', false);
+    }
+
+    #[Test]
     public function sender_can_edit_and_delete_own_text_message(): void
     {
         config(['sync.api_key' => 'prod-key']);

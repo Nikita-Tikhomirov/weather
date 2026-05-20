@@ -121,11 +121,11 @@ class BridgeMessage {
     );
   }
 
-  bool get isImage => type == 'image';
+  bool get isImage => type == 'image' || type == 'sent_image';
   bool get isOutput => type == 'output';
   bool get isStatus => type == 'status';
   bool get isError => type == 'error';
-  bool get isSent => type == 'sent';
+  bool get isSent => type == 'sent' || type == 'sent_image';
   bool get isPong => type == 'pong';
   bool get isProjects => type == 'projects';
   bool get isHistory => type == 'history';
@@ -134,7 +134,8 @@ class BridgeMessage {
   bool get isFileContent => type == 'file_content';
 
   String get fileContentText => text;
-  String get fileContentPath => projectId.isNotEmpty ? '$projectId:$text' : text;
+  String get fileContentPath =>
+      projectId.isNotEmpty ? '$projectId:$text' : text;
   String get fileContentError => text.startsWith('Error:') ? text : '';
 }
 
@@ -161,7 +162,7 @@ class ProjectBridgeService {
   ProjectContact? _activeProject;
   final List<String> _pendingSends = <String>[];
   final BytesBuilder _buffer = BytesBuilder(copy: false);
-  
+
   /// Current session id (set by session_info messages from bridge).
   String? currentSessionId;
 

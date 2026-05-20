@@ -593,8 +593,7 @@ class ApiClient {
     final text = utf8.decode(chunks);
     if (streamedResponse.statusCode < 200 ||
         streamedResponse.statusCode >= 300) {
-      throw StateError(
-          'Upload failed: ${streamedResponse.statusCode} $text');
+      throw StateError('Upload failed: ${streamedResponse.statusCode} $text');
     }
 
     final body = jsonDecode(text) as Map<String, dynamic>;
@@ -631,6 +630,34 @@ class ApiClient {
         'actor_profile': actorProfile,
         'conversation_key': conversationKey,
         'profile': profile,
+      }),
+    );
+  }
+
+  Future<void> renameGroup({
+    required String actorProfile,
+    required String conversationKey,
+    required String title,
+  }) async {
+    await _postWithFallback(
+      paths: const ['/chat/conversations/rename'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'conversation_key': conversationKey,
+        'title': title,
+      }),
+    );
+  }
+
+  Future<void> deleteGroup({
+    required String actorProfile,
+    required String conversationKey,
+  }) async {
+    await _postWithFallback(
+      paths: const ['/chat/conversations/delete'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'conversation_key': conversationKey,
       }),
     );
   }

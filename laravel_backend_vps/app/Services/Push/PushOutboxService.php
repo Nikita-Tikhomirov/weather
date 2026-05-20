@@ -125,6 +125,8 @@ class PushOutboxService
                 }
             }
 
+            $dataForRecipient = $data;
+            $dataForRecipient['recipient_profile'] = (string) $row->profile_key;
             $count++;
             DB::table('push_outbox')->updateOrInsert(
                 [
@@ -135,7 +137,7 @@ class PushOutboxService
                     'profile_key' => (string) $row->profile_key,
                     'title' => $title,
                     'body_text' => $body,
-                    'data_json' => json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    'data_json' => json_encode($dataForRecipient, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                     'status' => 'pending',
                     'retry_count' => 0,
                     'next_retry_at' => $now,

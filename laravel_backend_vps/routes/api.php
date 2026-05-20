@@ -59,6 +59,8 @@ Route::middleware('sync.apikey')->group(function (): void {
     Route::get('/chat/stickers/packs', [ChatController::class, 'stickerPacks']);
     Route::post('/chat/conversations/members/add', [ChatController::class, 'addMember']);
     Route::post('/chat/conversations/members/remove', [ChatController::class, 'removeMember']);
+    Route::post('/chat/conversations/rename', [ChatController::class, 'renameConversation']);
+    Route::post('/chat/conversations/delete', [ChatController::class, 'deleteConversation']);
     Route::post('/chat/typing', [ChatController::class, 'sendTyping']);
     Route::post('/chat/conversations/read', [ChatController::class, 'markRead']);
 
