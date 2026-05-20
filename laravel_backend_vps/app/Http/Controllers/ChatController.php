@@ -63,6 +63,7 @@ class ChatController extends Controller
                 'conversation_key' => $result['conversation_key'],
                 'resolved_conversation_key' => $result['resolved_conversation_key'],
                 'messages' => $result['messages'],
+                'typing_profiles' => $result['typing_profiles'] ?? [],
                 'next_cursor' => $result['next_cursor'],
             ]);
         } catch (InvalidArgumentException $e) {

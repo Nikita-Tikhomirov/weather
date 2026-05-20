@@ -226,6 +226,60 @@ class ChatApiContractTest extends TestCase
     }
 
     #[Test]
+    public function common_group_title_can_be_changed_and_group_can_be_deleted(): void
+    {
+        config(['sync.api_key' => 'prod-key']);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/chat/bootstrap?actor_profile=nik')
+            ->assertStatus(200);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/conversations/rename', [
+                'actor_profile' => 'nik',
+                'conversation_key' => 'group:common',
+                'title' => 'Дом',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/chat/bootstrap?actor_profile=nik')
+            ->assertStatus(200)
+            ->assertJsonFragment([
+                'conversation_key' => 'group:common',
+                'title' => 'Дом',
+            ]);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/conversations/delete', [
+                'actor_profile' => 'nik',
+                'conversation_key' => 'group:common',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true);
+    }
+
+    #[Test]
+    public function typing_profiles_are_reported_to_other_members(): void
+    {
+        config(['sync.api_key' => 'prod-key']);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/typing', [
+                'actor_profile' => 'nik',
+                'conversation_key' => 'dm:nik:nastya',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/chat/messages?actor_profile=nastya&conversation_key=dm:nik:nastya')
+            ->assertStatus(200)
+            ->assertJsonPath('typing_profiles.0', 'nik');
+    }
+
+    #[Test]
     public function sender_can_edit_and_delete_own_text_message(): void
     {
         config(['sync.api_key' => 'prod-key']);

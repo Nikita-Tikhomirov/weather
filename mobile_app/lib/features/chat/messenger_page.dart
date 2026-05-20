@@ -94,8 +94,10 @@ class MessengerPage extends StatelessWidget {
       return _ContactList(
         contacts: contacts,
         projects: projects,
+        owner: owner,
         contactLabel: contactLabel,
         avatarForContact: avatarForContact,
+        typingUsers: typingUsers,
         groupConversations: conversations,
         groupLabel: conversationLabel,
         onRefreshContacts: onRefreshContacts,
@@ -163,7 +165,9 @@ class _ContactList extends StatelessWidget {
   const _ContactList({
     required this.contacts,
     required this.projects,
+    required this.owner,
     required this.contactLabel,
+    required this.typingUsers,
     required this.onRefreshContacts,
     required this.onCreateGroup,
     required this.onAddContactToFamily,
@@ -179,6 +183,8 @@ class _ContactList extends StatelessWidget {
 
   final List<ChatContact> contacts;
   final List<ProjectContact> projects;
+  final String owner;
+  final Map<String, Set<String>> typingUsers;
   final List<ChatConversation> groupConversations;
   final String Function(ChatContact contact) contactLabel;
   final String Function(ChatConversation conv, String owner) groupLabel;
@@ -264,10 +270,22 @@ class _ContactList extends StatelessWidget {
               else
                 ...List.generate(contacts.length, (index) {
                   final contact = contacts[index];
+                  final typing = typingUsers[contact.conversationKey]
+                          ?.where((profile) => profile != owner)
+                          .isNotEmpty ==
+                      true;
                   return ListTile(
                     leading: _buildContactAvatar(contact),
                     title: Text(contactLabel(contact)),
-                    subtitle: Text(contact.phone),
+                    subtitle: Text(
+                      typing ? 'печатает...' : contact.phone,
+                      style: typing
+                          ? TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            )
+                          : null,
+                    ),
                     trailing: IconButton(
                       tooltip: 'Добавить в семью',
                       icon: const Icon(Icons.family_restroom_outlined),

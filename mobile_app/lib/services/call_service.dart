@@ -68,13 +68,14 @@ class CallService {
     String callType = 'audio',
     String? calleeProfile,
   }) async {
-    if (_state != CallState.idle) return;
+    if (_state != CallState.idle && _state != CallState.ended) return;
 
     _state = CallState.calling;
     _stateController.add(_state);
+    CallSession? session;
 
     try {
-      final session = await api.callInitiate(
+      session = await api.callInitiate(
         actorProfile: actorProfile,
         conversationKey: conversationKey,
         callType: callType,
@@ -102,6 +103,12 @@ class CallService {
       // Start polling for answer + ICE
       _startSignalPolling();
     } catch (e) {
+      final sid = session?.sessionId;
+      if (sid != null && sid.isNotEmpty) {
+        try {
+          await api.callEnd(actorProfile: actorProfile, sessionId: sid);
+        } catch (_) {}
+      }
       _setState(CallState.ended);
       _errorController.add('Failed to start call: $e');
       await _cleanup();
@@ -167,7 +174,7 @@ class CallService {
 
   /// Called when FCM push indicates incoming call
   void notifyIncomingCall(CallSession session) {
-    if (_state != CallState.idle) return;
+    if (_state != CallState.idle && _state != CallState.ended) return;
     _sessionId = session.sessionId;
     _state = CallState.ringing;
     _stateController.add(_state);

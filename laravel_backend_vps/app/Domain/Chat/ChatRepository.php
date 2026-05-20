@@ -4,6 +4,7 @@ namespace App\Domain\Chat;
 
 use App\Domain\Sync\Profiles;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -37,10 +38,13 @@ final class ChatRepository
         }
         if (DB::table('messenger_users')->count() === 0) {
             $this->ensureGroupConversation();
+            $groupTitle = (string) (DB::table('chat_conversations')
+                ->where('conversation_key', self::GROUP_KEY)
+                ->value('title') ?? 'Общий');
             $conversations[] = [
                 'conversation_key' => self::GROUP_KEY,
                 'kind' => 'group',
-                'title' => 'Common',
+                'title' => $groupTitle,
                 'members' => Profiles::ALLOWED,
             ];
         }
@@ -48,7 +52,7 @@ final class ChatRepository
         return [
             'contacts' => $contacts,
             'group' => DB::table('messenger_users')->count() === 0
-                ? ['conversation_key' => self::GROUP_KEY, 'title' => 'Common']
+                ? ['conversation_key' => self::GROUP_KEY, 'title' => $groupTitle ?? 'Общий']
                 : ['conversation_key' => '', 'title' => ''],
             'conversations' => array_merge($conversations, $this->storedGroupConversations($actor)),
             'sticker_packs' => $this->stickerPacks(),
@@ -74,7 +78,6 @@ final class ChatRepository
             throw new InvalidArgumentException('Group requires at least two members');
         }
 
-        sort($profiles);
         $now = $this->nowIso();
         $key = 'grp:'.strtolower((string) Str::ulid());
         $name = trim($title) !== '' ? trim($title) : 'Group';
@@ -156,6 +159,11 @@ final class ChatRepository
             'conversation_key' => $responseConversationKey,
             'resolved_conversation_key' => (string) $conversation->conversation_key,
             'messages' => $mapped,
+            'typing_profiles' => $this->typingProfiles(
+                (int) $conversation->id,
+                $actor,
+                $this->conversationMembers($actor, (string) $conversation->conversation_key),
+            ),
             'next_cursor' => count($rows) === $limit && $mapped !== [] ? (string) $mapped[0]['created_at'] : null,
         ];
     }
@@ -336,8 +344,8 @@ final class ChatRepository
     public function recordTyping(string $actor, string $conversationKey): void
     {
         $actor = $this->resolveLegacyProfile($actor);
-        $this->resolveConversationForActor($actor, $conversationKey);
-        // Typing is transient — just validate actor is in conversation, no-op on server
+        $conversation = $this->resolveConversationForActor($actor, $conversationKey);
+        Cache::put($this->typingCacheKey((int) $conversation->id, $actor), $this->nowIso(), now()->addSeconds(7));
     }
 
     public function removeMember(string $actor, string $conversationKey, string $profile): void
@@ -387,10 +395,6 @@ final class ChatRepository
         if ((string) $conversation->kind !== 'group') {
             throw new InvalidArgumentException('Can only delete group conversations');
         }
-        if ((string) $conversation->conversation_key === self::GROUP_KEY) {
-            throw new InvalidArgumentException('Default group cannot be deleted');
-        }
-
         $conversationId = (int) $conversation->id;
         $messageIds = DB::table('chat_messages')
             ->where('conversation_id', $conversationId)
@@ -500,10 +504,16 @@ final class ChatRepository
     private function ensureGroupConversation(): void
     {
         $now = $this->nowIso();
-        DB::table('chat_conversations')->updateOrInsert(
-            ['conversation_key' => self::GROUP_KEY],
-            ['kind' => 'group', 'title' => 'Common', 'created_at' => $now, 'updated_at' => $now]
-        );
+        $exists = DB::table('chat_conversations')->where('conversation_key', self::GROUP_KEY)->exists();
+        if (!$exists) {
+            DB::table('chat_conversations')->insert([
+                'conversation_key' => self::GROUP_KEY,
+                'kind' => 'group',
+                'title' => 'Общий',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
         $conversationId = (int) DB::table('chat_conversations')->where('conversation_key', self::GROUP_KEY)->value('id');
         foreach (Profiles::ALLOWED as $profile) {
             DB::table('chat_conversation_members')->updateOrInsert(
@@ -686,6 +696,26 @@ final class ChatRepository
     private function hasTable(string $table): bool
     {
         return DB::getSchemaBuilder()->hasTable($table);
+    }
+
+    private function typingProfiles(int $conversationId, string $viewer, array $members): array
+    {
+        $out = [];
+        foreach ($members as $member) {
+            $profile = trim((string) $member);
+            if ($profile === '' || $profile === $viewer) {
+                continue;
+            }
+            if (Cache::has($this->typingCacheKey($conversationId, $profile))) {
+                $out[] = $profile;
+            }
+        }
+        return $out;
+    }
+
+    private function typingCacheKey(int $conversationId, string $profile): string
+    {
+        return sprintf('chat.typing.%d.%s', $conversationId, $profile);
     }
 
     private function isAllowedProfile(string $profile): bool

@@ -57,10 +57,12 @@ class ChatMessagesSnapshot {
   ChatMessagesSnapshot({
     required this.messages,
     required this.nextCursor,
+    this.typingProfiles = const [],
   });
 
   final List<ChatMessage> messages;
   final String? nextCursor;
+  final List<String> typingProfiles;
 }
 
 class ChatUploadResult {
@@ -437,7 +439,15 @@ class ApiClient {
         .toList();
 
     final nextCursor = body['next_cursor']?.toString();
-    return ChatMessagesSnapshot(messages: messages, nextCursor: nextCursor);
+    final typingProfiles = (body['typing_profiles'] as List? ?? const [])
+        .map((item) => item.toString())
+        .where((item) => item.trim().isNotEmpty)
+        .toList();
+    return ChatMessagesSnapshot(
+      messages: messages,
+      nextCursor: nextCursor,
+      typingProfiles: typingProfiles,
+    );
   }
 
   Future<ChatMessage> chatSendMessage({

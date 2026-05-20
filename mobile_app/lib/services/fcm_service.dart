@@ -24,6 +24,8 @@ const _defaultApiKey =
 
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();
+final StreamController<Map<String, dynamic>> _notificationOpenEvents =
+    StreamController<Map<String, dynamic>>.broadcast();
 const MethodChannel _firebaseInstallationsChannel =
     MethodChannel('family_todo_mobile/firebase_installations');
 
@@ -72,6 +74,7 @@ class FcmService {
   StreamSubscription<String>? _tokenRefreshSub;
   StreamSubscription<RemoteMessage>? _onMessageSub;
   StreamSubscription<RemoteMessage>? _onOpenSub;
+  StreamSubscription<Map<String, dynamic>>? _localOpenSub;
   Timer? _tokenRefreshTimer;
   String _lastRegisteredToken = '';
   String _playServicesState = 'unknown';
@@ -152,10 +155,23 @@ class FcmService {
     _onOpenSub = FirebaseMessaging.onMessageOpenedApp.listen((msg) async {
       await onOpenPush(msg.data);
     });
+    _localOpenSub = _notificationOpenEvents.stream.listen((data) async {
+      await onOpenPush(data);
+    });
 
     final initial = await messaging.getInitialMessage();
     if (initial != null) {
       await onOpenPush(initial.data);
+    }
+    final localLaunch =
+        await _localNotifications.getNotificationAppLaunchDetails();
+    final response = localLaunch?.notificationResponse;
+    if (localLaunch?.didNotificationLaunchApp == true &&
+        response?.payload != null) {
+      final data = _decodeNotificationPayload(response!.payload);
+      if (data != null) {
+        await onOpenPush(data);
+      }
     }
   }
 
@@ -168,6 +184,8 @@ class FcmService {
     _onMessageSub = null;
     _onOpenSub?.cancel();
     _onOpenSub = null;
+    _localOpenSub?.cancel();
+    _localOpenSub = null;
   }
 
   Future<bool> _registerTokenWithRetry(FirebaseMessaging messaging) async {
@@ -601,17 +619,18 @@ Future<void> _showChatNotificationFromData(
 }
 
 Future<void> _handleNotificationResponse(NotificationResponse response) async {
+  if (response.actionId == null || response.actionId!.isEmpty) {
+    final data = _decodeNotificationPayload(response.payload);
+    if (data != null) {
+      _notificationOpenEvents.add(data);
+    }
+    return;
+  }
   if (response.actionId != _markReadActionId) {
     return;
   }
-  final payload = response.payload;
-  if (payload == null || payload.trim().isEmpty) {
-    return;
-  }
-  Map<String, dynamic> data;
-  try {
-    data = Map<String, dynamic>.from(jsonDecode(payload) as Map);
-  } catch (_) {
+  final data = _decodeNotificationPayload(response.payload);
+  if (data == null) {
     return;
   }
   final conversationKey = (data['conversation_key'] ?? '').toString().trim();
@@ -633,6 +652,17 @@ Future<void> _handleNotificationResponse(NotificationResponse response) async {
         .chatMarkRead(actorProfile: actor, conversationKey: conversationKey);
   } catch (_) {
     // Notification actions must never crash the background isolate.
+  }
+}
+
+Map<String, dynamic>? _decodeNotificationPayload(String? payload) {
+  if (payload == null || payload.trim().isEmpty) {
+    return null;
+  }
+  try {
+    return Map<String, dynamic>.from(jsonDecode(payload) as Map);
+  } catch (_) {
+    return null;
   }
 }
 

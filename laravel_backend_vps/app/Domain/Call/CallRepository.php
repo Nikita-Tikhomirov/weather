@@ -44,6 +44,8 @@ final class CallRepository
             throw new InvalidArgumentException('Cannot call yourself');
         }
 
+        $this->expireStaleCalls($actor, $callee);
+
         // Check no active call between these two
         $existing = DB::table('call_sessions')
             ->where(function ($query) use ($actor, $callee): void {
@@ -327,6 +329,28 @@ final class CallRepository
     private function isAllowedProfile(string $profile): bool
     {
         return Profiles::isAllowed($profile) || DB::table('messenger_users')->where('profile_key', $profile)->exists();
+    }
+
+    private function expireStaleCalls(string $actor, string $callee): void
+    {
+        $cutoff = now()->subSeconds(90)->format('Y-m-d\TH:i:s');
+        DB::table('call_sessions')
+            ->where(function ($query) use ($actor, $callee): void {
+                $query
+                    ->where(function ($q) use ($actor, $callee): void {
+                        $q->where('caller_profile', $actor)->where('callee_profile', $callee);
+                    })
+                    ->orWhere(function ($q) use ($actor, $callee): void {
+                        $q->where('caller_profile', $callee)->where('callee_profile', $actor);
+                    });
+            })
+            ->where('status', 'ringing')
+            ->where('created_at', '<', $cutoff)
+            ->update([
+                'status' => 'ended',
+                'ended_at' => $this->nowIso(),
+                'updated_at' => $this->nowIso(),
+            ]);
     }
 
     /**

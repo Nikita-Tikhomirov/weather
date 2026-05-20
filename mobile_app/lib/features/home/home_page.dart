@@ -94,6 +94,7 @@ class _HomePageState extends State<HomePage> {
   String _currentProfileDisplayName = '';
   String _currentProfilePhone = '';
   String? _currentProfileAvatarUrl;
+  final Map<String, String> _profileAvatarUrls = <String, String>{};
   ChatMessage? _replyToMessage;
   bool _isRecording = false;
   String? _voicePath;
@@ -1119,6 +1120,10 @@ class _HomePageState extends State<HomePage> {
       await store.repository.db.replaceStickerPacks(bootstrap.stickerPacks);
       final contacts = bootstrap.contacts;
       if (mounted) {
+        await _loadProfileAvatars([
+          ...contacts.map((item) => item.profileKey),
+          ...bootstrap.conversations.expand((item) => item.members),
+        ]);
         setState(() {
           _chatContacts = contacts;
           _chatConversations = bootstrap.conversations;
@@ -1152,6 +1157,10 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) {
         return;
       }
+      await _loadProfileAvatars([
+        ...bootstrap.contacts.map((item) => item.profileKey),
+        ...conversations.expand((item) => item.members),
+      ]);
       setState(() {
         _chatContacts = bootstrap.contacts;
         _chatConversations = conversations;
@@ -1243,7 +1252,9 @@ class _HomePageState extends State<HomePage> {
         setState(() => _projectContacts = projects);
       }
     } catch (_) {
-      // Ignore errors loading projects config
+      if (mounted) {
+        setState(() => _projectContacts = _fallbackProjects());
+      }
     }
   }
 
@@ -1523,7 +1534,10 @@ class _HomePageState extends State<HomePage> {
         _chatMessagesByConversation[conversationKey] ?? const <ChatMessage>[];
 
     try {
-      final local = await db.readMessages(conversationKey: conversationKey);
+      final local = _mergeTransientMessages(
+        await db.readMessages(conversationKey: conversationKey),
+        previous,
+      );
       if (mounted && !_sameMessages(previous, local)) {
         setState(() {
           _chatMessagesByConversation[conversationKey] = local;
@@ -1550,14 +1564,29 @@ class _HomePageState extends State<HomePage> {
         );
       }
 
-      final merged = await db.readMessages(conversationKey: canonicalKey);
+      final merged = _mergeTransientMessages(
+        await db.readMessages(conversationKey: canonicalKey),
+        _chatMessagesByConversation[canonicalKey] ?? previous,
+      );
       final beforeMerged =
           _chatMessagesByConversation[canonicalKey] ?? const <ChatMessage>[];
-      if (mounted && !_sameMessages(beforeMerged, merged)) {
+      final messagesChanged = !_sameMessages(beforeMerged, merged);
+      final nextTyping = _typingProfilesFor(snapshot.typingProfiles, actor);
+      final typingChanged = !setEquals(
+          _typingUsers[canonicalKey] ?? const <String>{}, nextTyping);
+      final conversationKeyChanged =
+          _activeConversationKey == conversationKey &&
+              canonicalKey != conversationKey;
+      if (mounted &&
+          (messagesChanged || typingChanged || conversationKeyChanged)) {
         setState(() {
-          _chatMessagesByConversation[canonicalKey] = merged;
-          if (_activeConversationKey == conversationKey &&
-              canonicalKey != conversationKey) {
+          if (messagesChanged) {
+            _chatMessagesByConversation[canonicalKey] = merged;
+          }
+          if (typingChanged) {
+            _setTypingUsers(canonicalKey, nextTyping);
+          }
+          if (conversationKeyChanged) {
             _activeConversationKey = canonicalKey;
           }
         });
@@ -1569,6 +1598,42 @@ class _HomePageState extends State<HomePage> {
           SnackBar(content: Text('Ошибка обновления чата: $error')),
         );
       }
+    }
+  }
+
+  List<ChatMessage> _mergeTransientMessages(
+    List<ChatMessage> serverMessages,
+    List<ChatMessage> currentMessages,
+  ) {
+    final merged = List<ChatMessage>.from(serverMessages);
+    for (final message in currentMessages) {
+      final isTransient = message.isUploading ||
+          message.deliveryStatus == 'sending' ||
+          message.deliveryStatus == 'failed';
+      if (!isTransient) continue;
+      final alreadyResolved = merged.any((item) =>
+          item.id == message.id ||
+          (message.clientMessageId != null &&
+              message.clientMessageId!.isNotEmpty &&
+              item.clientMessageId == message.clientMessageId));
+      if (!alreadyResolved) {
+        merged.add(message);
+      }
+    }
+    return merged;
+  }
+
+  Set<String> _typingProfilesFor(List<String> profiles, String owner) {
+    return profiles
+        .where((profile) => profile.isNotEmpty && profile != owner)
+        .toSet();
+  }
+
+  void _setTypingUsers(String conversationKey, Set<String> profiles) {
+    if (profiles.isEmpty) {
+      _typingUsers.remove(conversationKey);
+    } else {
+      _typingUsers[conversationKey] = profiles;
     }
   }
 
@@ -3703,7 +3768,8 @@ class _HomePageState extends State<HomePage> {
   String _conversationLabel(ChatConversation conversation, String actor) {
     if (conversation.kind == 'group' ||
         conversation.conversationKey == 'group:common') {
-      return 'Общий';
+      final title = conversation.title.trim();
+      return title.isNotEmpty ? title : 'Общий';
     }
     final peer = conversation.members.firstWhere(
       (item) => item != actor,
@@ -3778,6 +3844,8 @@ class _HomePageState extends State<HomePage> {
     if (store == null) return null;
     // Return own avatar for current user
     if (profile == store.owner.value) return _currentProfileAvatarUrl;
+    final cached = _profileAvatarUrls[profile];
+    if (cached != null && cached.isNotEmpty) return cached;
     // Try to find avatar from contacts
     for (final contact in _chatContacts) {
       if (contact.profileKey == profile) return contact.avatarUrl;
@@ -3786,6 +3854,18 @@ class _HomePageState extends State<HomePage> {
       if (contact.profileKey == profile) return contact.avatarUrl;
     }
     return null;
+  }
+
+  Future<void> _loadProfileAvatars(Iterable<String> profiles) async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final raw in profiles) {
+      final profile = raw.trim();
+      if (profile.isEmpty) continue;
+      final avatar = prefs.getString('avatar_$profile')?.trim() ?? '';
+      if (avatar.isNotEmpty) {
+        _profileAvatarUrls[profile] = avatar;
+      }
+    }
   }
 
   String _profileLabel(String profile) {
