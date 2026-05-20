@@ -29437,3 +29437,64 @@
 2026-05-19 01:33:35,205 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-19T01:33:35", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync/push"}
 2026-05-19 01:33:35,208 INFO {"event": "backend_push_failed", "actor_profile": "nik", "entity": "task", "action": "replace_person_tasks"}
 2026-05-19 01:33:35,209 INFO {"event": "todo_done", "person": "nik", "day": "", "due_date": "2026-05-19", "id": 1, "title": "во кормить крыс"}
+2026-05-20 15:49:48,162 ERROR {"event": "backend_request_failed", "error": "<urlopen error [Errno 11001] getaddrinfo failed>", "ts": "2026-05-20T15:49:48", "method": "POST", "url": "https://example.test/sync_push.php"}
+2026-05-20 15:49:59,718 ERROR {"event": "backend_request_failed", "error": "<urlopen error [Errno 11001] getaddrinfo failed>", "ts": "2026-05-20T15:49:59", "method": "POST", "url": "https://example.test/sync_push.php/"}
+2026-05-20 15:50:11,224 ERROR {"event": "backend_request_failed", "error": "<urlopen error [Errno 11001] getaddrinfo failed>", "ts": "2026-05-20T15:50:11", "method": "POST", "url": "https://example.test/sync/push/"}
+2026-05-20 15:50:22,776 ERROR {"event": "backend_request_failed", "error": "<urlopen error [Errno 11001] getaddrinfo failed>", "ts": "2026-05-20T15:50:22", "method": "POST", "url": "https://example.test/sync/push"}
+2026-05-20 15:50:22,780 INFO {"event": "backend_push_failed", "actor_profile": "nik", "entity": "family_task", "action": "replace_family_tasks"}
+2026-05-20 15:50:34,771 ERROR {"event": "backend_request_failed", "error": "<urlopen error [Errno 11001] getaddrinfo failed>", "ts": "2026-05-20T15:50:34", "method": "POST", "url": "https://example.test/sync_push.php"}
+2026-05-20 15:50:46,301 ERROR {"event": "backend_request_failed", "error": "<urlopen error [Errno 11001] getaddrinfo failed>", "ts": "2026-05-20T15:50:46", "method": "POST", "url": "https://example.test/sync_push.php/"}
+2026-05-20 15:50:57,781 ERROR {"event": "backend_request_failed", "error": "<urlopen error [Errno 11001] getaddrinfo failed>", "ts": "2026-05-20T15:50:57", "method": "POST", "url": "https://example.test/sync/push/"}
+2026-05-20 15:51:09,353 ERROR {"event": "backend_request_failed", "error": "<urlopen error [Errno 11001] getaddrinfo failed>", "ts": "2026-05-20T15:51:09", "method": "POST", "url": "https://example.test/sync/push"}
+2026-05-20 15:51:09,356 INFO {"event": "backend_push_failed", "actor_profile": "nik", "entity": "family_task", "action": "replace_family_tasks"}
+2026-05-20 15:51:20,882 ERROR {"event": "backend_request_failed", "error": "<urlopen error [Errno 11001] getaddrinfo failed>", "ts": "2026-05-20T15:51:20", "method": "POST", "url": "https://example.test/sync_push.php"}
+2026-05-20 15:51:32,419 ERROR {"event": "backend_request_failed", "error": "<urlopen error [Errno 11001] getaddrinfo failed>", "ts": "2026-05-20T15:51:32", "method": "POST", "url": "https://example.test/sync_push.php/"}
+2026-05-20 15:51:44,011 ERROR {"event": "backend_request_failed", "error": "<urlopen error [Errno 11001] getaddrinfo failed>", "ts": "2026-05-20T15:51:44", "method": "POST", "url": "https://example.test/sync/push/"}
+2026-05-20 15:51:55,534 ERROR {"event": "backend_request_failed", "error": "<urlopen error [Errno 11001] getaddrinfo failed>", "ts": "2026-05-20T15:51:55", "method": "POST", "url": "https://example.test/sync/push"}
+2026-05-20 15:51:55,537 INFO {"event": "backend_push_failed", "actor_profile": "nik", "entity": "family_task", "action": "replace_family_tasks"}
+2026-05-20 15:52:09,647 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:52:09", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync_push.php"}
+2026-05-20 15:52:22,587 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:52:22", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync_push.php/"}
+2026-05-20 15:52:35,485 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:52:35", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync/push/"}
+2026-05-20 15:52:48,348 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:52:48", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync/push"}
+2026-05-20 15:52:48,351 INFO {"event": "backend_push_failed", "actor_profile": "nik", "entity": "task", "action": "replace_person_tasks"}
+2026-05-20 15:52:48,352 INFO {"event": "todo_add", "person": "nik", "count": 30, "recurrence": "daily", "time": "19:30", "day": "", "due_date": "", "title": "кормить крыс"}
+2026-05-20 15:53:03,927 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:53:03", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync_push.php"}
+2026-05-20 15:53:16,846 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:53:16", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync_push.php/"}
+2026-05-20 15:53:29,848 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:53:29", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync/push/"}
+2026-05-20 15:53:42,852 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:53:42", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync/push"}
+2026-05-20 15:53:42,855 INFO {"event": "backend_push_failed", "actor_profile": "nik", "entity": "task", "action": "replace_person_tasks"}
+2026-05-20 15:53:42,856 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:30", "day": "вторник", "due_date": "2026-05-26", "title": "во кормить крыс"}
+2026-05-20 15:53:58,454 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:53:58", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync_push.php"}
+2026-05-20 15:54:11,383 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:54:11", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync_push.php/"}
+2026-05-20 15:54:24,365 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:54:24", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync/push/"}
+2026-05-20 15:54:37,338 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:54:37", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync/push"}
+2026-05-20 15:54:37,341 INFO {"event": "backend_push_failed", "actor_profile": "nik", "entity": "task", "action": "replace_person_tasks"}
+2026-05-20 15:54:37,342 INFO {"event": "todo_delete", "person": "nik", "day": "", "due_date": "2026-05-26", "mode": "query", "title": "во кормить крыс"}
+2026-05-20 15:54:52,869 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:54:52", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync_push.php"}
+2026-05-20 15:55:05,767 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:55:05", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync_push.php/"}
+2026-05-20 15:55:18,755 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:55:18", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync/push/"}
+2026-05-20 15:55:31,757 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:55:31", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync/push"}
+2026-05-20 15:55:31,758 INFO {"event": "backend_push_failed", "actor_profile": "nik", "entity": "task", "action": "replace_person_tasks"}
+2026-05-20 15:55:31,759 INFO {"event": "todo_undo", "person": "nik", "action": "restore_items", "restored": 1}
+2026-05-20 15:55:47,287 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:55:47", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync_push.php"}
+2026-05-20 15:56:00,255 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:56:00", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync_push.php/"}
+2026-05-20 15:56:13,175 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:56:13", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync/push/"}
+2026-05-20 15:56:26,169 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:56:26", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync/push"}
+2026-05-20 15:56:26,172 INFO {"event": "backend_push_failed", "actor_profile": "nik", "entity": "task", "action": "replace_person_tasks"}
+2026-05-20 15:56:26,172 INFO {"event": "todo_done", "person": "nik", "day": "", "due_date": "2026-05-26", "id": 1, "title": "во кормить крыс"}
+2026-05-20 15:56:41,630 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:56:41", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync_push.php"}
+2026-05-20 15:56:54,591 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:56:54", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync_push.php/"}
+2026-05-20 15:57:07,488 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:57:07", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync/push/"}
+2026-05-20 15:57:20,457 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:57:20", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync/push"}
+2026-05-20 15:57:20,460 INFO {"event": "backend_push_failed", "actor_profile": "nik", "entity": "family_task", "action": "replace_family_tasks"}
+2026-05-20 15:57:33,388 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:57:33", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync_push.php"}
+2026-05-20 15:57:46,279 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:57:46", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync_push.php/"}
+2026-05-20 15:57:59,165 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:57:59", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync/push/"}
+2026-05-20 15:58:12,151 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:58:12", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync/push"}
+2026-05-20 15:58:12,154 INFO {"event": "backend_push_failed", "actor_profile": "nik", "entity": "task", "action": "replace_person_tasks"}
+2026-05-20 15:58:12,154 INFO {"event": "todo_add", "person": "nik", "count": 1, "recurrence": "", "time": "19:30", "day": "вторник", "due_date": "2026-05-26", "title": "во кормить крыс"}
+2026-05-20 15:58:27,675 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:58:27", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync_push.php"}
+2026-05-20 15:58:40,628 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:58:40", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync_push.php/"}
+2026-05-20 15:58:53,484 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:58:53", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync/push/"}
+2026-05-20 15:59:06,453 ERROR {"event": "backend_request_failed", "error": "<urlopen error timed out>", "ts": "2026-05-20T15:59:06", "method": "POST", "url": "https://familly.nikportfolio.ru/backend_api/public/sync/push"}
+2026-05-20 15:59:06,457 INFO {"event": "backend_push_failed", "actor_profile": "nik", "entity": "task", "action": "replace_person_tasks"}

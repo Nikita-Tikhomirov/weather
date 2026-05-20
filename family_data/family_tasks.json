@@ -1,1 +1,27 @@
-[]
+[
+  {
+    "id": "f-101",
+    "owner_key": "family",
+    "is_family": true,
+    "title": "Family item",
+    "details": "Family details",
+    "due_date": "2026-04-22",
+    "time": "18:30",
+    "start_at": "2026-04-22T18:30",
+    "workflow_status": "in_progress",
+    "assignees": [
+      "misha",
+      "nik"
+    ],
+    "updated_at": "2026-04-22T18:30:00",
+    "version": 5,
+    "text": "Family item",
+    "status": "active",
+    "done": false,
+    "participants": [
+      "misha",
+      "nik"
+    ],
+    "duration_minutes": 0
+  }
+]

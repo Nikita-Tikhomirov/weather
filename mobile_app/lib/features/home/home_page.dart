@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../app/app_labels.dart';
 import '../../app/app_theme.dart';
 import '../../domain/task_domain_service.dart';
+import '../chat/call_screen.dart';
 import '../chat/chat_photo_viewer.dart';
 import '../chat/messenger_page.dart';
 import '../family/family_view.dart';
@@ -23,12 +24,14 @@ import '../tasks/calendar_view.dart';
 import '../tasks/dashboard_view.dart';
 import '../tasks/task_editor_sheet.dart';
 import '../tasks/tasks_board.dart';
+import '../../models/call_models.dart';
 import '../../models/chat_models.dart';
 import '../../models/project_contact.dart';
 import '../../models/project_file.dart';
 import '../../models/task_item.dart';
 import '../../repositories/task_repository.dart';
 import '../../services/api_client.dart';
+import '../../services/call_service.dart';
 import '../../services/chat_realtime_service.dart';
 import '../../services/desktop_process_host_service.dart';
 import '../../services/desktop_theme_service.dart';
@@ -65,6 +68,7 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _chatInputCtl = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
   ChatRealtimeService? _chatRealtime;
+  CallService? _callService;
   bool _chatLoading = false;
   String? _editingMessageId;
   List<ChatContact> _chatContacts = const <ChatContact>[];
@@ -835,6 +839,31 @@ class _HomePageState extends State<HomePage> {
           return;
         }
 
+        // Incoming call -> show call screen
+        if (pushType == 'call_incoming') {
+          final sessionId = (data['session_id'] ?? '').toString();
+          final callType = (data['call_type'] ?? 'audio').toString();
+          final callerProfile = (data['caller_profile'] ?? '').toString();
+          if (sessionId.isNotEmpty && mounted) {
+            final session = CallSession(
+              sessionId: sessionId,
+              callerProfile: callerProfile,
+              calleeProfile: (store.owner.value),
+              conversationKey: conversationKey,
+              callType: callType,
+              status: 'ringing',
+              createdAt: DateTime.now().toIso8601String(),
+            );
+            _callService?.notifyIncomingCall(session);
+          }
+          return;
+        }
+
+        // Call ended remotely
+        if (pushType == 'call_accepted' || pushType == 'call_rejected') {
+          return;
+        }
+
         // Default: just refresh
         await _refreshActiveConversation(store, useNetwork: true, quiet: true);
       },
@@ -1132,6 +1161,14 @@ class _HomePageState extends State<HomePage> {
           );
         },
       )..start();
+
+      // Initialize call service
+      _callService?.dispose();
+      _callService = CallService(api: api, actorProfile: actor);
+      _callService!.onIncomingCall = _handleIncomingCall;
+      _callService!.onCallEnded = () {
+        if (mounted) setState(() {});
+      };
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2860,6 +2897,79 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _handleIncomingCall(CallSession session) {
+    if (!mounted) return;
+    final peerLabel = _profileLabel(session.callerProfile);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => CallScreen(
+          callService: _callService!,
+          session: session,
+          isIncoming: true,
+          peerLabel: peerLabel,
+          onCallFinished: () {
+            if (mounted) Navigator.of(context).pop();
+          },
+        ),
+      ),
+    );
+  }
+
+  void _startCallOutgoing({String callType = 'audio'}) {
+    if (!mounted || _store == null || _activeConversationKey.isEmpty) return;
+    final store = _store!;
+    final api = store.repository.api;
+    final actor = store.owner.value;
+
+    _callService?.dispose();
+    _callService = CallService(api: api, actorProfile: actor);
+    _callService!.onCallEnded = () {
+      if (mounted) setState(() {});
+    };
+
+    final conv = _chatConversations.firstWhere(
+      (c) => c.conversationKey == _activeConversationKey,
+      orElse: () => ChatConversation(
+        conversationKey: _activeConversationKey,
+        kind: 'direct',
+        title: '',
+        members: [],
+      ),
+    );
+
+    final peerProfile = conv.members.isNotEmpty
+        ? conv.members.firstWhere((m) => m != actor, orElse: () => actor)
+        : '';
+
+    final session = CallSession(
+      sessionId: '',
+      callerProfile: actor,
+      calleeProfile: peerProfile,
+      conversationKey: _activeConversationKey,
+      callType: callType,
+      status: 'ringing',
+      createdAt: DateTime.now().toIso8601String(),
+    );
+
+    final peerLabel = _profileLabel(peerProfile);
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => CallScreen(
+          callService: _callService!,
+          session: session,
+          isIncoming: false,
+          peerLabel: peerLabel,
+          onCallFinished: () {
+            if (mounted) Navigator.of(context).pop();
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _buildMessengerPage(TaskStore store, {required bool compact}) {
     final messages = _chatMessagesByConversation[_activeConversationKey] ??
         const <ChatMessage>[];
@@ -2911,6 +3021,8 @@ class _HomePageState extends State<HomePage> {
       },
       onOpenAttachMenu: () => _openAttachMenu(store),
       onManageGroup: (conv) => _openManageGroupSheet(store, conv),
+      onCallTap: () => _startCallOutgoing(callType: 'audio'),
+      onVideoCallTap: () => _startCallOutgoing(callType: 'video'),
       typingUsers: _typingUsers,
       onStartRecord: () => _startRecord(store),
       onStopRecord: () => _stopRecord(store),
@@ -4083,6 +4195,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _chatRealtime?.stop();
+    _callService?.dispose();
     _chatInputCtl.dispose();
     _fcm?.dispose();
     _cancelSyncLoops();

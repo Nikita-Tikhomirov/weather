@@ -886,6 +886,38 @@ class TunnelClient:
                         )
                         await writer.drain()
                         continue
+                    if msg.get("type") == "audio_zones":
+                        try:
+                            from audio_zones import handle_bridge_action
+
+                            result = handle_bridge_action(msg)
+                            writer.write(
+                                json.dumps(
+                                    {
+                                        "type": "audio_zones_result",
+                                        "project_id": project_id,
+                                        "result": result,
+                                    },
+                                    ensure_ascii=False,
+                                ).encode("utf-8")
+                                + b"\n"
+                            )
+                            await writer.drain()
+                        except Exception as exc:
+                            _log("tunnel", f"audio_zones error: {exc}")
+                            writer.write(
+                                json.dumps(
+                                    {
+                                        "type": "audio_zones_result",
+                                        "project_id": project_id,
+                                        "result": {"error": str(exc)},
+                                    },
+                                    ensure_ascii=False,
+                                ).encode("utf-8")
+                                + b"\n"
+                            )
+                            await writer.drain()
+                        continue
                     if msg.get("type") == "send":
                         text = str(msg.get("text", ""))
                         if text and session and session.running:

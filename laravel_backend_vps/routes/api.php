@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CallController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ContactController;
 use Illuminate\Support\Facades\Route;
@@ -60,6 +61,15 @@ Route::middleware('sync.apikey')->group(function (): void {
     Route::post('/chat/conversations/members/remove', [ChatController::class, 'removeMember']);
     Route::post('/chat/typing', [ChatController::class, 'sendTyping']);
     Route::post('/chat/conversations/read', [ChatController::class, 'markRead']);
+
+    // Call (audio/video)
+    Route::post('/call/initiate', [CallController::class, 'initiate']);
+    Route::post('/call/accept', [CallController::class, 'accept']);
+    Route::post('/call/reject', [CallController::class, 'reject']);
+    Route::post('/call/end', [CallController::class, 'end']);
+    Route::post('/call/signal', [CallController::class, 'signal']);
+    Route::get('/call/signals', [CallController::class, 'pollSignals']);
+    Route::get('/call/incoming', [CallController::class, 'incomingCall']);
 });
 
 Route::fallback(function () {

@@ -44,6 +44,8 @@ class MessengerPage extends StatelessWidget {
     required this.onManageGroup,
     this.typingUsers = const {},
     this.avatarForContact,
+    this.onCallTap,
+    this.onVideoCallTap,
   });
 
   final List<ChatConversation> conversations;
@@ -83,6 +85,8 @@ class MessengerPage extends StatelessWidget {
   final VoidCallback onSendText;
   final void Function(ChatConversation conv) onManageGroup;
   final Map<String, Set<String>> typingUsers;
+  final VoidCallback? onCallTap;
+  final VoidCallback? onVideoCallTap;
 
   @override
   Widget build(BuildContext context) {
@@ -113,6 +117,8 @@ class MessengerPage extends StatelessWidget {
           conversationLabel: conversationLabel,
           owner: owner,
           onBackToContacts: onBackToContacts,
+          onCallTap: onCallTap,
+          onVideoCallTap: onVideoCallTap,
         ),
         Expanded(
           child: ChatMessagesList(
@@ -329,6 +335,8 @@ class _ChatHeader extends StatelessWidget {
     required this.conversationLabel,
     required this.owner,
     required this.onBackToContacts,
+    this.onCallTap,
+    this.onVideoCallTap,
   });
 
   final String activeConversationKey;
@@ -337,6 +345,8 @@ class _ChatHeader extends StatelessWidget {
       conversationLabel;
   final String owner;
   final VoidCallback onBackToContacts;
+  final VoidCallback? onCallTap;
+  final VoidCallback? onVideoCallTap;
 
   @override
   Widget build(BuildContext context) {
@@ -375,6 +385,18 @@ class _ChatHeader extends StatelessWidget {
               ),
             ),
           ),
+          if (onCallTap != null)
+            IconButton(
+              icon: const Icon(Icons.call),
+              tooltip: 'Аудиозвонок',
+              onPressed: onCallTap,
+            ),
+          if (onVideoCallTap != null)
+            IconButton(
+              icon: const Icon(Icons.videocam),
+              tooltip: 'Видеозвонок',
+              onPressed: onVideoCallTap,
+            ),
         ],
       ),
     );
@@ -391,6 +413,8 @@ class _TypingIndicator extends StatelessWidget {
 
   final String conversationKey;
   final Map<String, Set<String>> typingUsers;
+  final VoidCallback? onCallTap;
+  final VoidCallback? onVideoCallTap;
   final String owner;
   final String Function(String) profileLabel;
 
