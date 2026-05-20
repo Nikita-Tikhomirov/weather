@@ -13,6 +13,52 @@ enum CallState {
   ended,
 }
 
+class CallIceServerConfig {
+  static const _defaultTurnUrls =
+      'turn:31.129.97.211:3478?transport=udp,turn:31.129.97.211:3478?transport=tcp';
+  static const _defaultTurnUsername = 'family';
+  static const _defaultTurnCredential = 'WCw8eJo&TIxu';
+
+  static Map<String, dynamic> build({
+    String turnUrls = const String.fromEnvironment(
+      'TURN_URLS',
+      defaultValue: _defaultTurnUrls,
+    ),
+    String turnUsername = const String.fromEnvironment(
+      'TURN_USERNAME',
+      defaultValue: _defaultTurnUsername,
+    ),
+    String turnCredential = const String.fromEnvironment(
+      'TURN_CREDENTIAL',
+      defaultValue: _defaultTurnCredential,
+    ),
+  }) {
+    final iceServers = <Map<String, dynamic>>[
+      {
+        'urls': [
+          'stun:stun.l.google.com:19302',
+          'stun:stun1.l.google.com:19302',
+        ],
+      },
+    ];
+    final urls = turnUrls
+        .split(',')
+        .map((url) => url.trim())
+        .where((url) => url.isNotEmpty)
+        .toList(growable: false);
+    if (urls.isNotEmpty &&
+        turnUsername.trim().isNotEmpty &&
+        turnCredential.trim().isNotEmpty) {
+      iceServers.add({
+        'urls': urls,
+        'username': turnUsername.trim(),
+        'credential': turnCredential.trim(),
+      });
+    }
+    return {'iceServers': iceServers};
+  }
+}
+
 class CallService {
   CallService({required this.api, required this.actorProfile});
 
@@ -45,25 +91,6 @@ class CallService {
   // Callbacks for UI
   void Function(CallSession session)? onIncomingCall;
   void Function()? onCallEnded;
-
-  static const _iceServers = {
-    'iceServers': [
-      {
-        'urls': [
-          'stun:stun.l.google.com:19302',
-          'stun:stun1.l.google.com:19302',
-        ],
-      },
-      {
-        'urls': [
-          'turn:31.129.97.211:3478?transport=udp',
-          'turn:31.129.97.211:3478?transport=tcp',
-        ],
-        'username': 'family',
-        'credential': 'WCw8eJo&TIxu',
-      },
-    ],
-  };
 
   /// Start an outgoing call
   Future<void> startCall({
@@ -203,7 +230,7 @@ class CallService {
   }
 
   Future<void> _createPeerConnection() async {
-    _pc = await createPeerConnection(_iceServers);
+    _pc = await createPeerConnection(CallIceServerConfig.build());
 
     _pc!.onIceCandidate = (candidate) {
       if (_sessionId == null) return;
@@ -215,12 +242,9 @@ class CallService {
       );
     };
 
-    _pc!.onAddStream = (stream) {
-      _remoteStreamController.add(stream);
-    };
-
-    _pc!.onTrack = (track) {
-      // Handled by onAddStream
+    _pc!.onTrack = (event) {
+      if (event.streams.isEmpty) return;
+      _remoteStreamController.add(event.streams.first);
     };
 
     _pc!.onConnectionState = (state) {
@@ -248,28 +272,34 @@ class CallService {
   }
 
   Future<void> _openLocalMedia({required String callType}) async {
-    final mediaConstraints = <String, dynamic>{
-      'audio': true,
-      'video': callType == 'video',
-    };
+    final wantsVideo = callType == 'video';
 
     try {
-      _localStream =
-          await navigator.mediaDevices.getUserMedia(mediaConstraints);
-      if (_localStream != null && _pc != null) {
-        _pc!.addStream(_localStream!);
-      }
+      _localStream = await navigator.mediaDevices.getUserMedia({
+        'audio': true,
+        'video': wantsVideo,
+      });
     } catch (e) {
-      // Audio-only fallback
-      if (callType == 'video') {
+      if (wantsVideo) {
+        _errorController.add('Camera unavailable, continuing with audio');
         _localStream = await navigator.mediaDevices.getUserMedia({
           'audio': true,
           'video': false,
         });
-        if (_localStream != null && _pc != null) {
-          _pc!.addStream(_localStream!);
-        }
+      } else {
+        rethrow;
       }
+    }
+    await _addLocalTracks();
+  }
+
+  Future<void> _addLocalTracks() async {
+    final stream = _localStream;
+    final pc = _pc;
+    if (stream == null || pc == null) return;
+
+    for (final track in stream.getTracks()) {
+      await pc.addTrack(track, stream);
     }
   }
 

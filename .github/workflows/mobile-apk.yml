@@ -98,6 +98,11 @@ jobs:
           cd /tmp/family_todo_mobile
           flutter pub get
 
+      - name: Flutter analyze
+        run: |
+          cd /tmp/family_todo_mobile
+          flutter analyze
+
       - name: Flutter tests
         run: |
           cd /tmp/family_todo_mobile
@@ -163,6 +168,7 @@ jobs:
           rm -f /tmp/family_todo_mobile/flutter_build.log
           set +e
           timeout 18m flutter build apk --release \
+            --target-platform android-arm,android-arm64 \
             --build-number="$BUILD_NUMBER" \
             --build-name="$APP_VERSION" \
             --dart-define=API_BASE_URL="$API_BASE_URL" \
