@@ -634,15 +634,34 @@ class ChatMessageBubble extends StatelessWidget {
   }
 
   String _messageFooter() {
+    final formatted = _formatIsoDate(message.createdAt);
     if ((message.editedAt ?? '').isNotEmpty) {
-      return '${message.createdAt} · изменено';
+      return '$formatted · изменено';
     }
     // Show delivery status for own messages
     if (mine) {
       final status = _deliveryStatusIcon();
-      return '$status ${message.createdAt}';
+      return '$status $formatted';
     }
-    return message.createdAt;
+    return formatted;
+  }
+
+  /// Преобразует ISO-8601 строку в человекочитаемый формат: «21 мая 15:30»
+  static String _formatIsoDate(String iso) {
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      const months = [
+        'янв', 'фев', 'мар', 'апр', 'мая', 'июн',
+        'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
+      ];
+      final day = dt.day;
+      final month = months[dt.month - 1];
+      final hour = dt.hour.toString().padLeft(2, '0');
+      final minute = dt.minute.toString().padLeft(2, '0');
+      return '$day $month $hour:$minute';
+    } catch (_) {
+      return iso;
+    }
   }
 
   String _deliveryStatusIcon() {

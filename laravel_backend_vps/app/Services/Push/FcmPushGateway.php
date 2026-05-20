@@ -61,12 +61,12 @@ class FcmPushGateway implements PushGateway
                 ],
             ],
         ];
-        if (!$isChatMessage) {
-            $message['notification'] = [
-                'title' => $title,
-                'body' => $body,
-            ];
-        }
+        // Для чат-сообщений тоже передаём notification, чтобы foreground-хендлер в APK
+        // мог показать реальный текст сообщения (а не generic fallback).
+        $message['notification'] = [
+            'title' => $title,
+            'body' => $body,
+        ];
 
         $payload = [
             'message' => [

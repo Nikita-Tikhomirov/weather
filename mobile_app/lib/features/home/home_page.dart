@@ -1228,6 +1228,16 @@ class _HomePageState extends State<HomePage> {
       )..start();
 
       _replaceCallService(api: api, actorProfile: actor);
+
+      // Load avatars for all contacts from local storage
+      final prefs = await SharedPreferences.getInstance();
+      for (final contact in [..._chatContacts, ..._familyMembers]) {
+        if (_profileAvatarUrls.containsKey(contact.profileKey)) continue;
+        final avatar = prefs.getString('avatar_${contact.profileKey}');
+        if (avatar != null && avatar.isNotEmpty) {
+          _profileAvatarUrls[contact.profileKey] = avatar;
+        }
+      }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -3875,12 +3885,12 @@ class _HomePageState extends State<HomePage> {
     if (profile == store.owner.value) return _currentProfileAvatarUrl;
     final cached = _profileAvatarUrls[profile];
     if (cached != null && cached.isNotEmpty) return cached;
-    // Try to find avatar from contacts
-    for (final contact in _chatContacts) {
-      if (contact.profileKey == profile) return contact.avatarUrl;
-    }
-    for (final contact in _familyMembers) {
-      if (contact.profileKey == profile) return contact.avatarUrl;
+    // Try to find avatar from loaded contacts
+    for (final contact in [..._chatContacts, ..._familyMembers]) {
+      if (contact.profileKey == profile && contact.avatarUrl != null && contact.avatarUrl!.isNotEmpty) {
+        _profileAvatarUrls[profile] = contact.avatarUrl!;
+        return contact.avatarUrl;
+      }
     }
     return null;
   }
