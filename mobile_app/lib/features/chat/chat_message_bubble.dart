@@ -591,6 +591,28 @@ class ChatMessageBubble extends StatelessWidget {
     if ((message.editedAt ?? '').isNotEmpty) {
       return '${message.createdAt} · изменено';
     }
+    // Show delivery status for own messages
+    if (mine) {
+      final status = _deliveryStatusIcon();
+      return '$status ${message.createdAt}';
+    }
     return message.createdAt;
+  }
+
+  String _deliveryStatusIcon() {
+    switch (message.deliveryStatus) {
+      case 'sending':
+        return '⏳';
+      case 'sent':
+        return '✓';
+      case 'delivered':
+        return '✓✓';
+      case 'read':
+        return '✓✓';
+      case 'failed':
+        return '❌';
+      default:
+        return '';
+    }
   }
 }

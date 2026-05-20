@@ -398,7 +398,6 @@ class _ChatComposer extends StatelessWidget {
   final VoidCallback onStartRecord;
   final VoidCallback onStopRecord;
   final VoidCallback onSendText;
-  final void Function(ChatConversation conv) onManageGroup;
 
   @override
   Widget build(BuildContext context) {

@@ -860,6 +860,7 @@ class _HomePageState extends State<HomePage> {
     _cancelSyncLoops();
     _deltaSyncTimer = Timer.periodic(const Duration(seconds: 8), (_) async {
       await _safeSyncDelta(store, showErrors: false);
+      _retryPendingMessages(store);
     });
     _fullSyncTimer = Timer.periodic(const Duration(minutes: 10), (_) async {
       await _safeSyncFull(store, showErrors: false);
@@ -1481,6 +1482,7 @@ class _HomePageState extends State<HomePage> {
           }
         });
       }
+      _markDelivered(canonicalKey, snapshot.messages);
     } catch (error) {
       if (!quiet && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1770,6 +1772,53 @@ class _HomePageState extends State<HomePage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  Future<void> _retryPendingMessages(TaskStore store) async {
+    final api = store.repository.api;
+    final db = store.repository.db;
+    for (final entry in _chatMessagesByConversation.entries) {
+      final convKey = entry.key;
+      final msgs = entry.value;
+      for (var i = 0; i < msgs.length; i++) {
+        final m = msgs[i];
+        if (m.deliveryStatus != 'sending') continue;
+        if (m.senderProfile != store.owner.value) continue;
+        try {
+          final sent = await api.chatSendMessage(
+            actorProfile: store.owner.value,
+            conversationKey: convKey,
+            messageType: m.messageType,
+            text: m.text,
+            clientMessageId: m.clientMessageId,
+            attachments: m.attachments,
+          );
+          await db.upsertMessages([sent]);
+          msgs[i] = sent.copyWith(deliveryStatus: 'sent');
+          _chatMessagesByConversation[convKey] = msgs;
+        } catch (_) {
+          // Will retry next cycle
+        }
+      }
+    }
+    if (mounted) setState(() {});
+  }
+
+  /// Mark locally-cached messages as delivered when they appear in a server pull
+  void _markDelivered(String conversationKey, List<ChatMessage> serverMsgs) {
+    final local = _chatMessagesByConversation[conversationKey];
+    if (local == null) return;
+    final serverIds = serverMsgs.map((m) => m.id).toSet();
+    var changed = false;
+    for (var i = 0; i < local.length; i++) {
+      if (local[i].deliveryStatus == 'sent' && serverIds.contains(local[i].id)) {
+        local[i] = local[i].copyWith(deliveryStatus: 'delivered');
+        changed = true;
+      }
+    }
+    if (changed) {
+      _chatMessagesByConversation[conversationKey] = local;
+    }
+  }
+
   Future<void> _sendTextMessage(TaskStore store) async {
     // Route to project bridge for project conversations
     if (_isProjectConversation(_activeConversationKey)) {
@@ -1815,17 +1864,53 @@ class _HomePageState extends State<HomePage> {
     final api = store.repository.api;
     final db = store.repository.db;
     final conversationKey = _activeConversationKey;
+    final editingId = _editingMessageId;
+    final clientId = 'mobile-${DateTime.now().microsecondsSinceEpoch}';
+    final nowIso = DateTime.now().toIso8601String();
+    final replyClientId = replyTo != null
+        ? 'reply-${replyTo.id}-${DateTime.now().microsecondsSinceEpoch}'
+        : clientId;
+
+    // Insert optimistic message immediately
+    final optMsg = ChatMessage(
+      id: editingId ?? clientId,
+      conversationKey: conversationKey,
+      senderProfile: actor,
+      messageType: 'text',
+      text: finalText,
+      createdAt: nowIso,
+      clientMessageId: replyClientId,
+      deliveryStatus: 'sending',
+    );
+    final msgs = List<ChatMessage>.from(
+      _chatMessagesByConversation[conversationKey] ?? const [],
+    );
+    if (editingId != null) {
+      final idx = msgs.indexWhere((m) => m.id == editingId);
+      if (idx >= 0) {
+        msgs[idx] = optMsg;
+      } else {
+        msgs.add(optMsg);
+      }
+    } else {
+      msgs.add(optMsg);
+    }
+    _chatMessagesByConversation[conversationKey] = msgs;
+    _chatInputCtl.clear();
+    setState(() {
+      _editingMessageId = null;
+      _replyToMessage = null;
+    });
+
+    // Attempt to send
     try {
-      final editingId = _editingMessageId;
       final message = editingId == null
           ? await api.chatSendMessage(
               actorProfile: actor,
               conversationKey: conversationKey,
               messageType: 'text',
               text: finalText,
-              clientMessageId: replyTo != null
-                  ? 'reply-${replyTo.id}-${DateTime.now().microsecondsSinceEpoch}'
-                  : 'mobile-${DateTime.now().microsecondsSinceEpoch}',
+              clientMessageId: replyClientId,
             )
           : await api.chatEditMessage(
               actorProfile: actor,
@@ -1833,24 +1918,19 @@ class _HomePageState extends State<HomePage> {
               text: text,
             );
       await db.upsertMessages([message]);
-      _chatInputCtl.clear();
-      setState(() {
-        _editingMessageId = null;
-        _replyToMessage = null;
-      });
-      await _refreshConversation(
-        store,
-        conversationKey,
-        useNetwork: true,
-        quiet: true,
+
+      // Update local message with server data
+      final updated = List<ChatMessage>.from(
+        _chatMessagesByConversation[conversationKey] ?? const [],
       );
-    } catch (error) {
-      if (!mounted) {
-        return;
+      final idx = updated.indexWhere((m) => m.id == optMsg.id);
+      if (idx >= 0) {
+        updated[idx] = message.copyWith(deliveryStatus: 'sent');
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка отправки: $error')),
-      );
+      _chatMessagesByConversation[conversationKey] = updated;
+      if (mounted) setState(() {});
+    } catch (_) {
+      // Message stays in 'sending' state — retry on next sync
     }
   }
 

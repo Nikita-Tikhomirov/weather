@@ -131,6 +131,7 @@ class ChatMessage {
     this.deletedAt,
     this.isUploading = false,
     this.uploadProgress = 0.0,
+    this.deliveryStatus = 'sent',
   });
 
   final String id;
@@ -153,7 +154,37 @@ class ChatMessage {
   final bool isUploading;
   final double uploadProgress;
 
+  /// Delivery status: sending, sent, delivered, read, failed
+  final String deliveryStatus;
+
   bool get isDeleted => deletedAt != null && deletedAt!.isNotEmpty;
+
+  bool get isPending => deliveryStatus == 'sending';
+
+  ChatMessage copyWith({
+    String? deliveryStatus,
+  }) {
+    return ChatMessage(
+      id: id,
+      conversationKey: conversationKey,
+      senderProfile: senderProfile,
+      messageType: messageType,
+      text: text,
+      createdAt: createdAt,
+      stickerId: stickerId,
+      imageUrl: imageUrl,
+      imageMeta: imageMeta,
+      attachments: attachments,
+      reactions: reactions,
+      myReaction: myReaction,
+      clientMessageId: clientMessageId,
+      editedAt: editedAt,
+      deletedAt: deletedAt,
+      isUploading: isUploading,
+      uploadProgress: uploadProgress,
+      deliveryStatus: deliveryStatus ?? this.deliveryStatus,
+    );
+  }
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     final rawImageMeta = json['image_meta'];
@@ -184,6 +215,9 @@ class ChatMessage {
       clientMessageId: json['client_message_id']?.toString(),
       editedAt: json['edited_at']?.toString(),
       deletedAt: json['deleted_at']?.toString(),
+      isUploading: json['is_uploading'] == true,
+      uploadProgress: (json['upload_progress'] as num?)?.toDouble() ?? 0.0,
+      deliveryStatus: (json['delivery_status'] ?? 'sent').toString(),
     );
   }
 
@@ -205,6 +239,9 @@ class ChatMessage {
       'edited_at': editedAt,
       'deleted_at': deletedAt,
       'is_deleted': isDeleted,
+      'is_uploading': isUploading,
+      'upload_progress': uploadProgress,
+      'delivery_status': deliveryStatus,
     };
   }
 }
