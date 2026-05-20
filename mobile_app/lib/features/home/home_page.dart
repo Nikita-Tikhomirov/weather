@@ -62,6 +62,7 @@ class _HomePageState extends State<HomePage> {
   Timer? _deltaSyncTimer;
   Timer? _fullSyncTimer;
   Timer? _retryTimer;
+  Timer? _incomingCallPollTimer;
   bool _desktopLogExpanded = false;
   DateTime _desktopMonth = DateTime(DateTime.now().year, DateTime.now().month);
   String _fcmDiagnostics = 'FCM: not initialized';
@@ -921,8 +922,12 @@ class _HomePageState extends State<HomePage> {
     _retryTimer = Timer.periodic(const Duration(minutes: 2), (_) async {
       _retryPendingMessages(store);
     });
+    _incomingCallPollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _pollIncomingCall(store);
+    });
     // Also try immediately on startup
     _retryPendingMessages(store);
+    _pollIncomingCall(store);
   }
 
   void _cancelSyncLoops() {
@@ -932,6 +937,40 @@ class _HomePageState extends State<HomePage> {
     _fullSyncTimer = null;
     _retryTimer?.cancel();
     _retryTimer = null;
+    _incomingCallPollTimer?.cancel();
+    _incomingCallPollTimer = null;
+  }
+
+  void _replaceCallService({
+    required ApiClient api,
+    required String actorProfile,
+  }) {
+    _callService?.dispose();
+    _callService = CallService(api: api, actorProfile: actorProfile)
+      ..onIncomingCall = _handleIncomingCall
+      ..onCallEnded = () {
+        if (mounted) setState(() {});
+      };
+  }
+
+  Future<void> _pollIncomingCall(TaskStore store) async {
+    final service = _callService;
+    if (!mounted ||
+        service == null ||
+        (service.state != CallState.idle && service.state != CallState.ended)) {
+      return;
+    }
+
+    try {
+      final session = await store.repository.api.callCheckIncoming(
+        actorProfile: store.owner.value,
+      );
+      if (session != null && mounted) {
+        service.notifyIncomingCall(session);
+      }
+    } catch (_) {
+      // FCM is primary; polling is a quiet fallback for missed call pushes.
+    }
   }
 
   Future<void> _safeSyncDelta(
@@ -1188,13 +1227,7 @@ class _HomePageState extends State<HomePage> {
         },
       )..start();
 
-      // Initialize call service
-      _callService?.dispose();
-      _callService = CallService(api: api, actorProfile: actor);
-      _callService!.onIncomingCall = _handleIncomingCall;
-      _callService!.onCallEnded = () {
-        if (mounted) setState(() {});
-      };
+      _replaceCallService(api: api, actorProfile: actor);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -3150,11 +3183,7 @@ class _HomePageState extends State<HomePage> {
     final api = store.repository.api;
     final actor = store.owner.value;
 
-    _callService?.dispose();
-    _callService = CallService(api: api, actorProfile: actor);
-    _callService!.onCallEnded = () {
-      if (mounted) setState(() {});
-    };
+    _replaceCallService(api: api, actorProfile: actor);
 
     final conv = _chatConversations.firstWhere(
       (c) => c.conversationKey == _activeConversationKey,

@@ -187,6 +187,10 @@ final class CallRepository
             throw new InvalidArgumentException('Call is not active');
         }
 
+        DB::table('call_sessions')
+            ->where('id', $session->id)
+            ->update(['updated_at' => $this->nowIso()]);
+
         $type = trim($signalType);
         if (!in_array($type, ['offer', 'answer', 'ice_candidate', 'hangup'], true)) {
             throw new InvalidArgumentException('Invalid signal type');
@@ -214,6 +218,12 @@ final class CallRepository
 
         if (!in_array($actor, [$session->caller_profile, $session->callee_profile], true)) {
             throw new InvalidArgumentException('Not a participant of this call');
+        }
+
+        if (in_array((string) $session->status, ['ringing', 'active'], true)) {
+            DB::table('call_sessions')
+                ->where('id', $session->id)
+                ->update(['updated_at' => $this->nowIso()]);
         }
 
         $query = DB::table('call_signals')
@@ -266,6 +276,7 @@ final class CallRepository
     {
         $actor = $this->resolveLegacyProfile($actor);
         $this->ensureActor($actor);
+        $this->expireStaleCallsForProfile($actor);
 
         $session = DB::table('call_sessions')
             ->where('callee_profile', $actor)
@@ -333,7 +344,8 @@ final class CallRepository
 
     private function expireStaleCalls(string $actor, string $callee): void
     {
-        $cutoff = now()->subSeconds(90)->format('Y-m-d\TH:i:s');
+        $ringingCutoff = now()->subSeconds(90)->format('Y-m-d\TH:i:s');
+        $activeCutoff = now()->subMinutes(10)->format('Y-m-d\TH:i:s');
         DB::table('call_sessions')
             ->where(function ($query) use ($actor, $callee): void {
                 $query
@@ -344,8 +356,39 @@ final class CallRepository
                         $q->where('caller_profile', $callee)->where('callee_profile', $actor);
                     });
             })
-            ->where('status', 'ringing')
-            ->where('created_at', '<', $cutoff)
+            ->where(function ($query) use ($ringingCutoff, $activeCutoff): void {
+                $query
+                    ->where(function ($q) use ($ringingCutoff): void {
+                        $q->where('status', 'ringing')->where('created_at', '<', $ringingCutoff);
+                    })
+                    ->orWhere(function ($q) use ($activeCutoff): void {
+                        $q->where('status', 'active')->where('updated_at', '<', $activeCutoff);
+                    });
+            })
+            ->update([
+                'status' => 'ended',
+                'ended_at' => $this->nowIso(),
+                'updated_at' => $this->nowIso(),
+            ]);
+    }
+
+    private function expireStaleCallsForProfile(string $profile): void
+    {
+        $ringingCutoff = now()->subSeconds(90)->format('Y-m-d\TH:i:s');
+        $activeCutoff = now()->subMinutes(10)->format('Y-m-d\TH:i:s');
+        DB::table('call_sessions')
+            ->where(function ($query) use ($profile): void {
+                $query->where('caller_profile', $profile)->orWhere('callee_profile', $profile);
+            })
+            ->where(function ($query) use ($ringingCutoff, $activeCutoff): void {
+                $query
+                    ->where(function ($q) use ($ringingCutoff): void {
+                        $q->where('status', 'ringing')->where('created_at', '<', $ringingCutoff);
+                    })
+                    ->orWhere(function ($q) use ($activeCutoff): void {
+                        $q->where('status', 'active')->where('updated_at', '<', $activeCutoff);
+                    });
+            })
             ->update([
                 'status' => 'ended',
                 'ended_at' => $this->nowIso(),

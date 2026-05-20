@@ -25,6 +25,9 @@ class CallService {
   String _signalCursor = '0';
   Timer? _signalPoller;
   Timer? _ringingTimer;
+  Timer? _disconnectTimer;
+  final List<RTCIceCandidate> _pendingRemoteCandidates = <RTCIceCandidate>[];
+  bool _hasRemoteDescription = false;
 
   CallState _state = CallState.idle;
   CallState get state => _state;
@@ -135,6 +138,9 @@ class CallService {
       // Start polling for offer
       _startSignalPolling();
     } catch (e) {
+      try {
+        await api.callEnd(actorProfile: actorProfile, sessionId: sessionId);
+      } catch (_) {}
       _setState(CallState.ended);
       _errorController.add('Failed to accept call: $e');
       await _cleanup();
@@ -218,12 +224,25 @@ class CallService {
     };
 
     _pc!.onConnectionState = (state) {
+      if (state == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
+        _disconnectTimer?.cancel();
+        _disconnectTimer = null;
+      }
       if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed ||
-          state == RTCPeerConnectionState.RTCPeerConnectionStateDisconnected ||
           state == RTCPeerConnectionState.RTCPeerConnectionStateClosed) {
         _setState(CallState.ended);
         onCallEnded?.call();
         _cleanup();
+        return;
+      }
+      if (state == RTCPeerConnectionState.RTCPeerConnectionStateDisconnected) {
+        _disconnectTimer?.cancel();
+        _disconnectTimer = Timer(const Duration(seconds: 8), () {
+          if (_pc == null || _state == CallState.ended) return;
+          _setState(CallState.ended);
+          onCallEnded?.call();
+          _cleanup();
+        });
       }
     };
   }
@@ -334,6 +353,8 @@ class CallService {
     await _pc!.setRemoteDescription(
       RTCSessionDescription(sdpMap['sdp'], sdpMap['type']),
     );
+    _hasRemoteDescription = true;
+    await _flushPendingRemoteCandidates();
 
     final answer = await _pc!.createAnswer();
     await _pc!.setLocalDescription(answer);
@@ -356,6 +377,8 @@ class CallService {
     await _pc!.setRemoteDescription(
       RTCSessionDescription(sdpMap['sdp'], sdpMap['type']),
     );
+    _hasRemoteDescription = true;
+    await _flushPendingRemoteCandidates();
 
     _setState(CallState.connected);
   }
@@ -366,13 +389,30 @@ class CallService {
 
     final candMap =
         candidate is Map ? Map<String, dynamic>.from(candidate) : candidate;
-    await _pc!.addCandidate(
-      RTCIceCandidate(
-        candMap['candidate'],
-        candMap['sdpMid'],
-        candMap['sdpMLineIndex'],
-      ),
+    final remoteCandidate = RTCIceCandidate(
+      candMap['candidate'],
+      candMap['sdpMid'],
+      candMap['sdpMLineIndex'],
     );
+    if (!_hasRemoteDescription) {
+      _pendingRemoteCandidates.add(remoteCandidate);
+      return;
+    }
+
+    await _pc!.addCandidate(remoteCandidate);
+  }
+
+  Future<void> _flushPendingRemoteCandidates() async {
+    if (_pc == null || !_hasRemoteDescription) return;
+    final pending = List<RTCIceCandidate>.from(_pendingRemoteCandidates);
+    _pendingRemoteCandidates.clear();
+    for (final candidate in pending) {
+      try {
+        await _pc!.addCandidate(candidate);
+      } catch (_) {
+        // Ignore stale or malformed ICE from older attempts.
+      }
+    }
   }
 
   void _setState(CallState newState) {
@@ -386,6 +426,10 @@ class CallService {
     _signalPoller = null;
     _ringingTimer?.cancel();
     _ringingTimer = null;
+    _disconnectTimer?.cancel();
+    _disconnectTimer = null;
+    _pendingRemoteCandidates.clear();
+    _hasRemoteDescription = false;
 
     if (_localStream != null) {
       _localStream!.getTracks().forEach((track) => track.stop());
