@@ -58,6 +58,7 @@ class _HomePageState extends State<HomePage> {
   DesktopProcessHostService? _desktopProcessHostService;
   Timer? _deltaSyncTimer;
   Timer? _fullSyncTimer;
+  Timer? _retryTimer;
   bool _desktopLogExpanded = false;
   DateTime _desktopMonth = DateTime(DateTime.now().year, DateTime.now().month);
   String _fcmDiagnostics = 'FCM: not initialized';
@@ -860,11 +861,15 @@ class _HomePageState extends State<HomePage> {
     _cancelSyncLoops();
     _deltaSyncTimer = Timer.periodic(const Duration(seconds: 8), (_) async {
       await _safeSyncDelta(store, showErrors: false);
-      _retryPendingMessages(store);
     });
     _fullSyncTimer = Timer.periodic(const Duration(minutes: 10), (_) async {
       await _safeSyncFull(store, showErrors: false);
     });
+    _retryTimer = Timer.periodic(const Duration(minutes: 2), (_) async {
+      _retryPendingMessages(store);
+    });
+    // Also try immediately on startup
+    _retryPendingMessages(store);
   }
 
   void _cancelSyncLoops() {
@@ -872,6 +877,8 @@ class _HomePageState extends State<HomePage> {
     _deltaSyncTimer = null;
     _fullSyncTimer?.cancel();
     _fullSyncTimer = null;
+    _retryTimer?.cancel();
+    _retryTimer = null;
   }
 
   Future<void> _safeSyncDelta(
