@@ -129,6 +129,7 @@ class ChatController extends Controller
                 $title = sprintf('Сообщение от %s', $this->profileLabel($actor));
                 $body = $this->chatMessageBody($message);
                 $data = [
+                    'type' => 'chat_message',
                     'event_id' => $eventId,
                     'entity' => 'chat_message',
                     'action' => 'created',

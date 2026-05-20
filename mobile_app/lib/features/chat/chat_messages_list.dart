@@ -17,6 +17,7 @@ class ChatMessagesList extends StatefulWidget {
     required this.onImageTap,
     this.replyToMessageId,
     this.onQuoteTap,
+    this.avatarForContact,
   });
 
   final List<ChatMessage> messages;
@@ -30,6 +31,7 @@ class ChatMessagesList extends StatefulWidget {
   final void Function(ChatMessage message, int index) onImageTap;
   final String? replyToMessageId;
   final void Function(String quoteText)? onQuoteTap;
+  final String? Function(String profileKey)? avatarForContact;
 
   @override
   State<ChatMessagesList> createState() => ChatMessagesListState();
@@ -145,6 +147,7 @@ class ChatMessagesListState extends State<ChatMessagesList> {
           senderLabel: widget.senderLabelFor(message.senderProfile),
           stickerAssetUrl: widget.stickerAssetFor(message),
           imageUrl: widget.imageUrlFor(message),
+          avatarUrl: widget.avatarForContact?.call(message.senderProfile),
           onLongPress: () => widget.onLongPress(message),
           onImageTap: (index) => widget.onImageTap(message, index),
           onQuoteTap: () {

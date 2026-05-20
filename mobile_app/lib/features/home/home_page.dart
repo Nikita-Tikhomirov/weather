@@ -18,6 +18,7 @@ import '../chat/messenger_page.dart';
 import '../family/family_view.dart';
 import '../projects/project_file_browser.dart';
 import '../projects/project_chat_view.dart';
+import '../profile/profile_page.dart';
 import '../tasks/calendar_view.dart';
 import '../tasks/dashboard_view.dart';
 import '../tasks/task_editor_sheet.dart';
@@ -83,6 +84,7 @@ class _HomePageState extends State<HomePage> {
   String _activeConversationKey = '';
   String _currentProfileDisplayName = '';
   String _currentProfilePhone = '';
+  String? _currentProfileAvatarUrl;
   ChatMessage? _replyToMessage;
   bool _isRecording = false;
   String? _voicePath;
@@ -106,6 +108,8 @@ class _HomePageState extends State<HomePage> {
         prefs.getString('profile_display_name')?.trim() ?? '';
     _currentProfilePhone =
         prefs.getString('profile_phone')?.trim() ?? '';
+    _currentProfileAvatarUrl =
+        prefs.getString('avatar_${savedOwner.isNotEmpty ? savedOwner : 'default'}');
     final api = ApiClient(
       baseUrl: const String.fromEnvironment(
         'API_BASE_URL',
@@ -135,6 +139,11 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
+    // Load avatar for resolved owner
+    final avatarKey = 'avatar_$owner';
+    _currentProfileAvatarUrl = prefs.getString(avatarKey);
+    if (mounted) setState(() {});
+
     final db = await LocalDb.open();
     final store = TaskStore(
       repository: TaskRepository(db: db, api: api),
@@ -160,13 +169,18 @@ class _HomePageState extends State<HomePage> {
     final pending = _pendingPushData;
     if (pending != null) {
       _pendingPushData = null;
-      // Re-invoke onOpenPush logic for the pending data
       await _safeSyncDelta(store, showErrors: false);
-      store.setPage(4);
+      final pushType = (pending['type'] ?? pending['entity'] ?? '').toString();
       final conversationKey = (pending['conversation_key'] ?? '').trim();
-      if ((pending['entity'] ?? '') == 'chat_message' &&
+      if (pushType == 'task_reminder' ||
+          pushType == 'todo_update' ||
+          (pending['entity'] ?? '') == 'task' ||
+          (pending['entity'] ?? '') == 'family_task') {
+        store.setPage(1);
+      } else if ((pending['entity'] ?? '') == 'chat_message' &&
           conversationKey.isNotEmpty &&
           !_isProjectConversation(conversationKey)) {
+        store.setPage(4);
         await _openConversation(store, conversationKey);
       } else {
         await _refreshActiveConversation(store, useNetwork: true, quiet: true);
@@ -795,14 +809,29 @@ class _HomePageState extends State<HomePage> {
           return;
         }
         await _safeSyncDelta(store, showErrors: false);
-        store.setPage(4); // Switch to Messenger tab
+
+        final pushType = (data['type'] ?? data['entity'] ?? '').toString();
         final conversationKey = (data['conversation_key'] ?? '').trim();
+
+        // Task-related notifications -> go to tasks tab
+        if (pushType == 'task_reminder' ||
+            pushType == 'todo_update' ||
+            (data['entity'] ?? '') == 'task' ||
+            (data['entity'] ?? '') == 'family_task') {
+          store.setPage(1); // Switch to Tasks tab
+          return;
+        }
+
+        // Chat messages -> go to messenger
         if ((data['entity'] ?? '') == 'chat_message' &&
             conversationKey.isNotEmpty &&
             !_isProjectConversation(conversationKey)) {
+          store.setPage(4); // Switch to Messenger tab
           await _openConversation(store, conversationKey);
           return;
         }
+
+        // Default: just refresh
         await _refreshActiveConversation(store, useNetwork: true, quiet: true);
       },
     );
@@ -2533,6 +2562,7 @@ class _HomePageState extends State<HomePage> {
       profileLabel: _profileLabel,
       stickerAssetFor: _chatStickerAssetUrl,
       imageUrlFor: _chatImageUrl,
+      avatarForContact: _avatarForProfile,
       onRefreshContacts: () => _loadPhoneContacts(store),
       onCreateGroup: () => _openCreateGroupSheet(store),
       onAddContactToFamily: (contact) => _addContactToFamily(store, contact),
@@ -3051,6 +3081,42 @@ class _HomePageState extends State<HomePage> {
       return contact.displayName.trim();
     }
     return _profileLabel(contact.profileKey);
+  }
+
+  void _openProfile() {
+    final store = _store;
+    if (store == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProfilePage(
+          displayName: _currentProfileDisplayName,
+          phone: _currentProfilePhone,
+          profileKey: store.owner.value,
+          avatarUrl: _currentProfileAvatarUrl,
+          onAvatarChanged: (url) {
+            setState(() => _currentProfileAvatarUrl = url);
+          },
+          onDisplayNameChanged: (name) {
+            setState(() => _currentProfileDisplayName = name);
+          },
+        ),
+      ),
+    );
+  }
+
+  String? _avatarForProfile(String profile) {
+    final store = _store;
+    if (store == null) return null;
+    // Return own avatar for current user
+    if (profile == store.owner.value) return _currentProfileAvatarUrl;
+    // Try to find avatar from contacts
+    for (final contact in _chatContacts) {
+      if (contact.profileKey == profile) return contact.avatarUrl;
+    }
+    for (final contact in _familyMembers) {
+      if (contact.profileKey == profile) return contact.avatarUrl;
+    }
+    return null;
   }
 
   String _profileLabel(String profile) {
@@ -3593,7 +3659,13 @@ class _HomePageState extends State<HomePage> {
                     builder: (context, page, _) {
                       return NavigationBar(
                         selectedIndex: page,
-                        onDestinationSelected: store.setPage,
+                        onDestinationSelected: (index) {
+                          if (index == 5) {
+                            _openProfile();
+                            return;
+                          }
+                          store.setPage(index);
+                        },
                         destinations: const [
                           NavigationDestination(
                             icon: Icon(Icons.dashboard_outlined),
@@ -3614,6 +3686,10 @@ class _HomePageState extends State<HomePage> {
                           NavigationDestination(
                             icon: Icon(Icons.forum_outlined),
                             label: 'Мессенджер',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(Icons.person_outline),
+                            label: 'Профиль',
                           ),
                         ],
                       );

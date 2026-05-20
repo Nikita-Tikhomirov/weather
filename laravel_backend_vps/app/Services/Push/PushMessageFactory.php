@@ -47,6 +47,7 @@ class PushMessageFactory
             'title' => $title,
             'body' => $body,
             'data' => [
+                'type' => 'todo_update',
                 'event_id' => $eventId,
                 'entity' => $entity,
                 'action' => $action,

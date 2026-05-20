@@ -40,12 +40,14 @@ class ChatContact {
     required this.displayName,
     required this.phone,
     required this.conversationKey,
+    this.avatarUrl,
   });
 
   final String profileKey;
   final String displayName;
   final String phone;
   final String conversationKey;
+  final String? avatarUrl;
 
   factory ChatContact.fromJson(Map<String, dynamic> json) {
     return ChatContact(
@@ -53,6 +55,7 @@ class ChatContact {
       displayName: (json['display_name'] ?? '').toString(),
       phone: (json['phone'] ?? '').toString(),
       conversationKey: (json['conversation_key'] ?? '').toString(),
+      avatarUrl: json['avatar_url']?.toString(),
     );
   }
 }

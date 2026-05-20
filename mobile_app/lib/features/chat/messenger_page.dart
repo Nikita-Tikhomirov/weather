@@ -41,6 +41,7 @@ class MessengerPage extends StatelessWidget {
     required this.onStartRecord,
     required this.onStopRecord,
     required this.onSendText,
+    this.avatarForContact,
   });
 
   final List<ChatConversation> conversations;
@@ -67,6 +68,7 @@ class MessengerPage extends StatelessWidget {
   final void Function(ChatContact contact) onOpenDirectContact;
   final void Function(ProjectContact project) onOpenProjectContact;
   final VoidCallback onOpenBridgeSettings;
+  final String? Function(String profileKey)? avatarForContact;
   final VoidCallback onBackToContacts;
   final void Function(String conversationKey) onOpenConversation;
   final void Function(ChatMessage message) onOpenMessageActions;
@@ -85,6 +87,7 @@ class MessengerPage extends StatelessWidget {
         contacts: contacts,
         projects: projects,
         contactLabel: contactLabel,
+        avatarForContact: avatarForContact,
         onRefreshContacts: onRefreshContacts,
         onCreateGroup: onCreateGroup,
         onAddContactToFamily: onAddContactToFamily,
@@ -114,6 +117,7 @@ class MessengerPage extends StatelessWidget {
             senderLabelFor: profileLabel,
             stickerAssetFor: stickerAssetFor,
             imageUrlFor: imageUrlFor,
+            avatarForContact: avatarForContact,
             onLongPress: onOpenMessageActions,
             onImageTap: onImageTap,
           ),
@@ -147,6 +151,7 @@ class _ContactList extends StatelessWidget {
     required this.onOpenDirectContact,
     required this.onOpenProjectContact,
     required this.onOpenBridgeSettings,
+    this.avatarForContact,
   });
 
   final List<ChatContact> contacts;
@@ -158,6 +163,22 @@ class _ContactList extends StatelessWidget {
   final void Function(ChatContact contact) onOpenDirectContact;
   final void Function(ProjectContact project) onOpenProjectContact;
   final VoidCallback onOpenBridgeSettings;
+  final String? Function(String profileKey)? avatarForContact;
+
+  Widget _buildContactAvatar(ChatContact contact) {
+    final url = avatarForContact?.call(contact.profileKey);
+    if (url != null && url.isNotEmpty) {
+      return CircleAvatar(
+        backgroundImage: url.startsWith('http')
+            ? NetworkImage(url)
+            : null,
+        child: url.startsWith('http')
+            ? null
+            : const Icon(Icons.person),
+      );
+    }
+    return const CircleAvatar(child: Icon(Icons.person));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -198,7 +219,7 @@ class _ContactList extends StatelessWidget {
                 ...List.generate(contacts.length, (index) {
                   final contact = contacts[index];
                   return ListTile(
-                    leading: const CircleAvatar(child: Icon(Icons.person)),
+                    leading: _buildContactAvatar(contact),
                     title: Text(contactLabel(contact)),
                     subtitle: Text(contact.phone),
                     trailing: IconButton(

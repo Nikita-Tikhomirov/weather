@@ -113,6 +113,15 @@ class TaskReminderService
             $body = $this->buildReminderBody($taskTitle, $offset);
 
             $eventId = sprintf('reminder-%s-%s', (string) $row->id, str_replace(':', '-', (string) $row->remind_at));
+            // Dedup: skip if same reminder was already sent recently
+            $dedupSig = hash('sha256', json_encode([
+                'entity' => (string) $row->entity,
+                'task_id' => (string) $row->task_storage_id,
+                'offset' => $offset,
+                'recipient' => (string) $row->recipient_key,
+            ]));
+            $recentSince = now()->subSeconds(120)->format('Y-m-d\TH:i:s');
+
             $queued += $this->pushOutbox->enqueueRawToRecipients(
                 $eventId,
                 [(string) $row->recipient_key],
@@ -125,6 +134,8 @@ class TaskReminderService
                     'offset_minutes' => (string) $offset,
                     'due_at' => (string) $row->due_at,
                 ],
+                $dedupSig,
+                $recentSince,
             );
 
             DB::table('task_reminders')

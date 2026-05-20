@@ -1,1 +1,0 @@
-fix: use --prompt instead of exec --auto for session context continuity

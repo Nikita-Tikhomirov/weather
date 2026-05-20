@@ -18,6 +18,7 @@ class ChatMessageBubble extends StatelessWidget {
     required this.onLongPress,
     required this.onImageTap,
     this.onQuoteTap,
+    this.avatarUrl,
   });
 
   final ChatMessage message;
@@ -30,6 +31,7 @@ class ChatMessageBubble extends StatelessWidget {
   final VoidCallback onLongPress;
   final void Function(int index) onImageTap;
   final VoidCallback? onQuoteTap;
+  final String? avatarUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -38,11 +40,21 @@ class ChatMessageBubble extends StatelessWidget {
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
       child: GestureDetector(
         onLongPress: onLongPress,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          constraints: BoxConstraints(maxWidth: compact ? 320 : 560),
-          decoration: BoxDecoration(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (!mine)
+              Padding(
+                padding: const EdgeInsets.only(right: 6, bottom: 8),
+                child: _buildMiniAvatar(),
+              ),
+            Flexible(
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                constraints: BoxConstraints(maxWidth: compact ? 300 : 540),
+                decoration: BoxDecoration(
             color: deleted
                 ? Theme.of(context).colorScheme.surfaceContainerHighest
                 : mine
@@ -82,7 +94,28 @@ class ChatMessageBubble extends StatelessWidget {
             ],
           ),
         ),
+            ), // Flexible
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildMiniAvatar() {
+    if (avatarUrl != null && avatarUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 14,
+        backgroundImage: avatarUrl!.startsWith('http')
+            ? NetworkImage(avatarUrl!)
+            : null,
+        child: avatarUrl!.startsWith('http')
+            ? null
+            : const Icon(Icons.person, size: 16),
+      );
+    }
+    return const CircleAvatar(
+      radius: 14,
+      child: Icon(Icons.person, size: 16),
     );
   }
 

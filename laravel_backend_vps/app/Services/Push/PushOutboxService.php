@@ -37,13 +37,42 @@ class PushOutboxService
             return 0;
         }
 
+        // Dedup: skip if a push with the same semantic signature was queued recently
+        $dedupWindowSec = max(30, (int) config('push.dedup_window_sec', 120));
+        $recentSince = now()->subSeconds($dedupWindowSec)->format('Y-m-d\TH:i:s');
+        $dedupSignature = $this->buildDedupSignature($actor, $entity, $action, $payload);
+
         return $this->enqueueRawToRecipients(
             $eventId,
             $recipients,
             (string) $message['title'],
             (string) $message['body'],
             is_array($message['data']) ? $message['data'] : [],
+            $dedupSignature,
+            $recentSince,
         );
+    }
+
+    private function buildDedupSignature(string $actor, string $entity, string $action, array $payload): string
+    {
+        $canonical = [
+            'actor' => $actor,
+            'entity' => $entity,
+            'action' => $action,
+            'payload' => $this->normalizeForSignature($payload),
+        ];
+        return hash('sha256', json_encode($canonical, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+
+    private function normalizeForSignature(array $payload): array
+    {
+        // Remove volatile fields that change every push
+        $clean = $payload;
+        foreach (['event_id', 'happened_at', 'updated_at', 'version', 'server_time'] as $key) {
+            unset($clean[$key]);
+        }
+        ksort($clean);
+        return $clean;
     }
 
     public function enqueueRawToRecipients(
@@ -52,6 +81,8 @@ class PushOutboxService
         string $title,
         string $body,
         array $data,
+        string $dedupSignature = '',
+        string $recentSince = '',
     ): int {
         if (!$this->isEnabled() || $recipients === []) {
             return 0;
@@ -70,11 +101,30 @@ class PushOutboxService
         $now = $this->nowIso();
         $count = 0;
 
+        // Dedup data stored in data_json for signature comparison
+        if ($dedupSignature !== '' && $recentSince !== '') {
+            $data['dedup_signature'] = $dedupSignature;
+        }
+
         foreach ($rows as $row) {
             $token = trim((string) $row->token);
             if ($token === '') {
                 continue;
             }
+
+            // Check for recent duplicate
+            if ($dedupSignature !== '' && $recentSince !== '') {
+                $recentExists = DB::table('push_outbox')
+                    ->where('token', $token)
+                    ->where('profile_key', (string) $row->profile_key)
+                    ->where('created_at', '>=', $recentSince)
+                    ->whereRaw("JSON_EXTRACT(data_json, '$.dedup_signature') = ?", [$dedupSignature])
+                    ->exists();
+                if ($recentExists) {
+                    continue;
+                }
+            }
+
             $count++;
             DB::table('push_outbox')->updateOrInsert(
                 [
