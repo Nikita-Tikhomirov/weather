@@ -1159,6 +1159,7 @@ class _HomePageState extends State<HomePage> {
       await store.repository.db.replaceStickerPacks(bootstrap.stickerPacks);
       final contacts = bootstrap.contacts;
       if (mounted) {
+        await _saveAvatarUrlsFromContacts(contacts);
         await _loadProfileAvatars([
           ...contacts.map((item) => item.profileKey),
           ...bootstrap.conversations.expand((item) => item.members),
@@ -1196,6 +1197,7 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) {
         return;
       }
+      await _saveAvatarUrlsFromContacts(bootstrap.contacts);
       await _loadProfileAvatars([
         ...bootstrap.contacts.map((item) => item.profileKey),
         ...conversations.expand((item) => item.members),
@@ -3893,6 +3895,16 @@ class _HomePageState extends State<HomePage> {
       }
     }
     return null;
+  }
+
+  Future<void> _saveAvatarUrlsFromContacts(List<ChatContact> contacts) async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final contact in contacts) {
+      final url = contact.avatarUrl;
+      if (url != null && url.isNotEmpty) {
+        await prefs.setString('avatar_${contact.profileKey}', url);
+      }
+    }
   }
 
   Future<void> _loadProfileAvatars(Iterable<String> profiles) async {

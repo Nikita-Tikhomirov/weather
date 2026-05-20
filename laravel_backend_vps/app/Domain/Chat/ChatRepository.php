@@ -27,6 +27,8 @@ final class ChatRepository
             $contacts[] = [
                 'profile_key' => $profile,
                 'display_name' => $this->profileLabel($profile),
+                'phone' => $this->profilePhone($profile),
+                'avatar_url' => $this->profileAvatarUrl($profile),
                 'conversation_key' => $dmKey,
             ];
             $conversations[] = [
@@ -733,6 +735,18 @@ final class ChatRepository
     {
         $label = DB::table('messenger_users')->where('profile_key', $profile)->value('display_name');
         return is_string($label) && trim($label) !== '' ? $label : $profile;
+    }
+
+    private function profilePhone(string $profile): string
+    {
+        $phone = DB::table('messenger_users')->where('profile_key', $profile)->value('phone_normalized');
+        return is_string($phone) && trim($phone) !== '' ? trim($phone) : '';
+    }
+
+    private function profileAvatarUrl(string $profile): string
+    {
+        $url = DB::table('messenger_users')->where('profile_key', $profile)->value('avatar_url');
+        return is_string($url) && trim($url) !== '' ? trim($url) : '';
     }
 
     private function storedGroupConversations(string $actor): array

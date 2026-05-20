@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../models/chat_models.dart';
@@ -201,9 +203,17 @@ class _ContactList extends StatelessWidget {
   Widget _buildContactAvatar(ChatContact contact) {
     final url = avatarForContact?.call(contact.profileKey);
     if (url != null && url.isNotEmpty) {
+      if (url.startsWith('http')) {
+        return CircleAvatar(
+          backgroundImage: NetworkImage(url),
+          onBackgroundImageError: (_, __) {},
+          child: const Icon(Icons.person),
+        );
+      }
       return CircleAvatar(
-        backgroundImage: url.startsWith('http') ? NetworkImage(url) : null,
-        child: url.startsWith('http') ? null : const Icon(Icons.person),
+        backgroundImage: FileImage(File(url)),
+        onBackgroundImageError: (_, __) {},
+        child: const Icon(Icons.person),
       );
     }
     return const CircleAvatar(child: Icon(Icons.person));
