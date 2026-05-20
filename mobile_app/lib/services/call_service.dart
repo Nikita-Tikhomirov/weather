@@ -47,8 +47,20 @@ class CallService {
 
   static const _iceServers = {
     'iceServers': [
-      {'urls': 'stun:stun.l.google.com:19302'},
-      {'urls': 'stun:stun1.l.google.com:19302'},
+      {
+        'urls': [
+          'stun:stun.l.google.com:19302',
+          'stun:stun1.l.google.com:19302',
+        ],
+      },
+      {
+        'urls': [
+          'turn:31.129.97.211:3478?transport=udp',
+          'turn:31.129.97.211:3478?transport=tcp',
+        ],
+        'username': 'family',
+        'credential': 'WCw8eJo&TIxu',
+      },
     ],
   };
 
