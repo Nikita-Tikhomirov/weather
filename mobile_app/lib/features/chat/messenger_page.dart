@@ -42,6 +42,7 @@ class MessengerPage extends StatelessWidget {
     required this.onStopRecord,
     required this.onSendText,
     required this.onManageGroup,
+    this.typingUsers = const {},
     this.avatarForContact,
   });
 
@@ -81,6 +82,7 @@ class MessengerPage extends StatelessWidget {
   final VoidCallback onStopRecord;
   final VoidCallback onSendText;
   final void Function(ChatConversation conv) onManageGroup;
+  final Map<String, Set<String>> typingUsers;
 
   @override
   Widget build(BuildContext context) {
@@ -127,6 +129,12 @@ class MessengerPage extends StatelessWidget {
             onImageTap: onImageTap,
           ),
         ),
+        _TypingIndicator(
+          conversationKey: activeConversationKey,
+          typingUsers: typingUsers,
+          owner: owner,
+          profileLabel: profileLabel,
+        ),
         _ChatComposer(
           chatInputController: chatInputController,
           replyToMessage: replyToMessage,
@@ -160,6 +168,7 @@ class _ContactList extends StatelessWidget {
     required this.groupLabel,
     required this.onOpenConversation,
     required this.onManageGroup,
+    this.typingUsers = const {},
     this.avatarForContact,
   });
 
@@ -367,6 +376,42 @@ class _ChatHeader extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TypingIndicator extends StatelessWidget {
+  const _TypingIndicator({
+    required this.conversationKey,
+    required this.typingUsers,
+    required this.owner,
+    required this.profileLabel,
+  });
+
+  final String conversationKey;
+  final Map<String, Set<String>> typingUsers;
+  final String owner;
+  final String Function(String) profileLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final users = typingUsers[conversationKey];
+    if (users == null || users.isEmpty) return const SizedBox.shrink();
+    final others = users.where((p) => p != owner).toList();
+    if (others.isEmpty) return const SizedBox.shrink();
+    final label = others.length == 1
+        ? '${profileLabel(others.first)} печатает...'
+        : '${others.length} человека печатают...';
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, bottom: 4),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontStyle: FontStyle.italic,
+          color: Theme.of(context).disabledColor,
+        ),
       ),
     );
   }

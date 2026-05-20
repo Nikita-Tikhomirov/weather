@@ -277,6 +277,34 @@ class ChatController extends Controller
         }
     }
 
+    public function markRead(Request $request): JsonResponse
+    {
+        try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
+            $conversationKey = trim((string)$request->input('conversation_key', ''));
+            $this->chat->markRead($actor, $conversationKey);
+            return $this->json(200, ['ok' => true]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function sendTyping(Request $request): JsonResponse
+    {
+        try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
+            $conversationKey = trim((string)$request->input('conversation_key', ''));
+            $this->chat->recordTyping($actor, $conversationKey);
+            return $this->json(200, ['ok' => true]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
     public function deleteMessage(Request $request): JsonResponse
     {
         try {

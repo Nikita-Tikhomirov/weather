@@ -96,6 +96,10 @@ class _HomePageState extends State<HomePage> {
   int _voiceSec = 0;
   Map<String, dynamic>? _pendingPushData;
 
+  /// Conversation key -> set of profiles currently typing
+  final Map<String, Set<String>> _typingUsers = <String, Set<String>>{};
+  Timer? _typingSendTimer;
+
   bool get _isDesktopWindows =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
@@ -162,6 +166,7 @@ class _HomePageState extends State<HomePage> {
     _loadProjects();
     await _initChat(store);
     _initShareReceiver(store);
+    _chatInputCtl.addListener(() => _onChatInputChanged(store));
     _startSyncLoops(store);
     if (!mounted) {
       store.dispose();
@@ -1044,6 +1049,11 @@ class _HomePageState extends State<HomePage> {
           }
         }
         setState(() => _activeConversationKey = conversationKey);
+      // Mark messages as read
+      store.repository.api.chatMarkRead(
+        actorProfile: store.owner.value,
+        conversationKey: conversationKey,
+      ).catchError((_) {});
         await _refreshConversation(store, conversationKey,
             useNetwork: true, quiet: true);
       } catch (_) {
@@ -1830,6 +1840,22 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _onChatInputChanged(TaskStore store) {
+    final text = _chatInputCtl.text.trim();
+    if (text.isEmpty) return;
+    if (_isProjectConversation(_activeConversationKey)) return;
+    // Debounce: send typing every 5 seconds max
+    if (_typingSendTimer?.isActive == true) return;
+    _typingSendTimer = Timer(const Duration(seconds: 5), () async {
+      try {
+        await store.repository.api.chatSendTyping(
+          actorProfile: store.owner.value,
+          conversationKey: _activeConversationKey,
+        );
+      } catch (_) {}
+    });
+  }
+
   Future<void> _sendTextMessage(TaskStore store) async {
     // Route to project bridge for project conversations
     if (_isProjectConversation(_activeConversationKey)) {
@@ -2044,6 +2070,11 @@ class _HomePageState extends State<HomePage> {
       }
       // Navigate to the conversation
       setState(() => _activeConversationKey = conversationKey);
+      // Mark messages as read
+      store.repository.api.chatMarkRead(
+        actorProfile: store.owner.value,
+        conversationKey: conversationKey,
+      ).catchError((_) {});
       await _refreshConversation(store, conversationKey,
           useNetwork: true, quiet: true);
       if (mounted) {
@@ -2880,6 +2911,7 @@ class _HomePageState extends State<HomePage> {
       },
       onOpenAttachMenu: () => _openAttachMenu(store),
       onManageGroup: (conv) => _openManageGroupSheet(store, conv),
+      typingUsers: _typingUsers,
       onStartRecord: () => _startRecord(store),
       onStopRecord: () => _stopRecord(store),
       onSendText: () => _sendTextMessage(store),

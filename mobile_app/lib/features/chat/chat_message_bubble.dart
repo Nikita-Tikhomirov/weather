@@ -361,37 +361,10 @@ class ChatMessageBubble extends StatelessWidget {
   }
 
   Widget _buildVoiceBubble(BuildContext context) {
-    final ms = (message.imageMeta['duration_ms'] as int?) ?? 0;
-    final d = Duration(milliseconds: ms);
-    final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: () {
-        const ch = MethodChannel('family_todo_mobile/voice');
-        ch.invokeMethod('playVoice', {'url': _bubbleAssetUrl(imageUrl)});
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: mine ? cs.primaryContainer : cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.play_arrow,
-                size: 24,
-                color: mine ? cs.onPrimaryContainer : cs.onSurfaceVariant),
-            const SizedBox(width: 8),
-            Text(
-              '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}',
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: mine ? cs.onPrimaryContainer : cs.onSurface),
-            ),
-          ],
-        ),
-      ),
+    return _VoiceBubble(
+      url: _bubbleAssetUrl(imageUrl),
+      durationMs: (message.imageMeta['duration_ms'] as int?) ?? 0,
+      mine: mine,
     );
   }
 
@@ -614,5 +587,129 @@ class ChatMessageBubble extends StatelessWidget {
       default:
         return '';
     }
+  }
+}
+
+class _VoiceBubble extends StatefulWidget {
+  const _VoiceBubble({
+    required this.url,
+    required this.durationMs,
+    required this.mine,
+  });
+
+  final String url;
+  final int durationMs;
+  final bool mine;
+
+  @override
+  State<_VoiceBubble> createState() => _VoiceBubbleState();
+}
+
+class _VoiceBubbleState extends State<_VoiceBubble>
+    with SingleTickerProviderStateMixin {
+  bool _playing = false;
+  late AnimationController _animCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: widget.durationMs > 0 ? widget.durationMs : 3000),
+    );
+    _animCtrl.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        setState(() => _playing = false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
+  }
+
+  void _togglePlay() {
+    setState(() {
+      _playing = !_playing;
+      if (_playing) {
+        _animCtrl.forward(from: _animCtrl.value);
+        const MethodChannel('family_todo_mobile/voice')
+            .invokeMethod('playVoice', {'url': widget.url});
+      } else {
+        _animCtrl.stop();
+        const MethodChannel('family_todo_mobile/voice')
+            .invokeMethod('pauseVoice');
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final d = Duration(milliseconds: widget.durationMs);
+    final timeStr = widget.durationMs > 0
+        ? '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}'
+        : '0:00';
+    final fg = widget.mine ? cs.onPrimaryContainer : cs.onSurfaceVariant;
+
+    return GestureDetector(
+      onTap: _togglePlay,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: widget.mine
+              ? cs.primaryContainer
+              : cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _playing ? Icons.pause : Icons.play_arrow,
+              size: 24,
+              color: fg,
+            ),
+            const SizedBox(width: 8),
+            if (_playing)
+              AnimatedBuilder(
+                animation: _animCtrl,
+                builder: (context, child) {
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: List.generate(4, (i) {
+                      final phase = (i / 4.0 + _animCtrl.value) % 1.0;
+                      final h = 4.0 + 10.0 * (0.5 + 0.5 * (phase < 0.5 ? phase * 2 : 2 - phase * 2));
+                      return Container(
+                        width: 3,
+                        height: h,
+                        margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                        decoration: BoxDecoration(
+                          color: fg,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      );
+                    }),
+                  );
+                },
+              )
+            else ...[
+              const SizedBox(width: 4),
+              Text(
+                timeStr,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: widget.mine ? cs.onPrimaryContainer : cs.onSurface,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -634,6 +634,32 @@ class ApiClient {
     );
   }
 
+  Future<void> chatSendTyping({
+    required String actorProfile,
+    required String conversationKey,
+  }) async {
+    await _postWithFallback(
+      paths: const ['/chat/typing'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'conversation_key': conversationKey,
+      }),
+    );
+  }
+
+  Future<void> chatMarkRead({
+    required String actorProfile,
+    required String conversationKey,
+  }) async {
+    await _postWithFallback(
+      paths: const ['/chat/conversations/read'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'conversation_key': conversationKey,
+      }),
+    );
+  }
+
   Future<List<StickerPack>> chatStickerPacks() async {
     final response =
         await _getWithFallback(paths: const ['/chat/stickers/packs']);

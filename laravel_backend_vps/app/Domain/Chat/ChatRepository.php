@@ -319,6 +319,24 @@ final class ChatRepository
         ]);
     }
 
+    public function markRead(string $actor, string $conversationKey): void
+    {
+        $actor = $this->resolveLegacyProfile($actor);
+        $conversation = $this->resolveConversationForActor($actor, $conversationKey);
+        $now = $this->nowIso();
+        DB::table('chat_read_cursors')->updateOrInsert(
+            ['conversation_id' => (int)$conversation->id, 'profile_key' => $actor],
+            ['read_at' => $now, 'updated_at' => $now],
+        );
+    }
+
+    public function recordTyping(string $actor, string $conversationKey): void
+    {
+        $actor = $this->resolveLegacyProfile($actor);
+        $this->resolveConversationForActor($actor, $conversationKey);
+        // Typing is transient — just validate actor is in conversation, no-op on server
+    }
+
     public function removeMember(string $actor, string $conversationKey, string $profile): void
     {
         $actor = $this->resolveLegacyProfile($actor);
