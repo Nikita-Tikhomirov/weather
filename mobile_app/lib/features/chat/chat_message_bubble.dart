@@ -120,6 +120,9 @@ class ChatMessageBubble extends StatelessWidget {
   }
 
   Widget _buildContent(BuildContext context, bool deleted, String text) {
+    if (message.isUploading) {
+      return _buildUploadingContent(context);
+    }
     if (deleted) {
       return const Text(
         'Сообщение удалено',
@@ -551,6 +554,36 @@ class ChatMessageBubble extends StatelessWidget {
           ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildUploadingContent(BuildContext context) {
+    final progress = message.uploadProgress.clamp(0.0, 1.0);
+    final pct = (progress * 100).round();
+    final kind = message.messageType;
+    final label = kind == 'video'
+        ? 'Видео'
+        : kind == 'image' || kind == 'image_group'
+            ? 'Фото'
+            : 'Файл';
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 10),
+            Text('Отправка $label... $pct%'),
+          ],
+        ),
+        const SizedBox(height: 6),
+        LinearProgressIndicator(value: progress),
+      ],
     );
   }
 

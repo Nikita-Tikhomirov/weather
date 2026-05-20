@@ -129,6 +129,8 @@ class ChatMessage {
     this.clientMessageId,
     this.editedAt,
     this.deletedAt,
+    this.isUploading = false,
+    this.uploadProgress = 0.0,
   });
 
   final String id;
@@ -146,6 +148,10 @@ class ChatMessage {
   final String? clientMessageId;
   final String? editedAt;
   final String? deletedAt;
+
+  /// Local-only fields for optimistic uploads
+  final bool isUploading;
+  final double uploadProgress;
 
   bool get isDeleted => deletedAt != null && deletedAt!.isNotEmpty;
 

@@ -2171,7 +2171,13 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    // Optional photo caption
+    final actor = store.owner.value;
+    final api = store.repository.api;
+    final db = store.repository.db;
+    final conversationKey = _activeConversationKey;
+    if (conversationKey.isEmpty) return;
+
+    // Optional caption
     String caption = '';
     if (mounted) {
       final captionCtl = TextEditingController();
@@ -2202,56 +2208,134 @@ class _HomePageState extends State<HomePage> {
       if (result != null) caption = result;
     }
 
-    final actor = store.owner.value;
-    final api = store.repository.api;
-    final db = store.repository.db;
-    final conversationKey = _activeConversationKey;
+    // Create optimistic messages immediately
+    final msgType = picked.length == 1 ? 'image' : 'image_group';
+    final clientId = 'img-${DateTime.now().microsecondsSinceEpoch}';
+    final nowIso = DateTime.now().toIso8601String();
+    final totalCount = picked.length;
 
+    for (var i = 0; i < totalCount; i++) {
+      final optMsg = ChatMessage(
+        id: '$clientId-$i',
+        conversationKey: conversationKey,
+        senderProfile: actor,
+        messageType: msgType,
+        text: i == 0 ? caption : '',
+        createdAt: nowIso,
+        clientMessageId: clientId,
+        isUploading: true,
+        uploadProgress: 0.0,
+      );
+      final msgs = List<ChatMessage>.from(
+        _chatMessagesByConversation[conversationKey] ?? const [],
+      );
+      msgs.add(optMsg);
+      _chatMessagesByConversation[conversationKey] = msgs;
+    }
+    if (mounted) setState(() {});
+
+    // Upload photos one by one with progress
     try {
       final attachments = <ChatAttachment>[];
       for (var i = 0; i < picked.length; i++) {
         final file = picked[i];
         final bytes = await file.readAsBytes();
-        final uploaded = await api.chatUploadSticker(
+
+        // Update progress: reading done, uploading
+        _updateUploadProgress(conversationKey, clientId, i, totalCount, 0.1);
+
+        final uploaded = await api.chatUploadMedia(
           actorProfile: actor,
           bytes: bytes,
           filename: file.name,
+          onProgress: (progress) {
+            final p = 0.1 + (progress * 0.6);
+            _updateUploadProgress(conversationKey, clientId, i, totalCount, p);
+          },
         );
+
+        _updateUploadProgress(conversationKey, clientId, i, totalCount, 0.8);
         attachments.add(ChatAttachment(
           kind: 'image',
           assetUrl: uploaded.assetUrl,
           imageMeta: uploaded.imageMeta,
           sortOrder: i,
         ));
+        _updateUploadProgress(conversationKey, clientId, i, totalCount, 0.9);
       }
+
+      // Send the actual message
       final message = await api.chatSendMessage(
         actorProfile: actor,
         conversationKey: conversationKey,
-        messageType: attachments.length == 1 ? 'image' : 'image_group',
+        messageType: msgType,
         text: caption,
-        imageUrl: null,
-        imageMeta: null,
         attachments: attachments,
-        clientMessageId: 'img-${DateTime.now().microsecondsSinceEpoch}',
+        clientMessageId: clientId,
       );
+
+      // Remove optimistic messages, add real one
+      _replaceOptimisticMessages(conversationKey, clientId, [message]);
       await db.upsertMessages([message]);
-      await _refreshConversation(
-        store,
-        conversationKey,
-        useNetwork: true,
-        quiet: true,
-      );
+      if (mounted) setState(() {});
     } catch (error) {
-      if (!mounted) {
-        return;
+      // Mark optimistic messages as failed
+      _failOptimisticMessages(conversationKey, clientId, error.toString());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка отправки: $error')),
+        );
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка отправки изображения: $error')),
-      );
     }
   }
 
-  bool _videoUploading = false;
+  /// Update upload progress for an optimistic message
+  void _updateUploadProgress(String conversationKey, String clientId,
+      int index, int total, double progress) {
+    final msgs = _chatMessagesByConversation[conversationKey];
+    if (msgs == null) return;
+    for (var i = 0; i < msgs.length; i++) {
+      if (msgs[i].clientMessageId == clientId &&
+          msgs[i].id == '$clientId-$index') {
+        msgs[i] = ChatMessage(
+          id: msgs[i].id,
+          conversationKey: msgs[i].conversationKey,
+          senderProfile: msgs[i].senderProfile,
+          messageType: msgs[i].messageType,
+          text: msgs[i].text,
+          createdAt: msgs[i].createdAt,
+          clientMessageId: msgs[i].clientMessageId,
+          isUploading: true,
+          uploadProgress: progress,
+        );
+        _chatMessagesByConversation[conversationKey] = msgs;
+        if (mounted) setState(() {});
+        return;
+      }
+    }
+  }
+
+  /// Replace optimistic messages with the real server message
+  void _replaceOptimisticMessages(
+      String conversationKey, String clientId, List<ChatMessage> realMsgs) {
+    final msgs = _chatMessagesByConversation[conversationKey];
+    if (msgs == null) return;
+    msgs.removeWhere((m) => m.clientMessageId == clientId);
+    msgs.addAll(realMsgs);
+    _chatMessagesByConversation[conversationKey] = msgs;
+  }
+
+  /// Mark optimistic messages as failed (remove them)
+  void _failOptimisticMessages(
+      String conversationKey, String clientId, String error) {
+    final msgs = _chatMessagesByConversation[conversationKey];
+    if (msgs == null) return;
+    msgs.removeWhere((m) => m.clientMessageId == clientId);
+    _chatMessagesByConversation[conversationKey] = msgs;
+    debugPrint('Upload failed ($clientId): $error');
+    if (mounted) setState(() {});
+  }
+
 
   Future<void> _pickAndSendVideo(TaskStore store) async {
     final video = await _imagePicker.pickVideo(
@@ -2259,10 +2343,10 @@ class _HomePageState extends State<HomePage> {
     );
     if (video == null) return;
 
-    // Check file size before proceeding
+    // Check file size
     try {
       final sizeBytes = await video.length();
-      const maxBytes = 190 * 1024 * 1024; // 190MB (server limit is 200MB)
+      const maxBytes = 190 * 1024 * 1024;
       if (sizeBytes > maxBytes) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -2271,11 +2355,9 @@ class _HomePageState extends State<HomePage> {
         }
         return;
       }
-    } catch (_) {
-      // Can't check size, proceed anyway
-    }
+    } catch (_) {}
 
-    // Optional video caption
+    // Optional caption
     String caption = '';
     if (mounted) {
       final captionCtl = TextEditingController();
@@ -2310,49 +2392,51 @@ class _HomePageState extends State<HomePage> {
     final api = store.repository.api;
     final db = store.repository.db;
     final conversationKey = _activeConversationKey;
+    if (conversationKey.isEmpty) return;
 
-    // Show upload progress
-    final progressCtl = ValueNotifier<String>('Чтение видео...');
-    final uploadDialog = mounted
-        ? showDialog<void>(
-            context: context,
-            barrierDismissible: false,
-            builder: (ctx) => PopScope(
-              canPop: false,
-              child: AlertDialog(
-                title: const Text('Отправка видео'),
-                content: ValueListenableBuilder<String>(
-                  valueListenable: progressCtl,
-                  builder: (_, status, __) => Row(
-                    children: [
-                      const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(child: Text(status)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          )
-        : null;
+    final clientId = 'vid-${DateTime.now().microsecondsSinceEpoch}';
+    final nowIso = DateTime.now().toIso8601String();
+
+    // Create optimistic message immediately
+    final optMsg = ChatMessage(
+      id: '$clientId-0',
+      conversationKey: conversationKey,
+      senderProfile: actor,
+      messageType: 'video',
+      text: caption,
+      createdAt: nowIso,
+      clientMessageId: clientId,
+      isUploading: true,
+      uploadProgress: 0.0,
+    );
+    final msgs = List<ChatMessage>.from(
+      _chatMessagesByConversation[conversationKey] ?? const [],
+    );
+    msgs.add(optMsg);
+    _chatMessagesByConversation[conversationKey] = msgs;
+    if (mounted) setState(() {});
 
     try {
-      progressCtl.value = 'Чтение видео...';
+      // Read file
+      _updateUploadProgress(conversationKey, clientId, 0, 1, 0.0);
       final bytes = await video.readAsBytes();
 
-      progressCtl.value = 'Загрузка на сервер...';
-      final uploaded = await api.chatUploadSticker(
+      _updateUploadProgress(conversationKey, clientId, 0, 1, 0.1);
+
+      // Upload with progress
+      final uploaded = await api.chatUploadMedia(
         actorProfile: actor,
         bytes: bytes,
         filename: video.name,
+        onProgress: (progress) {
+          final p = 0.1 + (progress * 0.7);
+          _updateUploadProgress(conversationKey, clientId, 0, 1, p);
+        },
       );
+
+      _updateUploadProgress(conversationKey, clientId, 0, 1, 0.85);
       final meta = Map<String, dynamic>.from(uploaded.imageMeta);
 
-      progressCtl.value = 'Отправка сообщения...';
       final attachment = ChatAttachment(
         kind: 'video',
         assetUrl: uploaded.assetUrl,
@@ -2360,32 +2444,26 @@ class _HomePageState extends State<HomePage> {
         sortOrder: 0,
       );
 
+      _updateUploadProgress(conversationKey, clientId, 0, 1, 0.95);
+
       final message = await api.chatSendMessage(
         actorProfile: actor,
         conversationKey: conversationKey,
         messageType: 'video',
         text: caption,
         attachments: [attachment],
-        clientMessageId: 'vid-${DateTime.now().microsecondsSinceEpoch}',
+        clientMessageId: clientId,
       );
+
+      _replaceOptimisticMessages(conversationKey, clientId, [message]);
       await db.upsertMessages([message]);
-      await _refreshConversation(
-        store,
-        conversationKey,
-        useNetwork: true,
-        quiet: true,
-      );
+      if (mounted) setState(() {});
     } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка отправки видео: $error')),
-      );
-    } finally {
-      if (mounted && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
+      _failOptimisticMessages(conversationKey, clientId, error.toString());
       if (mounted) {
-        setState(() => _videoUploading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка отправки видео: $error')),
+        );
       }
     }
   }

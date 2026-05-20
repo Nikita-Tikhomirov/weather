@@ -553,6 +553,19 @@ class ApiClient {
     required List<int> bytes,
     String filename = 'sticker.png',
   }) async {
+    return chatUploadMedia(
+      actorProfile: actorProfile,
+      bytes: bytes,
+      filename: filename,
+    );
+  }
+
+  Future<ChatUploadResult> chatUploadMedia({
+    required String actorProfile,
+    required List<int> bytes,
+    required String filename,
+    void Function(double progress)? onProgress,
+  }) async {
     final request = http.MultipartRequest(
       'POST',
       Uri.parse('$baseUrl/chat/stickers/upload'),
@@ -563,10 +576,24 @@ class ApiClient {
       http.MultipartFile.fromBytes('image', bytes, filename: filename),
     );
 
-    final response = await request.send();
-    final text = await response.stream.bytesToString();
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('Sticker upload failed: ${response.statusCode} $text');
+    final streamedResponse = await request.send();
+    final totalBytes = streamedResponse.contentLength ?? bytes.length;
+    var receivedBytes = 0;
+    final chunks = <int>[];
+
+    await for (final chunk in streamedResponse.stream) {
+      chunks.addAll(chunk);
+      receivedBytes += chunk.length;
+      if (onProgress != null && totalBytes > 0) {
+        onProgress((receivedBytes / totalBytes).clamp(0.0, 1.0));
+      }
+    }
+
+    final text = utf8.decode(chunks);
+    if (streamedResponse.statusCode < 200 ||
+        streamedResponse.statusCode >= 300) {
+      throw StateError(
+          'Upload failed: ${streamedResponse.statusCode} $text');
     }
 
     final body = jsonDecode(text) as Map<String, dynamic>;
