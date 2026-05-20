@@ -784,13 +784,8 @@ class _HomePageState extends State<HomePage> {
     _fcm = FcmService(
       api: api,
       actorProfile: owner,
-      onForegroundText: (text) {
-        if (!mounted) {
-          return;
-        }
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(text)));
+      onForegroundText: (_) {
+        // No snackbar — only system notification is shown
       },
       onDiagnosticsChanged: (text) {
         debugPrint('FCM diagnostics: $text');
@@ -1046,6 +1041,26 @@ class _HomePageState extends State<HomePage> {
     });
     // Signal to Android that Flutter is ready to receive share data
     channel.invokeMethod('ready');
+  }
+
+  Future<void> _refreshChatBootstrap(TaskStore store) async {
+    try {
+      final bootstrap = await store.repository.api.chatBootstrap(
+        actorProfile: store.owner.value,
+      );
+      await store.repository.db.replaceConversations(bootstrap.conversations);
+      await store.repository.db.replaceStickerPacks(bootstrap.stickerPacks);
+      final contacts = bootstrap.contacts;
+      if (mounted) {
+        setState(() {
+          _chatContacts = contacts;
+          _chatConversations = bootstrap.conversations;
+          _chatStickerPacks = bootstrap.stickerPacks;
+        });
+      }
+    } catch (_) {
+      // Silently fail — user will see stale data
+    }
   }
 
   Future<void> _initChat(TaskStore store) async {
@@ -2147,6 +2162,119 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _openManageGroupSheet(TaskStore store, ChatConversation conv) async {
+    final members = List<String>.from(conv.members);
+    final isOwner = members.isNotEmpty && members.first == store.owner.value;
+
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(builder: (ctx, setSheetState) {
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    conv.title.isNotEmpty ? conv.title : 'Группа',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: [
+                        for (final profile in members)
+                          ListTile(
+                            leading: const CircleAvatar(child: Icon(Icons.person)),
+                            title: Text(_profileLabel(profile)),
+                            trailing: isOwner && profile != store.owner.value
+                                ? IconButton(
+                                    icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                                    onPressed: () async {
+                                      setSheetState(() => members.remove(profile));
+                                      try {
+                                        await store.repository.api.removeGroupMember(
+                                          actorProfile: store.owner.value,
+                                          conversationKey: conv.conversationKey,
+                                          profile: profile,
+                                        );
+                                      } catch (_) {}
+                                    },
+                                  )
+                                : null,
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Divider(),
+                  if (isOwner)
+                    ListTile(
+                      leading: const Icon(Icons.person_add),
+                      title: const Text('Добавить участника'),
+                      onTap: () async {
+                        Navigator.of(sheetContext).pop();
+                        await _addMemberToGroup(store, conv);
+                      },
+                    ),
+                ],
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  Future<void> _addMemberToGroup(TaskStore store, ChatConversation conv) async {
+    final available = _chatContacts
+        .where((c) => !conv.members.contains(c.profileKey))
+        .toList();
+    if (available.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Нет доступных контактов')),
+        );
+      }
+      return;
+    }
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Выбрать участника'),
+        children: available
+            .map((c) => SimpleDialogOption(
+                  onPressed: () => Navigator.pop(ctx, c.profileKey),
+                  child: Text(_contactLabel(c)),
+                ))
+            .toList(),
+      ),
+    );
+    if (selected == null) return;
+    try {
+      await store.repository.api.addGroupMember(
+        actorProfile: store.owner.value,
+        conversationKey: conv.conversationKey,
+        profile: selected,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${_profileLabel(selected)} добавлен')),
+        );
+      }
+      await _refreshChatBootstrap(store);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $error')),
+        );
+      }
+    }
+  }
+
   Future<void> _sendPhotos(
     TaskStore store, {
     required ImageSource source,
@@ -2660,6 +2788,7 @@ class _HomePageState extends State<HomePage> {
         });
       },
       onOpenAttachMenu: () => _openAttachMenu(store),
+      onManageGroup: (conv) => _openManageGroupSheet(store, conv),
       onStartRecord: () => _startRecord(store),
       onStopRecord: () => _stopRecord(store),
       onSendText: () => _sendTextMessage(store),

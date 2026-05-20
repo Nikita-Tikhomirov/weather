@@ -467,7 +467,42 @@ class SyncController extends Controller
         }
 
         $this->repo->registerEvent($eventId, $source);
-        $queued = $this->pushOutbox->enqueueFromEvent($eventId, $actor, $entity, $action, $payload);
+
+        // Only send push for meaningful task events: create, delete, or done
+        $shouldPush = true;
+        if ($entity === 'task' && $action === 'upsert') {
+            $taskId = trim((string)($payload['id'] ?? ''));
+            $owner = trim((string)($payload['owner_key'] ?? $actor));
+            $storedId = $this->repo->taskStorageId($owner, $taskId, false);
+            $existing = $this->repo->findTask($storedId);
+            $isNew = $existing === null;
+            $newStatus = (string)($payload['workflow_status'] ?? '');
+            $wasDone = $existing !== null && ($existing['workflow_status'] ?? '') === 'done';
+            $isDone = $newStatus === 'done' && !$wasDone;
+
+            // Only push on create, or transition to done
+            if (!$isNew && !$isDone) {
+                $shouldPush = false;
+            }
+        }
+        if ($entity === 'family_task' && $action === 'upsert') {
+            $taskId = trim((string)($payload['id'] ?? ''));
+            $existing = $this->repo->findFamilyTask($taskId);
+            $isNew = $existing === null;
+            $newStatus = (string)($payload['workflow_status'] ?? '');
+            $wasDone = $existing !== null && ($existing['workflow_status'] ?? '') === 'done';
+            $isDone = $newStatus === 'done' && !$wasDone;
+            if (!$isNew && !$isDone) {
+                $shouldPush = false;
+            }
+        }
+        if ($action === 'delete') {
+            $shouldPush = true;
+        }
+
+        $queued = $shouldPush
+            ? $this->pushOutbox->enqueueFromEvent($eventId, $actor, $entity, $action, $payload)
+            : 0;
 
         return ['status' => 'accepted', 'push_queued' => $queued];
     }

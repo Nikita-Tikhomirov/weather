@@ -241,6 +241,42 @@ class ChatController extends Controller
         }
     }
 
+    public function addMember(Request $request): JsonResponse
+    {
+        try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
+            $conversationKey = trim((string)$request->input('conversation_key', ''));
+            $profile = trim((string)$request->input('profile', ''));
+            if ($profile === '') {
+                throw new InvalidArgumentException('profile is required');
+            }
+            $this->chat->addMember($actor, $conversationKey, $profile);
+            return $this->json(200, ['ok' => true]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function removeMember(Request $request): JsonResponse
+    {
+        try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
+            $conversationKey = trim((string)$request->input('conversation_key', ''));
+            $profile = trim((string)$request->input('profile', ''));
+            if ($profile === '') {
+                throw new InvalidArgumentException('profile is required');
+            }
+            $this->chat->removeMember($actor, $conversationKey, $profile);
+            return $this->json(200, ['ok' => true]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
     public function deleteMessage(Request $request): JsonResponse
     {
         try {

@@ -41,6 +41,7 @@ class MessengerPage extends StatelessWidget {
     required this.onStartRecord,
     required this.onStopRecord,
     required this.onSendText,
+    required this.onManageGroup,
     this.avatarForContact,
   });
 
@@ -79,6 +80,7 @@ class MessengerPage extends StatelessWidget {
   final VoidCallback onStartRecord;
   final VoidCallback onStopRecord;
   final VoidCallback onSendText;
+  final void Function(ChatConversation conv) onManageGroup;
 
   @override
   Widget build(BuildContext context) {
@@ -88,24 +90,27 @@ class MessengerPage extends StatelessWidget {
         projects: projects,
         contactLabel: contactLabel,
         avatarForContact: avatarForContact,
+        groupConversations: conversations,
+        groupLabel: conversationLabel,
         onRefreshContacts: onRefreshContacts,
         onCreateGroup: onCreateGroup,
         onAddContactToFamily: onAddContactToFamily,
         onOpenDirectContact: onOpenDirectContact,
         onOpenProjectContact: onOpenProjectContact,
         onOpenBridgeSettings: onOpenBridgeSettings,
+        onOpenConversation: onOpenConversation,
+        onManageGroup: onManageGroup,
       );
     }
 
     return Column(
       children: [
-        _ConversationChooser(
-          conversations: conversations,
+        _ChatHeader(
           activeConversationKey: activeConversationKey,
-          owner: owner,
+          conversations: conversations,
           conversationLabel: conversationLabel,
+          owner: owner,
           onBackToContacts: onBackToContacts,
-          onOpenConversation: onOpenConversation,
         ),
         Expanded(
           child: ChatMessagesList(
@@ -151,18 +156,26 @@ class _ContactList extends StatelessWidget {
     required this.onOpenDirectContact,
     required this.onOpenProjectContact,
     required this.onOpenBridgeSettings,
+    required this.groupConversations,
+    required this.groupLabel,
+    required this.onOpenConversation,
+    required this.onManageGroup,
     this.avatarForContact,
   });
 
   final List<ChatContact> contacts;
   final List<ProjectContact> projects;
+  final List<ChatConversation> groupConversations;
   final String Function(ChatContact contact) contactLabel;
+  final String Function(ChatConversation conv, String owner) groupLabel;
   final VoidCallback onRefreshContacts;
   final VoidCallback onCreateGroup;
   final void Function(ChatContact contact) onAddContactToFamily;
   final void Function(ChatContact contact) onOpenDirectContact;
   final void Function(ProjectContact project) onOpenProjectContact;
   final VoidCallback onOpenBridgeSettings;
+  final void Function(String conversationKey) onOpenConversation;
+  final void Function(ChatConversation conv) onManageGroup;
   final String? Function(String profileKey)? avatarForContact;
 
   Widget _buildContactAvatar(ChatContact contact) {
@@ -210,6 +223,29 @@ class _ContactList extends StatelessWidget {
         Expanded(
           child: ListView(
             children: [
+              if (groupConversations.isNotEmpty) ...[
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 8, 8, 4),
+                  child: Text(
+                    'Группы',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                ...groupConversations.map((conv) {
+                  return ListTile(
+                    leading: const CircleAvatar(
+                      child: Icon(Icons.group),
+                    ),
+                    title: Text(groupLabel(conv, '')),
+                    onTap: () => onOpenConversation(conv.conversationKey),
+                    onLongPress: () => onManageGroup(conv),
+                  );
+                }),
+                const Divider(height: 24),
+              ],
               if (contacts.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(16),
@@ -277,50 +313,59 @@ class _ContactList extends StatelessWidget {
   }
 }
 
-class _ConversationChooser extends StatelessWidget {
-  const _ConversationChooser({
-    required this.conversations,
+class _ChatHeader extends StatelessWidget {
+  const _ChatHeader({
     required this.activeConversationKey,
-    required this.owner,
+    required this.conversations,
     required this.conversationLabel,
+    required this.owner,
     required this.onBackToContacts,
-    required this.onOpenConversation,
   });
 
-  final List<ChatConversation> conversations;
   final String activeConversationKey;
-  final String owner;
+  final List<ChatConversation> conversations;
   final String Function(ChatConversation conversation, String actor)
       conversationLabel;
+  final String owner;
   final VoidCallback onBackToContacts;
-  final void Function(String conversationKey) onOpenConversation;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 76,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    final conv = conversations.firstWhere(
+      (c) => c.conversationKey == activeConversationKey,
+      orElse: () => conversations.isEmpty
+          ? ChatConversation(
+              conversationKey: activeConversationKey,
+              kind: 'direct',
+              title: '',
+              members: const [],
+            )
+          : conversations.first,
+    );
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
+      ),
+      child: Row(
         children: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ActionChip(
-              avatar: const Icon(Icons.arrow_back, size: 18),
-              label: const Text('Контакты'),
-              onPressed: onBackToContacts,
-            ),
+          IconButton(
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'Контакты',
+            onPressed: onBackToContacts,
           ),
-          for (final conversation in conversations)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                label: Text(conversationLabel(conversation, owner)),
-                selected: activeConversationKey == conversation.conversationKey,
-                onSelected: (_) =>
-                    onOpenConversation(conversation.conversationKey),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              conversationLabel(conv, owner),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
               ),
             ),
+          ),
         ],
       ),
     );
@@ -353,6 +398,7 @@ class _ChatComposer extends StatelessWidget {
   final VoidCallback onStartRecord;
   final VoidCallback onStopRecord;
   final VoidCallback onSendText;
+  final void Function(ChatConversation conv) onManageGroup;
 
   @override
   Widget build(BuildContext context) {

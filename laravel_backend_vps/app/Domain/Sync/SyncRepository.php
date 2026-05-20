@@ -96,6 +96,34 @@ final class SyncRepository
         return $storedId;
     }
 
+    public function findTask(string $storedId): ?array
+    {
+        $row = DB::table('tasks')->where('id', $storedId)->first();
+        if ($row === null) {
+            return null;
+        }
+        return [
+            'id' => (string) $row->id,
+            'owner_key' => (string) $row->owner_key,
+            'is_family' => (bool) $row->is_family,
+            'title' => (string) $row->title,
+            'workflow_status' => (string) $row->workflow_status,
+        ];
+    }
+
+    public function findFamilyTask(string $taskId): ?array
+    {
+        $row = DB::table('family_tasks')->where('id', $taskId)->first();
+        if ($row === null) {
+            return null;
+        }
+        return [
+            'id' => (string) $row->id,
+            'title' => (string) $row->title,
+            'workflow_status' => (string) $row->workflow_status,
+        ];
+    }
+
     public function upsertTask(array $task): void
     {
         $ownerKey = (string)$task['owner_key'];

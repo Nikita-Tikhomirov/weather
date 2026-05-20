@@ -604,6 +604,36 @@ class ApiClient {
     );
   }
 
+  Future<void> addGroupMember({
+    required String actorProfile,
+    required String conversationKey,
+    required String profile,
+  }) async {
+    await _postWithFallback(
+      paths: const ['/chat/conversations/members/add'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'conversation_key': conversationKey,
+        'profile': profile,
+      }),
+    );
+  }
+
+  Future<void> removeGroupMember({
+    required String actorProfile,
+    required String conversationKey,
+    required String profile,
+  }) async {
+    await _postWithFallback(
+      paths: const ['/chat/conversations/members/remove'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'conversation_key': conversationKey,
+        'profile': profile,
+      }),
+    );
+  }
+
   Future<List<StickerPack>> chatStickerPacks() async {
     final response =
         await _getWithFallback(paths: const ['/chat/stickers/packs']);

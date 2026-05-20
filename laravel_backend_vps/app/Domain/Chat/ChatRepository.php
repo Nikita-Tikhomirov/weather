@@ -289,6 +289,57 @@ final class ChatRepository
             ->all();
     }
 
+    public function addMember(string $actor, string $conversationKey, string $profile): void
+    {
+        $actor = $this->resolveLegacyProfile($actor);
+        $profile = $this->resolveLegacyProfile($profile);
+        $this->ensureActor($profile);
+        $conversation = $this->resolveConversationForActor($actor, $conversationKey);
+
+        // Only group conversations support member management
+        $convKind = (string) $conversation->kind;
+        if ($convKind !== 'group') {
+            throw new InvalidArgumentException('Can only add members to group conversations');
+        }
+
+        // Check if already a member
+        $isMember = DB::table('chat_conversation_members')
+            ->where('conversation_id', (int) $conversation->id)
+            ->where('profile_key', $profile)
+            ->exists();
+        if ($isMember) {
+            return;
+        }
+
+        $now = $this->nowIso();
+        DB::table('chat_conversation_members')->insert([
+            'conversation_id' => (int) $conversation->id,
+            'profile_key' => $profile,
+            'joined_at' => $now,
+        ]);
+    }
+
+    public function removeMember(string $actor, string $conversationKey, string $profile): void
+    {
+        $actor = $this->resolveLegacyProfile($actor);
+        $profile = $this->resolveLegacyProfile($profile);
+        $conversation = $this->resolveConversationForActor($actor, $conversationKey);
+
+        $convKind = (string) $conversation->kind;
+        if ($convKind !== 'group') {
+            throw new InvalidArgumentException('Can only remove members from group conversations');
+        }
+
+        if ($profile === $actor) {
+            throw new InvalidArgumentException('Cannot remove yourself');
+        }
+
+        DB::table('chat_conversation_members')
+            ->where('conversation_id', (int) $conversation->id)
+            ->where('profile_key', $profile)
+            ->delete();
+    }
+
     public function editMessage(string $actor, string $messageId, string $text): array
     {
         $actor = $this->resolveLegacyProfile($actor);
