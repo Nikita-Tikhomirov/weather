@@ -79,6 +79,7 @@ class _HomePageState extends State<HomePage> {
   final List<BridgeMessage> _projectMessages = <BridgeMessage>[];
   List<ProjectFileNode> _projectFiles = const <ProjectFileNode>[];
   String _projectFileTreePath = '';
+  bool _projectFilesLoading = false;
   void Function(void Function())? _fileSheetSetState;
   ValueNotifier<String>? _pendingFileContent;
   String? _pendingFilePath;
@@ -118,10 +119,9 @@ class _HomePageState extends State<HomePage> {
     final savedOwner = prefs.getString('actor_profile')?.trim() ?? '';
     _currentProfileDisplayName =
         prefs.getString('profile_display_name')?.trim() ?? '';
-    _currentProfilePhone =
-        prefs.getString('profile_phone')?.trim() ?? '';
-    _currentProfileAvatarUrl =
-        prefs.getString('avatar_${savedOwner.isNotEmpty ? savedOwner : 'default'}');
+    _currentProfilePhone = prefs.getString('profile_phone')?.trim() ?? '';
+    _currentProfileAvatarUrl = prefs
+        .getString('avatar_${savedOwner.isNotEmpty ? savedOwner : 'default'}');
     final api = ApiClient(
       baseUrl: const String.fromEnvironment(
         'API_BASE_URL',
@@ -195,6 +195,21 @@ class _HomePageState extends State<HomePage> {
           !_isProjectConversation(conversationKey)) {
         store.setPage(4);
         await _openConversation(store, conversationKey);
+      } else if (pushType == 'call_incoming') {
+        final sessionId = (pending['session_id'] ?? '').toString();
+        final callType = (pending['call_type'] ?? 'audio').toString();
+        final callerProfile = (pending['caller_profile'] ?? '').toString();
+        if (sessionId.isNotEmpty) {
+          _callService?.notifyIncomingCall(CallSession(
+            sessionId: sessionId,
+            callerProfile: callerProfile,
+            calleeProfile: store.owner.value,
+            conversationKey: conversationKey,
+            callType: callType,
+            status: 'ringing',
+            createdAt: DateTime.now().toIso8601String(),
+          ));
+        }
       } else {
         await _refreshActiveConversation(store, useNetwork: true, quiet: true);
       }
@@ -1078,11 +1093,13 @@ class _HomePageState extends State<HomePage> {
           }
         }
         setState(() => _activeConversationKey = conversationKey);
-      // Mark messages as read
-      store.repository.api.chatMarkRead(
-        actorProfile: store.owner.value,
-        conversationKey: conversationKey,
-      ).catchError((_) {});
+        // Mark messages as read
+        store.repository.api
+            .chatMarkRead(
+              actorProfile: store.owner.value,
+              conversationKey: conversationKey,
+            )
+            .catchError((_) {});
         await _refreshConversation(store, conversationKey,
             useNetwork: true, quiet: true);
       } catch (_) {
@@ -1285,7 +1302,8 @@ class _HomePageState extends State<HomePage> {
     _activeProjectSessionId = savedSessionId;
 
     // Load persisted messages from database
-    final savedRows = await db.loadProjectMessages(projectId: projectId, limit: 300);
+    final savedRows =
+        await db.loadProjectMessages(projectId: projectId, limit: 300);
     final restoredMessages = savedRows.map((row) {
       return BridgeMessage(
         type: (row['type'] ?? '').toString(),
@@ -1305,7 +1323,8 @@ class _HomePageState extends State<HomePage> {
     });
 
     // Only dispose existing bridge if connecting to a different project
-    if (_projectBridge != null && _projectBridge!.activeProjectId != projectId) {
+    if (_projectBridge != null &&
+        _projectBridge!.activeProjectId != projectId) {
       _projectBridge?.dispose();
       _projectBridge = null;
     }
@@ -1321,7 +1340,9 @@ class _HomePageState extends State<HomePage> {
           if (msg.isHistory) {
             // History replay: only add messages we don't already have
             final existingTexts = _projectMessages.map((m) => m.text).toSet();
-            final newMsgs = msg.messages.where((m) => !existingTexts.contains(m.text)).toList();
+            final newMsgs = msg.messages
+                .where((m) => !existingTexts.contains(m.text))
+                .toList();
             if (newMsgs.isNotEmpty) {
               setState(() => _projectMessages.addAll(newMsgs));
             }
@@ -1346,10 +1367,10 @@ class _HomePageState extends State<HomePage> {
                   msg.projects.map((p) => ProjectContact.fromJson(p)).toList();
             });
           }
-          if (msg.isFiles && msg.files.isNotEmpty) {
+          if (msg.isFiles) {
             setState(() {
               _projectFiles = msg.files;
-              _projectFileTreePath = '';
+              _projectFilesLoading = false;
             });
             _fileSheetSetState?.call(() {});
           }
@@ -1428,7 +1449,8 @@ class _HomePageState extends State<HomePage> {
     final sessionId = msg.sessionId.isNotEmpty
         ? msg.sessionId
         : (_activeProjectSessionId ?? '');
-    final id = '${msg.type}_${msg.text.hashCode}_${DateTime.now().microsecondsSinceEpoch}';
+    final id =
+        '${msg.type}_${msg.text.hashCode}_${DateTime.now().microsecondsSinceEpoch}';
     db.saveProjectMessage(
       id: id,
       projectId: projectId,
@@ -1867,7 +1889,8 @@ class _HomePageState extends State<HomePage> {
     final serverIds = serverMsgs.map((m) => m.id).toSet();
     var changed = false;
     for (var i = 0; i < local.length; i++) {
-      if (local[i].deliveryStatus == 'sent' && serverIds.contains(local[i].id)) {
+      if (local[i].deliveryStatus == 'sent' &&
+          serverIds.contains(local[i].id)) {
         local[i] = local[i].copyWith(deliveryStatus: 'delivered');
         changed = true;
       }
@@ -1917,7 +1940,7 @@ class _HomePageState extends State<HomePage> {
                 : '');
         finalText = '> $senderLabel: [photo:$url] ${replyTo.text}\n$text';
       } else if (replyTo.messageType == 'video' ||
-                 replyTo.messageType == 'video_group') {
+          replyTo.messageType == 'video_group') {
         final url = (replyTo.imageUrl ?? '').isNotEmpty
             ? replyTo.imageUrl!
             : (replyTo.attachments.isNotEmpty
@@ -2108,10 +2131,12 @@ class _HomePageState extends State<HomePage> {
       // Navigate to the conversation
       setState(() => _activeConversationKey = conversationKey);
       // Mark messages as read
-      store.repository.api.chatMarkRead(
-        actorProfile: store.owner.value,
-        conversationKey: conversationKey,
-      ).catchError((_) {});
+      store.repository.api
+          .chatMarkRead(
+            actorProfile: store.owner.value,
+            conversationKey: conversationKey,
+          )
+          .catchError((_) {});
       await _refreshConversation(store, conversationKey,
           useNetwork: true, quiet: true);
       if (mounted) {
@@ -2321,7 +2346,8 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _openManageGroupSheet(TaskStore store, ChatConversation conv) async {
+  Future<void> _openManageGroupSheet(
+      TaskStore store, ChatConversation conv) async {
     final members = List<String>.from(conv.members);
     final isOwner = members.isNotEmpty && members.first == store.owner.value;
 
@@ -2339,7 +2365,8 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Text(
                     conv.title.isNotEmpty ? conv.title : 'Группа',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 8),
                   Flexible(
@@ -2348,15 +2375,20 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         for (final profile in members)
                           ListTile(
-                            leading: const CircleAvatar(child: Icon(Icons.person)),
+                            leading:
+                                const CircleAvatar(child: Icon(Icons.person)),
                             title: Text(_profileLabel(profile)),
                             trailing: isOwner && profile != store.owner.value
                                 ? IconButton(
-                                    icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                                    icon: const Icon(
+                                        Icons.remove_circle_outline,
+                                        color: Colors.red),
                                     onPressed: () async {
-                                      setSheetState(() => members.remove(profile));
+                                      setSheetState(
+                                          () => members.remove(profile));
                                       try {
-                                        await store.repository.api.removeGroupMember(
+                                        await store.repository.api
+                                            .removeGroupMember(
                                           actorProfile: store.owner.value,
                                           conversationKey: conv.conversationKey,
                                           profile: profile,
@@ -2577,8 +2609,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// Update upload progress for an optimistic message
-  void _updateUploadProgress(String conversationKey, String clientId,
-      int index, int total, double progress) {
+  void _updateUploadProgress(String conversationKey, String clientId, int index,
+      int total, double progress) {
     final msgs = _chatMessagesByConversation[conversationKey];
     if (msgs == null) return;
     for (var i = 0; i < msgs.length; i++) {
@@ -2623,7 +2655,6 @@ class _HomePageState extends State<HomePage> {
     if (mounted) setState(() {});
   }
 
-
   Future<void> _pickAndSendVideo(TaskStore store) async {
     final video = await _imagePicker.pickVideo(
       source: ImageSource.gallery,
@@ -2637,7 +2668,8 @@ class _HomePageState extends State<HomePage> {
       if (sizeBytes > maxBytes) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Видео слишком большое. Максимум 190 МБ.')),
+            const SnackBar(
+                content: Text('Видео слишком большое. Максимум 190 МБ.')),
           );
         }
         return;
@@ -3093,6 +3125,7 @@ class _HomePageState extends State<HomePage> {
     // Request file tree, then show bottom sheet
     _projectFiles = [];
     _projectFileTreePath = '';
+    _projectFilesLoading = true;
     _projectBridge?.requestFileTree();
     setState(() {
       _projectMessages.add(BridgeMessage(
@@ -3115,9 +3148,12 @@ class _HomePageState extends State<HomePage> {
               project: project,
               files: _projectFiles,
               currentPath: _projectFileTreePath,
+              isLoading: _projectFilesLoading,
               onNavigate: (path) {
                 setState(() {
                   _projectFileTreePath = path;
+                  _projectFiles = [];
+                  _projectFilesLoading = true;
                 });
                 setSheetState(() {});
                 _projectBridge?.requestFileList(path);
@@ -3125,6 +3161,7 @@ class _HomePageState extends State<HomePage> {
               onRefresh: () {
                 _projectFiles = [];
                 _projectFileTreePath = '';
+                _projectFilesLoading = true;
                 setSheetState(() {});
                 _projectBridge?.requestFileTree();
               },
@@ -3145,6 +3182,8 @@ class _HomePageState extends State<HomePage> {
                 _projectBridge?.requestFileList(filePath);
                 setState(() {
                   _projectFileTreePath = filePath;
+                  _projectFiles = [];
+                  _projectFilesLoading = true;
                 });
                 setSheetState(() {});
               },

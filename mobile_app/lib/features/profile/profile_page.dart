@@ -52,8 +52,6 @@ class _ProfilePageState extends State<ProfilePage> {
     if (xfile == null) return;
 
     final filePath = xfile.path;
-    // Store locally as base64 in SharedPreferences for simplicity
-    final bytes = await File(filePath).readAsBytes();
     final prefs = await SharedPreferences.getInstance();
     final key = 'avatar_${widget.profileKey}';
     await prefs.setString(key, filePath);
@@ -88,10 +86,10 @@ class _ProfilePageState extends State<ProfilePage> {
               onTap: _pickAvatar,
               child: CircleAvatar(
                 radius: 60,
-                backgroundImage: widget.avatarUrl != null &&
-                        widget.avatarUrl!.isNotEmpty
-                    ? FileImage(File(widget.avatarUrl!))
-                    : null,
+                backgroundImage:
+                    widget.avatarUrl != null && widget.avatarUrl!.isNotEmpty
+                        ? FileImage(File(widget.avatarUrl!))
+                        : null,
                 child: widget.avatarUrl == null || widget.avatarUrl!.isEmpty
                     ? const Icon(Icons.person, size: 60)
                     : null,

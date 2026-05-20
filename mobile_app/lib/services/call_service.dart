@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
@@ -22,7 +21,6 @@ class CallService {
 
   RTCPeerConnection? _pc;
   MediaStream? _localStream;
-  MediaStream? _remoteStream;
   String? _sessionId;
   String _signalCursor = '0';
   Timer? _signalPoller;
@@ -205,7 +203,6 @@ class CallService {
     };
 
     _pc!.onAddStream = (stream) {
-      _remoteStream = stream;
       _remoteStreamController.add(stream);
     };
 
@@ -231,7 +228,8 @@ class CallService {
     };
 
     try {
-      _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+      _localStream =
+          await navigator.mediaDevices.getUserMedia(mediaConstraints);
       if (_localStream != null && _pc != null) {
         _pc!.addStream(_localStream!);
       }
@@ -247,6 +245,18 @@ class CallService {
         }
       }
     }
+  }
+
+  Future<void> setMicrophoneMuted(bool muted) async {
+    final tracks = _localStream?.getAudioTracks() ?? const <MediaStreamTrack>[];
+    for (final track in tracks) {
+      track.enabled = !muted;
+      await Helper.setMicrophoneMute(muted, track);
+    }
+  }
+
+  Future<void> setSpeakerOn(bool enabled) async {
+    await Helper.setSpeakerphoneOn(enabled);
   }
 
   void _startSignalPolling() {
@@ -381,7 +391,6 @@ class CallService {
       _pc = null;
     }
 
-    _remoteStream = null;
     _remoteStreamController.add(null);
     _sessionId = null;
     _signalCursor = '0';

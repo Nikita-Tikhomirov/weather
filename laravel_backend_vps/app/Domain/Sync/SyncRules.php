@@ -72,21 +72,12 @@ final class SyncRules
     public static function recipientsForPush(string $actor, string $entity, string $action, array $payload): array
     {
         if ($entity === 'family_task') {
-            // Notify all family profiles except the actor themselves
-            return array_values(array_filter(
-                Profiles::ALLOWED,
-                static fn (string $profile): bool => $profile !== $actor,
-            ));
+            return Profiles::ALLOWED;
         }
 
         $owner = trim((string)($payload['owner_key'] ?? $actor));
         if ($owner === '') {
             $owner = $actor;
-        }
-
-        // Don't push own task changes back to the actor
-        if ($owner === $actor) {
-            return [];
         }
 
         return (Profiles::isAllowed($owner) || self::profileExists($owner)) ? [$owner] : [];

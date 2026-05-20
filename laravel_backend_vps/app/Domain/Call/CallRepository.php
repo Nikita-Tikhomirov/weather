@@ -46,11 +46,14 @@ final class CallRepository
 
         // Check no active call between these two
         $existing = DB::table('call_sessions')
-            ->where(function ($q) use ($actor, $callee): void {
-                $q->where('caller_profile', $actor)->where('callee_profile', $callee);
-            })
-            ->orWhere(function ($q) use ($actor, $callee): void {
-                $q->where('caller_profile', $callee)->where('callee_profile', $actor);
+            ->where(function ($query) use ($actor, $callee): void {
+                $query
+                    ->where(function ($q) use ($actor, $callee): void {
+                        $q->where('caller_profile', $actor)->where('callee_profile', $callee);
+                    })
+                    ->orWhere(function ($q) use ($actor, $callee): void {
+                        $q->where('caller_profile', $callee)->where('callee_profile', $actor);
+                    });
             })
             ->whereIn('status', ['ringing', 'active'])
             ->first();

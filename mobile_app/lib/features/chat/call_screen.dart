@@ -29,10 +29,12 @@ class CallScreen extends StatefulWidget {
 class _CallScreenState extends State<CallScreen> {
   StreamSubscription<CallState>? _stateSub;
   StreamSubscription<MediaStream?>? _remoteStreamSub;
+  final RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
   CallState _currentState = CallState.calling;
   MediaStream? _remoteStream;
   Duration _duration = Duration.zero;
   Timer? _durationTimer;
+  bool _remoteRendererReady = false;
   bool _isMuted = false;
   bool _isSpeakerOn = true;
 
@@ -40,12 +42,13 @@ class _CallScreenState extends State<CallScreen> {
   void initState() {
     super.initState();
     _currentState = widget.isIncoming ? CallState.ringing : CallState.calling;
+    _initializeRemoteRenderer();
 
     _stateSub = widget.callService.onStateChange.listen((state) {
       if (!mounted) return;
       setState(() {
         _currentState = state;
-        if (state == CallState.connected && !_durationTimer?.isActive == true) {
+        if (state == CallState.connected && _durationTimer?.isActive != true) {
           _startDuration();
         }
         if (state == CallState.ended) {
@@ -59,6 +62,9 @@ class _CallScreenState extends State<CallScreen> {
 
     _remoteStreamSub = widget.callService.onRemoteStream.listen((stream) {
       if (!mounted) return;
+      if (_remoteRendererReady) {
+        _remoteRenderer.srcObject = stream;
+      }
       setState(() => _remoteStream = stream);
     });
 
@@ -74,7 +80,20 @@ class _CallScreenState extends State<CallScreen> {
     await widget.callService.startCall(
       conversationKey: widget.session.conversationKey,
       callType: widget.session.callType,
+      calleeProfile: widget.session.calleeProfile.isNotEmpty
+          ? widget.session.calleeProfile
+          : null,
     );
+  }
+
+  Future<void> _initializeRemoteRenderer() async {
+    await _remoteRenderer.initialize();
+    if (!mounted) {
+      await _remoteRenderer.dispose();
+      return;
+    }
+    _remoteRenderer.srcObject = _remoteStream;
+    setState(() => _remoteRendererReady = true);
   }
 
   void _startDuration() {
@@ -97,6 +116,7 @@ class _CallScreenState extends State<CallScreen> {
     _stateSub?.cancel();
     _remoteStreamSub?.cancel();
     _durationTimer?.cancel();
+    _remoteRenderer.dispose();
     super.dispose();
   }
 
@@ -110,7 +130,7 @@ class _CallScreenState extends State<CallScreen> {
           if (_remoteStream != null && widget.session.callType == 'video')
             Positioned.fill(
               child: RTCVideoView(
-                _remoteStream!,
+                _remoteRenderer,
                 objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
               ),
             )
@@ -229,11 +249,7 @@ class _CallScreenState extends State<CallScreen> {
             label: _isMuted ? 'Вкл. микро' : 'Микрофон',
             onTap: () {
               setState(() => _isMuted = !_isMuted);
-              // Toggle audio track
-              Helper.setVolume(
-                trackId: 'audio',
-                volume: _isMuted ? 0.0 : 1.0,
-              );
+              widget.callService.setMicrophoneMuted(_isMuted);
             },
           ),
           const SizedBox(width: 24),
@@ -255,10 +271,7 @@ class _CallScreenState extends State<CallScreen> {
             label: 'Динамик',
             onTap: () {
               setState(() => _isSpeakerOn = !_isSpeakerOn);
-              Helper.setVolume(
-                trackId: 'audio',
-                volume: _isSpeakerOn ? 1.0 : 0.5,
-              );
+              widget.callService.setSpeakerOn(_isSpeakerOn);
             },
           ),
         ],

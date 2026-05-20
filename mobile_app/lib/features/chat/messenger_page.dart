@@ -174,7 +174,6 @@ class _ContactList extends StatelessWidget {
     required this.groupLabel,
     required this.onOpenConversation,
     required this.onManageGroup,
-    this.typingUsers = const {},
     this.avatarForContact,
   });
 
@@ -197,12 +196,8 @@ class _ContactList extends StatelessWidget {
     final url = avatarForContact?.call(contact.profileKey);
     if (url != null && url.isNotEmpty) {
       return CircleAvatar(
-        backgroundImage: url.startsWith('http')
-            ? NetworkImage(url)
-            : null,
-        child: url.startsWith('http')
-            ? null
-            : const Icon(Icons.person),
+        backgroundImage: url.startsWith('http') ? NetworkImage(url) : null,
+        child: url.startsWith('http') ? null : const Icon(Icons.person),
       );
     }
     return const CircleAvatar(child: Icon(Icons.person));
@@ -413,8 +408,6 @@ class _TypingIndicator extends StatelessWidget {
 
   final String conversationKey;
   final Map<String, Set<String>> typingUsers;
-  final VoidCallback? onCallTap;
-  final VoidCallback? onVideoCallTap;
   final String owner;
   final String Function(String) profileLabel;
 

@@ -9,6 +9,7 @@ class ProjectFileBrowser extends StatelessWidget {
     required this.project,
     required this.files,
     required this.currentPath,
+    required this.isLoading,
     required this.onNavigate,
     required this.onRefresh,
     required this.onLinkToChat,
@@ -19,6 +20,7 @@ class ProjectFileBrowser extends StatelessWidget {
   final ProjectContact project;
   final List<ProjectFileNode> files;
   final String currentPath;
+  final bool isLoading;
   final void Function(String path) onNavigate;
   final VoidCallback onRefresh;
   final void Function(String filePath) onLinkToChat;
@@ -94,20 +96,30 @@ class ProjectFileBrowser extends StatelessWidget {
             ),
             const Divider(height: 1),
             if (files.isEmpty)
-              const Expanded(
+              Expanded(
                 child: Center(
                   child: Padding(
-                    padding: EdgeInsets.all(32),
+                    padding: const EdgeInsets.all(32),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        SizedBox(
-                          width: 48,
-                          height: 48,
-                          child: CircularProgressIndicator(strokeWidth: 3),
-                        ),
-                        SizedBox(height: 16),
-                        Text('Загрузка файлов...'),
+                        if (isLoading) ...[
+                          const SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: CircularProgressIndicator(strokeWidth: 3),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text('Загрузка файлов...'),
+                        ] else ...[
+                          Icon(
+                            Icons.folder_open,
+                            size: 48,
+                            color: Theme.of(context).disabledColor,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text('Папка пуста'),
+                        ],
                       ],
                     ),
                   ),
