@@ -66,7 +66,8 @@ class _HomePageState extends State<HomePage> {
   Timer? _incomingCallPollTimer;
   bool _desktopLogExpanded = false;
   DateTime _desktopMonth = DateTime(DateTime.now().year, DateTime.now().month);
-  String _fcmDiagnostics = 'FCM: not initialized';
+  final ValueNotifier<String> _fcmDiagnostics =
+      ValueNotifier('FCM: not initialized');
   final TextEditingController _chatInputCtl = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
   ChatRealtimeService? _chatRealtime;
@@ -808,9 +809,7 @@ class _HomePageState extends State<HomePage> {
   void _bindFcm({required ApiClient api, required String owner}) {
     _fcm?.dispose();
     if (mounted) {
-      setState(() {
-        _fcmDiagnostics = 'FCM: binding actor=$owner';
-      });
+      _fcmDiagnostics.value = 'FCM: binding actor=$owner';
     }
     _fcm = FcmService(
       api: api,
@@ -823,9 +822,7 @@ class _HomePageState extends State<HomePage> {
         if (!mounted) {
           return;
         }
-        setState(() {
-          _fcmDiagnostics = text;
-        });
+        _fcmDiagnostics.value = text;
       },
       onOpenPush: (data) async {
         final store = _store;
@@ -896,17 +893,22 @@ class _HomePageState extends State<HomePage> {
     showDialog<void>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('FCM диагностика'),
-          content: SingleChildScrollView(
-            child: SelectableText(_fcmDiagnostics),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Закрыть'),
-            ),
-          ],
+        return ValueListenableBuilder<String>(
+          valueListenable: _fcmDiagnostics,
+          builder: (context, text, _) {
+            return AlertDialog(
+              title: const Text('FCM диагностика'),
+              content: SingleChildScrollView(
+                child: SelectableText(text),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Закрыть'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -4564,6 +4566,7 @@ class _HomePageState extends State<HomePage> {
     unawaited(_desktopProcessHostService?.stopAll());
     _desktopThemeService?.state.dispose();
     _store?.dispose();
+    _fcmDiagnostics.dispose();
     super.dispose();
   }
 }
