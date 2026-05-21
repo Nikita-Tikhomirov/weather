@@ -402,6 +402,38 @@ class ProjectBridgeService {
     return true;
   }
 
+  /// Upload a file (image, document, etc.) to the selected project's vision/ folder.
+  bool sendUpload(
+    Uint8List bytes,
+    String fileName,
+    String mimeType, {
+    String caption = '',
+  }) {
+    if (bytes.isEmpty) {
+      return false;
+    }
+    if (bytes.length > maxProjectUploadBytes) {
+      onStatusChange(
+          false, 'Файл больше 15 МБ. Уменьшите файл или отправьте другой.');
+      return false;
+    }
+    if (!isConnected) {
+      onStatusChange(
+          false, 'Нет соединения, файл можно отправить после переподключения.');
+      _scheduleReconnect();
+      return false;
+    }
+    final message = jsonEncode({
+      'type': 'upload_file',
+      'filename': fileName.trim().isEmpty ? 'file.bin' : fileName.trim(),
+      'mime_type': mimeType.trim().isEmpty ? 'application/octet-stream' : mimeType.trim(),
+      'data_base64': base64Encode(bytes),
+      if (caption.trim().isNotEmpty) 'caption': caption.trim(),
+    });
+    _sendRaw('$message\n');
+    return true;
+  }
+
   /// Upload an image to the selected project's vision/ folder.
   bool sendImage({
     required String fileName,

@@ -88,6 +88,24 @@ IMAGE_EXTENSIONS = {
     "image/webp": ".webp",
     "image/gif": ".gif",
 }
+
+DOCUMENT_EXTENSIONS = {
+    "application/pdf": ".pdf",
+    "application/msword": ".doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    "application/vnd.ms-excel": ".xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+    "application/vnd.ms-powerpoint": ".ppt",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+    "text/plain": ".txt",
+    "text/csv": ".csv",
+    "application/zip": ".zip",
+    "application/vnd.rar": ".rar",
+    "application/x-7z-compressed": ".7z",
+    "audio/mpeg": ".mp3",
+    "video/mp4": ".mp4",
+    "application/octet-stream": ".bin",
+}
 RUNTIME_HOST = "127.0.0.1"
 RUNTIME_PORT = 7879
 RUNTIME_URL = f"http://{RUNTIME_HOST}:{RUNTIME_PORT}"
@@ -528,11 +546,17 @@ class ProjectSession:
         original = Path(filename or "").name
         stem = Path(original).stem
         ext = Path(original).suffix.lower()
+        mime = mime_type.lower()
         if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
-            ext = IMAGE_EXTENSIONS.get(mime_type.lower(), ".jpg")
+            # Try image extensions first, then document extensions
+            ext = IMAGE_EXTENSIONS.get(mime)
+            if ext is None:
+                ext = DOCUMENT_EXTENSIONS.get(mime)
+            if ext is None:
+                ext = ".bin"
         safe_stem = re.sub(r"[^A-Za-z0-9_.-]+", "_", stem).strip("._")
         if not safe_stem:
-            safe_stem = "photo"
+            safe_stem = "doc" if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif"} else "photo"
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         return f"{safe_stem}_{stamp}{ext}"
 

@@ -223,6 +223,67 @@ class ChatController extends Controller
         }
     }
 
+    public function uploadDocument(Request $request): JsonResponse
+    {
+        try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
+
+            $upload = $request->file('file');
+            if ($upload === null || !$upload->isValid()) {
+                throw new InvalidArgumentException('file is required');
+            }
+
+            $originalName = (string)$upload->getClientOriginalName();
+            $ext = strtolower((string)$upload->getClientOriginalExtension());
+            $allowed = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt',
+                         'csv', 'rtf', 'odt', 'ods', 'odp', 'zip', 'rar', '7z',
+                         'jpg', 'jpeg', 'png', 'webp', 'mp4', 'mov', 'webm', 'mkv',
+                         'mp3', 'm4a', 'ogg', 'wav'];
+            if ($ext === '' || !in_array($ext, $allowed, true)) {
+                $ext = (string)pathinfo($originalName, PATHINFO_EXTENSION);
+                if ($ext === '' || mb_strlen($ext) > 10 || !preg_match('/^[a-zA-Z0-9]+$/', $ext)) {
+                    $ext = 'bin';
+                }
+            }
+
+            $maxSize = 50 * 1024 * 1024; // 50 MB
+            if ((int)$upload->getSize() > $maxSize) {
+                throw new InvalidArgumentException('File is too large. Maximum 50 MB.');
+            }
+
+            $filename = sprintf('%s.%s', Str::ulid(), $ext);
+            $path = Storage::disk('public')->putFileAs('chat_documents', $upload, $filename);
+            if ($path === false) {
+                throw new InvalidArgumentException('Failed to upload file');
+            }
+            $publicDir = public_path('chat_documents');
+            if (!is_dir($publicDir) && !mkdir($publicDir, 0755, true) && !is_dir($publicDir)) {
+                throw new InvalidArgumentException('Failed to prepare public document directory');
+            }
+            $publicPath = $publicDir . DIRECTORY_SEPARATOR . $filename;
+            if (!copy(Storage::disk('public')->path($path), $publicPath)) {
+                throw new InvalidArgumentException('Failed to publish uploaded document');
+            }
+
+            $url = sprintf('/chat_documents/%s', $filename);
+            $meta = [
+                'size_bytes' => (int)$upload->getSize(),
+                'mime_type' => (string)$upload->getMimeType(),
+                'original_name' => $originalName,
+            ];
+
+            return $this->json(200, [
+                'ok' => true,
+                'asset_url' => $url,
+                'image_meta' => $meta,
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
     public function editMessage(Request $request): JsonResponse
     {
         try {
@@ -398,6 +459,17 @@ class ChatController extends Controller
         }
         if ($type === 'audio') {
             return '🎵 Аудио';
+        }
+        if ($type === 'file') {
+            $attachments = $message['attachments'] ?? [];
+            if (is_array($attachments) && count($attachments) > 0) {
+                $meta = $attachments[0]['image_meta'] ?? [];
+                $name = is_array($meta) ? ($meta['original_name'] ?? '') : '';
+                if (is_string($name) && trim($name) !== '') {
+                    return '📎 ' . trim($name);
+                }
+            }
+            return '📎 Документ';
         }
 
         $text = trim((string)($message['text'] ?? ''));

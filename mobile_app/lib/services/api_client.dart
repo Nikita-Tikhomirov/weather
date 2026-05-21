@@ -671,6 +671,49 @@ class ApiClient {
     );
   }
 
+  Future<ChatUploadResult> chatUploadDocument({
+    required String actorProfile,
+    required List<int> bytes,
+    required String filename,
+    void Function(double progress)? onProgress,
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/chat/documents/upload'),
+    );
+    request.headers['X-Api-Key'] = apiKey;
+    request.fields['actor_profile'] = actorProfile;
+    request.files.add(
+      http.MultipartFile.fromBytes('file', bytes, filename: filename),
+    );
+
+    final streamedResponse = await request.send();
+    final totalBytes = streamedResponse.contentLength ?? bytes.length;
+    var receivedBytes = 0;
+    final chunks = <int>[];
+
+    await for (final chunk in streamedResponse.stream) {
+      chunks.addAll(chunk);
+      receivedBytes += chunk.length;
+      if (onProgress != null && totalBytes > 0) {
+        onProgress((receivedBytes / totalBytes).clamp(0.0, 1.0));
+      }
+    }
+
+    final text = utf8.decode(chunks);
+    if (streamedResponse.statusCode < 200 ||
+        streamedResponse.statusCode >= 300) {
+      throw StateError('Document upload failed: ${streamedResponse.statusCode} $text');
+    }
+
+    final body = jsonDecode(text) as Map<String, dynamic>;
+    return ChatUploadResult(
+      assetUrl: (body['asset_url'] ?? '').toString(),
+      imageMeta:
+          (body['image_meta'] as Map?)?.cast<String, dynamic>() ?? const {},
+    );
+  }
+
   Future<String> uploadProfileAvatar({
     required String actorProfile,
     required List<int> bytes,

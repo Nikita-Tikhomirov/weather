@@ -21,6 +21,7 @@ class ProjectChatView extends StatelessWidget {
     required this.onOpenProjectFiles,
     required this.onReconnect,
     required this.onSendPhotos,
+    required this.onSendDocuments,
     required this.onSendMessage,
   });
 
@@ -36,6 +37,7 @@ class ProjectChatView extends StatelessWidget {
   final VoidCallback onOpenProjectFiles;
   final VoidCallback onReconnect;
   final VoidCallback onSendPhotos;
+  final VoidCallback onSendDocuments;
   final VoidCallback onSendMessage;
 
   @override
@@ -60,6 +62,7 @@ class ProjectChatView extends StatelessWidget {
         _ProjectChatInput(
           controller: chatInputController,
           onSendPhotos: onSendPhotos,
+          onSendDocuments: onSendDocuments,
           onOpenProjectFiles: onOpenProjectFiles,
           onSendMessage: onSendMessage,
         ),
@@ -425,6 +428,7 @@ class _ProjectChatInput extends StatelessWidget {
 
   final TextEditingController controller;
   final VoidCallback onSendPhotos;
+  final VoidCallback onSendDocuments;
   final VoidCallback onOpenProjectFiles;
   final VoidCallback onSendMessage;
 
@@ -438,6 +442,11 @@ class _ProjectChatInput extends StatelessWidget {
             tooltip: 'Фото в vision',
             onPressed: onSendPhotos,
             icon: const Icon(Icons.image_outlined),
+          ),
+          IconButton(
+            tooltip: 'Документ в vision',
+            onPressed: onSendDocuments,
+            icon: const Icon(Icons.description_outlined),
           ),
           IconButton(
             tooltip: 'Файлы проекта',

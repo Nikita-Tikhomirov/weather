@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/app_labels.dart';
@@ -2770,6 +2771,119 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _pickAndSendDocument(TaskStore store) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        allowMultiple: false,
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      if (file.path == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Не удалось прочитать файл')),
+          );
+        }
+        return;
+      }
+
+      final filePath = file.path!;
+      final fileBytes = await File(filePath).readAsBytes();
+      final fileName = file.name;
+      const maxBytes = 50 * 1024 * 1024; // 50 MB
+      if (fileBytes.length > maxBytes) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Файл слишком большой. Максимум 50 МБ.')),
+          );
+        }
+        return;
+      }
+
+      final conversationKey = _activeConversationKey;
+      final owner = store.owner.value;
+      if (conversationKey.isEmpty || owner.isEmpty) return;
+
+      final clientId = 'doc-${DateTime.now().microsecondsSinceEpoch}';
+      final optimisticMsg = ChatMessage(
+        id: clientId,
+        conversationKey: conversationKey,
+        senderProfile: owner,
+        messageType: 'file',
+        text: '',
+        createdAt: DateTime.now().toIso8601String(),
+        attachments: [
+          ChatAttachment(
+            kind: 'file',
+            assetUrl: filePath,
+            imageMeta: {
+              'original_name': fileName,
+              'size_bytes': fileBytes.length,
+            },
+            sortOrder: 0,
+          ),
+        ],
+        isUploading: true,
+        uploadProgress: 0.0,
+        clientMessageId: clientId,
+        deliveryStatus: 'sending',
+      );
+
+      final msgs = _chatMessagesByConversation[conversationKey] ?? [];
+      msgs.add(optimisticMsg);
+      _chatMessagesByConversation[conversationKey] = msgs;
+      if (mounted) setState(() {});
+
+      final api = store.repository.api;
+      final uploadResult = await api.chatUploadDocument(
+        actorProfile: owner,
+        bytes: fileBytes,
+        filename: fileName,
+        onProgress: (progress) {
+          _updateUploadProgress(conversationKey, clientId, 0, 1, progress);
+        },
+      );
+
+      final message = await api.chatSendMessage(
+        actorProfile: owner,
+        conversationKey: conversationKey,
+        messageType: 'file',
+        text: '',
+        attachments: [
+          ChatAttachment(
+            kind: 'file',
+            assetUrl: uploadResult.assetUrl,
+            imageMeta: uploadResult.imageMeta,
+            sortOrder: 0,
+          ),
+        ],
+        clientMessageId: clientId,
+      );
+
+      _replaceOptimisticMessages(conversationKey, clientId, [message]);
+      final db = store.repository.db;
+      await db.upsertMessages([message]);
+      if (mounted) setState(() {});
+    } catch (error) {
+      final conversationKey = _activeConversationKey;
+      if (conversationKey.isNotEmpty) {
+        final msgs = _chatMessagesByConversation[conversationKey];
+        if (msgs != null) {
+          msgs.removeWhere((m) => m.isUploading && m.messageType == 'file');
+          _chatMessagesByConversation[conversationKey] = msgs;
+        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка отправки документа: $error')),
+        );
+        setState(() {});
+      }
+    }
+  }
+
   Future<void> _sendPhotos(
     TaskStore store, {
     required ImageSource source,
@@ -3130,6 +3244,14 @@ class _HomePageState extends State<HomePage> {
                 },
               ),
               ListTile(
+                leading: const Icon(Icons.description_outlined),
+                title: const Text('Документ'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _pickAndSendDocument(store);
+                },
+              ),
+              ListTile(
                 leading: const Icon(Icons.emoji_emotions_outlined),
                 title: const Text('Стикер'),
                 onTap: () {
@@ -3393,6 +3515,7 @@ class _HomePageState extends State<HomePage> {
         _openProjectContact(store, project);
       },
       onSendPhotos: _sendProjectPhotos,
+      onSendDocuments: _sendProjectDocuments,
       onSendMessage: _sendProjectMessage,
     );
   }
@@ -3814,6 +3937,124 @@ class _HomePageState extends State<HomePage> {
       return 'image/gif';
     }
     return 'image/jpeg';
+  }
+
+  Future<void> _sendProjectDocuments() async {
+    final bridge = _projectBridge;
+    if (bridge == null) {
+      return;
+    }
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        allowMultiple: false,
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      if (file.path == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Не удалось прочитать файл')),
+          );
+        }
+        return;
+      }
+
+      final filePath = file.path!;
+      final fileBytes = await File(filePath).readAsBytes();
+      if (fileBytes.length > 15 * 1024 * 1024) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Файл слишком большой. Максимум 15 МБ.')),
+          );
+        }
+        return;
+      }
+
+      // Prompt for caption
+      String caption = '';
+      if (mounted) {
+        final captionCtl = TextEditingController();
+        final result = await showDialog<String>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Комментарий к документу'),
+            content: TextField(
+              controller: captionCtl,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'Промт для DeepSeek после загрузки (необязательно)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, ''),
+                child: const Text('Только сохранить'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, captionCtl.text.trim()),
+                child: const Text('Отправить'),
+              ),
+            ],
+          ),
+        );
+        if (result != null) {
+          caption = result;
+        }
+      }
+
+      // Send to bridge
+      bridge.sendUpload(
+        fileBytes,
+        file.name,
+        _guessMimeType(file.name),
+        caption: caption,
+      );
+
+      if (mounted) {
+        setState(() {
+          _projectMessages.add(BridgeMessage(
+            type: 'send',
+            text: '📎 Документ: ${file.name}',
+            projectId: _projectByConversationKey(_activeConversationKey)?.id ?? '',
+            sessionId: _activeProjectSessionId ?? '',
+          ));
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка отправки документа: $error')),
+        );
+      }
+    }
+  }
+
+  String _guessMimeType(String filename) {
+    final ext = filename.toLowerCase().split('.').last;
+    switch (ext) {
+      case 'pdf': return 'application/pdf';
+      case 'doc': return 'application/msword';
+      case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'xls': return 'application/vnd.ms-excel';
+      case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'ppt': return 'application/vnd.ms-powerpoint';
+      case 'pptx': return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'png': return 'image/png';
+      case 'jpg': case 'jpeg': return 'image/jpeg';
+      case 'webp': return 'image/webp';
+      case 'gif': return 'image/gif';
+      case 'txt': return 'text/plain';
+      case 'csv': return 'text/csv';
+      case 'zip': return 'application/zip';
+      case 'rar': return 'application/vnd.rar';
+      case '7z': return 'application/x-7z-compressed';
+      case 'mp3': return 'audio/mpeg';
+      case 'mp4': return 'video/mp4';
+      default: return 'application/octet-stream';
+    }
   }
 
   Future<void> _openBridgeSettings() async {

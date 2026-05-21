@@ -699,7 +699,7 @@ final class ChatRepository
     private function normalizeMessageType(string $value): string
     {
         $type = trim($value);
-        return in_array($type, ['text', 'sticker', 'image', 'image_group', 'voice', 'video', 'video_group', 'audio'], true) ? $type : 'text';
+        return in_array($type, ['text', 'sticker', 'image', 'image_group', 'voice', 'video', 'video_group', 'audio', 'file'], true) ? $type : 'text';
     }
 
     private function ensureActor(string $actor): void
