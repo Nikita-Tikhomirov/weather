@@ -336,6 +336,25 @@ class LocalDb {
     }).toList();
   }
 
+  Future<void> deleteConversation(String conversationKey) async {
+    final key = conversationKey.trim();
+    if (key.isEmpty) {
+      return;
+    }
+    await _db.transaction((txn) async {
+      await txn.delete(
+        'chat_messages',
+        where: 'conversation_key = ?',
+        whereArgs: [key],
+      );
+      await txn.delete(
+        'chat_conversations',
+        where: 'conversation_key = ?',
+        whereArgs: [key],
+      );
+    });
+  }
+
   Future<void> upsertMessages(List<ChatMessage> messages) async {
     if (messages.isEmpty) {
       return;

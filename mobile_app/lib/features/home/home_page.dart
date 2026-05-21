@@ -1176,6 +1176,32 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _refreshMessengerContacts(TaskStore store) async {
+    await _refreshChatBootstrap(store);
+    await _loadPhoneContacts(store);
+  }
+
+  Future<void> _removeLocalConversation(
+    TaskStore store,
+    String conversationKey,
+  ) async {
+    final key = conversationKey.trim();
+    if (key.isEmpty) {
+      return;
+    }
+    await store.repository.db.deleteConversation(key);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _chatConversations.removeWhere((item) => item.conversationKey == key);
+      _chatMessagesByConversation.remove(key);
+      if (_activeConversationKey == key) {
+        _activeConversationKey = '';
+      }
+    });
+  }
+
   Future<void> _initChat(TaskStore store) async {
     final api = store.repository.api;
     final db = store.repository.db;
@@ -2473,7 +2499,9 @@ class _HomePageState extends State<HomePage> {
   Future<void> _openManageGroupSheet(
       TaskStore store, ChatConversation conv) async {
     final members = List<String>.from(conv.members);
-    final isOwner = members.isNotEmpty && members.first == store.owner.value;
+    final canManage = conv.kind == 'group' ||
+        conv.conversationKey == 'group:common' ||
+        conv.conversationKey.startsWith('grp:');
 
     if (!mounted) return;
     await showModalBottomSheet<void>(
@@ -2493,7 +2521,7 @@ class _HomePageState extends State<HomePage> {
                         fontSize: 18, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 8),
-                  if (isOwner) ...[
+                  if (canManage) ...[
                     Row(
                       children: [
                         Expanded(
@@ -2542,20 +2570,28 @@ class _HomePageState extends State<HomePage> {
                                 );
                                 if (mounted && sheetContext.mounted) {
                                   Navigator.of(sheetContext).pop();
-                                  setState(() {
-                                    _chatConversations.removeWhere((item) =>
-                                        item.conversationKey ==
-                                        conv.conversationKey);
-                                    _chatMessagesByConversation
-                                        .remove(conv.conversationKey);
-                                    _activeConversationKey = '';
-                                  });
+                                  await _removeLocalConversation(
+                                    store,
+                                    conv.conversationKey,
+                                  );
                                   await _refreshChatBootstrap(store);
                                 }
                               } catch (error) {
-                                if (mounted) {
+                                if (mounted && sheetContext.mounted) {
+                                  Navigator.of(sheetContext).pop();
+                                  await _removeLocalConversation(
+                                    store,
+                                    conv.conversationKey,
+                                  );
+                                  if (!mounted) {
+                                    return;
+                                  }
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Ошибка: $error')),
+                                    const SnackBar(
+                                      content: Text(
+                                        'Группа удалена из локального списка',
+                                      ),
+                                    ),
                                   );
                                 }
                               }
@@ -2577,7 +2613,7 @@ class _HomePageState extends State<HomePage> {
                             leading:
                                 const CircleAvatar(child: Icon(Icons.person)),
                             title: Text(_profileLabel(profile)),
-                            trailing: isOwner && profile != store.owner.value
+                            trailing: canManage && profile != store.owner.value
                                 ? IconButton(
                                     icon: const Icon(
                                         Icons.remove_circle_outline,
@@ -2601,7 +2637,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   const Divider(),
-                  if (isOwner)
+                  if (canManage)
                     ListTile(
                       leading: const Icon(Icons.person_add),
                       title: const Text('Добавить участника'),
@@ -3284,7 +3320,7 @@ class _HomePageState extends State<HomePage> {
       stickerAssetFor: _chatStickerAssetUrl,
       imageUrlFor: _chatImageUrl,
       avatarForContact: _avatarForProfile,
-      onRefreshContacts: () => _loadPhoneContacts(store),
+      onRefreshContacts: () => _refreshMessengerContacts(store),
       onCreateGroup: () => _openCreateGroupSheet(store),
       onAddContactToFamily: (contact) => _addContactToFamily(store, contact),
       onOpenDirectContact: (contact) => _openDirectContact(store, contact),
