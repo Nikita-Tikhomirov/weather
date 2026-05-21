@@ -37,6 +37,7 @@ import '../../services/desktop_process_host_service.dart';
 import '../../services/desktop_theme_service.dart';
 import '../../services/fcm_service.dart';
 import '../../services/local_db.dart';
+import '../../services/project_access.dart';
 import '../../services/project_bridge_service.dart';
 import '../../state/task_store.dart';
 
@@ -1256,6 +1257,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _loadProjects() {
+    if (!canUseProjectChats(_currentProfilePhone)) {
+      if (mounted) {
+        setState(() => _projectContacts = const <ProjectContact>[]);
+      }
+      return;
+    }
     try {
       // Try multiple locations for projects.json
       final candidates = <String>[
@@ -1341,6 +1348,14 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _openProjectContact(
       TaskStore store, ProjectContact project) async {
+    if (!canUseProjectChats(_currentProfilePhone)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Проектные чаты недоступны')),
+        );
+      }
+      return;
+    }
     if (!mounted) {
       return;
     }
@@ -1456,7 +1471,6 @@ class _HomePageState extends State<HomePage> {
     setState(() => _projectBridge = bridge);
 
     bridge.startProject(project, resumeSessionId: savedSessionId);
-    await ProjectBridgeService.requestBridgeStart(project);
     final ok = await bridge.connect();
     if (!ok) return;
   }

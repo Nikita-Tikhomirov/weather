@@ -142,8 +142,10 @@ class FcmService {
     _onMessageSub =
         FirebaseMessaging.onMessage.listen((RemoteMessage msg) async {
       await onOpenPush(msg.data);
-      final title = msg.notification?.title ?? 'Семейные задачи';
-      final body = msg.notification?.body ?? 'Появились новые изменения';
+      final title = msg.notification?.title ??
+          (msg.data['title'] ?? 'Семейные задачи').toString();
+      final body = msg.notification?.body ??
+          (msg.data['body'] ?? 'Появились новые изменения').toString();
       await _showForegroundNotification(
         title: title,
         body: body,
@@ -533,7 +535,7 @@ class FcmService {
             ? const [
                 AndroidNotificationAction(
                   _markReadActionId,
-                  'Прочитано',
+                  'Пометить прочитанным',
                   cancelNotification: true,
                   showsUserInterface: false,
                 ),
@@ -602,7 +604,7 @@ Future<void> _showChatNotificationFromData(
       actions: [
         AndroidNotificationAction(
           _markReadActionId,
-          'Прочитано',
+          'Пометить прочитанным',
           cancelNotification: true,
           showsUserInterface: false,
         ),

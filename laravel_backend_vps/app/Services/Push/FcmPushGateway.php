@@ -49,24 +49,28 @@ class FcmPushGateway implements PushGateway
         $normalizedData['title'] = $title;
         $normalizedData['body'] = $body;
 
+        $android = [
+            'priority' => 'high',
+        ];
+        if (!$isChatMessage) {
+            $android['notification'] = [
+                'channel_id' => (string) config('push.fcm.android_channel_id', 'family_updates'),
+                'sound' => 'default',
+                'visibility' => 'PUBLIC',
+            ];
+        }
+
         $message = [
             'token' => $token,
             'data' => $normalizedData,
-            'android' => [
-                'priority' => 'high',
-                'notification' => [
-                    'channel_id' => (string) config('push.fcm.android_channel_id', 'family_updates'),
-                    'sound' => 'default',
-                    'visibility' => 'PUBLIC',
-                ],
-            ],
+            'android' => $android,
         ];
-        // Для чат-сообщений тоже передаём notification, чтобы foreground-хендлер в APK
-        // мог показать реальный текст сообщения (а не generic fallback).
-        $message['notification'] = [
-            'title' => $title,
-            'body' => $body,
-        ];
+        if (!$isChatMessage) {
+            $message['notification'] = [
+                'title' => $title,
+                'body' => $body,
+            ];
+        }
 
         $payload = [
             'message' => [

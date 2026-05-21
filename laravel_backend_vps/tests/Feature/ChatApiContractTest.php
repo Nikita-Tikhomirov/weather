@@ -261,6 +261,32 @@ class ChatApiContractTest extends TestCase
     }
 
     #[Test]
+    public function legacy_group_without_actor_membership_can_be_deleted(): void
+    {
+        config(['sync.api_key' => 'prod-key']);
+
+        \Illuminate\Support\Facades\DB::table('chat_conversations')->insert([
+            'conversation_key' => 'grp:legacy_without_member',
+            'kind' => 'group',
+            'title' => 'Старый общий',
+            'created_at' => now()->format('Y-m-d\TH:i:s'),
+            'updated_at' => now()->format('Y-m-d\TH:i:s'),
+        ]);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/conversations/delete', [
+                'actor_profile' => 'nik',
+                'conversation_key' => 'grp:legacy_without_member',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true);
+
+        $this->assertDatabaseMissing('chat_conversations', [
+            'conversation_key' => 'grp:legacy_without_member',
+        ]);
+    }
+
+    #[Test]
     public function typing_profiles_are_reported_to_other_members(): void
     {
         config(['sync.api_key' => 'prod-key']);

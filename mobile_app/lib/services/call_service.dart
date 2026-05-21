@@ -276,8 +276,19 @@ class CallService {
 
     try {
       _localStream = await navigator.mediaDevices.getUserMedia({
-        'audio': true,
-        'video': wantsVideo,
+        'audio': {
+          'echoCancellation': true,
+          'noiseSuppression': true,
+          'autoGainControl': true,
+        },
+        'video': wantsVideo
+            ? {
+                'facingMode': 'user',
+                'width': {'ideal': 640, 'max': 960},
+                'height': {'ideal': 360, 'max': 540},
+                'frameRate': {'ideal': 20, 'max': 24},
+              }
+            : false,
       });
     } catch (e) {
       if (wantsVideo) {

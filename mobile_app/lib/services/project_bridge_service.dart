@@ -161,6 +161,7 @@ class ProjectBridgeService {
   Timer? _reconnectTimer;
   ProjectContact? _activeProject;
   final List<String> _pendingSends = <String>[];
+  final List<String> _pendingControlMessages = <String>[];
   final BytesBuilder _buffer = BytesBuilder(copy: false);
 
   /// Current session id (set by session_info messages from bridge).
@@ -434,11 +435,13 @@ class ProjectBridgeService {
   }
 
   void startNewSession() {
+    final payload = '${jsonEncode({'type': 'new_session'})}\n';
     if (!isConnected) {
+      _queueControlMessage(payload);
       _scheduleReconnect();
       return;
     }
-    _sendRaw('${jsonEncode({'type': 'new_session'})}\n');
+    _sendRaw(payload);
   }
 
   void stopCurrentPrompt() {
@@ -518,6 +521,7 @@ class ProjectBridgeService {
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     _pendingSends.clear();
+    _pendingControlMessages.clear();
     _cleanup();
   }
 
@@ -539,7 +543,15 @@ class ProjectBridgeService {
   }
 
   void _flushPendingSends() {
-    if (!isConnected || _pendingSends.isEmpty) {
+    if (!isConnected) {
+      return;
+    }
+    final controls = List<String>.from(_pendingControlMessages);
+    _pendingControlMessages.clear();
+    for (final payload in controls) {
+      _sendRaw(payload);
+    }
+    if (_pendingSends.isEmpty) {
       return;
     }
     final queued = List<String>.from(_pendingSends);
@@ -547,5 +559,16 @@ class ProjectBridgeService {
     for (final text in queued) {
       sendText(text);
     }
+  }
+
+  void _queueControlMessage(String payload) {
+    if (_pendingControlMessages.length >= 10) {
+      _pendingControlMessages.removeAt(0);
+    }
+    _pendingControlMessages.add(payload);
+    onStatusChange(
+      false,
+      'Нет соединения, команда будет отправлена после переподключения.',
+    );
   }
 }

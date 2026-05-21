@@ -36,20 +36,27 @@ class _CallScreenState extends State<CallScreen> {
   Timer? _durationTimer;
   bool _remoteRendererReady = false;
   bool _isMuted = false;
-  bool _isSpeakerOn = true;
+  bool _isSpeakerOn = false;
+  bool _speakerPreferenceApplied = false;
 
   @override
   void initState() {
     super.initState();
     _currentState = widget.isIncoming ? CallState.ringing : CallState.calling;
+    _isSpeakerOn = widget.session.callType == 'video';
     _initializeRemoteRenderer();
 
     _stateSub = widget.callService.onStateChange.listen((state) {
       if (!mounted) return;
+      var shouldApplySpeakerPreference = false;
       setState(() {
         _currentState = state;
         if (state == CallState.connected && _durationTimer?.isActive != true) {
           _startDuration();
+        }
+        if (state == CallState.connected && !_speakerPreferenceApplied) {
+          _speakerPreferenceApplied = true;
+          shouldApplySpeakerPreference = true;
         }
         if (state == CallState.ended) {
           _durationTimer?.cancel();
@@ -58,6 +65,9 @@ class _CallScreenState extends State<CallScreen> {
           });
         }
       });
+      if (shouldApplySpeakerPreference) {
+        widget.callService.setSpeakerOn(_isSpeakerOn);
+      }
     });
 
     _remoteStreamSub = widget.callService.onRemoteStream.listen((stream) {

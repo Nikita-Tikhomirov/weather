@@ -140,6 +140,50 @@ class TunnelServerLauncherTests(unittest.IsolatedAsyncioTestCase):
         await mobile_writer.wait_closed()
         await bridge_writer.wait_closed()
 
+    async def test_new_bridge_registration_replaces_stale_bridge(self) -> None:
+        first_reader, first_writer = await asyncio.open_connection(
+            "127.0.0.1",
+            self.port,
+            limit=MAX_RELAY_LINE_BYTES,
+        )
+        first_writer.write(
+            json.dumps({"type": "register", "project_id": "cifra"}).encode("utf-8")
+            + b"\n"
+        )
+        await first_writer.drain()
+
+        second_reader, second_writer = await asyncio.open_connection(
+            "127.0.0.1",
+            self.port,
+            limit=MAX_RELAY_LINE_BYTES,
+        )
+        second_writer.write(
+            json.dumps({"type": "register", "project_id": "cifra"}).encode("utf-8")
+            + b"\n"
+        )
+        await second_writer.drain()
+
+        mobile_reader, mobile_writer = await asyncio.open_connection(
+            "127.0.0.1",
+            self.port,
+        )
+        mobile_writer.write(
+            json.dumps({"type": "connect", "project_id": "cifra"}).encode("utf-8")
+            + b"\n"
+        )
+        await mobile_writer.drain()
+
+        self.assertEqual((await _read_json(mobile_reader))["type"], "status")
+        attached = await _read_json(second_reader)
+        self.assertEqual(attached["type"], "mobile_attached")
+
+        mobile_writer.close()
+        second_writer.close()
+        first_writer.close()
+        await mobile_writer.wait_closed()
+        await second_writer.wait_closed()
+        await first_writer.wait_closed()
+
     async def test_large_upload_message_is_relayed_to_bridge(self) -> None:
         bridge_reader, bridge_writer = await asyncio.open_connection(
             "127.0.0.1",

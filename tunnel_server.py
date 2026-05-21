@@ -88,6 +88,14 @@ class TunnelServer:
 
     async def _handle_bridge(self, project_id: str, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         """PC bridge registers. All data from bridge is broadcast to mobile clients."""
+        previous = self._bridges.get(project_id)
+        if previous is not None:
+            old_reader, old_writer = previous
+            if old_reader is not reader and not old_writer.is_closing():
+                old_writer.close()
+            old_task = self._relay_tasks.get(project_id)
+            if old_task is not None and not old_task.done():
+                old_task.cancel()
         self._bridges[project_id] = (reader, writer)
         print(f"[tunnel] Bridge registered: {project_id}", flush=True)
 

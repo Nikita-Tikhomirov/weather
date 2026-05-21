@@ -374,7 +374,7 @@ final class ChatRepository
     public function renameGroup(string $actor, string $conversationKey, string $title): void
     {
         $actor = $this->resolveLegacyProfile($actor);
-        $conversation = $this->resolveConversationForActor($actor, $conversationKey);
+        $conversation = $this->resolveGroupConversationForManagement($actor, $conversationKey);
         if ((string) $conversation->kind !== 'group') {
             throw new InvalidArgumentException('Can only rename group conversations');
         }
@@ -393,7 +393,7 @@ final class ChatRepository
     public function deleteGroup(string $actor, string $conversationKey): void
     {
         $actor = $this->resolveLegacyProfile($actor);
-        $conversation = $this->resolveConversationForActor($actor, $conversationKey);
+        $conversation = $this->resolveGroupConversationForManagement($actor, $conversationKey);
         if ((string) $conversation->kind !== 'group') {
             throw new InvalidArgumentException('Can only delete group conversations');
         }
@@ -500,6 +500,26 @@ final class ChatRepository
             throw new InvalidArgumentException('Actor is not a member of this conversation');
         }
 
+        return $conversation;
+    }
+
+    private function resolveGroupConversationForManagement(string $actor, string $conversationKey): object
+    {
+        $this->ensureActor($actor);
+        $key = trim($conversationKey);
+        if ($key === '') {
+            throw new InvalidArgumentException('conversation_key is required');
+        }
+        if ($key === self::GROUP_KEY) {
+            $this->ensureGroupConversation();
+        }
+        $conversation = DB::table('chat_conversations')->where('conversation_key', $key)->first();
+        if ($conversation === null) {
+            throw new InvalidArgumentException('Conversation not found');
+        }
+        if ((string) $conversation->kind !== 'group') {
+            throw new InvalidArgumentException('Can only manage group conversations');
+        }
         return $conversation;
     }
 

@@ -348,4 +348,42 @@ void main() {
     await sub.cancel();
     await server.close();
   });
+
+  test('new session command is queued until reconnect', () async {
+    final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    final received = <Map<String, dynamic>>[];
+    final connected = Completer<void>();
+
+    final sub = server.listen((socket) {
+      connected.complete();
+      utf8.decoder.bind(socket).transform(const LineSplitter()).listen((line) {
+        received.add(jsonDecode(line) as Map<String, dynamic>);
+      });
+    });
+
+    SharedPreferences.setMockInitialValues({
+      'bridge_host': '127.0.0.1:${server.port}',
+    });
+
+    final service = ProjectBridgeService(
+      onMessage: (_) {},
+      onStatusChange: (_, __) {},
+    );
+    service.startProject(const ProjectContact(
+      id: 'cifra',
+      name: 'Цифра',
+      path: r'C:\Users\user\Desktop\depseeker_test',
+    ));
+
+    service.startNewSession();
+    expect(await service.connect(), isTrue);
+    await connected.future.timeout(const Duration(seconds: 2));
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(received.any((row) => row['type'] == 'new_session'), isTrue);
+
+    service.dispose();
+    await sub.cancel();
+    await server.close();
+  });
 }
