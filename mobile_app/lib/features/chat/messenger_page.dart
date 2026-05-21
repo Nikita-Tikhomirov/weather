@@ -220,8 +220,15 @@ class _ContactList extends StatelessWidget {
     return const CircleAvatar(child: Icon(Icons.person));
   }
 
+  bool _isGroupConversation(ChatConversation conv) {
+    return conv.kind == 'group' ||
+        conv.conversationKey == 'group:common' ||
+        conv.conversationKey.startsWith('grp:');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final groups = groupConversations.where(_isGroupConversation).toList();
     return Column(
       children: [
         Padding(
@@ -250,7 +257,7 @@ class _ContactList extends StatelessWidget {
         Expanded(
           child: ListView(
             children: [
-              if (groupConversations.isNotEmpty) ...[
+              if (groups.isNotEmpty) ...[
                 const Padding(
                   padding: EdgeInsets.fromLTRB(16, 8, 8, 4),
                   child: Text(
@@ -261,12 +268,12 @@ class _ContactList extends StatelessWidget {
                     ),
                   ),
                 ),
-                ...groupConversations.map((conv) {
+                ...groups.map((conv) {
                   return ListTile(
                     leading: const CircleAvatar(
                       child: Icon(Icons.group),
                     ),
-                    title: Text(groupLabel(conv, '')),
+                    title: Text(groupLabel(conv, owner)),
                     onTap: () => onOpenConversation(conv.conversationKey),
                     onLongPress: () => onManageGroup(conv),
                   );
