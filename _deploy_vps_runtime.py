@@ -7,11 +7,9 @@ remote_base = "/var/www/adebechigef"
 skip_migration = len(sys.argv) > 1 and sys.argv[1] == "--skip-migration"
 
 files = [
-    ("laravel_backend_vps/app/Services/Push/FcmPushGateway.php", f"{remote_base}/app/Services/Push/FcmPushGateway.php"),
-    ("laravel_backend_vps/app/Http/Controllers/ChatController.php", f"{remote_base}/app/Http/Controllers/ChatController.php"),
     ("laravel_backend_vps/app/Domain/Chat/ChatRepository.php", f"{remote_base}/app/Domain/Chat/ChatRepository.php"),
-    ("laravel_backend_vps/app/Services/Push/PushOutboxService.php", f"{remote_base}/app/Services/Push/PushOutboxService.php"),
-    ("laravel_backend_vps/database/migrations/2026_05_21_000700_add_avatar_url_to_messenger_users.php", f"{remote_base}/database/migrations/2026_05_21_000700_add_avatar_url_to_messenger_users.php"),
+    ("laravel_backend_vps/app/Http/Controllers/ChatController.php", f"{remote_base}/app/Http/Controllers/ChatController.php"),
+    ("laravel_backend_vps/routes/api.php", f"{remote_base}/routes/api.php"),
 ]
 
 client = paramiko.SSHClient()
