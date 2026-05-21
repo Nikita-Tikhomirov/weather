@@ -85,6 +85,36 @@ class DeviceTokenRegistration {
   final String previousTokenStatus;
 }
 
+class PushDeviceStatus {
+  PushDeviceStatus({
+    required this.actorProfile,
+    required this.effectiveTokenStatus,
+    required this.activeTokenCount,
+    required this.status,
+    required this.tokens,
+  });
+
+  final String actorProfile;
+  final String effectiveTokenStatus;
+  final int activeTokenCount;
+  final Map<String, dynamic> status;
+  final List<Map<String, dynamic>> tokens;
+
+  factory PushDeviceStatus.fromJson(Map<String, dynamic> json) {
+    final result = Map<String, dynamic>.from(json['result'] as Map? ?? {});
+    return PushDeviceStatus(
+      actorProfile: (result['actor_profile'] ?? '').toString(),
+      effectiveTokenStatus: (result['effective_token_status'] ?? '').toString(),
+      activeTokenCount: (result['active_token_count'] as num?)?.toInt() ?? 0,
+      status: Map<String, dynamic>.from(result['status'] as Map? ?? {}),
+      tokens: (result['tokens'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList(),
+    );
+  }
+}
+
 class ApiClient {
   ApiClient({required this.baseUrl, required this.apiKey});
 
@@ -301,6 +331,18 @@ class ApiClient {
         '/devices/status',
       ],
       body: jsonEncode(payload),
+    );
+  }
+
+  Future<PushDeviceStatus> pushDeviceStatus({
+    required String actorProfile,
+  }) async {
+    final response = await _getWithFallback(
+      paths: const ['/push/device_status', '/push_device_status.php'],
+      query: {'actor_profile': actorProfile},
+    );
+    return PushDeviceStatus.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
     );
   }
 

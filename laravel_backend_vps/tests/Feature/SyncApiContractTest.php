@@ -208,6 +208,47 @@ class SyncApiContractTest extends TestCase
     }
 
     #[Test]
+    public function push_device_status_reports_effective_token_state(): void
+    {
+        config(['sync.api_key' => 'prod-key']);
+
+        DB::table('device_tokens')->insert([
+            'token' => 'dead-token',
+            'profile_key' => 'nik',
+            'platform' => 'android',
+            'app_version' => '0.1.6',
+            'device_id' => '',
+            'is_active' => 0,
+            'token_status' => 'unregistered',
+            'play_services' => 'available',
+            'last_error' => 'NOT_FOUND: Requested entity was not found.',
+            'registered_at' => now()->format('Y-m-d\TH:i:s'),
+            'last_seen_at' => now()->format('Y-m-d\TH:i:s'),
+            'created_at' => now()->format('Y-m-d\TH:i:s'),
+            'updated_at' => now()->format('Y-m-d\TH:i:s'),
+        ]);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/devices_status.php', [
+                'actor_profile' => 'nik',
+                'platform' => 'android',
+                'token_status' => 'active',
+                'play_services' => 'available',
+                'last_error' => '',
+                'app_version' => '0.1.6',
+                'token' => 'dead-token',
+            ])
+            ->assertStatus(200);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/push/device_status?actor_profile=nik')
+            ->assertStatus(200)
+            ->assertJsonPath('result.effective_token_status', 'unregistered')
+            ->assertJsonPath('result.active_token_count', 0)
+            ->assertJsonPath('result.tokens.0.token_status', 'unregistered');
+    }
+
+    #[Test]
     public function push_diagnostics_endpoint_returns_configuration_and_token_state(): void
     {
         config(['sync.api_key' => 'prod-key']);

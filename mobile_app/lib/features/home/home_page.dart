@@ -903,6 +903,20 @@ class _HomePageState extends State<HomePage> {
               ),
               actions: [
                 TextButton(
+                  onPressed: () async {
+                    _fcmDiagnostics.value = 'FCM: обновляю диагностику...';
+                    await _fcm?.refreshDiagnostics();
+                  },
+                  child: const Text('Обновить'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    _fcmDiagnostics.value = 'FCM: сбрасываю токен...';
+                    await _fcm?.refreshDiagnostics(forceResetToken: true);
+                  },
+                  child: const Text('Сбросить токен'),
+                ),
+                TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
                   child: const Text('Закрыть'),
                 ),

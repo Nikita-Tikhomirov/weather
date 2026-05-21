@@ -76,12 +76,14 @@ class FcmService {
   StreamSubscription<RemoteMessage>? _onOpenSub;
   StreamSubscription<Map<String, dynamic>>? _localOpenSub;
   Timer? _tokenRefreshTimer;
+  Timer? _diagnosticsTimer;
   String _lastRegisteredToken = '';
   String _playServicesState = 'unknown';
   String _lastTokenError = '';
   DateTime? _lastStatusReportedAt;
   String _lastStatusReportedKey = '';
   DateTime? _lastFisRecoveryAt;
+  DateTime? _lastServerTokenRecoveryAt;
   bool _isFisRecoveryInProgress = false;
   String _diagnosticsText = 'FCM: starting';
   String _installationId = '';
@@ -129,6 +131,7 @@ class FcmService {
       await _reportStatus(tokenStatus: 'token_unavailable');
     }
     _startTokenRefreshLoop(messaging);
+    _startDiagnosticsLoop();
 
     _tokenRefreshSub = messaging.onTokenRefresh.listen((newToken) async {
       if (newToken.isEmpty) {
@@ -182,6 +185,8 @@ class FcmService {
   void dispose() {
     _tokenRefreshTimer?.cancel();
     _tokenRefreshTimer = null;
+    _diagnosticsTimer?.cancel();
+    _diagnosticsTimer = null;
     _tokenRefreshSub?.cancel();
     _tokenRefreshSub = null;
     _onMessageSub?.cancel();
@@ -208,7 +213,7 @@ class FcmService {
       }
       if (_isFisAuthError(_lastTokenError)) {
         _updateDiagnostics('token:fis_recovery');
-        await _recoverFromFisAuthError();
+        await _recoverFromFisAuthError(force: true);
       }
       await Future<void>.delayed(const Duration(seconds: 2));
     }
@@ -229,12 +234,21 @@ class FcmService {
       }
       if (token == _lastRegisteredToken) {
         await _reportStatus(tokenStatus: 'active', token: token, lastError: '');
+        _updateDiagnostics('token:active_cached', token: token);
+        await _recoverIfServerRejectedToken(token);
         return;
       }
       final registered = await _registerToken(token);
       if (registered) {
         await _reportStatus(tokenStatus: 'active', token: token, lastError: '');
       }
+    });
+  }
+
+  void _startDiagnosticsLoop() {
+    _diagnosticsTimer?.cancel();
+    _diagnosticsTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      await refreshDiagnostics();
     });
   }
 
@@ -278,13 +292,15 @@ class FcmService {
     return 'unknown_or_network';
   }
 
-  Future<void> _recoverFromFisAuthError() async {
+  Future<void> _recoverFromFisAuthError({bool force = false}) async {
     if (_isFisRecoveryInProgress) {
       return;
     }
     final now = DateTime.now();
     final last = _lastFisRecoveryAt;
-    if (last != null && now.difference(last) < const Duration(minutes: 3)) {
+    if (!force &&
+        last != null &&
+        now.difference(last) < const Duration(minutes: 3)) {
       return;
     }
 
@@ -378,6 +394,7 @@ class FcmService {
       'sender=223906415067',
       if (installationPrefix.isNotEmpty) 'fis=$installationPrefix',
       if (tokenPrefix.isNotEmpty) 'token=$tokenPrefix',
+      'diagAt=${DateTime.now().toIso8601String()}',
       if (_lastTokenError.isNotEmpty)
         'err=${_lastTokenError.substring(0, _lastTokenError.length < 220 ? _lastTokenError.length : 220)}',
     ];
@@ -395,6 +412,97 @@ class FcmService {
       return a;
     }
     return '$a | $b';
+  }
+
+  Future<String> refreshDiagnostics({bool forceResetToken = false}) async {
+    if (forceResetToken) {
+      _lastRegisteredToken = '';
+      _lastTokenError = 'manual_token_reset';
+      await _recoverFromFisAuthError(force: true);
+    }
+
+    String? token;
+    try {
+      await _refreshNativeDiagnostics();
+      token = await FirebaseMessaging.instance.getToken();
+      if (token != null && token.isNotEmpty) {
+        _playServicesState = 'available';
+      }
+    } catch (error) {
+      _lastTokenError =
+          _mergeErrors(_lastTokenError, 'manual_get_token:$error');
+    }
+
+    _updateDiagnostics(
+      forceResetToken ? 'manual:reset_done' : 'manual:refresh',
+      token: token,
+    );
+
+    try {
+      final server = await api.pushDeviceStatus(actorProfile: actorProfile);
+      await _recoverIfServerRejectedToken(token, serverStatus: server);
+      final firstToken = server.tokens.isNotEmpty ? server.tokens.first : null;
+      final status = server.status;
+      _diagnosticsText = [
+        _diagnosticsText,
+        '',
+        'server_effective=${server.effectiveTokenStatus.isEmpty ? 'unknown' : server.effectiveTokenStatus}',
+        'server_active_tokens=${server.activeTokenCount}',
+        if (status.isNotEmpty)
+          'server_status=${status['token_status'] ?? ''} updated=${status['updated_at'] ?? ''}',
+        if (firstToken != null)
+          'server_last_token=${firstToken['token_status'] ?? ''} active=${firstToken['is_active'] ?? false} seen=${firstToken['last_seen_at'] ?? ''}',
+        if (firstToken != null &&
+            (firstToken['last_error'] ?? '').toString().isNotEmpty)
+          'server_error=${firstToken['last_error']}',
+      ].join('\n');
+      onDiagnosticsChanged(_diagnosticsText);
+    } catch (error) {
+      _diagnosticsText = [
+        _diagnosticsText,
+        '',
+        'server_status_error=$error',
+      ].join('\n');
+      onDiagnosticsChanged(_diagnosticsText);
+    }
+
+    return _diagnosticsText;
+  }
+
+  Future<void> _recoverIfServerRejectedToken(
+    String? token, {
+    PushDeviceStatus? serverStatus,
+  }) async {
+    final currentToken = token?.trim() ?? '';
+    if (currentToken.isEmpty) {
+      return;
+    }
+    final status =
+        serverStatus ?? await api.pushDeviceStatus(actorProfile: actorProfile);
+    if (status.effectiveTokenStatus != 'unregistered' &&
+        status.effectiveTokenStatus != 'missing') {
+      return;
+    }
+
+    final now = DateTime.now();
+    final last = _lastServerTokenRecoveryAt;
+    if (last != null && now.difference(last) < const Duration(minutes: 2)) {
+      return;
+    }
+    _lastServerTokenRecoveryAt = now;
+    _lastRegisteredToken = '';
+    _lastTokenError = 'server_effective_${status.effectiveTokenStatus}';
+    _updateDiagnostics('token:auto_recovery_start', token: currentToken);
+    await _recoverFromFisAuthError(force: true);
+
+    final newToken = await _tryFetchToken(FirebaseMessaging.instance);
+    if (newToken != null && newToken.isNotEmpty) {
+      final registered = await _registerToken(newToken);
+      if (registered) {
+        await _reportStatus(tokenStatus: 'active', token: newToken);
+        _updateDiagnostics('token:auto_recovery_registered', token: newToken);
+      }
+    }
   }
 
   Future<bool> _registerToken(String token) async {

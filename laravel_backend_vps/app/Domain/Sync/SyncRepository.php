@@ -404,11 +404,22 @@ final class SyncRepository
             })
             ->values()
             ->all();
+        $activeTokenCount = 0;
+        foreach ($tokens as $token) {
+            if (($token['is_active'] ?? false) === true) {
+                $activeTokenCount++;
+            }
+        }
+        $effectiveTokenStatus = $activeTokenCount > 0
+            ? 'active'
+            : (string) ($tokens[0]['token_status'] ?? 'missing');
 
         if ($row === null) {
             return [
                 'actor_profile' => $actor,
                 'status' => null,
+                'effective_token_status' => $effectiveTokenStatus,
+                'active_token_count' => $activeTokenCount,
                 'tokens' => $tokens,
             ];
         }
@@ -425,6 +436,8 @@ final class SyncRepository
                 'token' => (string) $row->token,
                 'updated_at' => (string) $row->updated_at,
             ],
+            'effective_token_status' => $effectiveTokenStatus,
+            'active_token_count' => $activeTokenCount,
             'tokens' => $tokens,
         ];
     }
