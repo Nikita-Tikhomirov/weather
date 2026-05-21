@@ -32,18 +32,21 @@ try {
 } catch {
     $taskCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$LauncherScript`""
     & cmd.exe /c "schtasks.exe /Create /TN `"$TaskName`" /SC ONLOGON /TR `"$taskCommand`" /F >nul 2>nul"
-    if ($LASTEXITCODE -ne 0) {
-        $startupDir = [Environment]::GetFolderPath('Startup')
-        if (-not $startupDir) {
-            throw "Failed to register scheduled task and Startup folder is unavailable"
-        }
-        New-Item -ItemType Directory -Force -Path $startupDir | Out-Null
-        $startupCmd = Join-Path $startupDir "$TaskName.cmd"
-        @"
+}
+
+$registeredTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+if (-not $registeredTask) {
+    $startupDir = [Environment]::GetFolderPath('Startup')
+    if (-not $startupDir) {
+        throw "Failed to register scheduled task and Startup folder is unavailable"
+    }
+    New-Item -ItemType Directory -Force -Path $startupDir | Out-Null
+    $startupCmd = Join-Path $startupDir "$TaskName.cmd"
+    @"
 @echo off
+cd /d "$ProjectRoot"
 powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$LauncherScript"
 "@ | Set-Content -Path $startupCmd -Encoding ascii
-    }
 }
 
 try {
