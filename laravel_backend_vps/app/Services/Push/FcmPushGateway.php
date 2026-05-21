@@ -44,33 +44,25 @@ class FcmPushGateway implements PushGateway
         }
 
         $normalizedData = $this->normalizeData($data);
-        $isChatMessage = ($normalizedData['entity'] ?? '') === 'chat_message'
-            || ($normalizedData['type'] ?? '') === 'chat_message';
         $normalizedData['title'] = $title;
         $normalizedData['body'] = $body;
-
-        $android = [
-            'priority' => 'high',
-        ];
-        if (!$isChatMessage) {
-            $android['notification'] = [
-                'channel_id' => (string) config('push.fcm.android_channel_id', 'family_updates'),
-                'sound' => 'default',
-                'visibility' => 'PUBLIC',
-            ];
-        }
 
         $message = [
             'token' => $token,
             'data' => $normalizedData,
-            'android' => $android,
-        ];
-        if (!$isChatMessage) {
-            $message['notification'] = [
+            'android' => [
+                'priority' => 'high',
+                'notification' => [
+                    'channel_id' => (string) config('push.fcm.android_channel_id', 'family_updates'),
+                    'sound' => 'default',
+                    'visibility' => 'PUBLIC',
+                ],
+            ],
+            'notification' => [
                 'title' => $title,
                 'body' => $body,
-            ];
-        }
+            ],
+        ];
 
         $payload = [
             'message' => [

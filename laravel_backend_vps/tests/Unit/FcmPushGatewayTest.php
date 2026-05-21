@@ -11,7 +11,7 @@ use Tests\TestCase;
 class FcmPushGatewayTest extends TestCase
 {
     #[Test]
-    public function chat_messages_are_sent_data_only_so_apk_can_render_actions(): void
+    public function chat_messages_keep_notification_payload_for_reliable_delivery(): void
     {
         config([
             'push.enabled' => true,
@@ -41,10 +41,12 @@ class FcmPushGatewayTest extends TestCase
             $payload = $request->data();
             $message = $payload['message'] ?? [];
 
-            return !array_key_exists('notification', $message)
-                && !array_key_exists('notification', $message['android'] ?? [])
+            return ($message['notification']['title'] ?? '') === 'Сообщение'
+                && ($message['notification']['body'] ?? '') === 'Текст'
+                && ($message['android']['notification']['channel_id'] ?? '') === 'family_updates'
                 && ($message['android']['priority'] ?? '') === 'high'
                 && ($message['data']['title'] ?? '') === 'Сообщение'
+                && ($message['data']['body'] ?? '') === 'Текст'
                 && ($message['data']['conversation_key'] ?? '') === 'dm:nik:nastya';
         });
     }
