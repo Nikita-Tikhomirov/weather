@@ -31,12 +31,6 @@ final class ChatRepository
                 'avatar_url' => $this->profileAvatarUrl($profile),
                 'conversation_key' => $dmKey,
             ];
-            $conversations[] = [
-                'conversation_key' => $dmKey,
-                'kind' => 'direct',
-                'title' => '',
-                'members' => [$actor, $profile],
-            ];
         }
         if (DB::table('messenger_users')->count() === 0) {
             $this->ensureGroupConversation();

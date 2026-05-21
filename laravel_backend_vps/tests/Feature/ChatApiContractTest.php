@@ -35,6 +35,14 @@ class ChatApiContractTest extends TestCase
         $contacts = data_get($response->json(), 'contacts', []);
         $this->assertCount(3, $contacts);
         $this->assertSame('nastya', data_get($contacts, '0.profile_key'));
+        $conversations = data_get($response->json(), 'conversations', []);
+        $this->assertSame(
+            [],
+            array_values(array_filter(
+                $conversations,
+                static fn (array $item): bool => ($item['kind'] ?? '') === 'direct',
+            )),
+        );
 
         $packs = data_get($response->json(), 'sticker_packs', []);
         $this->assertNotEmpty($packs);
