@@ -4,9 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../services/api_client.dart';
+
 class ProfilePage extends StatefulWidget {
   const ProfilePage({
     super.key,
+    required this.api,
     required this.displayName,
     required this.phone,
     required this.profileKey,
@@ -15,6 +18,7 @@ class ProfilePage extends StatefulWidget {
     required this.onDisplayNameChanged,
   });
 
+  final ApiClient api;
   final String displayName;
   final String phone;
   final String profileKey;
@@ -29,11 +33,13 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final ImagePicker _picker = ImagePicker();
   late TextEditingController _nameCtl;
+  String? _avatarUrl;
 
   @override
   void initState() {
     super.initState();
     _nameCtl = TextEditingController(text: widget.displayName);
+    _avatarUrl = widget.avatarUrl;
   }
 
   @override
@@ -58,7 +64,25 @@ class _ProfilePageState extends State<ProfilePage> {
 
     widget.onAvatarChanged(filePath);
     if (!mounted) return;
-    setState(() {});
+    setState(() => _avatarUrl = filePath);
+
+    try {
+      final uploadedUrl = await widget.api.uploadProfileAvatar(
+        actorProfile: widget.profileKey,
+        bytes: await File(filePath).readAsBytes(),
+        filename: xfile.name.isNotEmpty ? xfile.name : 'avatar.jpg',
+      );
+      if (uploadedUrl.isEmpty) return;
+      await prefs.setString(key, uploadedUrl);
+      widget.onAvatarChanged(uploadedUrl);
+      if (!mounted) return;
+      setState(() => _avatarUrl = uploadedUrl);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось загрузить аватарку: $error')),
+      );
+    }
   }
 
   Future<void> _saveName() async {
@@ -86,11 +110,8 @@ class _ProfilePageState extends State<ProfilePage> {
               onTap: _pickAvatar,
               child: CircleAvatar(
                 radius: 60,
-                backgroundImage:
-                    widget.avatarUrl != null && widget.avatarUrl!.isNotEmpty
-                        ? FileImage(File(widget.avatarUrl!))
-                        : null,
-                child: widget.avatarUrl == null || widget.avatarUrl!.isEmpty
+                backgroundImage: _avatarImageProvider(_avatarUrl),
+                child: _avatarUrl == null || _avatarUrl!.isEmpty
                     ? const Icon(Icons.person, size: 60)
                     : null,
               ),
@@ -132,5 +153,17 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ),
     );
+  }
+
+  ImageProvider? _avatarImageProvider(String? url) {
+    final value = url?.trim() ?? '';
+    if (value.isEmpty) return null;
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return NetworkImage(value);
+    }
+    if (value.startsWith('/')) {
+      return NetworkImage('http://31.129.97.211$value');
+    }
+    return FileImage(File(value));
   }
 }

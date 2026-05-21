@@ -317,6 +317,16 @@ final class SyncRepository
         );
     }
 
+    public function deviceTokenStatus(string $token, string $actor): ?string
+    {
+        $status = DB::table('device_tokens')
+            ->where('token', trim($token))
+            ->where('profile_key', trim($actor))
+            ->value('token_status');
+
+        return is_string($status) ? $status : null;
+    }
+
     public function deactivateDeviceToken(string $token, string $actor): void
     {
         DB::table('device_tokens')

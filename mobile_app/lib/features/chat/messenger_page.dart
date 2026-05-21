@@ -203,9 +203,10 @@ class _ContactList extends StatelessWidget {
   Widget _buildContactAvatar(ChatContact contact) {
     final url = avatarForContact?.call(contact.profileKey);
     if (url != null && url.isNotEmpty) {
-      if (url.startsWith('http')) {
+      if (url.startsWith('http') || url.startsWith('/')) {
         return CircleAvatar(
-          backgroundImage: NetworkImage(url),
+          backgroundImage: NetworkImage(
+              url.startsWith('/') ? 'http://31.129.97.211$url' : url),
           onBackgroundImageError: (_, __) {},
           child: const Icon(Icons.person),
         );

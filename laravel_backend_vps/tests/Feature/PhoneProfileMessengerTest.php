@@ -142,6 +142,60 @@ class PhoneProfileMessengerTest extends TestCase
     }
 
     #[Test]
+    public function profile_avatar_upload_is_returned_in_profile_contacts_and_family(): void
+    {
+        $nik = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 999 111 22 33',
+                'device_id' => 'nik-device',
+                'display_name' => 'Nikita',
+            ])
+            ->assertStatus(200)
+            ->json('user.profile_key');
+
+        $silach = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 999 444 55 66',
+                'device_id' => 'silach-device',
+                'display_name' => 'Silach',
+            ])
+            ->assertStatus(200)
+            ->json('user.profile_key');
+
+        $avatarUrl = '/profile_avatars/'.$silach.'.jpg';
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/profile/avatar', [
+                'actor_profile' => $silach,
+                'avatar_url' => $avatarUrl,
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('user.avatar_url', $avatarUrl);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/contacts/resolve', [
+                'actor_profile' => $nik,
+                'phones' => ['+7 999 444 55 66'],
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('contacts.0.avatar_url', $avatarUrl);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/family/members/add', [
+                'actor_profile' => $nik,
+                'profiles' => [$silach],
+            ])
+            ->assertStatus(200);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/family/members?actor_profile='.$nik)
+            ->assertStatus(200)
+            ->assertJsonFragment([
+                'profile_key' => $silach,
+                'avatar_url' => $avatarUrl,
+            ]);
+    }
+
+    #[Test]
     public function legacy_static_direct_key_loads_dynamic_phone_history(): void
     {
         $nik = $this->withHeaders(['X-Api-Key' => 'prod-key'])

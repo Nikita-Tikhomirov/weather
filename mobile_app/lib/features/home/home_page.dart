@@ -3915,6 +3915,7 @@ class _HomePageState extends State<HomePage> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ProfilePage(
+          api: store.repository.api,
           displayName: _currentProfileDisplayName,
           phone: _currentProfilePhone,
           profileKey: store.owner.value,
@@ -3939,7 +3940,9 @@ class _HomePageState extends State<HomePage> {
     if (cached != null && cached.isNotEmpty) return cached;
     // Try to find avatar from loaded contacts
     for (final contact in [..._chatContacts, ..._familyMembers]) {
-      if (contact.profileKey == profile && contact.avatarUrl != null && contact.avatarUrl!.isNotEmpty) {
+      if (contact.profileKey == profile &&
+          contact.avatarUrl != null &&
+          contact.avatarUrl!.isNotEmpty) {
         _profileAvatarUrls[profile] = contact.avatarUrl!;
         return contact.avatarUrl;
       }

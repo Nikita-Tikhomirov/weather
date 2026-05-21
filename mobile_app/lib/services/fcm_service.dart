@@ -134,9 +134,11 @@ class FcmService {
       if (newToken.isEmpty) {
         return;
       }
-      await _registerToken(newToken);
-      await _reportStatus(
-          tokenStatus: 'active', token: newToken, lastError: '');
+      final registered = await _registerToken(newToken);
+      if (registered) {
+        await _reportStatus(
+            tokenStatus: 'active', token: newToken, lastError: '');
+      }
     });
 
     _onMessageSub =
@@ -195,7 +197,11 @@ class FcmService {
       _updateDiagnostics('token:attempt_${attempt + 1}');
       final token = await _tryFetchToken(FirebaseMessaging.instance);
       if (token != null && token.isNotEmpty) {
-        await _registerToken(token);
+        final registered = await _registerToken(token);
+        if (!registered) {
+          await Future<void>.delayed(const Duration(seconds: 1));
+          continue;
+        }
         await _reportStatus(tokenStatus: 'active', token: token, lastError: '');
         _updateDiagnostics('token:active');
         return true;
@@ -225,8 +231,10 @@ class FcmService {
         await _reportStatus(tokenStatus: 'active', token: token, lastError: '');
         return;
       }
-      await _registerToken(token);
-      await _reportStatus(tokenStatus: 'active', token: token, lastError: '');
+      final registered = await _registerToken(token);
+      if (registered) {
+        await _reportStatus(tokenStatus: 'active', token: token, lastError: '');
+      }
     });
   }
 
@@ -389,18 +397,34 @@ class FcmService {
     return '$a | $b';
   }
 
-  Future<void> _registerToken(String token) async {
-    await api.registerDeviceToken(
-      actorProfile: actorProfile,
-      token: token,
-      platform:
-          Platform.isAndroid ? 'android' : (Platform.isIOS ? 'ios' : 'other'),
-      appVersion: _appVersion,
-      playServices: _playServicesState,
-      tokenStatus: 'active',
-      lastError: '',
-    );
-    _lastRegisteredToken = token;
+  Future<bool> _registerToken(String token) async {
+    try {
+      final result = await api.registerDeviceToken(
+        actorProfile: actorProfile,
+        token: token,
+        platform:
+            Platform.isAndroid ? 'android' : (Platform.isIOS ? 'ios' : 'other'),
+        appVersion: _appVersion,
+        playServices: _playServicesState,
+        tokenStatus: 'active',
+        lastError: '',
+      );
+      _lastRegisteredToken = token;
+      if (result.shouldResetToken) {
+        _lastTokenError =
+            'server_rejected_stale_fcm_token:${result.previousTokenStatus}';
+        _updateDiagnostics('token:server_reset_required', token: token);
+        _lastRegisteredToken = '';
+        await _recoverFromFisAuthError();
+        return false;
+      }
+      return true;
+    } catch (error) {
+      _lastTokenError = 'register_failed:$error';
+      _updateDiagnostics('token:register_failed', token: token);
+      await _reportStatus(tokenStatus: 'register_failed', token: token);
+      return false;
+    }
   }
 
   Future<void> _reportStatus({

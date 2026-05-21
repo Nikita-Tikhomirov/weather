@@ -181,17 +181,21 @@ class SyncController extends Controller
             $playServices = trim((string)$request->input('play_services', 'unknown')) ?: 'unknown';
             $tokenStatus = trim((string)$request->input('token_status', 'active')) ?: 'active';
             $lastError = trim((string)$request->input('last_error', ''));
+            $previousTokenStatus = $this->repo->deviceTokenStatus($token, $actor);
+            $shouldResetToken = $previousTokenStatus === 'unregistered';
 
-            $this->repo->upsertDeviceToken(
-                $token,
-                $actor,
-                $platform,
-                $appVersion,
-                $deviceId !== '' ? $deviceId : null,
-                $playServices,
-                $tokenStatus,
-                $lastError,
-            );
+            if (!$shouldResetToken) {
+                $this->repo->upsertDeviceToken(
+                    $token,
+                    $actor,
+                    $platform,
+                    $appVersion,
+                    $deviceId !== '' ? $deviceId : null,
+                    $playServices,
+                    $tokenStatus,
+                    $lastError,
+                );
+            }
 
             $this->repo->upsertDeviceStatus(
                 $actor,
@@ -208,6 +212,8 @@ class SyncController extends Controller
                 'ok' => true,
                 'token_status' => $tokenStatus,
                 'play_services' => $playServices,
+                'previous_token_status' => $previousTokenStatus,
+                'should_reset_token' => $shouldResetToken,
                 'registered_at' => $this->repo->nowIso(),
             ]);
         } catch (InvalidArgumentException $e) {

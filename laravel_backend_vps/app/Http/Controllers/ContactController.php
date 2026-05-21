@@ -6,6 +6,7 @@ use App\Domain\Profiles\PhoneProfileRepository;
 use App\Domain\Sync\ActorProfileGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use Throwable;
 
@@ -78,6 +79,49 @@ class ContactController extends Controller
             return $this->json(200, [
                 'ok' => true,
                 'members' => $this->profiles->removeFamilyMember($actor, $profile),
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function updateAvatar(Request $request): JsonResponse
+    {
+        try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
+            $avatarUrl = trim((string)$request->input('avatar_url', ''));
+
+            if ($request->hasFile('image')) {
+                $file = $request->file('image');
+                if ($file === null || !$file->isValid()) {
+                    throw new InvalidArgumentException('image upload failed');
+                }
+                $mime = (string)$file->getMimeType();
+                if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) {
+                    throw new InvalidArgumentException('unsupported avatar image type');
+                }
+                $extension = match ($mime) {
+                    'image/png' => 'png',
+                    'image/webp' => 'webp',
+                    default => 'jpg',
+                };
+                $path = $file->storeAs(
+                    'profile_avatars',
+                    $actor.'_'.time().'.'.$extension,
+                    'public'
+                );
+                $avatarUrl = Storage::url($path);
+            }
+
+            if ($avatarUrl === '') {
+                throw new InvalidArgumentException('avatar_url or image is required');
+            }
+
+            return $this->json(200, [
+                'ok' => true,
+                'user' => $this->profiles->updateAvatarUrl($actor, $avatarUrl),
             ]);
         } catch (InvalidArgumentException $e) {
             return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);

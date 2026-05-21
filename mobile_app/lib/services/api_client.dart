@@ -75,6 +75,16 @@ class ChatUploadResult {
   final Map<String, dynamic> imageMeta;
 }
 
+class DeviceTokenRegistration {
+  DeviceTokenRegistration({
+    required this.shouldResetToken,
+    required this.previousTokenStatus,
+  });
+
+  final bool shouldResetToken;
+  final String previousTokenStatus;
+}
+
 class ApiClient {
   ApiClient({required this.baseUrl, required this.apiKey});
 
@@ -227,7 +237,7 @@ class ApiClient {
     _actorProfileForPull = actorProfile.trim();
   }
 
-  Future<void> registerDeviceToken({
+  Future<DeviceTokenRegistration> registerDeviceToken({
     required String actorProfile,
     required String token,
     required String platform,
@@ -247,7 +257,7 @@ class ApiClient {
       'last_error': lastError,
       if (deviceId != null && deviceId.isNotEmpty) 'device_id': deviceId,
     };
-    await _postWithFallback(
+    final response = await _postWithFallback(
       paths: const [
         '/devices_register.php',
         '/devices_register.php/',
@@ -255,6 +265,11 @@ class ApiClient {
         '/devices/register',
       ],
       body: jsonEncode(payload),
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return DeviceTokenRegistration(
+      shouldResetToken: body['should_reset_token'] == true,
+      previousTokenStatus: (body['previous_token_status'] ?? '').toString(),
     );
   }
 
@@ -612,6 +627,30 @@ class ApiClient {
       imageMeta:
           (body['image_meta'] as Map?)?.cast<String, dynamic>() ?? const {},
     );
+  }
+
+  Future<String> uploadProfileAvatar({
+    required String actorProfile,
+    required List<int> bytes,
+    String filename = 'avatar.jpg',
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/profile/avatar'),
+    );
+    request.headers['X-Api-Key'] = apiKey;
+    request.fields['actor_profile'] = actorProfile;
+    request.files.add(
+      http.MultipartFile.fromBytes('image', bytes, filename: filename),
+    );
+
+    final response = await http.Response.fromStream(await request.send());
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError(
+          'Avatar upload failed: ${response.statusCode} ${response.body}');
+    }
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return ((body['user'] as Map?)?['avatar_url'] ?? '').toString();
   }
 
   Future<void> addGroupMember({

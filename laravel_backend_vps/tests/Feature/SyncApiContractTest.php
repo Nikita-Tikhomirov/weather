@@ -135,6 +135,51 @@ class SyncApiContractTest extends TestCase
     }
 
     #[Test]
+    public function device_register_reports_when_fcm_token_was_previously_rejected(): void
+    {
+        config(['sync.api_key' => 'prod-key']);
+
+        DB::table('device_tokens')->insert([
+            'token' => 'dead-token',
+            'profile_key' => 'nik',
+            'platform' => 'android',
+            'app_version' => '0.1.6',
+            'device_id' => 'device-a',
+            'is_active' => 0,
+            'token_status' => 'unregistered',
+            'play_services' => 'available',
+            'last_error' => 'NOT_FOUND: Requested entity was not found.',
+            'registered_at' => now()->format('Y-m-d\TH:i:s'),
+            'last_seen_at' => now()->format('Y-m-d\TH:i:s'),
+            'created_at' => now()->format('Y-m-d\TH:i:s'),
+            'updated_at' => now()->format('Y-m-d\TH:i:s'),
+        ]);
+
+        $response = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/devices_register.php', [
+                'actor_profile' => 'nik',
+                'token' => 'dead-token',
+                'platform' => 'android',
+                'app_version' => '0.1.6',
+                'play_services' => 'available',
+                'token_status' => 'active',
+                'last_error' => '',
+            ]);
+
+        $response
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('should_reset_token', true)
+            ->assertJsonPath('previous_token_status', 'unregistered');
+
+        $this->assertDatabaseHas('device_tokens', [
+            'token' => 'dead-token',
+            'is_active' => 0,
+            'token_status' => 'unregistered',
+        ]);
+    }
+
+    #[Test]
     public function push_device_status_endpoint_returns_latest_status_for_actor(): void
     {
         config(['sync.api_key' => 'prod-key']);

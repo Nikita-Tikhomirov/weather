@@ -12,6 +12,7 @@ Route::get('/health', [SyncController::class, 'health']);
 Route::middleware('sync.apikey')->group(function (): void {
     Route::post('/auth/device-start', [AuthController::class, 'deviceStart']);
     Route::post('/contacts/resolve', [ContactController::class, 'resolve']);
+    Route::post('/profile/avatar', [ContactController::class, 'updateAvatar']);
     Route::get('/family/members', [ContactController::class, 'familyMembers']);
     Route::post('/family/members/add', [ContactController::class, 'addFamilyMembers']);
     Route::post('/family/members/remove', [ContactController::class, 'removeFamilyMember']);

@@ -98,6 +98,7 @@ final class PhoneProfileRepository
                 'profile_key' => (string)$row->profile_key,
                 'phone' => (string)$row->phone_normalized,
                 'display_name' => (string)$row->display_name,
+                'avatar_url' => (string)($row->avatar_url ?? ''),
                 'conversation_key' => $this->directConversationKey($actor, (string)$row->profile_key),
             ])
             ->values()
@@ -111,11 +112,12 @@ final class PhoneProfileRepository
             ->join('messenger_users', 'messenger_users.profile_key', '=', 'family_group_members.profile_key')
             ->where('family_group_members.family_group_id', (int)$group->id)
             ->orderBy('messenger_users.display_name')
-            ->get(['messenger_users.profile_key', 'messenger_users.phone_normalized', 'messenger_users.display_name', 'family_group_members.role'])
+            ->get(['messenger_users.profile_key', 'messenger_users.phone_normalized', 'messenger_users.display_name', 'messenger_users.avatar_url', 'family_group_members.role'])
             ->map(fn ($row): array => [
                 'profile_key' => (string)$row->profile_key,
                 'phone' => (string)$row->phone_normalized,
                 'display_name' => (string)$row->display_name,
+                'avatar_url' => (string)($row->avatar_url ?? ''),
                 'role' => (string)$row->role,
                 'conversation_key' => (string)$row->profile_key === $actor
                     ? ''
@@ -159,6 +161,27 @@ final class PhoneProfileRepository
     public function profileExists(string $profileKey): bool
     {
         return DB::table('messenger_users')->where('profile_key', trim($profileKey))->exists();
+    }
+
+    public function updateAvatarUrl(string $actor, string $avatarUrl): array
+    {
+        $profile = trim($actor);
+        if (!$this->profileExists($profile)) {
+            throw new InvalidArgumentException('Unknown actor_profile');
+        }
+
+        $url = trim($avatarUrl);
+        if (strlen($url) > 1024) {
+            throw new InvalidArgumentException('avatar_url is too long');
+        }
+
+        DB::table('messenger_users')->where('profile_key', $profile)->update([
+            'avatar_url' => $url,
+            'updated_at' => $this->nowIso(),
+        ]);
+
+        $id = (int) DB::table('messenger_users')->where('profile_key', $profile)->value('id');
+        return $this->userPayload($id);
     }
 
     public function markDeviceRebindPending(string $phone): array
@@ -238,6 +261,7 @@ final class PhoneProfileRepository
             'profile_key' => (string)$row->profile_key,
             'phone' => (string)$row->phone_normalized,
             'display_name' => (string)$row->display_name,
+            'avatar_url' => (string)($row->avatar_url ?? ''),
             'device_id' => (string)$row->primary_device_id,
         ];
     }

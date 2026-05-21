@@ -100,8 +100,10 @@ class ChatMessageBubble extends StatelessWidget {
 
   Widget _buildMiniAvatar({double radius = 14}) {
     if (avatarUrl != null && avatarUrl!.isNotEmpty) {
-      final image = avatarUrl!.startsWith('http')
-          ? NetworkImage(avatarUrl!) as ImageProvider
+      final image = avatarUrl!.startsWith('http') || avatarUrl!.startsWith('/')
+          ? NetworkImage(avatarUrl!.startsWith('/')
+              ? 'http://31.129.97.211$avatarUrl'
+              : avatarUrl!) as ImageProvider
           : FileImage(File(avatarUrl!));
       return CircleAvatar(
         radius: radius,
@@ -651,8 +653,18 @@ class ChatMessageBubble extends StatelessWidget {
     try {
       final dt = DateTime.parse(iso).toLocal();
       const months = [
-        'янв', 'фев', 'мар', 'апр', 'мая', 'июн',
-        'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
+        'янв',
+        'фев',
+        'мар',
+        'апр',
+        'мая',
+        'июн',
+        'июл',
+        'авг',
+        'сен',
+        'окт',
+        'ноя',
+        'дек',
       ];
       final day = dt.day;
       final month = months[dt.month - 1];
