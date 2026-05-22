@@ -422,6 +422,7 @@ class _ProjectChatInput extends StatelessWidget {
   const _ProjectChatInput({
     required this.controller,
     required this.onSendPhotos,
+    required this.onSendDocuments,
     required this.onOpenProjectFiles,
     required this.onSendMessage,
   });
