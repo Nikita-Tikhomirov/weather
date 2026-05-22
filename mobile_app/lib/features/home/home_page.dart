@@ -179,10 +179,13 @@ class _HomePageState extends State<HomePage> {
     _initShareReceiver(store);
     _chatInputCtl.addListener(() => _onChatInputChanged(store));
     _startSyncLoops(store);
+    if (!mounted) {
+      store.dispose();
+      return;
+    }
     setState(() => _store = store);
 
     // Process push notification that arrived before initialization completed.
-    // Process before unmount check so pending push is never silently dropped.
     var pending = _pendingPushData;
 
     // Also check temp file for payload saved by background handler.
@@ -256,10 +259,6 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
-    if (!mounted) {
-      store.dispose();
-      return;
-    }
   }
 
   Future<String> _ensureDeviceId(SharedPreferences prefs) async {
