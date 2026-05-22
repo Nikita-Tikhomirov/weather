@@ -170,7 +170,7 @@ class _HomePageState extends State<HomePage> {
     if (_isDesktopWindows) {
       await _initDesktopServices(store, owner);
     }
-    _bindFcm(api: api, owner: owner);
+    await _bindFcm(api: api, owner: owner);
     await _safeSyncFull(store, showErrors: false);
     _loadProjects();
     await _initChat(store);
@@ -832,7 +832,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _bindFcm({required ApiClient api, required String owner}) {
+  Future<void> _bindFcm({required ApiClient api, required String owner}) async {
     _fcm?.dispose();
     if (mounted) {
       _fcmDiagnostics.value = 'FCM: binding actor=$owner';
@@ -915,10 +915,7 @@ class _HomePageState extends State<HomePage> {
         await _refreshActiveConversation(store, useNetwork: true, quiet: true);
       },
     );
-    _fcm!.initialize().catchError((error, stackTrace) {
-      debugPrint('FCM initialization failed: $error');
-      debugPrint('$stackTrace');
-    });
+    await _fcm!.initialize();
   }
 
   void _showFcmDiagnosticsDialog() {
