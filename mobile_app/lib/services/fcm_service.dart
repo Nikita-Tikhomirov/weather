@@ -111,15 +111,15 @@ class FcmService {
     final messaging = FirebaseMessaging.instance;
     await messaging.setAutoInitEnabled(true);
 
-    RemoteMessage? _initialMsg;
-    NotificationAppLaunchDetails? _launchDetails;
+    RemoteMessage? capturedMsg;
+    NotificationAppLaunchDetails? capturedLaunch;
     try {
-      _initialMsg = await messaging.getInitialMessage();
+      capturedMsg = await messaging.getInitialMessage();
     } catch (_) {
       _updateDiagnostics('push:getInitialMessage_error');
     }
     try {
-      _launchDetails =
+      capturedLaunch =
           await _localNotifications.getNotificationAppLaunchDetails();
     } catch (_) {
       _updateDiagnostics('push:getLaunchDetails_error');
@@ -184,12 +184,12 @@ class FcmService {
     });
 
     // Process launch data captured before notification channel init
-    if (_initialMsg != null) {
+    if (capturedMsg != null) {
       _updateDiagnostics('push:initial_message');
-      await onOpenPush(_initialMsg.data);
+      await onOpenPush(capturedMsg.data);
     }
-    if (_launchDetails?.didNotificationLaunchApp == true) {
-      final response = _launchDetails?.notificationResponse;
+    if (capturedLaunch?.didNotificationLaunchApp == true) {
+      final response = capturedLaunch?.notificationResponse;
       if (response?.payload != null) {
         final data = _decodeNotificationPayload(response!.payload);
         if (data != null) {
