@@ -110,16 +110,11 @@ class FcmService {
     _updateDiagnostics('initialize:start');
     await _refreshNativeDiagnostics();
 
-    final initialized = await _initializeFirebaseSafely();
-    if (!initialized) {
-      _updateDiagnostics('initialize:firebase_init_failed');
-      await _reportStatus(tokenStatus: 'firebase_init_failed');
-      return;
-    }
-
-    // Read push payload saved by background handler to a temp file.
-    // The background isolate runs before the main isolate and writes
-    // data to this file — consume it immediately.
+    // Read push payload saved by background handler to a temp file FIRST,
+    // before anything that could cause early return.  The background isolate
+    // writes data to this file before calling _ensureNotificationChannel.
+    // DO NOT delete the file here — if Firebase init fails, _init() in
+    // home_page still needs this file as a fallback.
     Map<String, dynamic>? prefsPayload;
     try {
       final file =
@@ -128,12 +123,25 @@ class FcmService {
         final raw = await file.readAsString();
         if (raw.isNotEmpty) {
           prefsPayload = _decodeNotificationPayload(raw);
-          await file.delete();
           _updateDiagnostics('push:file_payload_found');
         }
       }
     } catch (_) {
       _updateDiagnostics('push:file_payload_error');
+    }
+
+    final initialized = await _initializeFirebaseSafely();
+    if (!initialized) {
+      _updateDiagnostics('initialize:firebase_init_failed');
+      await _reportStatus(tokenStatus: 'firebase_init_failed');
+      // Firebase failed, but push payload must still be delivered.
+      // onOpenPush saves to _pendingPushData in home_page even when
+      // _store is null, so _init() can process it later.
+      if (prefsPayload != null) {
+        _updateDiagnostics('push:delivering_despite_firebase_failure');
+        await onOpenPush(prefsPayload);
+      }
+      return;
     }
 
     // Capture notification launch details BEFORE _ensureNotificationChannel(),
@@ -154,6 +162,14 @@ class FcmService {
     } catch (_) {
       _updateDiagnostics('push:getLaunchDetails_error');
     }
+
+    // Set up stream listener BEFORE _ensureNotificationChannel(),
+    // because _localNotifications.initialize() (called inside) may
+    // fire onDidReceiveBackgroundNotificationResponse for cold-start
+    // tap events.  If the listener is set up after, the event is lost.
+    _localOpenSub = _notificationOpenEvents.stream.listen((data) async {
+      await onOpenPush(data);
+    });
 
     await _ensureNotificationChannel();
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
@@ -209,9 +225,7 @@ class FcmService {
     _onOpenSub = FirebaseMessaging.onMessageOpenedApp.listen((msg) async {
       await onOpenPush(msg.data);
     });
-    _localOpenSub = _notificationOpenEvents.stream.listen((data) async {
-      await onOpenPush(data);
-    });
+    // _localOpenSub is already set up before _ensureNotificationChannel — skip here
 
     // Process launch data captured before notification channel init.
     // A file payload is only a fallback: when Android/Firebase gives us the
@@ -239,6 +253,12 @@ class FcmService {
     if (prefsPayload != null && !handledExplicitLaunch) {
       _updateDiagnostics('push:prefs_payload');
       await onOpenPush(prefsPayload);
+      // File payload successfully consumed — clean up
+      try {
+        final file =
+            File('${Directory.systemTemp.path}/family_todo_pending_push.json');
+        if (await file.exists()) await file.delete();
+      } catch (_) {}
     }
   }
 
