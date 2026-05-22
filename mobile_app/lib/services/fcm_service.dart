@@ -122,8 +122,8 @@ class FcmService {
     // data to this file — consume it immediately.
     Map<String, dynamic>? prefsPayload;
     try {
-      final file = File(
-          '${Directory.systemTemp.path}/family_todo_pending_push.json');
+      final file =
+          File('${Directory.systemTemp.path}/family_todo_pending_push.json');
       if (await file.exists()) {
         final raw = await file.readAsString();
         if (raw.isNotEmpty) {
@@ -213,10 +213,15 @@ class FcmService {
       await onOpenPush(data);
     });
 
-    // Process launch data captured before notification channel init
+    // Process launch data captured before notification channel init.
+    // A file payload is only a fallback: when Android/Firebase gives us the
+    // exact notification that was tapped, do not let a previously saved
+    // background payload overwrite that route.
+    var handledExplicitLaunch = false;
     if (capturedMsg != null) {
       _updateDiagnostics('push:initial_message');
       await onOpenPush(capturedMsg.data);
+      handledExplicitLaunch = true;
     }
     if (capturedLaunch?.didNotificationLaunchApp == true) {
       final response = capturedLaunch?.notificationResponse;
@@ -225,11 +230,13 @@ class FcmService {
         if (data != null) {
           _updateDiagnostics('push:local_launch');
           await onOpenPush(data);
+          handledExplicitLaunch = true;
         }
       }
     }
-    // Process push payload saved by background handler via SharedPreferences
-    if (prefsPayload != null) {
+    // Process push payload saved by background handler only when there was no
+    // explicit tap payload from Firebase/local notifications.
+    if (prefsPayload != null && !handledExplicitLaunch) {
       _updateDiagnostics('push:prefs_payload');
       await onOpenPush(prefsPayload);
     }
