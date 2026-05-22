@@ -106,6 +106,7 @@ class _HomePageState extends State<HomePage> {
   int _voiceSec = 0;
   Map<String, dynamic>? _pendingPushData;
   String _lastProcessedPushEventId = '';
+  bool _pushAlreadyRouted = false;
 
   /// Conversation key -> set of profiles currently typing
   final Map<String, Set<String>> _typingUsers = <String, Set<String>>{};
@@ -235,6 +236,7 @@ class _HomePageState extends State<HomePage> {
       } else if ((pending['entity'] ?? '') == 'chat_message' &&
           conversationKey.isNotEmpty &&
           !_isProjectConversation(conversationKey)) {
+        _pushAlreadyRouted = true;
         store.setPage(4);
         // Wait for messenger tab to render before opening conversation
         await WidgetsBinding.instance.endOfFrame;
@@ -908,6 +910,7 @@ class _HomePageState extends State<HomePage> {
             !_isProjectConversation(conversationKey)) {
           debugPrint(
               '[FCM push] routing to messenger -> _openConversation($conversationKey)');
+          _pushAlreadyRouted = true;
           store.setPage(4); // Switch to Messenger tab
           // Wait for messenger tab to render before opening conversation
           await WidgetsBinding.instance.endOfFrame;
@@ -1283,10 +1286,17 @@ class _HomePageState extends State<HomePage> {
     final db = store.repository.db;
     final actor = store.owner.value;
 
+    // If a push already routed to a conversation, preserve the key
+    // so _initChat doesn't undo the navigation.
+    final pushConversationKey =
+        _pushAlreadyRouted ? _activeConversationKey : '';
+
     setState(() {
       _chatLoading = true;
       _chatMessagesByConversation.clear();
-      _activeConversationKey = '';
+      if (!_pushAlreadyRouted) {
+        _activeConversationKey = '';
+      }
     });
 
     try {
@@ -1309,7 +1319,9 @@ class _HomePageState extends State<HomePage> {
         _chatContacts = bootstrap.contacts;
         _chatConversations = conversations;
         _chatStickerPacks = stickerPacks;
-        _activeConversationKey = '';
+        if (!_pushAlreadyRouted) {
+          _activeConversationKey = '';
+        }
       });
 
       await _loadPhoneContacts(store);
@@ -1333,6 +1345,17 @@ class _HomePageState extends State<HomePage> {
       )..start();
 
       _replaceCallService(api: api, actorProfile: actor);
+
+      // If a push already opened a conversation, refresh it now that
+      // chat state is fully loaded.
+      if (pushConversationKey.isNotEmpty && mounted) {
+        await _refreshConversation(
+          store,
+          pushConversationKey,
+          useNetwork: true,
+          quiet: true,
+        );
+      }
 
       // Load avatars for all contacts from local storage
       final prefs = await SharedPreferences.getInstance();
