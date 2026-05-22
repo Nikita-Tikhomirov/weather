@@ -94,9 +94,12 @@ class BridgeLauncher:
                     )
                     await writer.drain()
                 elif msg.get("type") == "ping":
+                    pong = {"type": "pong", "text": "launcher pong"}
+                    if msg.get("ping_id"):
+                        pong["ping_id"] = str(msg.get("ping_id"))
                     writer.write(
                         json.dumps(
-                            {"type": "pong", "text": "launcher pong"},
+                            pong,
                             ensure_ascii=False,
                         ).encode("utf-8")
                         + b"\n"

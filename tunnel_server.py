@@ -12,10 +12,10 @@ Usage: python tunnel_server.py --port 9877
 import argparse
 import asyncio
 import json
-import sys
-from typing import Optional
+import uuid
 
 MAX_RELAY_LINE_BYTES = 32 * 1024 * 1024
+LAUNCHER_PONG_TIMEOUT_SECONDS = 2.0
 
 class TunnelServer:
     def __init__(self, host: str = '0.0.0.0', port: int = 9877):
@@ -30,6 +30,7 @@ class TunnelServer:
         self._relay_tasks: dict[str, asyncio.Task] = {}
         # PC launcher sockets that can start project_bridge.py on demand.
         self._launcher_writers: list[asyncio.StreamWriter] = []
+        self._launcher_pongs: dict[tuple[int, str], asyncio.Event] = {}
 
     async def start(self):
         self._server = await asyncio.start_server(
@@ -155,6 +156,18 @@ class TunnelServer:
                 except json.JSONDecodeError:
                     continue
                 text = str(msg.get('text', '')).strip()
+                if msg.get('type') == 'pong':
+                    ping_id = str(msg.get('ping_id', '')).strip()
+                    if ping_id:
+                        pong = self._launcher_pongs.get((id(writer), ping_id))
+                        if pong is not None:
+                            pong.set()
+                    else:
+                        # Backward compatibility for older PC launchers.
+                        for (writer_id, _), pong in list(self._launcher_pongs.items()):
+                            if writer_id == id(writer):
+                                pong.set()
+                    continue
                 if text:
                     print(f"[tunnel] Launcher: {text}", flush=True)
         except (ConnectionResetError, asyncio.IncompleteReadError):
@@ -162,6 +175,9 @@ class TunnelServer:
         finally:
             if writer in self._launcher_writers:
                 self._launcher_writers.remove(writer)
+            for key in list(self._launcher_pongs):
+                if key[0] == id(writer):
+                    self._launcher_pongs.pop(key, None)
             print("[tunnel] Launcher unregistered", flush=True)
             if not writer.is_closing():
                 writer.close()
@@ -202,29 +218,50 @@ class TunnelServer:
         if not self._launcher_writers:
             return False
 
-        payload = json.dumps(
-            {'type': 'ping', 'project_id': 'launcher'},
-            ensure_ascii=False,
-        ).encode('utf-8') + b'\n'
         delivered = False
         dead = []
         for launcher in self._launcher_writers:
+            pong_key = None
             try:
                 if launcher.is_closing():
                     dead.append(launcher)
                     continue
+                ping_id = uuid.uuid4().hex
+                pong = asyncio.Event()
+                pong_key = (id(launcher), ping_id)
+                self._launcher_pongs[pong_key] = pong
+                payload = json.dumps(
+                    {
+                        'type': 'ping',
+                        'project_id': 'launcher',
+                        'ping_id': ping_id,
+                    },
+                    ensure_ascii=False,
+                ).encode('utf-8') + b'\n'
                 launcher.write(payload)
                 await launcher.drain()
-                delivered = True
+                try:
+                    await asyncio.wait_for(
+                        pong.wait(),
+                        timeout=LAUNCHER_PONG_TIMEOUT_SECONDS,
+                    )
+                    delivered = True
+                except asyncio.TimeoutError:
+                    dead.append(launcher)
             except Exception:
                 dead.append(launcher)
+            finally:
+                if pong_key is not None:
+                    self._launcher_pongs.pop(pong_key, None)
         for launcher in dead:
             if launcher in self._launcher_writers:
                 self._launcher_writers.remove(launcher)
+            if not launcher.is_closing():
+                launcher.close()
         return delivered
 
     async def _request_bridge_start(self, project_id: str) -> bool:
-        if not self._launcher_writers:
+        if not await self._ping_launchers():
             return False
 
         payload = json.dumps(

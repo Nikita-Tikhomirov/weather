@@ -176,6 +176,9 @@ Scheduler. Если Windows запрещает регистрацию задач
 он добавляет `BridgeLauncherAtLogon.cmd` в пользовательскую папку Startup.
 Автозапуск поднимает `bridge_launcher_watchdog.ps1`: он каждые 15 секунд
 проверяет `bridge_launcher.py` и перезапускает его, если тот упал.
+На VPS tunnel relay должен работать как systemd-сервис
+`project-tunnel.service` с `Restart=always`; unit-файл хранится в
+`ops/project-tunnel.service`.
 
 Launcher держит соединение с VPS и по команде из APK запускает:
 
