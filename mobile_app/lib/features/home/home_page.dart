@@ -105,6 +105,7 @@ class _HomePageState extends State<HomePage> {
   Timer? _voiceTimer;
   int _voiceSec = 0;
   Map<String, dynamic>? _pendingPushData;
+  String _lastProcessedPushEventId = '';
 
   /// Conversation key -> set of profiles currently typing
   final Map<String, Set<String>> _typingUsers = <String, Set<String>>{};
@@ -177,13 +178,10 @@ class _HomePageState extends State<HomePage> {
     _initShareReceiver(store);
     _chatInputCtl.addListener(() => _onChatInputChanged(store));
     _startSyncLoops(store);
-    if (!mounted) {
-      store.dispose();
-      return;
-    }
     setState(() => _store = store);
 
-    // Process push notification that arrived before initialization completed
+    // Process push notification that arrived before initialization completed.
+    // Process before unmount check so pending push is never silently dropped.
     var pending = _pendingPushData;
 
     // Also check temp file for payload saved by background handler.
@@ -209,6 +207,13 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (pending != null) {
+      final eventId = (pending['event_id'] ?? '').toString();
+      if (eventId.isNotEmpty && _lastProcessedPushEventId == eventId) {
+        debugPrint('[FCM push] _init skipping duplicate event $eventId');
+        _pendingPushData = null;
+        return;
+      }
+      _lastProcessedPushEventId = eventId;
       debugPrint(
           '[FCM push] _init processing pending: entity=${pending['entity']} conv=${pending['conversation_key']}');
       _pendingPushData = null;
@@ -224,7 +229,11 @@ class _HomePageState extends State<HomePage> {
           conversationKey.isNotEmpty &&
           !_isProjectConversation(conversationKey)) {
         store.setPage(4);
-        await _openConversation(store, conversationKey);
+        // Wait for messenger tab to render before opening conversation
+        await WidgetsBinding.instance.endOfFrame;
+        if (mounted) {
+          await _openConversation(store, conversationKey);
+        }
       } else if (pushType == 'call_incoming') {
         final sessionId = (pending['session_id'] ?? '').toString();
         final callType = (pending['call_type'] ?? 'audio').toString();
@@ -243,6 +252,11 @@ class _HomePageState extends State<HomePage> {
       } else {
         await _refreshActiveConversation(store, useNetwork: true, quiet: true);
       }
+    }
+
+    if (!mounted) {
+      store.dispose();
+      return;
     }
   }
 
@@ -860,6 +874,12 @@ class _HomePageState extends State<HomePage> {
           _pendingPushData = Map<String, dynamic>.from(data);
           return;
         }
+        final eventId = (data['event_id'] ?? '').toString();
+        if (eventId.isNotEmpty && _lastProcessedPushEventId == eventId) {
+          debugPrint('[FCM push] skipping duplicate event $eventId');
+          return;
+        }
+        _lastProcessedPushEventId = eventId;
         await _safeSyncDelta(store, showErrors: false);
 
         final pushType = (data['type'] ?? data['entity'] ?? '').toString();
@@ -882,7 +902,11 @@ class _HomePageState extends State<HomePage> {
           debugPrint(
               '[FCM push] routing to messenger -> _openConversation($conversationKey)');
           store.setPage(4); // Switch to Messenger tab
-          await _openConversation(store, conversationKey);
+          // Wait for messenger tab to render before opening conversation
+          await WidgetsBinding.instance.endOfFrame;
+          if (mounted) {
+            await _openConversation(store, conversationKey);
+          }
           return;
         }
 

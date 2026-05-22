@@ -22,3 +22,6 @@ backend_api/config.php
 .deepseek/
 .deepseek/state/bridge_memory*.json
 .tmp_deepseek_*/
+authgittoken.txt  
+family-todo-release.apk 
+toJson()  
