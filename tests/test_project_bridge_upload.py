@@ -1,5 +1,6 @@
 import base64
 import io
+import json
 import sys
 import tempfile
 import unittest
@@ -7,6 +8,46 @@ from pathlib import Path
 from unittest.mock import patch
 
 from project_bridge import ProjectSession, _log
+
+
+class _CollectingWriter:
+    def __init__(self) -> None:
+        self.messages: list[dict] = []
+
+    def write(self, data: bytes) -> None:
+        self.messages.append(json.loads(data.decode("utf-8")))
+
+
+class _WhitespaceDeltaRuntime:
+    def ensure_running(self, cwd: str) -> None:
+        pass
+
+    def create_thread(self, workspace: str, title: str) -> str:
+        return "thread_1"
+
+    def send_turn(self, thread_id: str, prompt: str) -> str:
+        return "turn_1"
+
+    def stream_events(self, thread_id: str, since_seq: int):
+        yield {
+            "seq": 1,
+            "event": "item.delta",
+            "item_id": "item_1",
+            "payload": {"kind": "assistant_message", "delta": "\n"},
+        }
+        yield {
+            "seq": 2,
+            "event": "item.delta",
+            "item_id": "item_1",
+            "payload": {"kind": "assistant_message", "delta": "Ответ"},
+        }
+        yield {
+            "seq": 3,
+            "event": "item.completed",
+            "item_id": "item_1",
+            "payload": {"item": {"kind": "assistant_message", "detail": "Ответ"}},
+        }
+        yield {"seq": 4, "event": "turn.completed", "payload": {}}
 
 
 class ProjectBridgeUploadTests(unittest.TestCase):
@@ -55,6 +96,23 @@ class ProjectBridgeUploadTests(unittest.TestCase):
             )
 
             self.assertEqual(session.load_history(limit=10), [])
+
+    def test_runtime_whitespace_delta_is_not_broadcast_as_empty_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            session = ProjectSession("cifra", tmp)
+            session.running = True
+            session.session_id = "s1"
+            writer = _CollectingWriter()
+            session.writers.append(writer)
+
+            with patch("project_bridge._RUNTIME", _WhitespaceDeltaRuntime()):
+                session._run_runtime_turn("prompt")
+
+            output_texts = [
+                msg["text"] for msg in writer.messages if msg["type"] == "output"
+            ]
+            self.assertNotIn("\n", output_texts)
+            self.assertIn("Ответ", output_texts)
 
     def test_new_session_switches_latest_log(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

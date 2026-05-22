@@ -436,8 +436,12 @@ class ProjectSession:
                 kind = str(payload.get("kind") or "")
                 delta = str(payload.get("delta") or "")
                 if delta:
+                    parts = item_parts.setdefault(item_id, []) if item_id else []
+                    has_visible_text = any(part.strip() for part in parts)
+                    if not delta.strip() and not has_visible_text:
+                        continue
                     if item_id:
-                        item_parts.setdefault(item_id, []).append(delta)
+                        parts.append(delta)
                         item_kinds[item_id] = kind
                     _log("session", f"{self.project_id} out: {delta[:120]}")
                     self._broadcast(
@@ -458,7 +462,7 @@ class ProjectSession:
                     or item.get("summary")
                     or "".join(item_parts.get(item_id, []))
                 )
-                if final_text:
+                if final_text.strip():
                     self._broadcast(
                         "output",
                         final_text,

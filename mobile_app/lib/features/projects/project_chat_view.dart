@@ -243,6 +243,10 @@ class _ProjectMessageList extends StatelessWidget {
         final isMe = msg.isSent || msg.type == 'send';
         final isStatus = msg.isStatus || msg.isPong;
 
+        if (!msg.isImage && msg.text.trim().isEmpty) {
+          return const SizedBox.shrink();
+        }
+
         if (isStatus) {
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
