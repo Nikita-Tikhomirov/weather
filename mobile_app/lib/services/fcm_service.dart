@@ -31,6 +31,15 @@ const MethodChannel _firebaseInstallationsChannel =
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Save push payload BEFORE _ensureNotificationChannel (which calls
+  // _localNotifications.initialize() and clears launch details).  The
+  // main isolate reads this from SharedPreferences on cold start.
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        'pending_push_payload', jsonEncode(message.data));
+  } catch (_) {}
+
   try {
     await Firebase.initializeApp();
   } catch (_) {
@@ -104,6 +113,22 @@ class FcmService {
       _updateDiagnostics('initialize:firebase_init_failed');
       await _reportStatus(tokenStatus: 'firebase_init_failed');
       return;
+    }
+
+    // Read push payload saved by background handler via SharedPreferences.
+    // The background isolate runs before the main isolate and saves data
+    // under 'pending_push_payload' — consume it immediately.
+    Map<String, dynamic>? prefsPayload;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('pending_push_payload');
+      if (raw != null && raw.isNotEmpty) {
+        prefsPayload = _decodeNotificationPayload(raw);
+        await prefs.remove('pending_push_payload');
+        _updateDiagnostics('push:prefs_payload_found');
+      }
+    } catch (_) {
+      _updateDiagnostics('push:prefs_payload_error');
     }
 
     // Capture notification launch details BEFORE _ensureNotificationChannel(),
@@ -197,6 +222,11 @@ class FcmService {
           await onOpenPush(data);
         }
       }
+    }
+    // Process push payload saved by background handler via SharedPreferences
+    if (prefsPayload != null) {
+      _updateDiagnostics('push:prefs_payload');
+      await onOpenPush(prefsPayload);
     }
   }
 

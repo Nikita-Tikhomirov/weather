@@ -184,7 +184,26 @@ class _HomePageState extends State<HomePage> {
     setState(() => _store = store);
 
     // Process push notification that arrived before initialization completed
-    final pending = _pendingPushData;
+    var pending = _pendingPushData;
+
+    // Also check SharedPreferences for payload saved by background handler.
+    // This is a safety net in case FcmService.initialize() didn't process it.
+    if (pending == null) {
+      try {
+        final raw = prefs.getString('pending_push_payload');
+        if (raw != null && raw.isNotEmpty) {
+          try {
+            final decoded =
+                Map<String, dynamic>.from(jsonDecode(raw) as Map);
+            pending = decoded;
+            await prefs.remove('pending_push_payload');
+            debugPrint(
+                '[FCM push] _init found pending in SharedPreferences');
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
+
     if (pending != null) {
       debugPrint(
           '[FCM push] _init processing pending: entity=${pending['entity']} conv=${pending['conversation_key']}');
