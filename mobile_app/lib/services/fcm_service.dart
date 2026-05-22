@@ -106,11 +106,28 @@ class FcmService {
       return;
     }
 
+    // Capture notification launch details BEFORE _ensureNotificationChannel(),
+    // because _localNotifications.initialize() (called inside) clears them.
+    final messaging = FirebaseMessaging.instance;
+    await messaging.setAutoInitEnabled(true);
+
+    RemoteMessage? _initialMsg;
+    NotificationAppLaunchDetails? _launchDetails;
+    try {
+      _initialMsg = await messaging.getInitialMessage();
+    } catch (_) {
+      _updateDiagnostics('push:getInitialMessage_error');
+    }
+    try {
+      _launchDetails =
+          await _localNotifications.getNotificationAppLaunchDetails();
+    } catch (_) {
+      _updateDiagnostics('push:getLaunchDetails_error');
+    }
+
     await _ensureNotificationChannel();
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-    final messaging = FirebaseMessaging.instance;
-    await messaging.setAutoInitEnabled(true);
     final permission = await messaging.requestPermission(
       alert: true,
       badge: true,
@@ -166,18 +183,19 @@ class FcmService {
       await onOpenPush(data);
     });
 
-    final initial = await messaging.getInitialMessage();
-    if (initial != null) {
-      await onOpenPush(initial.data);
+    // Process launch data captured before notification channel init
+    if (_initialMsg != null) {
+      _updateDiagnostics('push:initial_message');
+      await onOpenPush(_initialMsg.data);
     }
-    final localLaunch =
-        await _localNotifications.getNotificationAppLaunchDetails();
-    final response = localLaunch?.notificationResponse;
-    if (localLaunch?.didNotificationLaunchApp == true &&
-        response?.payload != null) {
-      final data = _decodeNotificationPayload(response!.payload);
-      if (data != null) {
-        await onOpenPush(data);
+    if (_launchDetails?.didNotificationLaunchApp == true) {
+      final response = _launchDetails?.notificationResponse;
+      if (response?.payload != null) {
+        final data = _decodeNotificationPayload(response!.payload);
+        if (data != null) {
+          _updateDiagnostics('push:local_launch');
+          await onOpenPush(data);
+        }
       }
     }
   }

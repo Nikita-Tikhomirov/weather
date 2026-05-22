@@ -186,6 +186,8 @@ class _HomePageState extends State<HomePage> {
     // Process push notification that arrived before initialization completed
     final pending = _pendingPushData;
     if (pending != null) {
+      debugPrint(
+          '[FCM push] _init processing pending: entity=${pending['entity']} conv=${pending['conversation_key']}');
       _pendingPushData = null;
       await _safeSyncDelta(store, showErrors: false);
       final pushType = (pending['type'] ?? pending['entity'] ?? '').toString();
@@ -827,8 +829,11 @@ class _HomePageState extends State<HomePage> {
       },
       onOpenPush: (data) async {
         final store = _store;
+        debugPrint(
+            '[FCM push] onOpenPush: entity=${data['entity']} conv=${data['conversation_key']} store=${store != null}');
         if (store == null) {
           // Store for later processing once initialization completes
+          debugPrint('[FCM push] store is null, saving to _pendingPushData');
           _pendingPushData = Map<String, dynamic>.from(data);
           return;
         }
@@ -842,6 +847,7 @@ class _HomePageState extends State<HomePage> {
             pushType == 'todo_update' ||
             (data['entity'] ?? '') == 'task' ||
             (data['entity'] ?? '') == 'family_task') {
+          debugPrint('[FCM push] routing to tasks tab');
           store.setPage(1); // Switch to Tasks tab
           return;
         }
@@ -850,6 +856,8 @@ class _HomePageState extends State<HomePage> {
         if ((data['entity'] ?? '') == 'chat_message' &&
             conversationKey.isNotEmpty &&
             !_isProjectConversation(conversationKey)) {
+          debugPrint(
+              '[FCM push] routing to messenger -> _openConversation($conversationKey)');
           store.setPage(4); // Switch to Messenger tab
           await _openConversation(store, conversationKey);
           return;
@@ -1750,6 +1758,22 @@ class _HomePageState extends State<HomePage> {
       _projectBridge?.dispose();
       _projectBridge = null;
       _projectMessages.clear();
+    }
+    // Ensure the conversation exists in the list (optimistic entry for push opens)
+    final existing =
+        _chatConversations.any((c) => c.conversationKey == conversationKey);
+    if (!existing && !_isProjectConversation(conversationKey)) {
+      _chatConversations = [
+        ..._chatConversations,
+        ChatConversation(
+          conversationKey: conversationKey,
+          kind: 'direct',
+          title: '',
+          members: conversationKey.startsWith('dm:')
+              ? conversationKey.split(':').skip(1).toList()
+              : [store.owner.value],
+        ),
+      ];
     }
     setState(() {
       _activeConversationKey = conversationKey;
