@@ -186,20 +186,24 @@ class _HomePageState extends State<HomePage> {
     // Process push notification that arrived before initialization completed
     var pending = _pendingPushData;
 
-    // Also check SharedPreferences for payload saved by background handler.
+    // Also check temp file for payload saved by background handler.
     // This is a safety net in case FcmService.initialize() didn't process it.
     if (pending == null) {
       try {
-        final raw = prefs.getString('pending_push_payload');
-        if (raw != null && raw.isNotEmpty) {
-          try {
-            final decoded =
-                Map<String, dynamic>.from(jsonDecode(raw) as Map);
-            pending = decoded;
-            await prefs.remove('pending_push_payload');
-            debugPrint(
-                '[FCM push] _init found pending in SharedPreferences');
-          } catch (_) {}
+        final file = File(
+            '${Directory.systemTemp.path}/family_todo_pending_push.json');
+        if (await file.exists()) {
+          final raw = await file.readAsString();
+          if (raw.isNotEmpty) {
+            try {
+              final decoded =
+                  Map<String, dynamic>.from(jsonDecode(raw) as Map);
+              pending = decoded;
+              await file.delete();
+              debugPrint(
+                  '[FCM push] _init found pending in temp file');
+            } catch (_) {}
+          }
         }
       } catch (_) {}
     }

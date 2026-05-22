@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show Platform;
+import 'dart:io' show Platform, File, Directory;
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -31,13 +31,15 @@ const MethodChannel _firebaseInstallationsChannel =
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Save push payload BEFORE _ensureNotificationChannel (which calls
-  // _localNotifications.initialize() and clears launch details).  The
-  // main isolate reads this from SharedPreferences on cold start.
+  // Save push payload to a temp file BEFORE _ensureNotificationChannel
+  // (which calls _localNotifications.initialize() and clears launch
+  // details).  The main isolate reads this file on cold start.
+  // Using a file instead of SharedPreferences because platform channels
+  // are not always available in background isolates.
   try {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-        'pending_push_payload', jsonEncode(message.data));
+    final dir = Directory.systemTemp;
+    final file = File('${dir.path}/family_todo_pending_push.json');
+    await file.writeAsString(jsonEncode(message.data));
   } catch (_) {}
 
   try {
@@ -115,20 +117,23 @@ class FcmService {
       return;
     }
 
-    // Read push payload saved by background handler via SharedPreferences.
-    // The background isolate runs before the main isolate and saves data
-    // under 'pending_push_payload' — consume it immediately.
+    // Read push payload saved by background handler to a temp file.
+    // The background isolate runs before the main isolate and writes
+    // data to this file — consume it immediately.
     Map<String, dynamic>? prefsPayload;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString('pending_push_payload');
-      if (raw != null && raw.isNotEmpty) {
-        prefsPayload = _decodeNotificationPayload(raw);
-        await prefs.remove('pending_push_payload');
-        _updateDiagnostics('push:prefs_payload_found');
+      final file = File(
+          '${Directory.systemTemp.path}/family_todo_pending_push.json');
+      if (await file.exists()) {
+        final raw = await file.readAsString();
+        if (raw.isNotEmpty) {
+          prefsPayload = _decodeNotificationPayload(raw);
+          await file.delete();
+          _updateDiagnostics('push:file_payload_found');
+        }
       }
     } catch (_) {
-      _updateDiagnostics('push:prefs_payload_error');
+      _updateDiagnostics('push:file_payload_error');
     }
 
     // Capture notification launch details BEFORE _ensureNotificationChannel(),
