@@ -15,6 +15,14 @@ function Write-WatchdogLog {
         Out-File -FilePath $WatchdogLog -Encoding utf8 -Append
 }
 
+$MutexName = 'Global\WeatherProjectBridgeLauncherWatchdog'
+$CreatedNew = $false
+$Mutex = [System.Threading.Mutex]::new($true, $MutexName, [ref]$CreatedNew)
+if (-not $CreatedNew) {
+    Write-WatchdogLog 'another watchdog instance is already running; exiting duplicate'
+    exit 0
+}
+
 function Test-LauncherRegistered {
     $parts = $Tunnel.Split(':', 2)
     $hostName = $parts[0]
@@ -70,27 +78,32 @@ function Stop-StaleLauncher {
         }
 }
 
-while ($true) {
-    try {
-        $launcher = Get-CimInstance Win32_Process |
-            Where-Object {
-                $_.ProcessName -like 'python*' -and
-                $_.CommandLine -like '*bridge_launcher.py*' -and
-                $_.CommandLine -like "*$Tunnel*"
-              } |
-              Select-Object -First 1
+try {
+    while ($true) {
+        try {
+            $launcher = Get-CimInstance Win32_Process |
+                Where-Object {
+                    $_.ProcessName -like 'python*' -and
+                    $_.CommandLine -like '*bridge_launcher.py*' -and
+                    $_.CommandLine -like "*$Tunnel*"
+                  } |
+                  Select-Object -First 1
 
-        if (-not $launcher) {
-            Write-WatchdogLog "bridge_launcher process missing; starting"
-            powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$LauncherScript"
-        } elseif (-not (Test-LauncherRegistered)) {
-            Write-WatchdogLog "bridge_launcher process exists but VPS has no active launcher; restarting"
-            Stop-StaleLauncher
-            powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$LauncherScript"
+            if (-not $launcher) {
+                Write-WatchdogLog "bridge_launcher process missing; starting"
+                powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$LauncherScript"
+            } elseif (-not (Test-LauncherRegistered)) {
+                Write-WatchdogLog "bridge_launcher process exists but VPS has no active launcher; restarting"
+                Stop-StaleLauncher
+                powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$LauncherScript"
+            }
+        } catch {
+            Write-WatchdogLog "watchdog error: $($_.Exception.Message)"
         }
-    } catch {
-        Write-WatchdogLog "watchdog error: $($_.Exception.Message)"
-    }
 
-    Start-Sleep -Seconds 15
+        Start-Sleep -Seconds 15
+    }
+} finally {
+    $Mutex.ReleaseMutex() | Out-Null
+    $Mutex.Dispose()
 }

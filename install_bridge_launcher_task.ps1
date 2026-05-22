@@ -12,20 +12,28 @@ $action = New-ScheduledTaskAction `
     -Execute 'powershell.exe' `
     -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$LauncherScript`""
 
-$trigger = New-ScheduledTaskTrigger -AtLogOn
+$triggers = @(
+    (New-ScheduledTaskTrigger -AtLogOn),
+    (New-ScheduledTaskTrigger `
+        -Once `
+        -At (Get-Date).AddMinutes(1) `
+        -RepetitionInterval (New-TimeSpan -Minutes 5) `
+        -RepetitionDuration (New-TimeSpan -Days 3650))
+)
 $settings = New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries `
     -DontStopIfGoingOnBatteries `
+    -StartWhenAvailable `
     -ExecutionTimeLimit (New-TimeSpan -Days 30) `
     -MultipleInstances IgnoreNew `
-    -RestartCount 3 `
+    -RestartCount 999 `
     -RestartInterval (New-TimeSpan -Minutes 1)
 
 try {
     Register-ScheduledTask `
         -TaskName $TaskName `
         -Action $action `
-        -Trigger $trigger `
+        -Trigger $triggers `
         -Settings $settings `
         -Description 'Keeps project bridge launcher available for mobile project chats.' `
         -Force | Out-Null
@@ -48,6 +56,18 @@ cd /d "$ProjectRoot"
 powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$LauncherScript"
 "@ | Set-Content -Path $startupCmd -Encoding ascii
 }
+
+Get-CimInstance Win32_Process |
+    Where-Object {
+        $_.ProcessName -like 'powershell*' -and
+        $_.CommandLine -like '*bridge_launcher_watchdog.ps1*'
+    } |
+    ForEach-Object {
+        try {
+            Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop
+        } catch {
+        }
+    }
 
 try {
     Start-ScheduledTask -TaskName $TaskName -ErrorAction Stop

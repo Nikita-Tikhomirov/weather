@@ -62,6 +62,7 @@ class BridgeLauncher:
             f"[launcher] connected to {self.tunnel_host}:{self.tunnel_port}",
             flush=True,
         )
+        self.ensure_bridge_running()
         heartbeat_task = asyncio.create_task(self._heartbeat_loop(writer))
 
         try:
@@ -127,6 +128,26 @@ class BridgeLauncher:
     def start_bridge(self) -> bool:
         """Kill any stale bridge process, then start a fresh one."""
         self._kill_stale_bridge()
+        return self._spawn_bridge()
+
+    def ensure_bridge_running(self) -> bool:
+        """Start project_bridge.py if no healthy instance is available."""
+        tunnel = f"{self.tunnel_host}:{self.tunnel_port}"
+
+        if self._bridge_process is not None:
+            rc = self._bridge_process.poll()
+            if rc is None:
+                return True
+            print(
+                f"[launcher] project_bridge.py exited with code {rc}, restarting...",
+                flush=True,
+            )
+            self._bridge_process = None
+
+        if self._find_bridge_pids(tunnel):
+            return True
+
+        print("[launcher] project_bridge.py is not running, starting...", flush=True)
         return self._spawn_bridge()
 
     def _spawn_bridge(self) -> bool:
@@ -229,15 +250,10 @@ class BridgeLauncher:
         """Periodically check if project_bridge.py is alive; restart if dead."""
         while True:
             await asyncio.sleep(15)  # Check every 15 seconds
-            if self._bridge_process is None:
-                continue
-            rc = self._bridge_process.poll()
-            if rc is not None:
-                print(
-                    f"[launcher] project_bridge.py exited with code {rc}, restarting...",
-                    flush=True,
-                )
-                self._spawn_bridge()
+            try:
+                self.ensure_bridge_running()
+            except Exception as exc:
+                print(f"[launcher] health check failed: {exc}", flush=True)
 
 
 async def main() -> None:
