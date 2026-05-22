@@ -172,21 +172,14 @@ class _HomePageState extends State<HomePage> {
     if (_isDesktopWindows) {
       await _initDesktopServices(store, owner);
     }
-    // Set _store early so the build method stops showing the spinner
-    // even if a later step (e.g. FCM binding) fails.
-    setState(() => _store = store);
-    try {
-      await _bindFcm(api: api, owner: owner);
-    } catch (e, st) {
-      debugPrint('[init] FCM bind failed (app will work without push): $e');
-      debugPrint('$st');
-    }
+    _bindFcm(api: api, owner: owner);
     await _safeSyncFull(store, showErrors: false);
     _loadProjects();
     await _initChat(store);
     _initShareReceiver(store);
     _chatInputCtl.addListener(() => _onChatInputChanged(store));
     _startSyncLoops(store);
+    setState(() => _store = store);
 
     // Process push notification that arrived before initialization completed.
     // Process before unmount check so pending push is never silently dropped.
@@ -855,7 +848,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _bindFcm({required ApiClient api, required String owner}) async {
+  void _bindFcm({required ApiClient api, required String owner}) {
     _fcm?.dispose();
     if (mounted) {
       _fcmDiagnostics.value = 'FCM: binding actor=$owner';
@@ -949,7 +942,10 @@ class _HomePageState extends State<HomePage> {
         await _refreshActiveConversation(store, useNetwork: true, quiet: true);
       },
     );
-    await _fcm!.initialize();
+    _fcm!.initialize().catchError((error, stackTrace) {
+      debugPrint('FCM initialization failed: $error');
+      debugPrint('$stackTrace');
+    });
   }
 
   void _showFcmDiagnosticsDialog() {
