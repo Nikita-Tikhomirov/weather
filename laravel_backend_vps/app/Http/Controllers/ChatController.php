@@ -7,6 +7,7 @@ use App\Domain\Sync\ActorProfileGuard;
 use App\Services\Push\PushOutboxService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -135,7 +136,7 @@ class ChatController extends Controller
                     'entity' => 'chat_message',
                     'action' => 'created',
                     'actor_profile' => $actor,
-                    'conversation_key' => (string)$message['conversation_key'],
+                    'conversation_key' => $conversationKey,
                     'message_id' => (string)$message['id'],
                 ];
                 $this->pushOutbox->enqueueRawToRecipients($eventId, $recipients, $title, $body, $data);
@@ -433,13 +434,18 @@ class ChatController extends Controller
 
     private function profileLabel(string $profile): string
     {
-        return match (trim($profile)) {
+        $label = match (trim($profile)) {
             'nik' => 'Ник',
             'nastya' => 'Настя',
             'misha' => 'Миша',
             'arisha' => 'Ариша',
-            default => 'Семья',
+            default => '',
         };
+        if ($label !== '') {
+            return $label;
+        }
+        $dynamic = DB::table('messenger_users')->where('profile_key', $profile)->value('display_name');
+        return is_string($dynamic) && trim($dynamic) !== '' ? trim($dynamic) : 'Семья';
     }
 
     private function chatMessageBody(array $message): string
