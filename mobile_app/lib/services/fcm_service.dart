@@ -258,15 +258,21 @@ class FcmService {
         FirebaseMessaging.onMessage.listen((RemoteMessage msg) async {
       final conversationKey =
           (msg.data['conversation_key'] ?? '').toString().trim();
+      final isChatMessage = _isChatMessageData(msg.data);
 
       // Suppress foreground notification if user is already viewing
       // the relevant chat conversation.
-      final suppressed = shouldSuppressChatNotification != null &&
-          _isChatMessageData(msg.data) &&
+      final suppressed = isChatMessage &&
+          shouldSuppressChatNotification != null &&
           shouldSuppressChatNotification!(conversationKey);
 
       if (!suppressed) {
-        await onOpenPush(msg.data);
+        // For chat messages in foreground, only show the notification.
+        // Navigation to the conversation happens on explicit tap
+        // via _handleNotificationResponse -> _notificationOpenEvents.
+        if (!isChatMessage) {
+          await onOpenPush(msg.data);
+        }
       }
 
       final title = msg.notification?.title ??
