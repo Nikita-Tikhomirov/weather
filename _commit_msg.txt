@@ -1,1 +1,1 @@
-chore: add comprehensive .gitignore, remove 50+ temp files, APKs, deploy scripts from repo
+test: add 5 TaskItem serialization tests, verify assignees/participants backward compat
