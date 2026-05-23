@@ -253,6 +253,8 @@ jobs:
           path: /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk
 
       - name: Publish GitHub Release
+        id: release
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: mobile-v${{ github.run_number }}
@@ -261,18 +263,30 @@ jobs:
           generate_release_notes: true
 
       - name: Update latest tag and release
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          APK="/tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk"
+
+          # If the versioned release step failed, create it now via gh CLI
+          if [ "${{ steps.release.outcome }}" != "success" ]; then
+            echo "softprops release failed — creating via gh CLI"
+            gh release create "mobile-v${{ github.run_number }}" \
+              --title "Mobile APK v${{ github.run_number }}" \
+              --notes "Сборка #${{ github.run_number }} | Коммит ${{ github.sha }}" \
+              "$APK" || echo "Versioned release creation also failed — continuing"
+          fi
+
           # Force-update the 'latest' tag to current commit
           git tag -f latest
           git push origin latest --force
 
-          # Delete old release if exists (ignore error)
+          # Delete old latest release if exists (ignore error)
           gh release delete latest --yes --cleanup-tag 2>/dev/null || true
 
           # Create new latest release
           gh release create latest \
             --title "Latest Mobile APK" \
             --notes "Сборка #${{ github.run_number }} | Коммит ${{ github.sha }}" \
-            /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk
+            "$APK"
