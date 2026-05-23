@@ -4,7 +4,6 @@ import 'dart:io' show Platform, File, Directory;
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -257,24 +256,18 @@ class FcmService {
 
     _onMessageSub =
         FirebaseMessaging.onMessage.listen((RemoteMessage msg) async {
-      // Auto-navigate for all push types as before.
-      // Suppression check is in a separate try-catch so it can
-      // never break the push delivery.
-      bool suppressed = false;
-      try {
-        if (_isChatMessageData(msg.data) &&
-            shouldSuppressChatNotification != null) {
-          final ck =
-              (msg.data['conversation_key'] ?? '').toString().trim();
-          suppressed = shouldSuppressChatNotification!(ck);
-        }
-      } catch (_) {
-        suppressed = false;
+      // Foreground: no auto-navigation. Only show a notification.
+      // Navigation happens on explicit tap via
+      // _handleNotificationResponse -> _notificationOpenEvents -> onOpenPush.
+      final ck =
+          (msg.data['conversation_key'] ?? '').toString().trim();
+
+      // Suppress notification only when user is already in this chat.
+      if (_isChatMessageData(msg.data) &&
+          shouldSuppressChatNotification != null &&
+          shouldSuppressChatNotification!(ck)) {
+        return;
       }
-
-      if (suppressed) return;
-
-      await onOpenPush(msg.data);
 
       final title = msg.notification?.title ??
           (msg.data['title'] ?? 'Семейные задачи').toString();
