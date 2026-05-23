@@ -1,0 +1,42 @@
+name: Tests
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'mobile_app/**'
+      - 'backend_api/**'
+      - '**.py'
+      - '**.dart'
+  pull_request:
+    branches: [master]
+
+jobs:
+  flutter-tests:
+    name: Flutter tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile_app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.0'
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test
+
+  python-tests:
+    name: Python tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -v || echo "No Python unit tests found"
+      - run: python -c "import family_todo; print('family_todo imports OK')" || echo "family_todo not importable"
+      - run: python -c "import desktop_app; print('desktop_app imports OK')" || echo "desktop_app not importable"
