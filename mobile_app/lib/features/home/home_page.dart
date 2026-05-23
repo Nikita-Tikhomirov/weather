@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/app_labels.dart';
 import '../../app/app_theme.dart';
+import 'home_helpers.dart';
 import '../../domain/task_domain_service.dart';
 import '../chat/call_screen.dart';
 import '../chat/chat_photo_viewer.dart';
@@ -231,7 +232,7 @@ class _HomePageState extends State<HomePage> {
         store.setPage(1);
       } else if ((pending['entity'] ?? '') == 'chat_message' &&
           conversationKey.isNotEmpty &&
-          !_isProjectConversation(conversationKey)) {
+          !isProjectConversation(conversationKey)) {
         _pushAlreadyRouted = true;
         store.setPage(4);
         // Wait for messenger tab to render before opening conversation
@@ -671,7 +672,7 @@ class _HomePageState extends State<HomePage> {
           return ValueListenableBuilder<Map<String, List<TaskItem>>>(
             valueListenable: store.personalByStatus,
             builder: (context, byStatus, __) {
-              final selectedDateKey = _dateKey(selectedDate);
+              final selectedDateKey = dateKey(selectedDate);
               return Column(
                 children: [
                   Padding(
@@ -860,7 +861,7 @@ class _HomePageState extends State<HomePage> {
         // Chat messages -> go to messenger
         if ((data['entity'] ?? '') == 'chat_message' &&
             conversationKey.isNotEmpty &&
-            !_isProjectConversation(conversationKey)) {
+            !isProjectConversation(conversationKey)) {
           debugPrint(
               '[FCM push] routing to messenger -> _openConversation($conversationKey)');
           _pushAlreadyRouted = true;
@@ -1075,7 +1076,7 @@ class _HomePageState extends State<HomePage> {
               itemCount: allContacts.length,
               itemBuilder: (_, i) => ListTile(
                 leading: const CircleAvatar(child: Icon(Icons.person)),
-                title: Text(_contactLabel(allContacts[i])),
+                title: Text(contactLabel(allContacts[i])),
                 onTap: () => Navigator.pop(ctx, allContacts[i]),
               ),
             ),
@@ -1289,7 +1290,7 @@ class _HomePageState extends State<HomePage> {
         shouldPoll: () =>
             mounted &&
             _store?.pageIndex.value == 4 &&
-            !_isProjectConversation(_activeConversationKey),
+            !isProjectConversation(_activeConversationKey),
         onMessagesUpdated: (conversationKey) async {
           await _refreshConversation(
             store,
@@ -1578,10 +1579,10 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  bool _isProjectConversation(String key) => key.startsWith('project:');
+
 
   ProjectContact? _projectByConversationKey(String key) {
-    if (!_isProjectConversation(key)) {
+    if (!isProjectConversation(key)) {
       return null;
     }
     return _projectContacts.cast<ProjectContact?>().firstWhere(
@@ -1649,7 +1650,7 @@ class _HomePageState extends State<HomePage> {
       return;
     }
     // Skip project conversations (handled by bridge)
-    if (_isProjectConversation(_activeConversationKey)) {
+    if (isProjectConversation(_activeConversationKey)) {
       return;
     }
     await _refreshConversation(
@@ -1784,7 +1785,7 @@ class _HomePageState extends State<HomePage> {
     }
     conversationKey = _canonicalConversationKey(conversationKey);
     // Clean up project bridge when switching to regular conversation
-    if (_isProjectConversation(_activeConversationKey)) {
+    if (isProjectConversation(_activeConversationKey)) {
       _projectBridge?.dispose();
       _projectBridge = null;
       _projectMessages.clear();
@@ -1792,7 +1793,7 @@ class _HomePageState extends State<HomePage> {
     // Ensure the conversation exists in the list (optimistic entry for push opens)
     final existing =
         _chatConversations.any((c) => c.conversationKey == conversationKey);
-    if (!existing && !_isProjectConversation(conversationKey)) {
+    if (!existing && !isProjectConversation(conversationKey)) {
       _chatConversations = [
         ..._chatConversations,
         ChatConversation(
@@ -1896,7 +1897,7 @@ class _HomePageState extends State<HomePage> {
                         for (final contact in contacts)
                           CheckboxListTile(
                             value: selected.contains(contact.profileKey),
-                            title: Text(_contactLabel(contact)),
+                            title: Text(contactLabel(contact)),
                             subtitle: Text(contact.phone),
                             onChanged: (value) {
                               setSheetState(() {
@@ -1949,7 +1950,7 @@ class _HomePageState extends State<HomePage> {
       if (mounted) {
         setState(() => _familyMembers = members);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${_contactLabel(contact)} добавлен в семью')),
+          SnackBar(content: Text('${contactLabel(contact)} добавлен в семью')),
         );
       }
     } catch (error) {
@@ -2124,7 +2125,7 @@ class _HomePageState extends State<HomePage> {
   void _onChatInputChanged(TaskStore store) {
     final text = _chatInputCtl.text.trim();
     if (text.isEmpty) return;
-    if (_isProjectConversation(_activeConversationKey)) return;
+    if (isProjectConversation(_activeConversationKey)) return;
     // Debounce: send typing every 5 seconds max
     if (_typingSendTimer?.isActive == true) return;
     _typingSendTimer = Timer(const Duration(seconds: 5), () async {
@@ -2139,7 +2140,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _sendTextMessage(TaskStore store) async {
     // Route to project bridge for project conversations
-    if (_isProjectConversation(_activeConversationKey)) {
+    if (isProjectConversation(_activeConversationKey)) {
       _sendProjectMessage();
       return;
     }
@@ -2279,7 +2280,7 @@ class _HomePageState extends State<HomePage> {
               final contact = targets[i];
               return ListTile(
                 leading: const CircleAvatar(child: Icon(Icons.person)),
-                title: Text(_contactLabel(contact)),
+                title: Text(contactLabel(contact)),
                 subtitle: contact.phone.isNotEmpty ? Text(contact.phone) : null,
                 onTap: () => Navigator.pop(ctx, contact),
               );
@@ -2362,7 +2363,7 @@ class _HomePageState extends State<HomePage> {
           useNetwork: true, quiet: true);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Переслано → ${_contactLabel(selected)}')),
+          SnackBar(content: Text('Переслано → ${contactLabel(selected)}')),
         );
       }
     } catch (error) {
@@ -2798,7 +2799,7 @@ class _HomePageState extends State<HomePage> {
         children: available
             .map((c) => SimpleDialogOption(
                   onPressed: () => Navigator.pop(ctx, c.profileKey),
-                  child: Text(_contactLabel(c)),
+                  child: Text(contactLabel(c)),
                 ))
             .toList(),
       ),
@@ -3489,7 +3490,7 @@ class _HomePageState extends State<HomePage> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_isProjectConversation(_activeConversationKey)) {
+    if (isProjectConversation(_activeConversationKey)) {
       return _buildProjectChatView(store, compact: compact);
     }
 
@@ -3506,7 +3507,7 @@ class _HomePageState extends State<HomePage> {
       editingMessageId: _editingMessageId,
       isRecording: _isRecording,
       conversationLabel: _conversationLabel,
-      contactLabel: _contactLabel,
+      contactLabel: contactLabel,
       chatMessageText: _chatMessageText,
       profileLabel: _profileLabel,
       stickerAssetFor: _chatStickerAssetUrl,
@@ -4185,7 +4186,7 @@ class _HomePageState extends State<HomePage> {
         .where((item) => item.conversationKey == conversation.conversationKey)
         .toList();
     if (fromContacts.isNotEmpty) {
-      return _contactLabel(fromContacts.first);
+      return contactLabel(fromContacts.first);
     }
     return conversation.conversationKey;
   }
@@ -4213,7 +4214,7 @@ class _HomePageState extends State<HomePage> {
     return result;
   }
 
-  String _contactLabel(ChatContact contact) {
+  String contactLabel(ChatContact contact) {
     if (contact.displayName.trim().isNotEmpty) {
       return contact.displayName.trim();
     }
@@ -4464,11 +4465,7 @@ class _HomePageState extends State<HomePage> {
     return true;
   }
 
-  String _dateKey(DateTime value) {
-    final month = value.month.toString().padLeft(2, '0');
-    final day = value.day.toString().padLeft(2, '0');
-    return '${value.year}-$month-$day';
-  }
+
 
   Future<void> _openTaskEditor(
     TaskStore store, {
@@ -4479,8 +4476,8 @@ class _HomePageState extends State<HomePage> {
       context: context,
       store: store,
       knownContacts: _allKnownContacts(store),
-      contactLabel: _contactLabel,
-      dateKey: _dateKey,
+      contactLabel: contactLabel,
+      dateKey: dateKey,
       existing: existing,
       forceFamily: forceFamily,
       onSaved: () => _safeSyncDelta(store, showErrors: true),
@@ -4517,7 +4514,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _moveToDate(
       TaskStore store, TaskItem item, DateTime target) async {
-    await store.moveToDate(item, _dateKey(target));
+    await store.moveToDate(item, dateKey(target));
     await _safeSyncDelta(store, showErrors: true);
   }
 
@@ -4588,7 +4585,7 @@ class _HomePageState extends State<HomePage> {
             return ValueListenableBuilder<DateTime>(
               valueListenable: store.selectedDate,
               builder: (context, selectedDate, ___) {
-                final selectedDateKey = _dateKey(selectedDate);
+                final selectedDateKey = dateKey(selectedDate);
                 if (_isDesktopWindows) {
                   return _buildDesktopShell(
                     store: store,
