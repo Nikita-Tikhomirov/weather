@@ -5,23 +5,54 @@ __pycache__/
 # Build artifacts
 build/
 dist/
+dist_upload/
 *.spec
 
-# Local browser bundle (too large for GitHub regular git)
+# Local browser bundle (too large for GitHub)
 chrome-win64/
 
-# Temporary VPS diagnostic scripts (may contain credentials)
-_vps_*.py
-_vps_*.sh
+# Temporary/debug files (anywhere)
+*_tmp_*
+_tmp_*
+_deploy_*
+_fix_*
+_ssh_*
+_find_*
+
+# Logs
+*.log
+family_data/logs/
+
+# APK binaries
+*.apk
+
+# Archives
+*.zip
+*.7z
 
 # Local runtime secrets
 sync_runtime.local.json
 backend_api/config.php
 
-# Local DeepSeek bridge runtime state
+# DeepSeek bridge runtime
 .deepseek/
-.deepseek/state/bridge_memory*.json
-.tmp_deepseek_*/
-authgittoken.txt  
-family-todo-release.apk 
-toJson()  
+
+# Android build outputs
+mobile_app/android/app/build/
+mobile_app/android/.gradle/
+mobile_app/build/
+
+# Flutter
+mobile_app/.dart_tool/
+mobile_app/.flutter-plugins*
+mobile_app/.packages
+
+# Windows-specific
+Thumbs.db
+Desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
