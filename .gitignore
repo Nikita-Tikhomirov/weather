@@ -40,6 +40,9 @@ vpsauth.txt
 # DeepSeek bridge runtime
 .deepseek/
 
+# Firebase service account keys (secrets)
+*-firebase-adminsdk-*.json
+
 # Android build outputs
 mobile_app/android/app/build/
 mobile_app/android/.gradle/

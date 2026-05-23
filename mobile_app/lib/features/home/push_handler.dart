@@ -5,6 +5,17 @@ part of 'home_page.dart';
 // ───────────────────────────────────────────────────────────────
 
 extension _PushHandlerExtension on _HomePageState {
+  /// Wait for the messenger tab to fully render after switching to it.
+  /// Replaces a single [WidgetsBinding.instance.endOfFrame] which is
+  /// insufficient on slower devices where the widget tree needs more
+  /// time to build.
+  Future<void> _waitForMessengerTab() async {
+    // Let one frame pass so the tab switch is reflected in the widget tree.
+    await WidgetsBinding.instance.endOfFrame;
+    // Extra buffer for complex builds (chat list, contacts, etc.).
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+  }
+
   /// Process a push payload that arrived before init completed,
   /// or was saved to a temp file by the background handler.
   Future<void> _processPendingPush(TaskStore store) async {
@@ -62,8 +73,7 @@ extension _PushHandlerExtension on _HomePageState {
         !isProjectConversation(conversationKey)) {
       _pushAlreadyRouted = true;
       store.setPage(4);
-      // Wait for messenger tab to render before opening conversation
-      await WidgetsBinding.instance.endOfFrame;
+      await _waitForMessengerTab();
       if (mounted) {
         await _openConversation(store, conversationKey);
       }
@@ -105,6 +115,14 @@ extension _PushHandlerExtension on _HomePageState {
         }
         _fcmDiagnostics.value = text;
       },
+      shouldSuppressChatNotification: (conversationKey) {
+        // Suppress foreground notification only when the user is
+        // already in the messenger tab viewing that exact conversation.
+        final store = _store;
+        if (store == null) return false;
+        return store.pageIndex.value == 4 &&
+            _activeConversationKey == conversationKey;
+      },
       onOpenPush: (data) async {
         final store = _store;
         debugPrint(
@@ -144,8 +162,7 @@ extension _PushHandlerExtension on _HomePageState {
               '[FCM push] routing to messenger -> _openConversation($conversationKey)');
           _pushAlreadyRouted = true;
           store.setPage(4); // Switch to Messenger tab
-          // Wait for messenger tab to render before opening conversation
-          await WidgetsBinding.instance.endOfFrame;
+          await _waitForMessengerTab();
           if (mounted) {
             await _openConversation(store, conversationKey);
           }

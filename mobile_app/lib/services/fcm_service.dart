@@ -75,6 +75,7 @@ class FcmService {
     required this.onForegroundText,
     required this.onDiagnosticsChanged,
     required this.onOpenPush,
+    this.shouldSuppressChatNotification,
   });
 
   // ── Dependencies ───────────────────────────────────────────
@@ -84,6 +85,11 @@ class FcmService {
   final void Function(String text) onForegroundText;
   final void Function(String text) onDiagnosticsChanged;
   final Future<void> Function(Map<String, dynamic> data) onOpenPush;
+
+  /// Optional callback: return true if the foreground notification
+  /// for a given conversation should be suppressed (e.g. because
+  /// the user is already viewing that chat).
+  final bool Function(String conversationKey)? shouldSuppressChatNotification;
 
   // ── Stream subscriptions ───────────────────────────────────
 
@@ -250,12 +256,28 @@ class FcmService {
 
     _onMessageSub =
         FirebaseMessaging.onMessage.listen((RemoteMessage msg) async {
-      await onOpenPush(msg.data);
+      final conversationKey =
+          (msg.data['conversation_key'] ?? '').toString().trim();
+
+      // Suppress foreground notification if user is already viewing
+      // the relevant chat conversation.
+      final suppressed = shouldSuppressChatNotification != null &&
+          _isChatMessageData(msg.data) &&
+          shouldSuppressChatNotification!(conversationKey);
+
+      if (!suppressed) {
+        await onOpenPush(msg.data);
+      }
+
       final title = msg.notification?.title ??
           (msg.data['title'] ?? 'Семейные задачи').toString();
       final body = msg.notification?.body ??
           (msg.data['body'] ?? 'Появились новые изменения').toString();
-      await _showForegroundNotification(title: title, body: body, data: msg.data);
+
+      if (!suppressed) {
+        await _showForegroundNotification(
+            title: title, body: body, data: msg.data);
+      }
       onForegroundText('$title: $body');
     });
 
