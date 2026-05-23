@@ -258,20 +258,17 @@ class FcmService {
     _onMessageSub =
         FirebaseMessaging.onMessage.listen((RemoteMessage msg) async {
       try {
+        // Foreground: no auto-navigation. Only show a notification.
+        // Navigation to chat/tasks happens on explicit tap
+        // via _handleNotificationResponse -> _notificationOpenEvents.
         final conversationKey =
             (msg.data['conversation_key'] ?? '').toString().trim();
-        final isChatMessage = _isChatMessageData(msg.data);
 
-        // Suppress foreground notification if user is already viewing
-        // the relevant chat conversation.
-        final suppressed = isChatMessage &&
+        // Suppress notification if user is already viewing this chat.
+        if (_isChatMessageData(msg.data) &&
             shouldSuppressChatNotification != null &&
-            shouldSuppressChatNotification!(conversationKey);
-
-        if (!suppressed) {
-          // Auto-navigate for all push types. Suppression above
-          // already handles the "same chat open" case.
-          await onOpenPush(msg.data);
+            shouldSuppressChatNotification!(conversationKey)) {
+          return;
         }
 
         final title = msg.notification?.title ??
@@ -279,22 +276,12 @@ class FcmService {
         final body = msg.notification?.body ??
             (msg.data['body'] ?? 'Появились новые изменения').toString();
 
-        if (!suppressed) {
-          await _showForegroundNotification(
-              title: title, body: body, data: msg.data);
-        }
+        await _showForegroundNotification(
+            title: title, body: body, data: msg.data);
         onForegroundText('$title: $body');
       } catch (error, stack) {
         debugPrint(
-            '[FCM onMessage] unhandled error: $error\n$stack');
-        // Still try to show a fallback notification
-        try {
-          await _showForegroundNotification(
-            title: 'Семейные задачи',
-            body: 'Новое уведомление',
-            data: msg.data,
-          );
-        } catch (_) {}
+            '[FCM onMessage] error: $error\n$stack');
       }
     });
 
