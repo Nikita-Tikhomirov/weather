@@ -33,6 +33,9 @@ family_data/logs/
 # Local runtime secrets
 sync_runtime.local.json
 backend_api/config.php
+vpsauth.txt
+*_pass*.txt
+*_secret*.txt
 
 # DeepSeek bridge runtime
 .deepseek/
