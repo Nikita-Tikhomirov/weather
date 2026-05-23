@@ -60,40 +60,18 @@ extension _PushHandlerExtension on _HomePageState {
     debugPrint(
         '[FCM push] _init processing pending: entity=${pending['entity']} conv=${pending['conversation_key']}');
     _pendingPushData = null;
+    // Only sync delta silently — no auto-navigation.
+    // The push notification was already shown by the system / foreground
+    // handler. Navigation happens exclusively on explicit user tap via
+    // onOpenPush callback (onMessageOpenedApp / notification tap).
     await _safeSyncDelta(store, showErrors: false);
-    final pushType = (pending['type'] ?? pending['entity'] ?? '').toString();
-    final conversationKey = (pending['conversation_key'] ?? '').trim();
-    if (pushType == 'task_reminder' ||
-        pushType == 'todo_update' ||
-        (pending['entity'] ?? '') == 'task' ||
-        (pending['entity'] ?? '') == 'family_task') {
-      store.setPage(1);
-    } else if ((pending['entity'] ?? '') == 'chat_message' &&
-        conversationKey.isNotEmpty &&
-        !isProjectConversation(conversationKey)) {
-      _pushAlreadyRouted = true;
-      store.setPage(4);
-      await _waitForMessengerTab();
-      if (mounted) {
-        await _openConversation(store, conversationKey);
-      }
-    } else if (pushType == 'call_incoming') {
-      final sessionId = (pending['session_id'] ?? '').toString();
-      final callType = (pending['call_type'] ?? 'audio').toString();
-      final callerProfile = (pending['caller_profile'] ?? '').toString();
-      if (sessionId.isNotEmpty) {
-        _callService?.notifyIncomingCall(CallSession(
-          sessionId: sessionId,
-          callerProfile: callerProfile,
-          calleeProfile: store.owner.value,
-          conversationKey: conversationKey,
-          callType: callType,
-          status: 'ringing',
-          createdAt: DateTime.now().toIso8601String(),
-        ));
-      }
-    } else {
-      await _refreshActiveConversation(store, useNetwork: true, quiet: true);
+    // Clean up temp file if any
+    try {
+      final file = File(
+          '${Directory.systemTemp.path}/family_todo_pending_push.json');
+      if (await file.exists()) await file.delete();
+    } catch (_) {
+      // non-critical
     }
   }
 

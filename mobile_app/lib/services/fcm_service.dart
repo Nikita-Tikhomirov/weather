@@ -308,8 +308,9 @@ class FcmService {
       }
     }
     if (prefsPayload != null && !handledExplicitLaunch) {
-      _updateDiagnostics('push:prefs_payload');
-      await onOpenPush(prefsPayload);
+      // Temp file exists but the app was not launched from a notification tap.
+      // Don't auto-navigate — the notification was already shown. Just clean up.
+      _updateDiagnostics('push:prefs_payload_cleaned');
       try {
         final file = File('${Directory.systemTemp.path}/family_todo_pending_push.json');
         if (await file.exists()) await file.delete();
