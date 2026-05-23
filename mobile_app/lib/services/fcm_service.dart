@@ -317,7 +317,7 @@ class FcmService {
       }
       if (_isFisAuthError(_lastTokenError)) {
         _updateDiagnostics('token:fis_recovery');
-        await _recoverFromFisAuthError(force: true);
+        await _recoverFromFisAuthError();
       }
       await Future<void>.delayed(const Duration(seconds: 2));
     }
@@ -382,7 +382,8 @@ class FcmService {
         _lastTokenError = 'server_rejected_stale_fcm_token:${result.previousTokenStatus}';
         _updateDiagnostics('token:server_reset_required', token: token);
         _lastRegisteredToken = '';
-        await _recoverFromFisAuthError();
+        // Don't destroy the token — just clear local state and
+        // let the next getToken() call provide a fresh one.
         return false;
       }
       return true;
@@ -410,8 +411,8 @@ class FcmService {
     _lastRegisteredToken = '';
     _lastTokenError = 'server_effective_${status.effectiveTokenStatus}';
     _updateDiagnostics('token:auto_recovery_start', token: currentToken);
-    await _recoverFromFisAuthError(force: true);
 
+    // Just re-fetch token without destroying the Firebase installation.
     final newToken = await _tryFetchToken(FirebaseMessaging.instance);
     if (newToken != null && newToken.isNotEmpty) {
       final registered = await _registerToken(newToken);
@@ -498,6 +499,10 @@ class FcmService {
     return 'unknown_or_network';
   }
 
+  /// Soft recovery: reinitialize Firebase app without destroying
+  /// the current FCM token.  Calling deleteToken/deleteInstallation
+  /// immediately invalidates the token on Firebase servers, causing
+  /// every queued server push to fail with NOT_FOUND.
   Future<void> _recoverFromFisAuthError({bool force = false}) async {
     if (_isFisRecoveryInProgress) return;
     final now = DateTime.now();
@@ -508,6 +513,24 @@ class FcmService {
     _lastFisRecoveryAt = now;
     try {
       _updateDiagnostics('recovery:start');
+      try { if (Firebase.apps.isNotEmpty) await Firebase.app().delete(); } catch (_) {}
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      try { await Firebase.initializeApp(options: _firebaseOptionsForCurrentPlatform()); } catch (_) {}
+      await Future<void>.delayed(const Duration(seconds: 1));
+      await _refreshNativeDiagnostics();
+      _updateDiagnostics('recovery:done');
+    } finally {
+      _isFisRecoveryInProgress = false;
+    }
+  }
+
+  /// Hard reset: destroy token + installation, then reinitialize.
+  /// Only used for explicit manual reset (diagnostics button).
+  Future<void> _hardResetToken() async {
+    if (_isFisRecoveryInProgress) return;
+    _isFisRecoveryInProgress = true;
+    try {
+      _updateDiagnostics('hard_reset:start');
       final messaging = FirebaseMessaging.instance;
       try { await messaging.setAutoInitEnabled(false); } catch (_) {}
       try { await messaging.deleteToken(); } catch (_) {}
@@ -519,7 +542,7 @@ class FcmService {
       try { await FirebaseMessaging.instance.setAutoInitEnabled(true); } catch (_) {}
       await Future<void>.delayed(const Duration(seconds: 1));
       await _refreshNativeDiagnostics();
-      _updateDiagnostics('recovery:done');
+      _updateDiagnostics('hard_reset:done');
     } finally {
       _isFisRecoveryInProgress = false;
     }
@@ -611,7 +634,7 @@ class FcmService {
     if (forceResetToken) {
       _lastRegisteredToken = '';
       _lastTokenError = 'manual_token_reset';
-      await _recoverFromFisAuthError(force: true);
+      await _hardResetToken();
     }
 
     String? token;
