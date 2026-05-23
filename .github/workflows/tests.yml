@@ -8,8 +8,10 @@ on:
       - 'backend_api/**'
       - '**.py'
       - '**.dart'
+      - '.github/workflows/**'
   pull_request:
     branches: [master]
+  workflow_dispatch:
 
 jobs:
   flutter-tests:
