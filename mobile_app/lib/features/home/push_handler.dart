@@ -118,10 +118,13 @@ extension _PushHandlerExtension on _HomePageState {
       shouldSuppressChatNotification: (conversationKey) {
         // Suppress foreground notification only when the user is
         // already in the messenger tab viewing that exact conversation.
+        // Canonicalize the push key to match _activeConversationKey
+        // (dm:A:B and dm:B:A must compare equal).
         final store = _store;
         if (store == null) return false;
+        final canonical = canonicalConversationKey(conversationKey);
         return store.pageIndex.value == 4 &&
-            _activeConversationKey == conversationKey;
+            _activeConversationKey == canonical;
       },
       onOpenPush: (data) async {
         final store = _store;
