@@ -48,6 +48,7 @@ part 'push_handler.dart';
 part 'share_receiver.dart';
 part 'profile_init.dart';
 part 'sync_loops.dart';
+part 'chat_init.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -270,48 +271,25 @@ class _HomePageState extends State<HomePage> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _refreshChatBootstrap(TaskStore store) async {
-    try {
-      final bootstrap = await store.repository.api.chatBootstrap(
-        actorProfile: store.owner.value,
-      );
-      await store.repository.db.replaceConversations(bootstrap.conversations);
-      await store.repository.db.replaceStickerPacks(bootstrap.stickerPacks);
-      final contacts = bootstrap.contacts;
-      if (mounted) {
-        await _saveAvatarUrlsFromContacts(contacts);
-        await _loadProfileAvatars([
-          ...contacts.map((item) => item.profileKey),
-          ...bootstrap.conversations.expand((item) => item.members),
-        ]);
-        setState(() {
-          _chatContacts = contacts;
-          _chatConversations = bootstrap.conversations;
-          _chatStickerPacks = bootstrap.stickerPacks;
-        });
-      }
-    } catch (_) {
-      // Silently fail — user will see stale data
-    }
+  // Thin wrappers used by chat_init.dart
+
+  void _setChatLoading(bool value) {
+    setState(() => _chatLoading = value);
   }
 
-  Future<void> _refreshMessengerContacts(TaskStore store) async {
-    await _refreshChatBootstrap(store);
-    await _loadPhoneContacts(store);
+  void _setChatBootstrapState(
+    List<ChatContact> contacts,
+    List<ChatConversation> conversations,
+    List<StickerPack> stickerPacks,
+  ) {
+    setState(() {
+      _chatContacts = contacts;
+      _chatConversations = conversations;
+      _chatStickerPacks = stickerPacks;
+    });
   }
 
-  Future<void> _removeLocalConversation(
-    TaskStore store,
-    String conversationKey,
-  ) async {
-    final key = conversationKey.trim();
-    if (key.isEmpty) {
-      return;
-    }
-    await store.repository.db.deleteConversation(key);
-    if (!mounted) {
-      return;
-    }
+  void _removeConversationState(String key) {
     setState(() {
       _chatConversations.removeWhere((item) => item.conversationKey == key);
       _chatMessagesByConversation.remove(key);
@@ -321,104 +299,20 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  Future<void> _initChat(TaskStore store) async {
-    final api = store.repository.api;
-    final db = store.repository.db;
-    final actor = store.owner.value;
-
-    // If a push already routed to a conversation, preserve the key
-    // so _initChat doesn't undo the navigation.
-    final pushConversationKey =
-        _pushAlreadyRouted ? _activeConversationKey : '';
-
+  void _setChatInitState(
+    List<ChatContact> contacts,
+    List<ChatConversation> conversations,
+    List<StickerPack> stickerPacks,
+    bool clearActive,
+  ) {
     setState(() {
-      _chatLoading = true;
-      _chatMessagesByConversation.clear();
-      if (!_pushAlreadyRouted) {
+      _chatContacts = contacts;
+      _chatConversations = conversations;
+      _chatStickerPacks = stickerPacks;
+      if (clearActive) {
         _activeConversationKey = '';
       }
     });
-
-    try {
-      final bootstrap = await api.chatBootstrap(actorProfile: actor);
-      await db.replaceConversations(bootstrap.conversations);
-      await db.replaceStickerPacks(bootstrap.stickerPacks);
-
-      final conversations = await db.readConversations();
-      final stickerPacks = await db.readStickerPacks();
-
-      if (!mounted) {
-        return;
-      }
-      await _saveAvatarUrlsFromContacts(bootstrap.contacts);
-      await _loadProfileAvatars([
-        ...bootstrap.contacts.map((item) => item.profileKey),
-        ...conversations.expand((item) => item.members),
-      ]);
-      setState(() {
-        _chatContacts = bootstrap.contacts;
-        _chatConversations = conversations;
-        _chatStickerPacks = stickerPacks;
-        if (!_pushAlreadyRouted) {
-          _activeConversationKey = '';
-        }
-      });
-
-      await _loadPhoneContacts(store);
-      await _chatRealtime?.stop();
-      _chatRealtime = ChatRealtimeService(
-        api: api,
-        actorProfile: actor,
-        activeConversationKey: () => _activeConversationKey,
-        shouldPoll: () =>
-            mounted &&
-            _store?.pageIndex.value == 4 &&
-            !isProjectConversation(_activeConversationKey),
-        onMessagesUpdated: (conversationKey) async {
-          await _refreshConversation(
-            store,
-            conversationKey,
-            useNetwork: true,
-            quiet: true,
-          );
-        },
-      )..start();
-
-      _replaceCallService(api: api, actorProfile: actor);
-
-      // If a push already opened a conversation, refresh it now that
-      // chat state is fully loaded.
-      if (pushConversationKey.isNotEmpty && mounted) {
-        await _refreshConversation(
-          store,
-          pushConversationKey,
-          useNetwork: true,
-          quiet: true,
-        );
-      }
-
-      // Load avatars for all contacts from local storage
-      final prefs = await SharedPreferences.getInstance();
-      for (final contact in [..._chatContacts, ..._familyMembers]) {
-        if (_profileAvatarUrls.containsKey(contact.profileKey)) continue;
-        final avatar = prefs.getString('avatar_${contact.profileKey}');
-        if (avatar != null && avatar.isNotEmpty) {
-          _profileAvatarUrls[contact.profileKey] = avatar;
-        }
-      }
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Чат недоступен: $error')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _chatLoading = false;
-        });
-      }
-    }
   }
 
   void _loadProjects() {
