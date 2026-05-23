@@ -82,9 +82,31 @@ extension _ChatInitExtension on _HomePageState {
         ...bootstrap.contacts.map((item) => item.profileKey),
         ...conversations.expand((item) => item.members),
       ]);
+
+      // If a push already routed to a conversation that isn't in the
+      // server conversation list (e.g. a fresh direct chat just created
+      // by the incoming message), add it back so the messenger UI can
+      // display it.
+      List<ChatConversation> finalConversations = conversations;
+      if (pushConversationKey.isNotEmpty &&
+          !finalConversations.any((c) => c.conversationKey == pushConversationKey) &&
+          !isProjectConversation(pushConversationKey)) {
+        finalConversations = [
+          ...finalConversations,
+          ChatConversation(
+            conversationKey: pushConversationKey,
+            kind: 'direct',
+            title: '',
+            members: pushConversationKey.startsWith('dm:')
+                ? pushConversationKey.split(':').skip(1).toList()
+                : [store.owner.value],
+          ),
+        ];
+      }
+
       _setChatInitState(
         bootstrap.contacts,
-        conversations,
+        finalConversations,
         stickerPacks,
         !_pushAlreadyRouted,
       );
