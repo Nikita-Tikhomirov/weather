@@ -4,6 +4,7 @@ import 'dart:io' show Platform, File, Directory;
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -256,35 +257,48 @@ class FcmService {
 
     _onMessageSub =
         FirebaseMessaging.onMessage.listen((RemoteMessage msg) async {
-      final conversationKey =
-          (msg.data['conversation_key'] ?? '').toString().trim();
-      final isChatMessage = _isChatMessageData(msg.data);
+      try {
+        final conversationKey =
+            (msg.data['conversation_key'] ?? '').toString().trim();
+        final isChatMessage = _isChatMessageData(msg.data);
 
-      // Suppress foreground notification if user is already viewing
-      // the relevant chat conversation.
-      final suppressed = isChatMessage &&
-          shouldSuppressChatNotification != null &&
-          shouldSuppressChatNotification!(conversationKey);
+        // Suppress foreground notification if user is already viewing
+        // the relevant chat conversation.
+        final suppressed = isChatMessage &&
+            shouldSuppressChatNotification != null &&
+            shouldSuppressChatNotification!(conversationKey);
 
-      if (!suppressed) {
-        // For chat messages in foreground, only show the notification.
-        // Navigation to the conversation happens on explicit tap
-        // via _handleNotificationResponse -> _notificationOpenEvents.
-        if (!isChatMessage) {
-          await onOpenPush(msg.data);
+        if (!suppressed) {
+          // For chat messages in foreground, only show the notification.
+          // Navigation to the conversation happens on explicit tap
+          // via _handleNotificationResponse -> _notificationOpenEvents.
+          if (!isChatMessage) {
+            await onOpenPush(msg.data);
+          }
         }
-      }
 
-      final title = msg.notification?.title ??
-          (msg.data['title'] ?? 'Семейные задачи').toString();
-      final body = msg.notification?.body ??
-          (msg.data['body'] ?? 'Появились новые изменения').toString();
+        final title = msg.notification?.title ??
+            (msg.data['title'] ?? 'Семейные задачи').toString();
+        final body = msg.notification?.body ??
+            (msg.data['body'] ?? 'Появились новые изменения').toString();
 
-      if (!suppressed) {
-        await _showForegroundNotification(
-            title: title, body: body, data: msg.data);
+        if (!suppressed) {
+          await _showForegroundNotification(
+              title: title, body: body, data: msg.data);
+        }
+        onForegroundText('$title: $body');
+      } catch (error, stack) {
+        debugPrint(
+            '[FCM onMessage] unhandled error: $error\n$stack');
+        // Still try to show a fallback notification
+        try {
+          await _showForegroundNotification(
+            title: 'Семейные задачи',
+            body: 'Новое уведомление',
+            data: msg.data,
+          );
+        } catch (_) {}
       }
-      onForegroundText('$title: $body');
     });
 
     _onOpenSub = FirebaseMessaging.onMessageOpenedApp.listen((msg) async {
