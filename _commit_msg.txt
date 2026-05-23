@@ -1,1 +1,1 @@
-chore: fix empty catch blocks, add requirements.txt, update README with new architecture, add 22 tests
+chore: remove temporary scripts accidentally committed
