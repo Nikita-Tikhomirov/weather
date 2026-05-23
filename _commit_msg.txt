@@ -1,1 +1,1 @@
-test: add 5 TaskItem serialization tests, verify assignees/participants backward compat
+chore: fix VPS backend - add missing error column to push_outbox, clean .env backups, add vpsauth to gitignore
