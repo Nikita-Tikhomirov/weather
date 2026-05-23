@@ -52,17 +52,19 @@ class FcmPushGateway implements PushGateway
             'data' => $normalizedData,
             'android' => [
                 'priority' => 'high',
-                'notification' => [
-                    'channel_id' => (string) config('push.fcm.android_channel_id', 'family_updates'),
-                    'sound' => 'default',
-                    'visibility' => 'PUBLIC',
-                ],
-            ],
-            'notification' => [
-                'title' => $title,
-                'body' => $body,
             ],
         ];
+        if (!$this->isChatMessage($normalizedData)) {
+            $message['android']['notification'] = [
+                'channel_id' => (string) config('push.fcm.android_channel_id', 'family_updates'),
+                'sound' => 'default',
+                'visibility' => 'PUBLIC',
+            ];
+            $message['notification'] = [
+                'title' => $title,
+                'body' => $body,
+            ];
+        }
 
         $payload = [
             'message' => [
@@ -168,6 +170,12 @@ class FcmPushGateway implements PushGateway
         }
 
         return $out;
+    }
+
+    private function isChatMessage(array $data): bool
+    {
+        return ($data['entity'] ?? $data['type'] ?? '') === 'chat_message'
+            && trim((string) ($data['conversation_key'] ?? '')) !== '';
     }
 
     private function extractErrorText(mixed $json, string $raw): string
