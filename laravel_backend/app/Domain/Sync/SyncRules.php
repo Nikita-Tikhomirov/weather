@@ -68,7 +68,21 @@ final class SyncRules
     public static function recipientsForPush(string $actor, string $entity, string $action, array $payload): array
     {
         if ($entity === 'family_task') {
-            return Profiles::ALLOWED;
+            // Static family profiles + any dynamic profiles with active device tokens
+            $profiles = Profiles::ALLOWED;
+            try {
+                $activeDynamic = \Illuminate\Support\Facades\DB::table('device_tokens')
+                    ->where('is_active', 1)
+                    ->whereNotIn('profile_key', $profiles)
+                    ->pluck('profile_key')
+                    ->unique()
+                    ->toArray();
+                $profiles = array_merge($profiles, $activeDynamic);
+            } catch (\Throwable) {
+                // Fallback to static profiles only
+            }
+            // Don't push back to the actor
+            return array_values(array_filter($profiles, static fn (string $p): bool => $p !== $actor));
         }
 
         $owner = trim((string)($payload['owner_key'] ?? $actor));
