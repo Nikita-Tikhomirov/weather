@@ -257,32 +257,32 @@ class FcmService {
 
     _onMessageSub =
         FirebaseMessaging.onMessage.listen((RemoteMessage msg) async {
+      // Auto-navigate for all push types as before.
+      // Suppression check is in a separate try-catch so it can
+      // never break the push delivery.
+      bool suppressed = false;
       try {
-        // Foreground: no auto-navigation. Only show a notification.
-        // Navigation to chat/tasks happens on explicit tap
-        // via _handleNotificationResponse -> _notificationOpenEvents.
-        final conversationKey =
-            (msg.data['conversation_key'] ?? '').toString().trim();
-
-        // Suppress notification if user is already viewing this chat.
         if (_isChatMessageData(msg.data) &&
-            shouldSuppressChatNotification != null &&
-            shouldSuppressChatNotification!(conversationKey)) {
-          return;
+            shouldSuppressChatNotification != null) {
+          final ck =
+              (msg.data['conversation_key'] ?? '').toString().trim();
+          suppressed = shouldSuppressChatNotification!(ck);
         }
-
-        final title = msg.notification?.title ??
-            (msg.data['title'] ?? 'Семейные задачи').toString();
-        final body = msg.notification?.body ??
-            (msg.data['body'] ?? 'Появились новые изменения').toString();
-
-        await _showForegroundNotification(
-            title: title, body: body, data: msg.data);
-        onForegroundText('$title: $body');
-      } catch (error, stack) {
-        debugPrint(
-            '[FCM onMessage] error: $error\n$stack');
+      } catch (_) {
+        suppressed = false;
       }
+
+      if (suppressed) return;
+
+      await onOpenPush(msg.data);
+
+      final title = msg.notification?.title ??
+          (msg.data['title'] ?? 'Семейные задачи').toString();
+      final body = msg.notification?.body ??
+          (msg.data['body'] ?? 'Появились новые изменения').toString();
+      await _showForegroundNotification(
+          title: title, body: body, data: msg.data);
+      onForegroundText('$title: $body');
     });
 
     _onOpenSub = FirebaseMessaging.onMessageOpenedApp.listen((msg) async {
