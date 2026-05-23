@@ -1,13 +1,13 @@
-import '../contracts/sync_api.dart';
-import '../contracts/task_data_source.dart';
 import '../models/task_item.dart';
+import '../services/api_client.dart';
+import '../services/local_db.dart';
 import '../services/sync_service.dart';
 
 class TaskRepository {
   TaskRepository({required this.db, required this.api});
 
-  final TaskDataSource db;
-  final SyncApi api;
+  final LocalDb db;
+  final ApiClient api;
   SyncService? _syncService;
   String _actorProfile = 'nik';
 

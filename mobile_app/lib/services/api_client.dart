@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+// ignore_for_file: annotate_overrides
+
 import '../contracts/call_api.dart';
 import '../contracts/chat_api.dart';
 import '../contracts/sync_api.dart';

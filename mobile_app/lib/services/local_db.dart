@@ -3,6 +3,8 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path/path.dart' as p;
+// ignore_for_file: annotate_overrides
+
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../contracts/task_data_source.dart';
