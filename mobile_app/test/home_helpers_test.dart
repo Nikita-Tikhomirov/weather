@@ -8,7 +8,7 @@ void main() {
       expect(
         isChatMessageData({
           'entity': 'chat_message',
-          'conversation_key': 'dm:nik:misha',
+          'conversation_key': 'dm:u_001:u_042',
         }),
         isTrue,
       );
@@ -28,7 +28,7 @@ void main() {
       expect(
         isChatMessageData({
           'entity': 'task',
-          'conversation_key': 'dm:nik:misha',
+          'conversation_key': 'dm:u_001:u_042',
         }),
         isFalse,
       );
@@ -85,7 +85,7 @@ void main() {
     });
 
     test('returns false for non-project keys', () {
-      expect(isProjectConversation('dm:nik:misha'), isFalse);
+      expect(isProjectConversation('dm:u_001:u_042'), isFalse);
       expect(isProjectConversation('group:common'), isFalse);
       expect(isProjectConversation(''), isFalse);
     });
@@ -111,20 +111,20 @@ void main() {
   group('contactLabel', () {
     test('returns display name when available', () {
       final contact = ChatContact(
-        profileKey: 'nik',
+        profileKey: 'u_001',
         displayName: 'Никита',
         phone: '+79991112233',
-        conversationKey: 'dm:misha:nik',
+        conversationKey: 'dm:u_001:u_042',
       );
       expect(contactLabel(contact), 'Никита');
     });
 
     test('returns phone when display name is empty', () {
       final contact = ChatContact(
-        profileKey: 'misha',
+        profileKey: 'u_042',
         displayName: '   ',
         phone: '+79991112244',
-        conversationKey: 'dm:misha:nik',
+        conversationKey: 'dm:u_001:u_042',
       );
       expect(contactLabel(contact), '+79991112244');
     });
@@ -142,8 +142,8 @@ void main() {
 
   group('canonicalConversationKey', () {
     test('keeps both direct chat members and normalizes their order', () {
-      expect(canonicalConversationKey('dm:nik:misha'), 'dm:misha:nik');
-      expect(canonicalConversationKey('dm:misha:nik'), 'dm:misha:nik');
+      expect(canonicalConversationKey('dm:u_042:u_001'), 'dm:u_001:u_042');
+      expect(canonicalConversationKey('dm:u_001:u_042'), 'dm:u_001:u_042');
     });
 
     test('keeps first two segments for non-direct keys with >2 parts', () {
@@ -153,11 +153,11 @@ void main() {
     test('returns unchanged for keys with 2 or fewer parts', () {
       expect(canonicalConversationKey('group:common'), 'group:common');
       expect(canonicalConversationKey('project:test'), 'project:test');
-      expect(canonicalConversationKey('dm:nik'), 'dm:nik');
+      expect(canonicalConversationKey('dm:u_001'), 'dm:u_001');
     });
 
     test('trims whitespace', () {
-      expect(canonicalConversationKey('  dm:nik  '), 'dm:nik');
+      expect(canonicalConversationKey('  dm:u_001  '), 'dm:u_001');
     });
   });
 
@@ -166,7 +166,7 @@ void main() {
         ChatMessage(
           id: id,
           conversationKey: 'test',
-          senderProfile: 'nik',
+          senderProfile: 'u_001',
           messageType: 'text',
           text: 'hello',
           createdAt: '2025-01-01T00:00:00',

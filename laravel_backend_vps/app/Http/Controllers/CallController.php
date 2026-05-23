@@ -7,6 +7,7 @@ use App\Domain\Sync\ActorProfileGuard;
 use App\Services\Push\PushOutboxService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use Throwable;
 
@@ -263,12 +264,8 @@ class CallController extends Controller
 
     private function profileLabel(string $profile): string
     {
-        return match (trim($profile)) {
-            'nik' => 'Ник',
-            'nastya' => 'Настя',
-            'misha' => 'Миша',
-            'arisha' => 'Ариша',
-            default => 'Пользователь',
-        };
+        $key = trim($profile);
+        $dynamic = DB::table('messenger_users')->where('profile_key', $key)->value('display_name');
+        return is_string($dynamic) && trim($dynamic) !== '' ? trim($dynamic) : 'Пользователь';
     }
 }

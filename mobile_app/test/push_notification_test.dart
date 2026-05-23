@@ -79,7 +79,7 @@ void main() {
       final data = {
         'type': 'task_reminder',
         'entity': 'task',
-        'conversation_key': 'dm:nik:misha',
+        'conversation_key': 'dm:u_001:u_042',
       };
       expect(classifyPush(data), PushTarget.tasks);
     });
@@ -105,7 +105,7 @@ void main() {
     test('chat_message with conversation_key → PushTarget.messenger', () {
       final data = {
         'entity': 'chat_message',
-        'conversation_key': 'dm:nik:misha',
+        'conversation_key': 'dm:u_001:u_042',
       };
       expect(classifyPush(data), PushTarget.messenger);
     });
@@ -127,7 +127,7 @@ void main() {
       final data = {
         'type': 'call_incoming',
         'session_id': 'abc123',
-        'caller_profile': 'misha',
+        'caller_profile': 'u_042',
       };
       expect(classifyPush(data), PushTarget.call);
     });
@@ -158,13 +158,13 @@ void main() {
     test('suppresses when on messenger tab viewing same chat', () {
       final data = {
         'entity': 'chat_message',
-        'conversation_key': 'dm:nik:misha',
+        'conversation_key': 'dm:u_001:u_042',
       };
       expect(
         shouldSuppressChatNotification(
           data: data,
           currentPageIndex: 4,
-          activeConversationKey: 'dm:misha:nik',
+          activeConversationKey: 'dm:u_001:u_042',
         ),
         isTrue,
       );
@@ -173,13 +173,13 @@ void main() {
     test('does NOT suppress chat when on different tab', () {
       final data = {
         'entity': 'chat_message',
-        'conversation_key': 'dm:nik:misha',
+        'conversation_key': 'dm:u_001:u_042',
       };
       expect(
         shouldSuppressChatNotification(
           data: data,
           currentPageIndex: 1, // tasks tab
-          activeConversationKey: 'dm:misha:nik',
+          activeConversationKey: 'dm:u_042:u_001',
         ),
         isFalse,
       );
@@ -188,13 +188,13 @@ void main() {
     test('does NOT suppress chat when viewing different conversation', () {
       final data = {
         'entity': 'chat_message',
-        'conversation_key': 'dm:nik:misha',
+        'conversation_key': 'dm:u_001:u_042',
       };
       expect(
         shouldSuppressChatNotification(
           data: data,
           currentPageIndex: 4, // messenger tab
-          activeConversationKey: 'dm:nik:arisha',
+          activeConversationKey: 'dm:u_001:u_777',
         ),
         isFalse,
       );
@@ -210,7 +210,7 @@ void main() {
         shouldSuppressChatNotification(
           data: data,
           currentPageIndex: 4,
-          activeConversationKey: 'dm:nik:misha',
+          activeConversationKey: 'dm:u_001:u_042',
         ),
         isFalse,
       );
@@ -220,7 +220,7 @@ void main() {
       final data = {
         'entity': 'task',
         'type': 'todo_update',
-        'conversation_key': 'dm:nik:misha',
+        'conversation_key': 'dm:u_001:u_042',
       };
       // Try all tab indices
       for (var tab = 0; tab < 5; tab++) {
@@ -228,7 +228,7 @@ void main() {
           shouldSuppressChatNotification(
             data: data,
             currentPageIndex: tab,
-            activeConversationKey: 'dm:misha:nik',
+            activeConversationKey: 'dm:u_042:u_001',
           ),
           isFalse,
           reason: 'Task notification should not be suppressed on tab $tab',
@@ -239,13 +239,13 @@ void main() {
     test('does NOT suppress call_incoming notification', () {
       final data = {
         'type': 'call_incoming',
-        'conversation_key': 'dm:nik:misha',
+        'conversation_key': 'dm:u_001:u_042',
       };
       expect(
         shouldSuppressChatNotification(
           data: data,
           currentPageIndex: 4,
-          activeConversationKey: 'dm:misha:nik',
+          activeConversationKey: 'dm:u_042:u_001',
         ),
         isFalse,
       );
@@ -287,8 +287,8 @@ void main() {
 
   group('_canonicalDmKey', () {
     test('normalizes dm:A:B and dm:B:A to the same key', () {
-      final a = _canonicalDmKey('dm:nik:misha');
-      final b = _canonicalDmKey('dm:misha:nik');
+      final a = _canonicalDmKey('dm:u_001:u_042');
+      final b = _canonicalDmKey('dm:u_042:u_001');
       expect(a, equals(b));
     });
 
@@ -302,7 +302,7 @@ void main() {
     });
 
     test('handles key with extra whitespace', () {
-      expect(_canonicalDmKey(' dm:nik:misha '), _canonicalDmKey('dm:misha:nik'));
+      expect(_canonicalDmKey(' dm:u_001:u_042 '), _canonicalDmKey('dm:u_042:u_001'));
     });
   });
 }

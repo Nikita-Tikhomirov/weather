@@ -434,18 +434,9 @@ class ChatController extends Controller
 
     private function profileLabel(string $profile): string
     {
-        $label = match (trim($profile)) {
-            'nik' => 'Ник',
-            'nastya' => 'Настя',
-            'misha' => 'Миша',
-            'arisha' => 'Ариша',
-            default => '',
-        };
-        if ($label !== '') {
-            return $label;
-        }
-        $dynamic = DB::table('messenger_users')->where('profile_key', $profile)->value('display_name');
-        return is_string($dynamic) && trim($dynamic) !== '' ? trim($dynamic) : 'Семья';
+        $key = trim($profile);
+        $dynamic = DB::table('messenger_users')->where('profile_key', $key)->value('display_name');
+        return is_string($dynamic) && trim($dynamic) !== '' ? trim($dynamic) : $key;
     }
 
     private function chatMessageBody(array $message): string
