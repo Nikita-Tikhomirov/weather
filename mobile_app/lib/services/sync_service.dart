@@ -1,9 +1,9 @@
 import 'dart:convert';
 
+import '../contracts/sync_api.dart';
+import '../contracts/task_data_source.dart';
 import '../models/pending_event.dart';
 import '../models/task_item.dart';
-import 'api_client.dart';
-import 'local_db.dart';
 
 class SyncService {
   SyncService({
@@ -14,8 +14,8 @@ class SyncService {
     api.setActorProfileForPull(actorProfile);
   }
 
-  final LocalDb db;
-  final ApiClient api;
+  final TaskDataSource db;
+  final SyncApi api;
   final String actorProfile;
 
   Future<void> enqueueUpsert(TaskItem task) async {

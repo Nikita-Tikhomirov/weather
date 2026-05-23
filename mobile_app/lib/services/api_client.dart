@@ -2,120 +2,24 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../contracts/call_api.dart';
+import '../contracts/chat_api.dart';
+import '../contracts/sync_api.dart';
 import '../models/call_models.dart';
 import '../models/chat_models.dart';
+import '../models/chat_snapshots.dart';
+import '../models/device_snapshots.dart';
 import '../models/pending_event.dart';
+import '../models/sync_snapshots.dart';
 import '../models/task_item.dart';
 
-class PullSnapshot {
-  PullSnapshot({
-    required this.tasks,
-    required this.familyTasks,
-    required this.serverTime,
-    required this.nextCursor,
-    required this.isDelta,
-  });
+// Re-export for backward compatibility — consumers that import
+// api_client.dart still see these types.
+export '../models/chat_snapshots.dart';
+export '../models/device_snapshots.dart';
+export '../models/sync_snapshots.dart';
 
-  final List<TaskItem> tasks;
-  final List<TaskItem> familyTasks;
-  final String serverTime;
-  final String nextCursor;
-  final bool isDelta;
-}
-
-class ChatBootstrapSnapshot {
-  ChatBootstrapSnapshot({
-    required this.contacts,
-    required this.groupConversationKey,
-    required this.conversations,
-    required this.stickerPacks,
-  });
-
-  final List<ChatContact> contacts;
-  final String groupConversationKey;
-  final List<ChatConversation> conversations;
-  final List<StickerPack> stickerPacks;
-}
-
-class PhoneProfileSession {
-  PhoneProfileSession({
-    required this.profileKey,
-    required this.phone,
-    required this.displayName,
-    required this.deviceId,
-    required this.familyMembers,
-  });
-
-  final String profileKey;
-  final String phone;
-  final String displayName;
-  final String deviceId;
-  final List<ChatContact> familyMembers;
-}
-
-class ChatMessagesSnapshot {
-  ChatMessagesSnapshot({
-    required this.messages,
-    required this.nextCursor,
-    this.typingProfiles = const [],
-  });
-
-  final List<ChatMessage> messages;
-  final String? nextCursor;
-  final List<String> typingProfiles;
-}
-
-class ChatUploadResult {
-  ChatUploadResult({
-    required this.assetUrl,
-    required this.imageMeta,
-  });
-
-  final String assetUrl;
-  final Map<String, dynamic> imageMeta;
-}
-
-class DeviceTokenRegistration {
-  DeviceTokenRegistration({
-    required this.shouldResetToken,
-    required this.previousTokenStatus,
-  });
-
-  final bool shouldResetToken;
-  final String previousTokenStatus;
-}
-
-class PushDeviceStatus {
-  PushDeviceStatus({
-    required this.actorProfile,
-    required this.effectiveTokenStatus,
-    required this.activeTokenCount,
-    required this.status,
-    required this.tokens,
-  });
-
-  final String actorProfile;
-  final String effectiveTokenStatus;
-  final int activeTokenCount;
-  final Map<String, dynamic> status;
-  final List<Map<String, dynamic>> tokens;
-
-  factory PushDeviceStatus.fromJson(Map<String, dynamic> json) {
-    final result = Map<String, dynamic>.from(json['result'] as Map? ?? {});
-    return PushDeviceStatus(
-      actorProfile: (result['actor_profile'] ?? '').toString(),
-      effectiveTokenStatus: (result['effective_token_status'] ?? '').toString(),
-      activeTokenCount: (result['active_token_count'] as num?)?.toInt() ?? 0,
-      status: Map<String, dynamic>.from(result['status'] as Map? ?? {}),
-      tokens: (result['tokens'] as List? ?? const [])
-          .whereType<Map>()
-          .map((item) => Map<String, dynamic>.from(item))
-          .toList(),
-    );
-  }
-}
-
-class ApiClient {
+class ApiClient implements SyncApi, ChatApi, CallApi {
   ApiClient({required this.baseUrl, required this.apiKey});
 
   final String baseUrl;

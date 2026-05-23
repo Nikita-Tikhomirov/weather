@@ -5,6 +5,7 @@ import '../domain/task_draft.dart';
 import '../models/task_item.dart';
 import '../repositories/task_repository.dart';
 import '../services/desktop_process_host_service.dart';
+import 'desktop_state.dart';
 
 class DashboardVm {
   const DashboardVm({
@@ -113,23 +114,18 @@ class TaskStore {
       ValueNotifier<List<TaskItem>>(
     const <TaskItem>[],
   );
-  final ValueNotifier<String> themeMode = ValueNotifier<String>('light');
-  final ValueNotifier<String> themeScheme = ValueNotifier<String>('Ocean');
-  final ValueNotifier<List<String>> availableSchemes =
-      ValueNotifier<List<String>>(const ['Ocean', 'Slate', 'Forest']);
-  final ValueNotifier<Map<String, String>> desktopThemeTokens =
-      ValueNotifier<Map<String, String>>(const <String, String>{});
-  final ValueNotifier<DesktopHostState> voiceHostState =
-      ValueNotifier<DesktopHostState>(
-    const DesktopHostState(
-      status: DesktopHostStatus.stopped,
-      lastMessage: 'voice stopped',
-    ),
-  );
-  final ValueNotifier<List<String>> desktopLogEntries =
-      ValueNotifier<List<String>>(
-    const <String>[],
-  );
+  // ── Desktop state (theme / voice / logs) extracted ──
+  final DesktopState desktop = DesktopState();
+
+  // Backward-compatible getters — existing UI code uses these directly.
+  ValueNotifier<String> get themeMode => desktop.themeMode;
+  ValueNotifier<String> get themeScheme => desktop.themeScheme;
+  ValueNotifier<List<String>> get availableSchemes => desktop.availableSchemes;
+  ValueNotifier<Map<String, String>> get desktopThemeTokens =>
+      desktop.themeTokens;
+  ValueNotifier<DesktopHostState> get voiceHostState =>
+      desktop.voiceHostState;
+  ValueNotifier<List<String>> get desktopLogEntries => desktop.logEntries;
 
   bool get isAdult => TaskDomainService.adults.contains(owner.value);
 
@@ -377,23 +373,15 @@ class TaskStore {
     required List<String> schemes,
     required Map<String, String> tokens,
   }) {
-    themeMode.value = mode;
-    themeScheme.value = scheme;
-    availableSchemes.value = List<String>.from(schemes);
-    desktopThemeTokens.value = Map<String, String>.from(tokens);
+    desktop.setTheme(mode: mode, scheme: scheme, schemes: schemes, tokens: tokens);
   }
 
   void setVoiceHostState(DesktopHostState state) {
-    voiceHostState.value = state;
+    desktop.setVoiceHost(state);
   }
 
   void appendDesktopLog(String entry) {
-    final next = List<String>.from(desktopLogEntries.value);
-    next.add(entry);
-    if (next.length > 120) {
-      next.removeRange(0, next.length - 120);
-    }
-    desktopLogEntries.value = next;
+    desktop.appendLog(entry);
   }
 
   void _recomputeDashboardOnly() {
@@ -522,11 +510,6 @@ class TaskStore {
     tasksForSelectedDate.dispose();
     familyTasksView.dispose();
     allTasksView.dispose();
-    themeMode.dispose();
-    themeScheme.dispose();
-    availableSchemes.dispose();
-    desktopThemeTokens.dispose();
-    voiceHostState.dispose();
-    desktopLogEntries.dispose();
+    desktop.dispose();
   }
 }

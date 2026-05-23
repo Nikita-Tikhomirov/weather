@@ -5,11 +5,12 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import '../contracts/task_data_source.dart';
 import '../models/pending_event.dart';
 import '../models/chat_models.dart';
 import '../models/task_item.dart';
 
-class LocalDb {
+class LocalDb implements TaskDataSource {
   LocalDb._(this._db);
 
   final Database _db;
