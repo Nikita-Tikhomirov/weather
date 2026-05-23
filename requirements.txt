@@ -1,0 +1,18 @@
+# Python dependencies for Family Todo desktop/voice assistant
+# Install: pip install -r requirements.txt
+
+# Desktop GUI
+customtkinter>=5.2.0
+
+# Voice recognition
+speech_recognition>=3.10.0
+
+# Audio playback/recording
+sounddevice>=0.4.6
+numpy>=1.24.0
+
+# Telegram bot interface
+python-telegram-bot>=20.0
+
+# HTTP sync client (used by sync_runtime.py)
+requests>=2.31.0

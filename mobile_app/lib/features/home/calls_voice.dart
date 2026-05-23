@@ -33,7 +33,9 @@ extension _CallsVoiceExtension on _HomePageState {
     const ch = MethodChannel('family_todo_mobile/voice');
     try {
       await ch.invokeMethod('stopRecording');
-    } catch (_) {}
+    } catch (_) {
+      // stopRecording may fail if recorder wasn't started; safe to ignore
+    }
     _stopRecordingState();
     if (_voicePath == null || _voiceSec < 1) {
       if (mounted) showSnack('Слишком коротко');

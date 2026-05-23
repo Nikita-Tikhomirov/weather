@@ -27,10 +27,14 @@ extension _PushHandlerExtension on _HomePageState {
               await file.delete();
               debugPrint(
                   '[FCM push] _init found pending in temp file');
-            } catch (_) {}
+            } catch (_) {
+      // silently ignored — non-critical operation
+    }
           }
         }
-      } catch (_) {}
+      } catch (_) {
+      // silently ignored — non-critical operation
+    }
     }
 
     if (pending == null) return;

@@ -458,7 +458,34 @@ python .\scripts\cleanup_legacy_todos.py
 - Для отображения UTF-8 можно попробовать `chcp 65001` перед запуском.
 - Файлы проекта должны быть сохранены в UTF-8 (без ANSI), чтобы не ломалась кириллица.
 
-## 12. Что можно улучшить дальше
+## 12. Mobile app architecture (Flutter)
+
+После рефакторинга `mobile_app/lib/features/home/` разбит на модули:
+
+```
+home_page.dart        — ядро: build(), _init(), chat core, project UI
+desktop_shell.dart    — DesktopShell widget (part of home_page.dart)
+push_handler.dart     — FCM/push-обработка (part)
+share_receiver.dart   — приём shared content из Android (part)
+profile_init.dart     — инициализация профиля/устройства (part)
+sync_loops.dart       — циклы синхронизации и call service (part)
+chat_init.dart        — инициализация чата и bootstrap (part)
+projects_data.dart    — проекты/bridge/файлы (part)
+calls_voice.dart      — звонки и голосовые сообщения (part)
+home_helpers.dart     — pure utility-функции (import)
+```
+
+Ключевые сервисы (`lib/services/`):
+- `api_client.dart` — реализует `SyncApi`, `ChatApi`, `CallApi`
+- `local_db.dart` — реализует `TaskDataSource` (SQLite)
+- `fcm_service.dart` — Firebase Cloud Messaging
+
+Контракты (`lib/contracts/`):
+- `task_data_source.dart`, `sync_api.dart`, `chat_api.dart`, `call_api.dart`
+
+Тесты: 55 unit-тестов в `mobile_app/test/`.
+
+## 13. Что можно улучшить дальше
 
 - Добавить `requirements.txt`/`pyproject.toml` для воспроизводимой установки.
 - Добавить отдельный CLI-режим без микрофона (для отладки команд текстом).

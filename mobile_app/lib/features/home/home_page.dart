@@ -792,7 +792,9 @@ class _HomePageState extends State<HomePage> {
           actorProfile: store.owner.value,
           conversationKey: _activeConversationKey,
         );
-      } catch (_) {}
+      } catch (_) {
+      // silently ignored — non-critical operation
+    }
     });
   }
 
@@ -1358,7 +1360,9 @@ class _HomePageState extends State<HomePage> {
                                           conversationKey: conv.conversationKey,
                                           profile: profile,
                                         );
-                                      } catch (_) {}
+                                      } catch (_) {
+      // silently ignored — non-critical operation
+    }
                                     },
                                   )
                                 : null,
@@ -1808,7 +1812,9 @@ class _HomePageState extends State<HomePage> {
         }
         return;
       }
-    } catch (_) {}
+    } catch (_) {
+      // silently ignored — non-critical operation
+    }
 
     // Optional caption
     String caption = '';
