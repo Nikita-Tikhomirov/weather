@@ -3,6 +3,81 @@ import 'package:family_todo_mobile/features/home/home_helpers.dart';
 import 'package:family_todo_mobile/models/chat_models.dart';
 
 void main() {
+  group('isChatMessageData', () {
+    test('returns true for chat_message entity with conversation_key', () {
+      expect(
+        isChatMessageData({
+          'entity': 'chat_message',
+          'conversation_key': 'dm:nik:misha',
+        }),
+        isTrue,
+      );
+    });
+
+    test('returns true when type is chat_message', () {
+      expect(
+        isChatMessageData({
+          'type': 'chat_message',
+          'conversation_key': 'dm:a:b',
+        }),
+        isTrue,
+      );
+    });
+
+    test('returns false for task entity', () {
+      expect(
+        isChatMessageData({
+          'entity': 'task',
+          'conversation_key': 'dm:nik:misha',
+        }),
+        isFalse,
+      );
+    });
+
+    test('returns false for call_incoming type', () {
+      expect(
+        isChatMessageData({
+          'type': 'call_incoming',
+          'conversation_key': 'dm:a:b',
+        }),
+        isFalse,
+      );
+    });
+
+    test('returns false when conversation_key is empty', () {
+      expect(
+        isChatMessageData({
+          'entity': 'chat_message',
+          'conversation_key': '   ',
+        }),
+        isFalse,
+      );
+    });
+
+    test('returns false when conversation_key is missing', () {
+      expect(
+        isChatMessageData({
+          'entity': 'chat_message',
+        }),
+        isFalse,
+      );
+    });
+
+    test('returns false for empty data', () {
+      expect(isChatMessageData({}), isFalse);
+    });
+
+    test('returns false for task_reminder type', () {
+      expect(
+        isChatMessageData({
+          'type': 'task_reminder',
+          'conversation_key': 'dm:a:b',
+        }),
+        isFalse,
+      );
+    });
+  });
+
   group('isProjectConversation', () {
     test('returns true for project: prefix', () {
       expect(isProjectConversation('project:tudushka'), isTrue);

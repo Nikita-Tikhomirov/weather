@@ -8,6 +8,13 @@ import '../../models/chat_models.dart';
 /// Checks whether a conversation key belongs to a project chat.
 bool isProjectConversation(String key) => key.startsWith('project:');
 
+/// Returns true when the FCM data payload represents a chat message
+/// (as opposed to a task reminder, call notification, etc.).
+bool isChatMessageData(Map<String, dynamic> data) {
+  return (data['entity'] ?? data['type'] ?? '').toString() == 'chat_message' &&
+      (data['conversation_key'] ?? '').toString().trim().isNotEmpty;
+}
+
 /// Formats a [DateTime] as 'YYYY-MM-DD'.
 String dateKey(DateTime value) {
   final month = value.month.toString().padLeft(2, '0');

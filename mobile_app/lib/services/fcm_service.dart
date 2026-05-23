@@ -8,6 +8,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../features/home/home_helpers.dart' show isChatMessageData;
 import 'api_client.dart';
 
 // ── Constants ──────────────────────────────────────────────────
@@ -52,7 +53,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     }
   }
   await _ensureNotificationChannel();
-  if (_isChatMessageData(message.data)) {
+  if (isChatMessageData(message.data)) {
     await _showChatNotificationFromData(
       message.data,
       title: message.notification?.title,
@@ -263,7 +264,7 @@ class FcmService {
           (msg.data['conversation_key'] ?? '').toString().trim();
 
       // Suppress notification only when user is already in this chat.
-      if (_isChatMessageData(msg.data) &&
+      if (isChatMessageData(msg.data) &&
           shouldSuppressChatNotification != null &&
           shouldSuppressChatNotification!(ck)) {
         return;
@@ -706,7 +707,7 @@ class FcmService {
         importance: Importance.max, priority: Priority.high,
         visibility: NotificationVisibility.public,
         icon: '@mipmap/ic_launcher',
-        actions: _isChatMessageData(data)
+        actions: isChatMessageData(data)
             ? const [AndroidNotificationAction(_markReadActionId, 'Пометить прочитанным',
                 cancelNotification: true, showsUserInterface: false)]
             : null,
@@ -738,11 +739,6 @@ Future<void> _ensureNotificationChannel() async {
   await _localNotifications
       .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(channel);
-}
-
-bool _isChatMessageData(Map<String, dynamic> data) {
-  return (data['entity'] ?? data['type'] ?? '').toString() == 'chat_message' &&
-      (data['conversation_key'] ?? '').toString().trim().isNotEmpty;
 }
 
 Future<void> _showChatNotificationFromData(Map<String, dynamic> data, {String? title, String? body}) async {
