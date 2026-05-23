@@ -485,7 +485,61 @@ home_helpers.dart     — pure utility-функции (import)
 
 Тесты: 55 unit-тестов в `mobile_app/test/`.
 
-## 13. Что можно улучшить дальше
+## 13. VPS и деплой
+
+Продакшн-сервер:
+
+- **IP**: 31.129.97.211
+- **OS**: Ubuntu 24.04
+- **Пользователь**: root (SSH/Password)
+- **Бэкенд**: Laravel (см. `laravel_backend_vps/`)
+- **API Base URL**: `http://31.129.97.211`
+
+### FCM Push-уведомления (настройка на VPS)
+
+Для работы push-уведомлений через Firebase Cloud Messaging на VPS должны быть установлены переменные окружения в `.env`:
+
+```env
+PUSH_ENABLED=true
+FCM_PROJECT_ID=famillytodo-2758f
+FCM_CLIENT_EMAIL=firebase-adminsdk-xxxxx@famillytodo-2758f.iam.gserviceaccount.com
+FCM_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+FCM_ANDROID_CHANNEL_ID=family_updates
+```
+
+- `FCM_CLIENT_EMAIL` — email сервисного аккаунта Firebase (Project Settings → Service Accounts)
+- `FCM_PRIVATE_KEY` — приватный ключ сервисного аккаунта (JSON-файл из Firebase Console → поле `private_key`)
+
+Без этих переменных сервер принимает и хранит FCM-токены устройств, но не отправляет push-уведомления.
+
+Проверить статус push-подсистемы:
+
+```bash
+curl -s "http://31.129.97.211/push/diagnostics?actor_profile=YOUR_PROFILE" \
+  -H "X-Api-Key: YOUR_API_KEY" | jq .
+```
+
+### GitHub Actions: сборка APK
+
+APK собирается автоматически при пуше в `master` (изменения в `mobile_app/**`).  
+Готовый APK доступен в релизах: `https://github.com/<repo>/releases/latest`
+
+Для ручного запуска: Actions → Mobile APK Build → Run workflow.
+
+### Локальные скрипты
+
+```powershell
+# Сборка Flutter desktop EXE
+.\desktop_flutter_build.ps1
+
+# Сборка Flutter Android APK (локально)
+.\mobile_flutter_build.ps1
+
+# Деплой на VPS
+.\deploy_vps.ps1
+```
+
+## 14. Что можно улучшить дальше
 
 - Добавить `requirements.txt`/`pyproject.toml` для воспроизводимой установки.
 - Добавить отдельный CLI-режим без микрофона (для отладки команд текстом).

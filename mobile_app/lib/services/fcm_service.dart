@@ -136,10 +136,53 @@ class FcmService {
     final initialized = await _initializeFirebaseSafely();
     if (!initialized) return _handleFirebaseInitFailed(prefsPayload);
 
-    final messaging = await _setupMessaging(prefsPayload);
-    if (messaging == null) return;
+    final messaging = FirebaseMessaging.instance;
+    await messaging.setAutoInitEnabled(true);
 
+    // Capture notification launch details BEFORE _ensureNotificationChannel,
+    // because _localNotifications.initialize() clears them.
+    RemoteMessage? capturedMsg;
+    NotificationAppLaunchDetails? capturedLaunch;
+    try {
+      capturedMsg = await messaging.getInitialMessage();
+    } catch (_) {
+      _updateDiagnostics('push:getInitialMessage_error');
+    }
+    try {
+      capturedLaunch =
+          await _localNotifications.getNotificationAppLaunchDetails();
+    } catch (_) {
+      _updateDiagnostics('push:getLaunchDetails_error');
+    }
+
+    // Set up local open listener before notification channel init
+    _localOpenSub = _notificationOpenEvents.stream.listen((data) async {
+      await onOpenPush(data);
+    });
+
+    await _ensureNotificationChannel();
+
+    final permission = await messaging.requestPermission(
+      alert: true, badge: true, sound: true,
+    );
+    _updateDiagnostics('permission:${permission.authorizationStatus.name}');
+
+    if (permission.authorizationStatus == AuthorizationStatus.denied) {
+      _reportStatus(tokenStatus: 'permission_denied');
+      return;
+    }
+
+    // 1. Set up stream subscriptions BEFORE token registration
+    //    so we never miss a token refresh or incoming message.
     await _setupStreamSubscriptions(messaging);
+
+    // 2. Register token and start periodic loops.
+    await _setupTokenAndLoops(messaging);
+
+    // 3. Process any pending push payloads (launch / temp file).
+    await _processLaunchPayloads(
+      messaging, capturedMsg, capturedLaunch, prefsPayload,
+    );
   }
 
   void dispose() {
@@ -187,50 +230,6 @@ class FcmService {
     }
   }
 
-  Future<FirebaseMessaging?> _setupMessaging(Map<String, dynamic>? prefsPayload) async {
-    final messaging = FirebaseMessaging.instance;
-    await messaging.setAutoInitEnabled(true);
-
-    // Capture notification launch details BEFORE _ensureNotificationChannel,
-    // because _localNotifications.initialize() clears them.
-    RemoteMessage? capturedMsg;
-    NotificationAppLaunchDetails? capturedLaunch;
-    try {
-      capturedMsg = await messaging.getInitialMessage();
-    } catch (_) {
-      _updateDiagnostics('push:getInitialMessage_error');
-    }
-    try {
-      capturedLaunch =
-          await _localNotifications.getNotificationAppLaunchDetails();
-    } catch (_) {
-      _updateDiagnostics('push:getLaunchDetails_error');
-    }
-
-    // Set up local open listener BEFORE _ensureNotificationChannel
-    _localOpenSub = _notificationOpenEvents.stream.listen((data) async {
-      await onOpenPush(data);
-    });
-
-    await _ensureNotificationChannel();
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-
-    final permission = await messaging.requestPermission(
-      alert: true, badge: true, sound: true,
-    );
-    _updateDiagnostics('permission:${permission.authorizationStatus.name}');
-
-    if (permission.authorizationStatus == AuthorizationStatus.denied) {
-      _reportStatus(tokenStatus: 'permission_denied');
-      return null;
-    }
-
-    // Process launch payloads immediately after permission check
-    await _processLaunchPayloadsAfterPermission(messaging, capturedMsg, capturedLaunch, prefsPayload);
-
-    return messaging;
-  }
-
   Future<void> _setupTokenAndLoops(FirebaseMessaging messaging) async {
     final registered = await _registerTokenWithRetry(messaging);
     if (!registered) {
@@ -265,15 +264,12 @@ class FcmService {
     });
   }
 
-  Future<void> _processLaunchPayloadsAfterPermission(
+  Future<void> _processLaunchPayloads(
     FirebaseMessaging messaging,
     RemoteMessage? capturedMsg,
     NotificationAppLaunchDetails? capturedLaunch,
     Map<String, dynamic>? prefsPayload,
   ) async {
-    // Set up token and loops now that permission is granted
-    await _setupTokenAndLoops(messaging);
-
     var handledExplicitLaunch = false;
     if (capturedMsg != null) {
       _updateDiagnostics('push:initial_message');
