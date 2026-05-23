@@ -259,3 +259,20 @@ jobs:
           name: Mobile APK v${{ github.run_number }}
           files: /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk
           generate_release_notes: true
+
+      - name: Update latest tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Force-update the 'latest' tag to current commit
+          git tag -f latest
+          git push origin latest --force
+
+          # Delete old release if exists (ignore error)
+          gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+
+          # Create new latest release
+          gh release create latest \
+            --title "Latest Mobile APK" \
+            --notes "Сборка #${{ github.run_number }} | Коммит ${{ github.sha }}" \
+            /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk
