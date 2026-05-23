@@ -127,7 +127,7 @@ Future<void> showTaskEditorSheet({
                     ],
                   ),
                   DropdownButtonFormField<String>(
-                    initialValue: priority,
+                    value: priority,
                     decoration: const InputDecoration(labelText: 'Приоритет'),
                     items: const [
                       DropdownMenuItem(value: 'low', child: Text('Низкий')),
@@ -138,7 +138,7 @@ Future<void> showTaskEditorSheet({
                         setModalState(() => priority = value ?? 'medium'),
                   ),
                   DropdownButtonFormField<String>(
-                    initialValue: status,
+                    value: status,
                     decoration: const InputDecoration(labelText: 'Статус'),
                     items: const [
                       DropdownMenuItem(
