@@ -269,12 +269,9 @@ class FcmService {
             shouldSuppressChatNotification!(conversationKey);
 
         if (!suppressed) {
-          // For chat messages in foreground, only show the notification.
-          // Navigation to the conversation happens on explicit tap
-          // via _handleNotificationResponse -> _notificationOpenEvents.
-          if (!isChatMessage) {
-            await onOpenPush(msg.data);
-          }
+          // Auto-navigate for all push types. Suppression above
+          // already handles the "same chat open" case.
+          await onOpenPush(msg.data);
         }
 
         final title = msg.notification?.title ??
