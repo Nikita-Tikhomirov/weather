@@ -15,7 +15,9 @@ class MainActivity : FlutterActivity() {
     private var sharedImageUris: ArrayList<String>? = null
     private var sharedVideoUris: ArrayList<String>? = null
     private var shareChannel: MethodChannel? = null
+    private var pushChannel: MethodChannel? = null
     private var pendingSharePayload: Map<String, Any>? = null
+    private var pendingPushPayload: Map<String, String>? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -75,6 +77,24 @@ class MainActivity : FlutterActivity() {
         // Voice recording + playback
         VoiceChannel.register(flutterEngine, this)
 
+        pushChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "family_todo_mobile/push_intents"
+        )
+        pushChannel?.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "ready" -> {
+                    val pending = pendingPushPayload
+                    pendingPushPayload = null
+                    if (pending != null) {
+                        pushChannel?.invokeMethod("onPushOpened", pending)
+                    }
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
         // Share intent receiver channel
         shareChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -119,6 +139,7 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+        handlePushIntent(intent)
         handleShareIntent(intent)
     }
 
@@ -129,7 +150,18 @@ class MainActivity : FlutterActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
+        handlePushIntent(intent)
         handleShareIntent(intent)
+    }
+
+    private fun handlePushIntent(intent: Intent?) {
+        if (intent == null) return
+        if (intent.action != PUSH_ACTION_OPEN) return
+        val payload = intent.pushData()
+        if (payload.isEmpty()) return
+        pendingPushPayload = payload
+        pushChannel?.invokeMethod("onPushOpened", payload)
     }
 
     private fun handleShareIntent(intent: Intent?) {

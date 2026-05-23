@@ -32,6 +32,8 @@ final StreamController<Map<String, dynamic>> _notificationOpenEvents =
     StreamController<Map<String, dynamic>>.broadcast();
 const MethodChannel _firebaseInstallationsChannel =
     MethodChannel('family_todo_mobile/firebase_installations');
+const MethodChannel _nativePushChannel =
+    MethodChannel('family_todo_mobile/push_intents');
 
 // ── Background entry points ────────────────────────────────────
 
@@ -167,6 +169,18 @@ class FcmService {
     _localOpenSub = _notificationOpenEvents.stream.listen((data) async {
       await onOpenPush(data);
     });
+    _nativePushChannel.setMethodCallHandler((call) async {
+      if (call.method != 'onPushOpened') return;
+      final args = call.arguments;
+      if (args is Map) {
+        await onOpenPush(Map<String, dynamic>.from(args));
+      }
+    });
+    try {
+      await _nativePushChannel.invokeMethod<bool>('ready');
+    } catch (_) {
+      _updateDiagnostics('push:native_channel_error');
+    }
 
     await _ensureNotificationChannel();
 

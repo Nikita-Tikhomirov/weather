@@ -11,7 +11,7 @@ use Tests\TestCase;
 class FcmPushGatewayTest extends TestCase
 {
     #[Test]
-    public function chat_messages_are_data_only_so_app_can_show_action_buttons(): void
+    public function chat_messages_are_data_only_so_native_service_can_show_actions(): void
     {
         config([
             'push.enabled' => true,
