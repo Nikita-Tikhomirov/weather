@@ -8,11 +8,25 @@ import '../../models/chat_models.dart';
 /// Checks whether a conversation key belongs to a project chat.
 bool isProjectConversation(String key) => key.startsWith('project:');
 
+enum PendingPushAction { syncOnly, routeOpenedPush }
+
 /// Returns true when the FCM data payload represents a chat message
 /// (as opposed to a task reminder, call notification, etc.).
 bool isChatMessageData(Map<String, dynamic> data) {
   return (data['entity'] ?? data['type'] ?? '').toString() == 'chat_message' &&
       (data['conversation_key'] ?? '').toString().trim().isNotEmpty;
+}
+
+/// Pending payloads saved from an explicit notification tap must keep routing
+/// after app init; passive background deliveries should only refresh data.
+PendingPushAction pendingPushAction({
+  required Map<String, dynamic> data,
+  required bool wasOpenedByUser,
+}) {
+  if (!wasOpenedByUser || data.isEmpty) {
+    return PendingPushAction.syncOnly;
+  }
+  return PendingPushAction.routeOpenedPush;
 }
 
 /// Formats a [DateTime] as 'YYYY-MM-DD'.

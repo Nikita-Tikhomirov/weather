@@ -18,6 +18,7 @@ class MainActivity : FlutterActivity() {
     private var pushChannel: MethodChannel? = null
     private var pendingSharePayload: Map<String, Any>? = null
     private var pendingPushPayload: Map<String, String>? = null
+    private var isPushChannelReady = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -84,11 +85,8 @@ class MainActivity : FlutterActivity() {
         pushChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
                 "ready" -> {
-                    val pending = pendingPushPayload
-                    pendingPushPayload = null
-                    if (pending != null) {
-                        pushChannel?.invokeMethod("onPushOpened", pending)
-                    }
+                    isPushChannelReady = true
+                    deliverPendingPushPayload()
                     result.success(true)
                 }
                 else -> result.notImplemented()
@@ -161,7 +159,33 @@ class MainActivity : FlutterActivity() {
         val payload = intent.pushData()
         if (payload.isEmpty()) return
         pendingPushPayload = payload
-        pushChannel?.invokeMethod("onPushOpened", payload)
+        deliverPendingPushPayload()
+    }
+
+    private fun deliverPendingPushPayload() {
+        val channel = pushChannel ?: return
+        val pending = pendingPushPayload ?: return
+        if (!isPushChannelReady) return
+
+        channel.invokeMethod(
+            "onPushOpened",
+            pending,
+            object : MethodChannel.Result {
+                override fun success(result: Any?) {
+                    if (pendingPushPayload == pending) {
+                        pendingPushPayload = null
+                    }
+                }
+
+                override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
+                    // Keep payload buffered; the next ready/new-intent cycle can retry it.
+                }
+
+                override fun notImplemented() {
+                    // Flutter side is not attached yet; keep payload buffered.
+                }
+            }
+        )
     }
 
     private fun handleShareIntent(intent: Intent?) {

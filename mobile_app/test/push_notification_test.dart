@@ -15,8 +15,7 @@ enum PushTarget { tasks, messenger, call, none }
 
 PushTarget classifyPush(Map<String, dynamic> data) {
   final pushType = (data['type'] ?? data['entity'] ?? '').toString().trim();
-  final conversationKey =
-      (data['conversation_key'] ?? '').toString().trim();
+  final conversationKey = (data['conversation_key'] ?? '').toString().trim();
   final entity = (data['entity'] ?? '').toString().trim();
 
   // Task-related notifications
@@ -59,6 +58,13 @@ bool shouldSuppressChatNotification({
   // Canonicalize: dm:A:B == dm:B:A
   final canonical = _canonicalDmKey(pushKey);
   return currentPageIndex == 4 && activeConversationKey == canonical;
+}
+
+PendingPushAction classifyPendingPush({
+  required Map<String, dynamic> data,
+  required bool wasOpenedByUser,
+}) {
+  return pendingPushAction(data: data, wasOpenedByUser: wasOpenedByUser);
 }
 
 String _canonicalDmKey(String key) {
@@ -283,6 +289,32 @@ void main() {
     });
   });
 
+  group('pending push handling', () {
+    test('routes saved tap after app state becomes ready', () {
+      final data = {
+        'entity': 'chat_message',
+        'conversation_key': 'dm:u_001:u_042',
+      };
+
+      expect(
+        classifyPendingPush(data: data, wasOpenedByUser: true),
+        PendingPushAction.routeOpenedPush,
+      );
+    });
+
+    test('does not auto-route passive background delivery payload', () {
+      final data = {
+        'entity': 'chat_message',
+        'conversation_key': 'dm:u_001:u_042',
+      };
+
+      expect(
+        classifyPendingPush(data: data, wasOpenedByUser: false),
+        PendingPushAction.syncOnly,
+      );
+    });
+  });
+
   // ── Canonical DM key normalization ─────────────────────────────
 
   group('_canonicalDmKey', () {
@@ -302,7 +334,8 @@ void main() {
     });
 
     test('handles key with extra whitespace', () {
-      expect(_canonicalDmKey(' dm:u_001:u_042 '), _canonicalDmKey('dm:u_042:u_001'));
+      expect(_canonicalDmKey(' dm:u_001:u_042 '),
+          _canonicalDmKey('dm:u_042:u_001'));
     });
   });
 }

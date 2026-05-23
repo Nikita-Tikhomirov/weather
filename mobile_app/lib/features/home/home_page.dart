@@ -115,6 +115,7 @@ class _HomePageState extends State<HomePage> {
   Timer? _voiceTimer;
   int _voiceSec = 0;
   Map<String, dynamic>? _pendingPushData;
+  bool _pendingPushWasOpened = false;
   String _lastProcessedPushEventId = '';
   bool _pushAlreadyRouted = false;
 
