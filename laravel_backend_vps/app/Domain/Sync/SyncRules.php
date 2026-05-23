@@ -58,7 +58,11 @@ final class SyncRules
         $normalized = [];
         foreach ($source as $item) {
             $key = trim((string)$item);
-            if ($key === '' || (!Profiles::isAllowed($key) && !self::profileExists($key))) {
+            if ($key === '') {
+                continue;
+            }
+            // Accept any profile that exists in messenger_users or has an active device token
+            if (!Profiles::isAllowed($key) && !self::profileExists($key) && !self::hasActiveToken($key)) {
                 continue;
             }
             if (!in_array($key, $normalized, true)) {
@@ -72,18 +76,34 @@ final class SyncRules
     public static function recipientsForPush(string $actor, string $entity, string $action, array $payload): array
     {
         if ($entity === 'family_task') {
-            // Static family profiles + any dynamic profiles with active device tokens
-            $profiles = Profiles::ALLOWED;
             try {
-                $activeDynamic = DB::table('device_tokens')
+                // 1) Actor's family-group members (the real contact list)
+                $familyMembers = DB::table('family_group_members')
+                    ->join('family_groups', 'family_groups.id', '=', 'family_group_members.family_group_id')
+                    ->where('family_groups.owner_profile_key', $actor)
+                    ->pluck('family_group_members.profile_key')
+                    ->unique()
+                    ->toArray();
+
+                // 2) Any other profiles with active device tokens (catch profiles not yet in a family group)
+                $activeTokens = DB::table('device_tokens')
                     ->where('is_active', 1)
-                    ->whereNotIn('profile_key', $profiles)
                     ->pluck('profile_key')
                     ->unique()
                     ->toArray();
-                $profiles = array_merge($profiles, $activeDynamic);
+
+                $profiles = array_unique(array_merge($familyMembers, $activeTokens));
             } catch (\Throwable) {
-                // Fallback to static profiles only
+                // Fallback: all profiles with active tokens
+                try {
+                    $profiles = DB::table('device_tokens')
+                        ->where('is_active', 1)
+                        ->pluck('profile_key')
+                        ->unique()
+                        ->toArray();
+                } catch (\Throwable) {
+                    return [];
+                }
             }
             // Don't push back to the actor
             return array_values(array_filter($profiles, static fn (string $p): bool => $p !== $actor));
@@ -111,6 +131,18 @@ final class SyncRules
     {
         try {
             return DB::table('messenger_users')->where('profile_key', trim($profile))->exists();
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    private static function hasActiveToken(string $profile): bool
+    {
+        try {
+            return DB::table('device_tokens')
+                ->where('profile_key', trim($profile))
+                ->where('is_active', 1)
+                ->exists();
         } catch (\Throwable) {
             return false;
         }
