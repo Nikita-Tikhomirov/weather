@@ -374,45 +374,6 @@ class _HomePageState extends State<HomePage> {
         );
       },
     );
-    /*
-    final selected = await showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Выберите профиль'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Пуши и синхронизация будут привязаны к выбранному профилю.',
-              ),
-              const SizedBox(height: 12),
-              ..._profiles.map(
-                (profile) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: FilledButton(
-                    onPressed: () {
-                      Navigator.of(dialogContext).pop(profile);
-                    },
-                    child: Text(profileLabel(profile)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-    if (selected == null || selected.isEmpty) {
-      return null;
-    }
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('actor_profile', selected);
-    return selected;
-    */
   }
 
   Future<void> _initDesktopServices(TaskStore store, String owner) async {
