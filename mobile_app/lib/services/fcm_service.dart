@@ -20,6 +20,7 @@ const _notificationChannelDescription =
 const _appVersion =
     String.fromEnvironment('APP_VERSION', defaultValue: '0.1.6');
 const _markReadActionId = 'chat_mark_read';
+const _openChatActionId = 'chat_open';
 const _defaultApiBaseUrl = String.fromEnvironment('API_BASE_URL',
     defaultValue: 'http://31.129.97.211');
 const _defaultApiKey =
@@ -709,8 +710,12 @@ class FcmService {
         visibility: NotificationVisibility.public,
         icon: '@mipmap/ic_launcher',
         actions: isChatMessageData(data)
-            ? const [AndroidNotificationAction(_markReadActionId, 'Пометить прочитанным',
-                cancelNotification: true, showsUserInterface: false)]
+            ? const [
+                AndroidNotificationAction(_openChatActionId, 'Перейти',
+                    cancelNotification: true, showsUserInterface: true),
+                AndroidNotificationAction(_markReadActionId, 'Пометить прочитанным',
+                    cancelNotification: true, showsUserInterface: false),
+              ]
             : null,
       ),
     );
@@ -752,8 +757,12 @@ Future<void> _showChatNotificationFromData(Map<String, dynamic> data, {String? t
       importance: Importance.max, priority: Priority.high,
       visibility: NotificationVisibility.public,
       icon: '@mipmap/ic_launcher',
-      actions: [AndroidNotificationAction(_markReadActionId, 'Пометить прочитанным',
-          cancelNotification: true, showsUserInterface: false)],
+      actions: [
+        AndroidNotificationAction(_openChatActionId, 'Перейти',
+            cancelNotification: true, showsUserInterface: true),
+        AndroidNotificationAction(_markReadActionId, 'Пометить прочитанным',
+            cancelNotification: true, showsUserInterface: false),
+      ],
     ),
   );
   await _localNotifications.show(
@@ -763,12 +772,13 @@ Future<void> _showChatNotificationFromData(Map<String, dynamic> data, {String? t
 }
 
 Future<void> _handleNotificationResponse(NotificationResponse response) async {
-  if (response.actionId == null || response.actionId!.isEmpty) {
+  final actionId = response.actionId ?? '';
+  if (actionId.isEmpty || actionId == _openChatActionId) {
     final data = _decodeNotificationPayload(response.payload);
     if (data != null) _notificationOpenEvents.add(data);
     return;
   }
-  if (response.actionId != _markReadActionId) return;
+  if (actionId != _markReadActionId) return;
   final data = _decodeNotificationPayload(response.payload);
   if (data == null) return;
   final conversationKey = (data['conversation_key'] ?? '').toString().trim();

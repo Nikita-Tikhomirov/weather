@@ -141,8 +141,12 @@ void main() {
   });
 
   group('canonicalConversationKey', () {
-    test('keeps first two segments for keys with >2 parts', () {
-      expect(canonicalConversationKey('dm:nik:misha'), 'dm:nik');
+    test('keeps both direct chat members and normalizes their order', () {
+      expect(canonicalConversationKey('dm:nik:misha'), 'dm:misha:nik');
+      expect(canonicalConversationKey('dm:misha:nik'), 'dm:misha:nik');
+    });
+
+    test('keeps first two segments for non-direct keys with >2 parts', () {
       expect(canonicalConversationKey('group:common:extra'), 'group:common');
     });
 

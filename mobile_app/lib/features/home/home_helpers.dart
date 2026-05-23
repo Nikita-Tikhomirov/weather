@@ -43,8 +43,7 @@ String conversationLabel(ChatConversation conversation, String actor) {
     return 'Группа';
   }
   // Direct chat — show the other participant's name.
-  final others =
-      conversation.members.where((m) => m != actor).toList();
+  final others = conversation.members.where((m) => m != actor).toList();
   if (others.isNotEmpty) {
     return others.first;
   }
@@ -75,7 +74,11 @@ String chatMessageText(ChatMessage message) {
 String canonicalConversationKey(String key) {
   final trimmed = key.trim();
   final parts = trimmed.split(':');
-  // Keys like "direct:a:b" or "group:name:extra" — keep only first two segments.
+  if (parts.length == 3 && parts[0] == 'dm') {
+    final members = [parts[1], parts[2]]..sort();
+    return 'dm:${members[0]}:${members[1]}';
+  }
+  // Keys like "group:name:extra" keep only first two segments.
   if (parts.length > 2) {
     return '${parts[0]}:${parts[1]}';
   }
