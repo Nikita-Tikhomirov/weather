@@ -137,7 +137,9 @@ class CallService {
       if (sid != null && sid.isNotEmpty) {
         try {
           await api.callEnd(actorProfile: actorProfile, sessionId: sid);
-        } catch (_) {}
+        } catch (_) {
+          // best-effort cleanup — server will time out anyway
+        }
       }
       _setState(CallState.ended);
       _errorController.add('Failed to start call: $e');
@@ -167,7 +169,9 @@ class CallService {
     } catch (e) {
       try {
         await api.callEnd(actorProfile: actorProfile, sessionId: sessionId);
-      } catch (_) {}
+      } catch (_) {
+        // best-effort cleanup — server will time out anyway
+      }
       _setState(CallState.ended);
       _errorController.add('Failed to accept call: $e');
       await _cleanup();

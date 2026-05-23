@@ -1,4 +1,20 @@
-﻿import json
+"""
+Family Todo — core business logic and sync orchestrator.
+
+This module handles:
+  - Person/profile definitions and data bootstrapping
+  - Voice command parsing (add/delete/done/move/list)
+  - Reminder scheduling and notification delivery
+  - Backend sync (pull snapshot, pull delta, push events)
+  - Family task CRUD with conflict detection
+
+Presentation (UI) lives in desktop_app.py and telegram_bot.py.
+Storage abstractions live in todo_storage.py.
+Task operations live in todo_ops.py.
+Command routing lives in todo_router.py.
+"""
+
+import json
 import re
 import urllib.error
 import urllib.parse

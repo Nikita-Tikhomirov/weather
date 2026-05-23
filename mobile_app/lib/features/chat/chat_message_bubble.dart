@@ -480,7 +480,9 @@ class ChatMessageBubble extends StatelessWidget {
         if (uri == null) return;
         try {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
-        } catch (_) {}
+        } catch (_) {
+          // launchUrl may fail if no browser is available
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

@@ -245,7 +245,9 @@ class ProjectBridgeService {
     } finally {
       try {
         socket?.destroy();
-      } catch (_) {}
+      } catch (_) {
+        // socket may already be closed
+      }
     }
   }
 
@@ -544,7 +546,9 @@ class ProjectBridgeService {
     _buffer.clear();
     try {
       _socket?.destroy();
-    } catch (_) {}
+    } catch (_) {
+      // socket may already be closed
+    }
     _socket = null;
   }
 
