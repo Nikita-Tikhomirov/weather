@@ -49,6 +49,7 @@ part 'share_receiver.dart';
 part 'profile_init.dart';
 part 'sync_loops.dart';
 part 'chat_init.dart';
+part 'projects_data.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -315,306 +316,40 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _loadProjects() {
-    if (!canUseProjectChats(_currentProfilePhone)) {
-      if (mounted) {
-        setState(() => _projectContacts = const <ProjectContact>[]);
-      }
-      return;
-    }
-    try {
-      // Try multiple locations for projects.json
-      final candidates = <String>[
-        'family_data/nik/projects.json',
-        '${Directory.current.path}/family_data/nik/projects.json',
-      ];
-      // Remove duplicate slashes
-      final normalized = candidates
-          .map((p) => p.replaceAll('\\', '/').replaceAll(RegExp(r'/+'), '/'))
-          .toList();
+  // Thin wrappers used by projects_data.dart
 
-      File? file;
-      for (final path in normalized) {
-        final f = File(path);
-        if (f.existsSync()) {
-          file = f;
-          break;
-        }
-      }
-
-      if (file == null) {
-        // Fallback: use bundled project list so contacts appear on all platforms
-        if (mounted) {
-          setState(() {
-            _projectContacts = _fallbackProjects();
-          });
-        }
-        return;
-      }
-
-      final content = file.readAsStringSync();
-      final json = jsonDecode(content) as Map<String, dynamic>;
-      final rawList = json['projects'] as List<dynamic>? ?? [];
-      final projects = rawList
-          .whereType<Map<String, dynamic>>()
-          .map((item) => ProjectContact.fromJson(item))
-          .toList();
-      if (mounted) {
-        setState(() => _projectContacts = projects);
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _projectContacts = _fallbackProjects());
-      }
-    }
+  void _setProjectContacts(List<ProjectContact> contacts) {
+    setState(() => _projectContacts = contacts);
   }
 
-  List<ProjectContact> _fallbackProjects() {
-    // Built-in list synced with family_data/nik/projects.json
-    return const [
-      ProjectContact(
-          id: 'tudushka',
-          name: 'Тудушка',
-          path: r'C:\Users\user\Desktop\weather',
-          icon: 'terminal'),
-      ProjectContact(
-          id: 'cifra',
-          name: 'Цифра',
-          path: r'C:\Users\user\Desktop\depseeker_test',
-          icon: 'code'),
-      ProjectContact(
-          id: 'stylish-house',
-          name: 'Stylysh-house',
-          path: r'C:\Users\user\Desktop\stylish-house',
-          icon: 'code'),
-      ProjectContact(
-          id: 'exp76',
-          name: 'Exp76',
-          path: r'C:\Users\user\Desktop\exp76.ru',
-          icon: 'code'),
-      ProjectContact(
-          id: 'groot',
-          name: 'Грут',
-          path: r'C:\Users\user\Desktop\Грут',
-          icon: 'code'),
-      ProjectContact(
-          id: 'nousro',
-          name: 'Nousro',
-          path: r'C:\Users\user\Desktop\nousro',
-          icon: 'folder'),
-    ];
-  }
-
-  Future<void> _openProjectContact(
-      TaskStore store, ProjectContact project) async {
-    if (!canUseProjectChats(_currentProfilePhone)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Проектные чаты недоступны')),
-        );
-      }
-      return;
-    }
-    if (!mounted) {
-      return;
-    }
-
-    final db = store.repository.db;
-    final projectId = project.id;
-
-    // Set active conversation to project key
-    setState(() {
-      _activeConversationKey = project.conversationKey;
-    });
-
-    // Restore saved session id for this project
-    final savedSessionId = await _loadProjectSessionId(projectId);
-    _activeProjectSessionId = savedSessionId;
-
-    // Load persisted messages from database
-    final savedRows =
-        await db.loadProjectMessages(projectId: projectId, limit: 300);
-    final restoredMessages = savedRows.map((row) {
-      return BridgeMessage(
-        type: (row['type'] ?? '').toString(),
-        text: (row['text'] ?? '').toString(),
-        projectId: (row['project_id'] ?? '').toString(),
-        sessionId: (row['session_id'] ?? '').toString(),
-        imageBase64: (row['data_base64'] ?? '').toString(),
-        imageMimeType: (row['mime_type'] ?? '').toString(),
-        imageFilename: (row['filename'] ?? '').toString(),
-      );
-    }).toList();
-
+  void _setProjectMessagesList(List<BridgeMessage> msgs) {
     setState(() {
       _projectMessages
         ..clear()
-        ..addAll(restoredMessages);
+        ..addAll(msgs);
     });
+  }
 
-    // Only dispose existing bridge if connecting to a different project
-    if (_projectBridge != null &&
-        _projectBridge!.activeProjectId != projectId) {
-      _projectBridge?.dispose();
-      _projectBridge = null;
-    }
-    // If bridge already connected to this project, just reuse it
-    if (_projectBridge != null && _projectBridge!.isConnected) {
-      return;
-    }
+  void _addProjectMessages(List<BridgeMessage> msgs) {
+    setState(() => _projectMessages.addAll(msgs));
+  }
 
-    // Connect to the remote bridge server running on PC
-    final bridge = ProjectBridgeService(
-      onMessage: (msg) {
-        if (mounted) {
-          if (msg.isHistory) {
-            // History replay: only add messages we don't already have
-            final existingTexts = _projectMessages.map((m) => m.text).toSet();
-            final newMsgs = msg.messages
-                .where((m) => !existingTexts.contains(m.text))
-                .toList();
-            if (newMsgs.isNotEmpty) {
-              setState(() => _projectMessages.addAll(newMsgs));
-            }
-            return;
-          }
-          if (msg.isOutput && msg.streamId.isNotEmpty) {
-            _applyStreamingProjectOutput(db, msg);
-            return;
-          }
-          // Persist incoming non-stream message to database.
-          _saveProjectMessageToDb(db, msg);
-          if (msg.isSessionInfo && msg.sessionId.isNotEmpty) {
-            _activeProjectSessionId = msg.sessionId;
-            _saveProjectSessionId(projectId, msg.sessionId);
-            if (_projectBridge != null) {
-              _projectBridge!.currentSessionId = msg.sessionId;
-            }
-          }
-          if (msg.isProjects && msg.projects.isNotEmpty) {
-            setState(() {
-              _projectContacts =
-                  msg.projects.map((p) => ProjectContact.fromJson(p)).toList();
-            });
-          }
-          if (msg.isFiles) {
-            setState(() {
-              _projectFiles = msg.files;
-              _projectFilesLoading = false;
-            });
-            _fileSheetSetState?.call(() {});
-          }
-          if (msg.isFileContent) {
-            setState(() => _projectMessages.add(msg));
-            _onFileContentArrived(msg);
-            if (mounted) {
-              _showFileContentViewer(msg);
-            }
-            return;
-          }
-          setState(() => _projectMessages.add(msg));
-        }
-      },
-      onStatusChange: (connected, status) {
-        if (mounted) {
-          setState(() {
-            _projectMessages.add(BridgeMessage(
-              type: 'status',
-              text: status,
-            ));
-          });
-        }
-      },
-    );
+  void _addProjectMessage(BridgeMessage msg) {
+    setState(() => _projectMessages.add(msg));
+  }
 
+  void _setProjectBridge(ProjectBridgeService? bridge) {
     setState(() => _projectBridge = bridge);
-
-    bridge.startProject(project, resumeSessionId: savedSessionId);
-    final ok = await bridge.connect();
-    if (!ok) return;
   }
 
-  void _applyStreamingProjectOutput(LocalDb db, BridgeMessage msg) {
-    var handled = false;
+  void _setProjectFiles(List<ProjectFileNode> files) {
     setState(() {
-      final lastIndex = _projectMessages.lastIndexWhere(
-        (item) => item.isOutput && item.streamId == msg.streamId,
-      );
-      if (lastIndex >= 0) {
-        final current = _projectMessages[lastIndex];
-        _projectMessages[lastIndex] = msg.isFinal
-            ? msg.copyWith(append: false)
-            : current.copyWith(text: current.text + msg.text);
-        handled = true;
-      } else {
-        _projectMessages.add(msg);
-        handled = true;
-      }
+      _projectFiles = files;
+      _projectFilesLoading = false;
     });
-    if (handled && msg.isFinal) {
-      _saveProjectMessageToDb(db, msg.copyWith(append: false));
-    }
+    _fileSheetSetState?.call(() {});
   }
 
-
-
-  ProjectContact? _projectByConversationKey(String key) {
-    if (!isProjectConversation(key)) {
-      return null;
-    }
-    return _projectContacts.cast<ProjectContact?>().firstWhere(
-          (p) => p?.conversationKey == key,
-          orElse: () => null,
-        );
-  }
-
-  // ── Project session persistence helpers ─────────────────────
-
-  void _saveProjectMessageToDb(LocalDb db, BridgeMessage msg) {
-    final projectId = msg.projectId.isNotEmpty
-        ? msg.projectId
-        : _projectByConversationKey(_activeConversationKey)?.id ?? '';
-    if (projectId.isEmpty) return;
-    final sessionId = msg.sessionId.isNotEmpty
-        ? msg.sessionId
-        : (_activeProjectSessionId ?? '');
-    final id =
-        '${msg.type}_${msg.text.hashCode}_${DateTime.now().microsecondsSinceEpoch}';
-    db.saveProjectMessage(
-      id: id,
-      projectId: projectId,
-      sessionId: sessionId,
-      type: msg.type,
-      text: msg.text,
-      dataBase64: msg.imageBase64.isNotEmpty ? msg.imageBase64 : null,
-      mimeType: msg.imageMimeType.isNotEmpty ? msg.imageMimeType : null,
-      filename: msg.imageFilename.isNotEmpty ? msg.imageFilename : null,
-      ts: DateTime.now().millisecondsSinceEpoch,
-    );
-  }
-
-  Future<String?> _loadProjectSessionId(String projectId) async {
-    if (_projectSessionIds.containsKey(projectId)) {
-      return _projectSessionIds[projectId];
-    }
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString('project_session_$projectId');
-    if (saved != null && saved.isNotEmpty) {
-      _projectSessionIds[projectId] = saved;
-      return saved;
-    }
-    return null;
-  }
-
-  Future<void> _saveProjectSessionId(String projectId, String sessionId) async {
-    _projectSessionIds[projectId] = sessionId;
-    final prefs = await SharedPreferences.getInstance();
-    if (sessionId.isEmpty) {
-      await prefs.remove('project_session_$projectId');
-    } else {
-      await prefs.setString('project_session_$projectId', sessionId);
-    }
-  }
 
   // ── Existing methods ─────────────────────────────────────────
 
