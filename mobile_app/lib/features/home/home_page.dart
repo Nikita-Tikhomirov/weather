@@ -46,6 +46,8 @@ import '../../state/task_store.dart';
 part 'desktop_shell.dart';
 part 'push_handler.dart';
 part 'share_receiver.dart';
+part 'profile_init.dart';
+part 'sync_loops.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -194,121 +196,6 @@ class _HomePageState extends State<HomePage> {
 
   }
 
-  Future<String> _ensureDeviceId(SharedPreferences prefs) async {
-    final saved = prefs.getString('device_id')?.trim() ?? '';
-    if (saved.isNotEmpty) {
-      return saved;
-    }
-    final random = Random.secure().nextInt(1 << 32).toRadixString(16);
-    final value = 'dev-${DateTime.now().microsecondsSinceEpoch}-$random';
-    await prefs.setString('device_id', value);
-    return value;
-  }
-
-  Future<String> _restoreProfileByPhone(
-    ApiClient api,
-    SharedPreferences prefs,
-    String phone,
-  ) async {
-    final deviceId = await _ensureDeviceId(prefs);
-    final session = await api.deviceStart(
-      phone: phone,
-      deviceId: deviceId,
-      displayName: _currentProfileDisplayName,
-    );
-    await prefs.setString('actor_profile', session.profileKey);
-    await prefs.setString('profile_phone', session.phone);
-    await prefs.setString('profile_display_name', session.displayName);
-    _currentProfileDisplayName = session.displayName;
-    _currentProfilePhone = session.phone;
-    return session.profileKey;
-  }
-
-  Future<String?> _promptForInitialProfile(ApiClient api) async {
-    await WidgetsBinding.instance.endOfFrame;
-    if (!mounted) {
-      return null;
-    }
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) {
-      return null;
-    }
-    final phoneCtl = TextEditingController();
-    final nameCtl = TextEditingController();
-    String errorText = '';
-    return showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Вход по номеру телефона'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: phoneCtl,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      labelText: 'Номер телефона',
-                      hintText: '+7 999 111 22 33',
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: nameCtl,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(labelText: 'Имя'),
-                  ),
-                  if (errorText.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(errorText, style: const TextStyle(color: Colors.red)),
-                  ],
-                ],
-              ),
-              actions: [
-                FilledButton(
-                  onPressed: () async {
-                    try {
-                      final deviceId = await _ensureDeviceId(prefs);
-                      final session = await api.deviceStart(
-                        phone: phoneCtl.text,
-                        deviceId: deviceId,
-                        displayName: nameCtl.text,
-                      );
-                      await prefs.setString(
-                        'actor_profile',
-                        session.profileKey,
-                      );
-                      await prefs.setString('profile_phone', session.phone);
-                      await prefs.setString(
-                        'profile_display_name',
-                        session.displayName,
-                      );
-                      if (mounted) {
-                        setState(() {
-                          _currentProfileDisplayName = session.displayName;
-                          _currentProfilePhone = session.phone;
-                        });
-                      }
-                      if (dialogContext.mounted) {
-                        Navigator.of(dialogContext).pop(session.profileKey);
-                      }
-                    } catch (error) {
-                      setDialogState(() => errorText = error.toString());
-                    }
-                  },
-                  child: const Text('Продолжить'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   Future<void> _initDesktopServices(TaskStore store, String owner) async {
     final themeService = DesktopThemeService();
     await themeService.initialize(initialProfile: owner);
@@ -366,101 +253,21 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // Thin wrapper used by share_receiver.dart
+  // Thin wrappers used by part files
+
   void _setActiveConversation(String key) {
     setState(() => _activeConversationKey = key);
   }
 
-  void _startSyncLoops(TaskStore store) {
-    _cancelSyncLoops();
-    _deltaSyncTimer = Timer.periodic(const Duration(seconds: 8), (_) async {
-      await _safeSyncDelta(store, showErrors: false);
+  void _setProfileInfo(String displayName, String phone) {
+    setState(() {
+      _currentProfileDisplayName = displayName;
+      _currentProfilePhone = phone;
     });
-    _fullSyncTimer = Timer.periodic(const Duration(minutes: 10), (_) async {
-      await _safeSyncFull(store, showErrors: false);
-    });
-    _retryTimer = Timer.periodic(const Duration(minutes: 2), (_) async {
-      _retryPendingMessages(store);
-    });
-    _incomingCallPollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      _pollIncomingCall(store);
-    });
-    // Also try immediately on startup
-    _retryPendingMessages(store);
-    _pollIncomingCall(store);
   }
 
-  void _cancelSyncLoops() {
-    _deltaSyncTimer?.cancel();
-    _deltaSyncTimer = null;
-    _fullSyncTimer?.cancel();
-    _fullSyncTimer = null;
-    _retryTimer?.cancel();
-    _retryTimer = null;
-    _incomingCallPollTimer?.cancel();
-    _incomingCallPollTimer = null;
-  }
-
-  void _replaceCallService({
-    required ApiClient api,
-    required String actorProfile,
-  }) {
-    _callService?.dispose();
-    _callService = CallService(api: api, actorProfile: actorProfile)
-      ..onIncomingCall = _handleIncomingCall
-      ..onCallEnded = () {
-        if (mounted) setState(() {});
-      };
-  }
-
-  Future<void> _pollIncomingCall(TaskStore store) async {
-    final service = _callService;
-    if (!mounted ||
-        service == null ||
-        (service.state != CallState.idle && service.state != CallState.ended)) {
-      return;
-    }
-
-    try {
-      final session = await store.repository.api.callCheckIncoming(
-        actorProfile: store.owner.value,
-      );
-      if (session != null && mounted) {
-        service.notifyIncomingCall(session);
-      }
-    } catch (_) {
-      // FCM is primary; polling is a quiet fallback for missed call pushes.
-    }
-  }
-
-  Future<void> _safeSyncDelta(
-    TaskStore store, {
-    required bool showErrors,
-  }) async {
-    try {
-      await store.syncDelta();
-    } catch (error) {
-      if (showErrors && mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка синхронизации: $error')));
-      }
-    }
-  }
-
-  Future<void> _safeSyncFull(
-    TaskStore store, {
-    required bool showErrors,
-  }) async {
-    try {
-      await store.syncFull();
-    } catch (error) {
-      if (showErrors && mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка синхронизации: $error')));
-      }
-    }
+  void _notifyCallEnded() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _refreshChatBootstrap(TaskStore store) async {
