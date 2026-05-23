@@ -1667,7 +1667,7 @@ class _HomePageState extends State<HomePage> {
     required bool useNetwork,
     required bool quiet,
   }) async {
-    conversationKey = _canonicalConversationKey(conversationKey);
+    conversationKey = canonicalConversationKey(conversationKey);
     final db = store.repository.db;
     final api = store.repository.api;
     final actor = store.owner.value;
@@ -1679,7 +1679,7 @@ class _HomePageState extends State<HomePage> {
         await db.readMessages(conversationKey: conversationKey),
         previous,
       );
-      if (mounted && !_sameMessages(previous, local)) {
+      if (mounted && !sameMessages(previous, local)) {
         setState(() {
           _chatMessagesByConversation[conversationKey] = local;
         });
@@ -1696,7 +1696,7 @@ class _HomePageState extends State<HomePage> {
       );
       final canonicalKey = snapshot.messages.isEmpty
           ? conversationKey
-          : _canonicalConversationKey(snapshot.messages.first.conversationKey);
+          : canonicalConversationKey(snapshot.messages.first.conversationKey);
       await db.upsertMessages(snapshot.messages);
       if (snapshot.nextCursor != null && snapshot.nextCursor!.isNotEmpty) {
         await db.saveChatCursor(
@@ -1711,7 +1711,7 @@ class _HomePageState extends State<HomePage> {
       );
       final beforeMerged =
           _chatMessagesByConversation[canonicalKey] ?? const <ChatMessage>[];
-      final messagesChanged = !_sameMessages(beforeMerged, merged);
+      final messagesChanged = !sameMessages(beforeMerged, merged);
       final nextTyping = _typingProfilesFor(snapshot.typingProfiles, actor);
       final typingChanged = !setEquals(
           _typingUsers[canonicalKey] ?? const <String>{}, nextTyping);
@@ -1783,7 +1783,7 @@ class _HomePageState extends State<HomePage> {
     if (!mounted) {
       return;
     }
-    conversationKey = _canonicalConversationKey(conversationKey);
+    conversationKey = canonicalConversationKey(conversationKey);
     // Clean up project bridge when switching to regular conversation
     if (isProjectConversation(_activeConversationKey)) {
       _projectBridge?.dispose();
@@ -1818,7 +1818,7 @@ class _HomePageState extends State<HomePage> {
     await _chatRealtime?.tick();
   }
 
-  String _canonicalConversationKey(String key) {
+  String canonicalConversationKey(String key) {
     final trimmed = key.trim();
     final parts = trimmed.split(':');
     if (parts.length == 3 && parts[0] == 'dm') {
@@ -4064,7 +4064,7 @@ class _HomePageState extends State<HomePage> {
       bridge.sendUpload(
         fileBytes,
         file.name,
-        _guessMimeType(file.name),
+        guessMimeType(file.name),
         caption: caption,
       );
 
@@ -4087,7 +4087,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  String _guessMimeType(String filename) {
+  String guessMimeType(String filename) {
     final ext = filename.toLowerCase().split('.').last;
     switch (ext) {
       case 'pdf': return 'application/pdf';
@@ -4438,7 +4438,7 @@ class _HomePageState extends State<HomePage> {
     return '${baseUrl.replaceFirst(RegExp(r'/+$'), '')}$value';
   }
 
-  bool _sameMessages(List<ChatMessage> a, List<ChatMessage> b) {
+  bool sameMessages(List<ChatMessage> a, List<ChatMessage> b) {
     if (identical(a, b)) {
       return true;
     }
