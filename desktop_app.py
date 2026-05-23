@@ -1,4 +1,22 @@
-﻿import calendar
+"""
+Desktop GUI application for Family Todo.
+
+Uses customtkinter for the UI layer.  Business logic lives in
+family_todo.py, todo_ops.py, and commands.py.  This module handles
+only presentation: windows, popups, Kanban board, calendar, dashboard
+charts, and sync-polling orchestration.
+
+Classes:
+  VoiceWorker        - background thread for voice commands
+  BotProcessHost     - manages the Telegram bot subprocess
+  DatePickerPopup    - calendar date-picker modal
+  TaskEditorPopup    - task create/edit modal
+  FamilyTaskPopup    - family task create/edit modal
+  KanbanCard         - single task card in the Kanban board
+  DesktopTodoApp     - main application window
+"""
+
+import calendar
 import copy
 import os
 import subprocess
