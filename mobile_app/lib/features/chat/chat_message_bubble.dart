@@ -672,11 +672,6 @@ class ChatMessageBubble extends StatelessWidget {
     final isImageUpload = kind == 'image' || kind == 'image_group';
     final isVideo = kind == 'video' || kind == 'video_group';
     final phaseLabel = _uploadPhaseLabel(progress, isVideo);
-    final label = isVideo
-        ? 'Видео'
-        : isImageUpload
-            ? 'Фото'
-            : 'Файл';
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
