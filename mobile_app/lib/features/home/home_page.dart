@@ -1893,7 +1893,7 @@ class _HomePageState extends State<HomePage> {
       });
 
       final compressedFile = await _compressVideo(video.path, (_) {});
-      compressTimer?.cancel();
+      compressTimer.cancel();
       _updateUploadProgress(conversationKey, clientId, 0, 1, 0.25);
 
       final compressMs =
@@ -1916,7 +1916,7 @@ class _HomePageState extends State<HomePage> {
       });
 
       final bytes = await compressedMedia.readAsBytes();
-      readTimer?.cancel();
+      readTimer.cancel();
       _updateUploadProgress(conversationKey, clientId, 0, 1, 0.30);
 
       // Phase 3: Upload with real network progress (30% → 98%)
