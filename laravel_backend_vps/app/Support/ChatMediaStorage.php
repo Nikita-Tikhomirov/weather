@@ -6,6 +6,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class ChatMediaStorage
@@ -29,12 +30,21 @@ final class ChatMediaStorage
         return '/chat/media/'.self::encodePath($path);
     }
 
-    public static function responseForEncodedPath(string $encodedPath): StreamedResponse
+    public static function responseForEncodedPath(string $encodedPath): RedirectResponse|StreamedResponse
     {
-        $path = self::decodePath($encodedPath);
+        return self::responseForPath(self::decodePath($encodedPath));
+    }
+
+    public static function responseForPath(string $path): RedirectResponse|StreamedResponse
+    {
+        $path = self::normalizePath($path);
         $disk = Storage::disk(self::disk());
         if (!$disk->exists($path)) {
             abort(404);
+        }
+
+        if (self::disk() === 's3') {
+            return redirect()->away($disk->temporaryUrl($path, now()->addMinutes(30)));
         }
 
         $stream = $disk->readStream($path);
@@ -66,10 +76,20 @@ final class ChatMediaStorage
     private static function decodePath(string $encodedPath): string
     {
         $raw = base64_decode(strtr($encodedPath, '-_', '+/'), true);
-        if ($raw === false || trim($raw) === '' || str_contains($raw, '..')) {
+        if ($raw === false) {
             abort(404);
         }
 
-        return $raw;
+        return self::normalizePath($raw);
+    }
+
+    private static function normalizePath(string $path): string
+    {
+        $normalized = trim(str_replace('\\', '/', $path), '/');
+        if ($normalized === '' || str_contains($normalized, '..')) {
+            abort(404);
+        }
+
+        return $normalized;
     }
 }

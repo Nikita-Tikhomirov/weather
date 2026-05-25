@@ -403,6 +403,21 @@ class ChatController extends Controller
         return ChatMediaStorage::responseForEncodedPath($encodedPath);
     }
 
+    public function legacyStickerMedia(string $legacyPath)
+    {
+        return ChatMediaStorage::responseForPath('chat_stickers/'.$legacyPath);
+    }
+
+    public function legacyDocumentMedia(string $legacyPath)
+    {
+        return ChatMediaStorage::responseForPath('chat_documents/'.$legacyPath);
+    }
+
+    public function legacyAvatarMedia(string $legacyPath)
+    {
+        return ChatMediaStorage::responseForPath('profile_avatars/'.$legacyPath);
+    }
+
     private function json(int $status, array $payload): JsonResponse
     {
         return response()->json($payload, $status, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

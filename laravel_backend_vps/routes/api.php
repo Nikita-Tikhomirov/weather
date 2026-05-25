@@ -10,6 +10,12 @@ use Illuminate\Support\Facades\Route;
 Route::get('/health', [SyncController::class, 'health']);
 Route::get('/chat/media/{encodedPath}', [ChatController::class, 'media'])
     ->where('encodedPath', '[A-Za-z0-9_-]+');
+Route::get('/chat_stickers/{legacyPath}', [ChatController::class, 'legacyStickerMedia'])
+    ->where('legacyPath', '.*');
+Route::get('/chat_documents/{legacyPath}', [ChatController::class, 'legacyDocumentMedia'])
+    ->where('legacyPath', '.*');
+Route::get('/storage/profile_avatars/{legacyPath}', [ChatController::class, 'legacyAvatarMedia'])
+    ->where('legacyPath', '.*');
 
 Route::middleware('sync.apikey')->group(function (): void {
     Route::post('/auth/device-start', [AuthController::class, 'deviceStart']);
