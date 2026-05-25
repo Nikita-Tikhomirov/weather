@@ -37,6 +37,9 @@ class MessengerPage extends StatelessWidget {
     required this.onOpenConversation,
     required this.onOpenMessageActions,
     required this.onImageTap,
+    required this.hasMoreOlderMessages,
+    required this.loadingOlderMessages,
+    required this.onLoadOlderMessages,
     required this.onClearReply,
     required this.onCancelEdit,
     required this.onOpenAttachMenu,
@@ -86,6 +89,9 @@ class MessengerPage extends StatelessWidget {
   final VoidCallback onStopRecord;
   final VoidCallback onSendText;
   final void Function(ChatConversation conv) onManageGroup;
+  final bool hasMoreOlderMessages;
+  final bool loadingOlderMessages;
+  final Future<void> Function() onLoadOlderMessages;
   final Map<String, Set<String>> typingUsers;
   final VoidCallback? onCallTap;
   final VoidCallback? onVideoCallTap;
@@ -137,6 +143,9 @@ class MessengerPage extends StatelessWidget {
             avatarForContact: avatarForContact,
             onLongPress: onOpenMessageActions,
             onImageTap: onImageTap,
+            hasMoreOlder: hasMoreOlderMessages,
+            loadingOlder: loadingOlderMessages,
+            onLoadOlder: onLoadOlderMessages,
           ),
         ),
         _TypingIndicator(

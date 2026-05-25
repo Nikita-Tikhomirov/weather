@@ -8,6 +8,8 @@ use App\Http\Controllers\ContactController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', [SyncController::class, 'health']);
+Route::get('/chat/media/{encodedPath}', [ChatController::class, 'media'])
+    ->where('encodedPath', '[A-Za-z0-9_-]+');
 
 Route::middleware('sync.apikey')->group(function (): void {
     Route::post('/auth/device-start', [AuthController::class, 'deviceStart']);

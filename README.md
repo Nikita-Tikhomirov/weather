@@ -539,6 +539,29 @@ APK собирается автоматически при пуше в `master` 
 .\deploy_vps.ps1
 ```
 
+### Beget S3 для медиа мессенджера
+
+Медиа чатов, документы, стикеры и аватарки можно хранить в Beget S3. На VPS в `.env` нужны:
+
+```env
+CHAT_MEDIA_DISK=s3
+AWS_ACCESS_KEY_ID=<access-key>
+AWS_SECRET_ACCESS_KEY=<secret-key>
+AWS_DEFAULT_REGION=ru1
+AWS_BUCKET=c36d6bd9c274-family-messenger-media
+AWS_ENDPOINT=https://s3.ru1.storage.beget.cloud
+AWS_USE_PATH_STYLE_ENDPOINT=true
+```
+
+После настройки ключей:
+
+```bash
+php artisan optimize:clear
+php artisan chat:media-migrate --delete-local
+```
+
+Команда переносит только известные медиа мессенджера (`chat_stickers`, `chat_documents`, `profile_avatars`) и переписывает ссылки в БД.
+
 ## 14. Что можно улучшить дальше
 
 - Добавить `requirements.txt`/`pyproject.toml` для воспроизводимой установки.

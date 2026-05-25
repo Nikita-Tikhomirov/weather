@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Domain\Profiles\PhoneProfileRepository;
 use App\Domain\Sync\ActorProfileGuard;
+use App\Support\ChatMediaStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use Throwable;
 
@@ -107,12 +107,8 @@ class ContactController extends Controller
                     'image/webp' => 'webp',
                     default => 'jpg',
                 };
-                $path = $file->storeAs(
-                    'profile_avatars',
-                    $actor.'_'.time().'.'.$extension,
-                    'public'
-                );
-                $avatarUrl = Storage::url($path);
+                $stored = ChatMediaStorage::putUploadedFile('profile_avatars', $file, $extension);
+                $avatarUrl = $stored['url'];
             }
 
             if ($avatarUrl === '') {

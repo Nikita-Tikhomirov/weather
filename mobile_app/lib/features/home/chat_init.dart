@@ -62,6 +62,9 @@ extension _ChatInitExtension on _HomePageState {
 
     _setChatLoading(true);
     _chatMessagesByConversation.clear();
+    _chatOlderCursors.clear();
+    _chatOlderLoading.clear();
+    _chatOlderExhausted.clear();
     if (!_pushAlreadyRouted) {
       _setActiveConversation('');
     }
@@ -89,7 +92,8 @@ extension _ChatInitExtension on _HomePageState {
       // display it.
       List<ChatConversation> finalConversations = conversations;
       if (pushConversationKey.isNotEmpty &&
-          !finalConversations.any((c) => c.conversationKey == pushConversationKey) &&
+          !finalConversations
+              .any((c) => c.conversationKey == pushConversationKey) &&
           !isProjectConversation(pushConversationKey)) {
         finalConversations = [
           ...finalConversations,
@@ -165,6 +169,4 @@ extension _ChatInitExtension on _HomePageState {
       }
     }
   }
-
-
 }

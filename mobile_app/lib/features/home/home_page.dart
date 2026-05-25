@@ -105,6 +105,9 @@ class _HomePageState extends State<HomePage> {
   List<StickerPack> _chatStickerPacks = const <StickerPack>[];
   final Map<String, List<ChatMessage>> _chatMessagesByConversation =
       <String, List<ChatMessage>>{};
+  final Map<String, String> _chatOlderCursors = <String, String>{};
+  final Set<String> _chatOlderLoading = <String>{};
+  final Set<String> _chatOlderExhausted = <String>{};
   String _activeConversationKey = '';
   String _currentProfileDisplayName = '';
   String _currentProfilePhone = '';
@@ -198,7 +201,6 @@ class _HomePageState extends State<HomePage> {
     setState(() => _store = store);
 
     await _processPendingPush(store);
-
   }
 
   Future<void> _initDesktopServices(TaskStore store, String owner) async {
@@ -241,13 +243,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _goDesktopMonthPrev() {
-    setState(() => _desktopMonth = DateTime(
-          _desktopMonth.year, _desktopMonth.month - 1));
+    setState(() =>
+        _desktopMonth = DateTime(_desktopMonth.year, _desktopMonth.month - 1));
   }
 
   void _goDesktopMonthNext() {
-    setState(() => _desktopMonth = DateTime(
-          _desktopMonth.year, _desktopMonth.month + 1));
+    setState(() =>
+        _desktopMonth = DateTime(_desktopMonth.year, _desktopMonth.month + 1));
   }
 
   void _goDesktopMonthToday() {
@@ -370,7 +372,6 @@ class _HomePageState extends State<HomePage> {
     if (_isRecording) setState(() => _voiceSec++);
   }
 
-
   // ── Existing methods ─────────────────────────────────────────
 
   Future<void> _refreshActiveConversation(
@@ -431,10 +432,15 @@ class _HomePageState extends State<HomePage> {
           : canonicalConversationKey(snapshot.messages.first.conversationKey);
       await db.upsertMessages(snapshot.messages);
       if (snapshot.nextCursor != null && snapshot.nextCursor!.isNotEmpty) {
+        _chatOlderCursors[canonicalKey] = snapshot.nextCursor!;
+        _chatOlderExhausted.remove(canonicalKey);
         await db.saveChatCursor(
           conversationKey: canonicalKey,
           cursor: snapshot.nextCursor!,
         );
+      } else {
+        _chatOlderCursors.remove(canonicalKey);
+        _chatOlderExhausted.add(canonicalKey);
       }
 
       final merged = _mergeTransientMessages(
@@ -470,6 +476,75 @@ class _HomePageState extends State<HomePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ошибка обновления чата: $error')),
         );
+      }
+    }
+  }
+
+  Future<void> _loadOlderChatMessages(TaskStore store) async {
+    final conversationKey = canonicalConversationKey(_activeConversationKey);
+    if (conversationKey.isEmpty ||
+        _chatOlderLoading.contains(conversationKey) ||
+        _chatOlderExhausted.contains(conversationKey)) {
+      return;
+    }
+
+    final cursor = _chatOlderCursors[conversationKey];
+    if (cursor == null || cursor.isEmpty) {
+      _chatOlderExhausted.add(conversationKey);
+      return;
+    }
+
+    setState(() {
+      _chatOlderLoading.add(conversationKey);
+    });
+
+    try {
+      final snapshot = await store.repository.api.chatFetchMessages(
+        actorProfile: store.owner.value,
+        conversationKey: conversationKey,
+        cursor: cursor,
+        limit: 50,
+      );
+      final canonicalKey = snapshot.messages.isEmpty
+          ? conversationKey
+          : canonicalConversationKey(snapshot.messages.first.conversationKey);
+      await store.repository.db.upsertMessages(snapshot.messages);
+
+      if (snapshot.nextCursor != null && snapshot.nextCursor!.isNotEmpty) {
+        _chatOlderCursors[canonicalKey] = snapshot.nextCursor!;
+        _chatOlderExhausted.remove(canonicalKey);
+        await store.repository.db.saveChatCursor(
+          conversationKey: canonicalKey,
+          cursor: snapshot.nextCursor!,
+        );
+      } else {
+        _chatOlderCursors.remove(canonicalKey);
+        _chatOlderExhausted.add(canonicalKey);
+      }
+
+      final existing =
+          _chatMessagesByConversation[canonicalKey] ?? const <ChatMessage>[];
+      final byId = <String, ChatMessage>{
+        for (final message in [...snapshot.messages, ...existing])
+          message.id: message,
+      };
+      final merged = byId.values.toList()
+        ..sort((a, b) {
+          final byCreated = a.createdAt.compareTo(b.createdAt);
+          return byCreated != 0 ? byCreated : a.id.compareTo(b.id);
+        });
+      if (mounted) {
+        setState(() {
+          _chatMessagesByConversation[canonicalKey] = merged;
+          _chatOlderLoading.remove(conversationKey);
+          _chatOlderLoading.remove(canonicalKey);
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _chatOlderLoading.remove(conversationKey);
+        });
       }
     }
   }
@@ -795,8 +870,8 @@ class _HomePageState extends State<HomePage> {
           conversationKey: _activeConversationKey,
         );
       } catch (_) {
-      // silently ignored — non-critical operation
-    }
+        // silently ignored — non-critical operation
+      }
     });
   }
 
@@ -1363,8 +1438,8 @@ class _HomePageState extends State<HomePage> {
                                           profile: profile,
                                         );
                                       } catch (_) {
-      // silently ignored — non-critical operation
-    }
+                                        // silently ignored — non-critical operation
+                                      }
                                     },
                                   )
                                 : null,
@@ -1515,7 +1590,8 @@ class _HomePageState extends State<HomePage> {
       if (fileBytes.length > maxBytes) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Файл слишком большой. Максимум 50 МБ.')),
+            const SnackBar(
+                content: Text('Файл слишком большой. Максимум 50 МБ.')),
           );
         }
         return;
@@ -1902,9 +1978,8 @@ class _HomePageState extends State<HomePage> {
           'Video compression took ${compressMs}ms, path: $compressedFile');
 
       // Phase 2: Read compressed file (25% → 30%)
-      final compressedMedia = compressedFile != null
-          ? File(compressedFile)
-          : File(video.path);
+      final compressedMedia =
+          compressedFile != null ? File(compressedFile) : File(video.path);
 
       // Simulate smooth progress during read
       double readProgress = 0.25;
@@ -2266,6 +2341,11 @@ class _HomePageState extends State<HomePage> {
           _openConversation(store, conversationKey),
       onOpenMessageActions: (message) => _openMessageActions(store, message),
       onImageTap: _openPhotoViewer,
+      hasMoreOlderMessages: _activeConversationKey.isNotEmpty &&
+          (_chatOlderCursors[_activeConversationKey]?.isNotEmpty ?? false) &&
+          !_chatOlderExhausted.contains(_activeConversationKey),
+      loadingOlderMessages: _chatOlderLoading.contains(_activeConversationKey),
+      onLoadOlderMessages: () => _loadOlderChatMessages(store),
       onClearReply: () => setState(() => _replyToMessage = null),
       onCancelEdit: () {
         setState(() {
@@ -2763,7 +2843,8 @@ class _HomePageState extends State<HomePage> {
       if (fileBytes.length > 15 * 1024 * 1024) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Файл слишком большой. Максимум 15 МБ.')),
+            const SnackBar(
+                content: Text('Файл слишком большой. Максимум 15 МБ.')),
           );
         }
         return;
@@ -2815,7 +2896,8 @@ class _HomePageState extends State<HomePage> {
           _projectMessages.add(BridgeMessage(
             type: 'send',
             text: '📎 Документ: ${file.name}',
-            projectId: _projectByConversationKey(_activeConversationKey)?.id ?? '',
+            projectId:
+                _projectByConversationKey(_activeConversationKey)?.id ?? '',
             sessionId: _activeProjectSessionId ?? '',
           ));
         });
@@ -2832,25 +2914,45 @@ class _HomePageState extends State<HomePage> {
   String guessMimeType(String filename) {
     final ext = filename.toLowerCase().split('.').last;
     switch (ext) {
-      case 'pdf': return 'application/pdf';
-      case 'doc': return 'application/msword';
-      case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      case 'xls': return 'application/vnd.ms-excel';
-      case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-      case 'ppt': return 'application/vnd.ms-powerpoint';
-      case 'pptx': return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-      case 'png': return 'image/png';
-      case 'jpg': case 'jpeg': return 'image/jpeg';
-      case 'webp': return 'image/webp';
-      case 'gif': return 'image/gif';
-      case 'txt': return 'text/plain';
-      case 'csv': return 'text/csv';
-      case 'zip': return 'application/zip';
-      case 'rar': return 'application/vnd.rar';
-      case '7z': return 'application/x-7z-compressed';
-      case 'mp3': return 'audio/mpeg';
-      case 'mp4': return 'video/mp4';
-      default: return 'application/octet-stream';
+      case 'pdf':
+        return 'application/pdf';
+      case 'doc':
+        return 'application/msword';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'xls':
+        return 'application/vnd.ms-excel';
+      case 'xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'ppt':
+        return 'application/vnd.ms-powerpoint';
+      case 'pptx':
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'png':
+        return 'image/png';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'webp':
+        return 'image/webp';
+      case 'gif':
+        return 'image/gif';
+      case 'txt':
+        return 'text/plain';
+      case 'csv':
+        return 'text/csv';
+      case 'zip':
+        return 'application/zip';
+      case 'rar':
+        return 'application/vnd.rar';
+      case '7z':
+        return 'application/x-7z-compressed';
+      case 'mp3':
+        return 'audio/mpeg';
+      case 'mp4':
+        return 'video/mp4';
+      default:
+        return 'application/octet-stream';
     }
   }
 
@@ -3206,8 +3308,6 @@ class _HomePageState extends State<HomePage> {
     }
     return true;
   }
-
-
 
   Future<void> _openTaskEditor(
     TaskStore store, {

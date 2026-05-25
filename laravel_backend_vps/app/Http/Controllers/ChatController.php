@@ -5,11 +5,10 @@ namespace App\Http\Controllers;
 use App\Domain\Chat\ChatRepository;
 use App\Domain\Sync\ActorProfileGuard;
 use App\Services\Push\PushOutboxService;
+use App\Support\ChatMediaStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Throwable;
 
@@ -191,21 +190,7 @@ class ChatController extends Controller
                 $ext = 'png';
             }
 
-            $filename = sprintf('%s.%s', Str::ulid(), $ext);
-            $path = Storage::disk('public')->putFileAs('chat_stickers', $upload, $filename);
-            if ($path === false) {
-                throw new InvalidArgumentException('Failed to upload image');
-            }
-            $publicDir = public_path('chat_stickers');
-            if (!is_dir($publicDir) && !mkdir($publicDir, 0755, true) && !is_dir($publicDir)) {
-                throw new InvalidArgumentException('Failed to prepare public image directory');
-            }
-            $publicPath = $publicDir . DIRECTORY_SEPARATOR . $filename;
-            if (!copy(Storage::disk('public')->path($path), $publicPath)) {
-                throw new InvalidArgumentException('Failed to publish uploaded image');
-            }
-
-            $url = sprintf('/chat_stickers/%s', $filename);
+            $stored = ChatMediaStorage::putUploadedFile('chat_stickers', $upload, $ext);
             $meta = [
                 'size_bytes' => (int)$upload->getSize(),
                 'mime_type' => (string)$upload->getMimeType(),
@@ -214,7 +199,7 @@ class ChatController extends Controller
 
             return $this->json(200, [
                 'ok' => true,
-                'asset_url' => $url,
+                'asset_url' => $stored['url'],
                 'image_meta' => $meta,
             ]);
         } catch (InvalidArgumentException $e) {
@@ -252,21 +237,7 @@ class ChatController extends Controller
                 throw new InvalidArgumentException('File is too large. Maximum 50 MB.');
             }
 
-            $filename = sprintf('%s.%s', Str::ulid(), $ext);
-            $path = Storage::disk('public')->putFileAs('chat_documents', $upload, $filename);
-            if ($path === false) {
-                throw new InvalidArgumentException('Failed to upload file');
-            }
-            $publicDir = public_path('chat_documents');
-            if (!is_dir($publicDir) && !mkdir($publicDir, 0755, true) && !is_dir($publicDir)) {
-                throw new InvalidArgumentException('Failed to prepare public document directory');
-            }
-            $publicPath = $publicDir . DIRECTORY_SEPARATOR . $filename;
-            if (!copy(Storage::disk('public')->path($path), $publicPath)) {
-                throw new InvalidArgumentException('Failed to publish uploaded document');
-            }
-
-            $url = sprintf('/chat_documents/%s', $filename);
+            $stored = ChatMediaStorage::putUploadedFile('chat_documents', $upload, $ext);
             $meta = [
                 'size_bytes' => (int)$upload->getSize(),
                 'mime_type' => (string)$upload->getMimeType(),
@@ -275,7 +246,7 @@ class ChatController extends Controller
 
             return $this->json(200, [
                 'ok' => true,
-                'asset_url' => $url,
+                'asset_url' => $stored['url'],
                 'image_meta' => $meta,
             ]);
         } catch (InvalidArgumentException $e) {
@@ -425,6 +396,11 @@ class ChatController extends Controller
         } catch (Throwable $e) {
             return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
         }
+    }
+
+    public function media(string $encodedPath)
+    {
+        return ChatMediaStorage::responseForEncodedPath($encodedPath);
     }
 
     private function json(int $status, array $payload): JsonResponse

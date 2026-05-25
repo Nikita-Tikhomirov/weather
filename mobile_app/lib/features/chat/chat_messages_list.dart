@@ -15,6 +15,9 @@ class ChatMessagesList extends StatefulWidget {
     required this.imageUrlFor,
     required this.onLongPress,
     required this.onImageTap,
+    this.hasMoreOlder = false,
+    this.loadingOlder = false,
+    this.onLoadOlder,
     this.replyToMessageId,
     this.onQuoteTap,
     this.avatarForContact,
@@ -29,6 +32,9 @@ class ChatMessagesList extends StatefulWidget {
   final String Function(ChatMessage message) imageUrlFor;
   final void Function(ChatMessage message) onLongPress;
   final void Function(ChatMessage message, int index) onImageTap;
+  final bool hasMoreOlder;
+  final bool loadingOlder;
+  final Future<void> Function()? onLoadOlder;
   final String? replyToMessageId;
   final void Function(String quoteText)? onQuoteTap;
   final String? Function(String profileKey)? avatarForContact;
@@ -47,6 +53,7 @@ class ChatMessagesListState extends State<ChatMessagesList> {
   @override
   void initState() {
     super.initState();
+    _controller.addListener(_maybeLoadOlder);
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
 
@@ -56,16 +63,46 @@ class ChatMessagesListState extends State<ChatMessagesList> {
     final oldLast =
         oldWidget.messages.isEmpty ? '' : oldWidget.messages.last.id;
     final newLast = widget.messages.isEmpty ? '' : widget.messages.last.id;
-    if (oldLast != newLast ||
-        oldWidget.messages.length != widget.messages.length) {
+    if (oldLast != newLast) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      return;
+    }
+
+    if (oldWidget.messages.length != widget.messages.length &&
+        _controller.hasClients) {
+      final oldMax = _controller.position.maxScrollExtent;
+      final oldOffset = _controller.offset;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_controller.hasClients) {
+          return;
+        }
+        final delta = _controller.position.maxScrollExtent - oldMax;
+        final nextOffset = (oldOffset + delta).clamp(
+          _controller.position.minScrollExtent,
+          _controller.position.maxScrollExtent,
+        );
+        _controller.jumpTo(nextOffset.toDouble());
+      });
     }
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_maybeLoadOlder);
     _controller.dispose();
     super.dispose();
+  }
+
+  void _maybeLoadOlder() {
+    if (!widget.hasMoreOlder ||
+        widget.loadingOlder ||
+        widget.onLoadOlder == null ||
+        !_controller.hasClients) {
+      return;
+    }
+    if (_controller.position.pixels <= 160) {
+      widget.onLoadOlder!();
+    }
   }
 
   void _scrollToBottom() {
@@ -101,7 +138,7 @@ class ChatMessagesListState extends State<ChatMessagesList> {
 
   void _navigateToQuote(String quoteText, {String? excludeMessageId}) {
     // Clean media markers from the quote text
-    var cleaned = quoteText
+    final cleaned = quoteText
         .replaceAll(RegExp(r'\[photo:.+?\]\s*'), '')
         .replaceAll(RegExp(r'\[video:.+?\]\s*'), '')
         .replaceAll('[voice] ', '')
@@ -134,9 +171,22 @@ class ChatMessagesListState extends State<ChatMessagesList> {
     return ListView.builder(
       controller: _controller,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemCount: widget.messages.length,
+      itemCount: widget.messages.length + (widget.loadingOlder ? 1 : 0),
       itemBuilder: (context, index) {
-        final message = widget.messages[index];
+        if (widget.loadingOlder && index == 0) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Center(
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        }
+        final messageIndex = widget.loadingOlder ? index - 1 : index;
+        final message = widget.messages[messageIndex];
         final mine = message.senderProfile == widget.owner;
         return ChatMessageBubble(
           key: _keyFor(message.id),
@@ -166,7 +216,8 @@ class ChatMessagesListState extends State<ChatMessagesList> {
               if (parts.length >= 3) {
                 final quotedId = parts[1];
                 // Validate it looks like a ULID or UUID (alphanumeric)
-                if (quotedId.isNotEmpty && RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(quotedId)) {
+                if (quotedId.isNotEmpty &&
+                    RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(quotedId)) {
                   scrollToMessage(quotedId);
                   return;
                 }
@@ -185,7 +236,9 @@ class ChatMessagesListState extends State<ChatMessagesList> {
               }
             }
             final quote = qLines.join('\n');
-            if (quote.isNotEmpty) _navigateToQuote(quote, excludeMessageId: message.id);
+            if (quote.isNotEmpty) {
+              _navigateToQuote(quote, excludeMessageId: message.id);
+            }
           },
         );
       },
