@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:video_compress/video_compress.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -1800,21 +1801,22 @@ class _HomePageState extends State<HomePage> {
     );
     if (video == null) return;
 
-    // Check file size
+    // Check raw file size (before compression)
     try {
       final sizeBytes = await video.length();
-      const maxBytes = 190 * 1024 * 1024;
-      if (sizeBytes > maxBytes) {
+      const maxRawBytes = 500 * 1024 * 1024; // 500 MB raw limit
+      if (sizeBytes > maxRawBytes) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Видео слишком большое. Максимум 190 МБ.')),
+            SnackBar(
+                content: Text(
+                    'Видео слишком большое (${(sizeBytes / (1024 * 1024)).round()} МБ). Максимум 500 МБ.')),
           );
         }
         return;
       }
     } catch (_) {
-      // silently ignored — non-critical operation
+      // silently ignored
     }
 
     // Optional caption
@@ -1877,24 +1879,43 @@ class _HomePageState extends State<HomePage> {
     if (mounted) setState(() {});
 
     try {
-      // Read file
+      // Phase 1: Compress video (0% → 30%)
       _updateUploadProgress(conversationKey, clientId, 0, 1, 0.0);
-      final bytes = await video.readAsBytes();
+      final compressStart = DateTime.now();
 
-      _updateUploadProgress(conversationKey, clientId, 0, 1, 0.1);
+      final compressedFile = await _compressVideo(video.path, (progress) {
+        // progress 0..1 → mapped to 0.0..0.3
+        final p = progress * 0.3;
+        _updateUploadProgress(conversationKey, clientId, 0, 1, p);
+      });
 
-      // Upload with progress
+      final compressMs =
+          DateTime.now().difference(compressStart).inMilliseconds;
+      debugPrint(
+          'Video compression took ${compressMs}ms, path: $compressedFile');
+
+      // Phase 2: Read compressed file (30% → 35%)
+      final compressedMedia = compressedFile != null
+          ? File(compressedFile)
+          : File(video.path);
+
+      _updateUploadProgress(conversationKey, clientId, 0, 1, 0.3);
+      final bytes = await compressedMedia.readAsBytes();
+      _updateUploadProgress(conversationKey, clientId, 0, 1, 0.35);
+
+      // Phase 3: Upload with real network progress (35% → 90%)
       final uploaded = await api.chatUploadMedia(
         actorProfile: actor,
         bytes: bytes,
-        filename: video.name,
+        filename: 'video_compressed.mp4',
         onProgress: (progress) {
-          final p = 0.1 + (progress * 0.7);
+          // progress 0..1 → mapped to 0.35..0.90
+          final p = 0.35 + (progress * 0.55);
           _updateUploadProgress(conversationKey, clientId, 0, 1, p);
         },
       );
 
-      _updateUploadProgress(conversationKey, clientId, 0, 1, 0.85);
+      _updateUploadProgress(conversationKey, clientId, 0, 1, 0.92);
       final meta = Map<String, dynamic>.from(uploaded.imageMeta);
 
       final attachment = ChatAttachment(
@@ -1904,7 +1925,7 @@ class _HomePageState extends State<HomePage> {
         sortOrder: 0,
       );
 
-      _updateUploadProgress(conversationKey, clientId, 0, 1, 0.95);
+      _updateUploadProgress(conversationKey, clientId, 0, 1, 0.96);
 
       final message = await api.chatSendMessage(
         actorProfile: actor,
@@ -1926,6 +1947,46 @@ class _HomePageState extends State<HomePage> {
         );
       }
     }
+  }
+
+  /// Compress video for messenger delivery.
+  /// Returns path to compressed file, or null if compression failed/skipped.
+  Future<String?> _compressVideo(
+      String sourcePath, void Function(double) onProgress) async {
+    try {
+      final info = await VideoCompress.compressVideo(
+        sourcePath,
+        quality: VideoQuality.MediumQuality,
+        includeAudio: true,
+        deleteOrigin: false,
+      );
+      // video_compress doesn't support progress callback natively,
+      // but we can simulate phases
+      onProgress(0.5);
+      if (info != null && info.path != null && info.path!.isNotEmpty) {
+        onProgress(1.0);
+        return info.path;
+      }
+    } catch (_) {
+      // compression not available on all platforms
+    }
+    // Fallback: compress using ffmpeg via VideoCompress if available
+    try {
+      final info = await VideoCompress.compressVideo(
+        sourcePath,
+        quality: VideoQuality.LowQuality,
+        includeAudio: true,
+        deleteOrigin: false,
+      );
+      onProgress(1.0);
+      if (info != null && info.path != null && info.path!.isNotEmpty) {
+        return info.path;
+      }
+    } catch (_) {
+      // compression failed, will send original
+    }
+    onProgress(1.0);
+    return null; // send original
   }
 
   Future<void> _openAttachMenu(TaskStore store) async {

@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../models/chat_models.dart';
 
@@ -401,26 +402,13 @@ class ChatMessageBubble extends StatelessWidget {
           Padding(
             padding: EdgeInsets.only(bottom: i < urls.length - 1 ? 8 : 0),
             child: GestureDetector(
-              onTap: () async {
-                final uri = Uri.tryParse(_bubbleAssetUrl(urls[i]));
-                if (uri == null) return;
-                try {
-                  final ok = await launchUrl(
-                    uri,
-                    mode: LaunchMode.externalApplication,
-                  );
-                  if (!ok && context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Не удалось открыть видео')),
-                    );
-                  }
-                } catch (_) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Ошибка воспроизведения')),
-                    );
-                  }
-                }
+              onTap: () {
+                final url = _bubbleAssetUrl(urls[i]);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => _VideoPlayerScreen(url: url),
+                  ),
+                );
               },
               child: Stack(
                 alignment: Alignment.center,
@@ -582,6 +570,22 @@ class ChatMessageBubble extends StatelessWidget {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} МБ';
   }
 
+  /// Map progress to a user-friendly phase label.
+  static String _uploadPhaseLabel(double progress, bool isVideo) {
+    if (!isVideo) {
+      if (progress < 0.5) return 'Загрузка...';
+      if (progress < 0.9) return 'Отправка...';
+      return 'Завершение...';
+    }
+    // Video has phases: compress → read → upload → finalize
+    if (progress < 0.05) return 'Подготовка...';
+    if (progress < 0.30) return 'Сжатие...';
+    if (progress < 0.35) return 'Чтение...';
+    if (progress < 0.85) return 'Загрузка...';
+    if (progress < 0.95) return 'Завершение...';
+    return 'Отправка...';
+  }
+
   Widget _buildAudioBubble(BuildContext context) {
     final urls = _attachmentUrlsForKinds(['audio']);
     final audioUrl = urls.isNotEmpty ? urls.first : _bubbleAssetUrl(imageUrl);
@@ -666,7 +670,9 @@ class ChatMessageBubble extends StatelessWidget {
     final pct = (progress * 100).round();
     final kind = message.messageType;
     final isImageUpload = kind == 'image' || kind == 'image_group';
-    final label = kind == 'video'
+    final isVideo = kind == 'video' || kind == 'video_group';
+    final phaseLabel = _uploadPhaseLabel(progress, isVideo);
+    final label = isVideo
         ? 'Видео'
         : isImageUpload
             ? 'Фото'
@@ -688,7 +694,7 @@ class ChatMessageBubble extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
             const SizedBox(width: 10),
-            Text('Отправка $label... $pct%'),
+            Text('$phaseLabel $pct%'),
           ],
         ),
         const SizedBox(height: 6),
@@ -988,5 +994,218 @@ class _WaveformPainter extends CustomPainter {
         oldDelegate.active != active ||
         oldDelegate.color != color ||
         oldDelegate.inactiveColor != inactiveColor;
+  }
+}
+
+/// Full-screen video player for in-app playback.
+class _VideoPlayerScreen extends StatefulWidget {
+  const _VideoPlayerScreen({required this.url});
+
+  final String url;
+
+  @override
+  State<_VideoPlayerScreen> createState() => _VideoPlayerScreenState();
+}
+
+class _VideoPlayerScreenState extends State<_VideoPlayerScreen> {
+  VideoPlayerController? _controller;
+  bool _ready = false;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPlayer();
+  }
+
+  Future<void> _initPlayer() async {
+    final uri = Uri.tryParse(widget.url);
+    if (uri == null) {
+      setState(() => _hasError = true);
+      return;
+    }
+    try {
+      final ctrl = VideoPlayerController.networkUrl(uri);
+      _controller = ctrl;
+      await ctrl.initialize();
+      if (mounted) {
+        setState(() => _ready = true);
+        ctrl.play();
+      }
+    } catch (_) {
+      if (mounted) setState(() => _hasError = true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Center(
+        child: _buildBody(),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_hasError) {
+      return const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.error_outline, color: Colors.white, size: 48),
+          SizedBox(height: 12),
+          Text('Не удалось загрузить видео',
+              style: TextStyle(color: Colors.white, fontSize: 16)),
+        ],
+      );
+    }
+    if (!_ready || _controller == null) {
+      return const CircularProgressIndicator(color: Colors.white);
+    }
+    return AspectRatio(
+      aspectRatio: _controller!.value.aspectRatio,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          VideoPlayer(_controller!),
+          _VideoControls(controller: _controller!),
+        ],
+      ),
+    );
+  }
+}
+
+/// Play/pause controls overlay for video player.
+class _VideoControls extends StatefulWidget {
+  const _VideoControls({required this.controller});
+
+  final VideoPlayerController controller;
+
+  @override
+  State<_VideoControls> createState() => _VideoControlsState();
+}
+
+class _VideoControlsState extends State<_VideoControls> {
+  bool _showControls = true;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onPlaybackUpdate);
+  }
+
+  void _onPlaybackUpdate() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onPlaybackUpdate);
+    super.dispose();
+  }
+
+  void _togglePlay() {
+    setState(() {
+      if (widget.controller.value.isPlaying) {
+        widget.controller.pause();
+      } else {
+        widget.controller.play();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final value = widget.controller.value;
+    final isPlaying = value.isPlaying;
+    final position = value.position;
+    final duration = value.duration;
+    final progress =
+        duration.inMilliseconds > 0
+            ? position.inMilliseconds / duration.inMilliseconds
+            : 0.0;
+
+    return GestureDetector(
+      onTap: () => setState(() => _showControls = !_showControls),
+      child: AnimatedOpacity(
+        opacity: _showControls ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 300),
+        child: Container(
+          color: Colors.black26,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Play/pause button
+              IconButton(
+                icon: Icon(
+                  isPlaying ? Icons.pause_circle : Icons.play_circle,
+                  color: Colors.white,
+                  size: 64,
+                ),
+                onPressed: _togglePlay,
+              ),
+              // Progress bar at bottom
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Column(
+                  children: [
+                    SliderTheme(
+                      data: const SliderThemeData(
+                        trackHeight: 3,
+                        thumbShape: RoundSliderThumbShape(enabledThumbRadius: 6),
+                      ),
+                      child: Slider(
+                        value: progress.clamp(0.0, 1.0),
+                        activeColor: Colors.white,
+                        inactiveColor: Colors.white24,
+                        onChanged: (v) {
+                          final pos =
+                              Duration(milliseconds: (v * duration.inMilliseconds).round());
+                          widget.controller.seekTo(pos);
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${position.inMinutes}:${(position.inSeconds % 60).toString().padLeft(2, '0')}',
+                            style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          ),
+                          Text(
+                            '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}',
+                            style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
