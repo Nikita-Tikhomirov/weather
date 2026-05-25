@@ -208,13 +208,11 @@ class _ContactList extends StatelessWidget {
           backgroundImage: NetworkImage(
               url.startsWith('/') ? 'http://31.129.97.211$url' : url),
           onBackgroundImageError: (_, __) {},
-          child: const Icon(Icons.person),
         );
       }
       return CircleAvatar(
         backgroundImage: FileImage(File(url)),
         onBackgroundImageError: (_, __) {},
-        child: const Icon(Icons.person),
       );
     }
     return const CircleAvatar(child: Icon(Icons.person));
