@@ -53,7 +53,7 @@ Artisan::command('chat:media-migrate {--delete-local}', function () {
             '/storage/profile_avatars/' => 'profile_avatars/',
         ] as $prefix => $targetPrefix) {
             if (str_starts_with($url, $prefix)) {
-                $path = $targetPrefix.basename($url);
+                $path = $targetPrefix.ltrim(substr($url, strlen($prefix)), '/');
                 break;
             }
         }
