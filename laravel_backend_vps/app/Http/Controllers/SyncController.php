@@ -111,51 +111,6 @@ class SyncController extends Controller
                 'ok' => true,
                 'accepted' => $accepted,
                 'duplicates' => $duplicates,
-                'telegram' => ['disabled' => true],
-                'push' => $pushStats,
-                'server_time' => $this->repo->nowIso(),
-            ]);
-        } catch (InvalidArgumentException $e) {
-            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
-        } catch (Throwable $e) {
-            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
-        }
-    }
-
-    public function telegramEvents(Request $request): JsonResponse
-    {
-        try {
-            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
-            $events = $request->input('events', []);
-            if (!is_array($events)) {
-                throw new InvalidArgumentException('events must be array');
-            }
-
-            $accepted = 0;
-            $duplicates = 0;
-            $queued = 0;
-
-            foreach ($events as $event) {
-                if (!is_array($event)) {
-                    continue;
-                }
-                $result = $this->applyEvent($event, $actor, 'telegram');
-                if ($result['status'] === 'accepted') {
-                    $accepted++;
-                    $queued += (int)($result['push_queued'] ?? 0);
-                } elseif ($result['status'] === 'duplicate') {
-                    $duplicates++;
-                }
-            }
-
-            $pushStats = $this->pushOutbox->retryDue();
-            $pushStats['queued'] = $queued;
-
-            return $this->json(200, [
-                'ok' => true,
-                'accepted' => $accepted,
-                'duplicates' => $duplicates,
-                'telegram' => ['disabled' => true],
                 'push' => $pushStats,
                 'server_time' => $this->repo->nowIso(),
             ]);
@@ -389,11 +344,6 @@ class SyncController extends Controller
         } catch (Throwable $e) {
             return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
         }
-    }
-
-    public function telegramOutboxRetry(): JsonResponse
-    {
-        return $this->json(200, ['ok' => true, 'result' => ['disabled' => true]]);
     }
 
     public function pushOutboxRetry(): JsonResponse

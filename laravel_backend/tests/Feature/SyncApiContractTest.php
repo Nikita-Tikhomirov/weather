@@ -77,7 +77,6 @@ class SyncApiContractTest extends TestCase
                 'ok',
                 'accepted',
                 'duplicates',
-                'telegram',
                 'push',
                 'server_time',
             ])

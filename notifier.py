@@ -1,22 +1,14 @@
 ﻿import json
 import html
-import os
 import subprocess
 import threading
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Callable
 
-import requests
-
 
 BASE_DIR = Path(__file__).resolve().parent
 NIRCMD_PATH = BASE_DIR / "nircmd.exe"
-TELEGRAM_STATE_PATH = BASE_DIR / "family_data" / "telegram_state.json"
-
-ADULTS = {"nik", "nastya"}
-CHILDREN = {"misha", "arisha"}
-
 _MESSAGE_LISTENERS: list[Callable[[str], None]] = []
 _CTX = threading.local()
 
@@ -146,116 +138,6 @@ def _notify_listeners(text: str) -> None:
             continue
 
 
-def _telegram_token() -> str:
-    return os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
-
-
-def family_chat_ids() -> list[int]:
-    raw = os.getenv("TELEGRAM_FAMILY_CHAT_IDS", "").strip()
-    if not raw:
-        return []
-    out: list[int] = []
-    for part in raw.split(","):
-        part = part.strip()
-        if not part:
-            continue
-        try:
-            out.append(int(part))
-        except ValueError:
-            continue
-    return out
-
-
-def _load_state() -> dict:
-    if not TELEGRAM_STATE_PATH.exists():
-        return {}
-    try:
-        return json.loads(TELEGRAM_STATE_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-
-
-def _identity_chat_map() -> dict[str, list[int]]:
-    state = _load_state()
-    raw = state.get("chat_identity", {})
-    result: dict[str, list[int]] = {}
-    if not isinstance(raw, dict):
-        return result
-    for chat_id_raw, identity in raw.items():
-        if not isinstance(identity, str) or not identity:
-            continue
-        chat_id: int | None = None
-        if isinstance(chat_id_raw, int):
-            chat_id = chat_id_raw
-        elif isinstance(chat_id_raw, str) and chat_id_raw.strip().lstrip("-").isdigit():
-            chat_id = int(chat_id_raw.strip())
-        if chat_id is None:
-            continue
-        result.setdefault(identity, []).append(chat_id)
-    return result
-
-
-def _recipients_for_owner(owner: str) -> set[str]:
-    if owner in ADULTS or owner in CHILDREN:
-        return {owner}
-    return set()
-
-
-def telegram_api(method: str) -> str:
-    token = _telegram_token()
-    if not token:
-        raise RuntimeError("TELEGRAM_BOT_TOKEN не задан")
-    return f"https://api.telegram.org/bot{token}/{method}"
-
-
-def send_telegram_message(
-    chat_id: int,
-    text: str,
-    *,
-    disable_notification: bool = False,
-    reply_markup: dict | None = None,
-) -> bool:
-    token = _telegram_token()
-    if not token:
-        return False
-    payload: dict[str, object] = {
-        "chat_id": chat_id,
-        "text": text,
-        "disable_notification": disable_notification,
-    }
-    if reply_markup:
-        payload["reply_markup"] = reply_markup
-    try:
-        requests.post(telegram_api("sendMessage"), json=payload, timeout=12)
-        return True
-    except Exception:
-        return False
-
-
-def push_to_family(text: str, *, disable_notification: bool = False) -> None:
-    for chat_id in family_chat_ids():
-        send_telegram_message(chat_id, text, disable_notification=disable_notification)
-
-
-def push_by_visibility(owner: str, text: str, *, disable_notification: bool = False) -> None:
-    mapping = _identity_chat_map()
-    identities = _recipients_for_owner(owner)
-    if not identities:
-        return
-
-    chat_ids: set[int] = set()
-    for identity in identities:
-        for cid in mapping.get(identity, []):
-            chat_ids.add(cid)
-
-    if not chat_ids:
-        # fallback for first setup if identity mapping is not configured yet
-        chat_ids.update(family_chat_ids())
-
-    for chat_id in sorted(chat_ids):
-        send_telegram_message(chat_id, text, disable_notification=disable_notification)
-
-
 def _windows_toast(title: str, message: str) -> bool:
     escaped_title = html.escape(title)
     escaped_message = html.escape(message)
@@ -344,8 +226,5 @@ def notify_event(event: str, **fields: object) -> None:
     else:
         desktop_notify(f"Изменение расписания: {event_label}", title="Семейное расписание")
 
-    message = "\n".join(all_lines)
-    if owner:
-        push_by_visibility(owner, message)
-    else:
-        push_to_family(message)
+    # Telegram delivery has been removed. Push notifications are handled
+    # by the backend (FCM) and desktop toasts only.

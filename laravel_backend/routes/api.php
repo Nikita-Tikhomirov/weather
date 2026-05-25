@@ -15,17 +15,11 @@ Route::middleware('sync.apikey')->group(function (): void {
     Route::post('/sync/push', [SyncController::class, 'push']);
     Route::post('/sync_push.php', [SyncController::class, 'push']);
 
-    Route::post('/telegram/events', [SyncController::class, 'telegramEvents']);
-    Route::post('/telegram_events.php', [SyncController::class, 'telegramEvents']);
-
     Route::post('/devices/register', [SyncController::class, 'registerDevice']);
     Route::post('/devices_register.php', [SyncController::class, 'registerDevice']);
 
     Route::post('/devices/unregister', [SyncController::class, 'unregisterDevice']);
     Route::post('/devices_unregister.php', [SyncController::class, 'unregisterDevice']);
-
-    Route::post('/telegram/outbox/retry', [SyncController::class, 'telegramOutboxRetry']);
-    Route::post('/telegram_outbox_retry.php', [SyncController::class, 'telegramOutboxRetry']);
 
     Route::post('/push/outbox/retry', [SyncController::class, 'pushOutboxRetry']);
     Route::post('/push_outbox_retry.php', [SyncController::class, 'pushOutboxRetry']);

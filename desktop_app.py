@@ -8,7 +8,6 @@ charts, and sync-polling orchestration.
 
 Classes:
   VoiceWorker        - background thread for voice commands
-  BotProcessHost     - manages the Telegram bot subprocess
   DatePickerPopup    - calendar date-picker modal
   TaskEditorPopup    - task create/edit modal
   FamilyTaskPopup    - family task create/edit modal
@@ -258,58 +257,6 @@ class VoiceWorker(threading.Thread):
         finally:
             self._on_state(False)
             self._on_log("Голосовой режим выключен")
-
-
-class BotProcessHost:
-    def __init__(self, on_log):
-        self._on_log = on_log
-        self._process: subprocess.Popen | None = None
-
-    def is_running(self) -> bool:
-        return self._process is not None and self._process.poll() is None
-
-    def start(self) -> bool:
-        if self.is_running():
-            return True
-        if getattr(sys, "frozen", False):
-            cmd = [sys.executable, "--bot-only"]
-        else:
-            cmd = [sys.executable, str(Path(__file__).resolve()), "--bot-only"]
-        try:
-            env = os.environ.copy()
-            env.setdefault("TODO_BACKEND_SOURCE", "telegram")
-            self._process = subprocess.Popen(cmd, cwd=str(Path(__file__).resolve().parent), env=env)
-            time.sleep(0.6)
-            if self._process.poll() is not None:
-                code = self._process.returncode
-                self._on_log(
-                    f"Встроенный Telegram-бот не удержал запуск (код {code}). "
-                    "Возможен уже активный --bot-only процесс."
-                )
-                self._process = None
-                return False
-            self._on_log("Встроенный Telegram-бот запущен")
-            return True
-        except Exception as exc:
-            self._on_log(f"Не удалось запустить Telegram-бота: {exc}")
-            self._process = None
-            return False
-
-    def stop(self) -> None:
-        if not self.is_running():
-            self._process = None
-            return
-        try:
-            self._process.terminate()
-            self._process.wait(timeout=5)
-        except Exception:
-            try:
-                self._process.kill()
-            except Exception:
-                pass
-        finally:
-            self._process = None
-            self._on_log("Встроенный Telegram-бот остановлен")
 
 
 class DatePickerPopup(ctk.CTkToplevel):
@@ -676,9 +623,7 @@ class DesktopTodoApp(ctk.CTk):
         self.selection_mode = False
         self.selected_ids: set[int] = set()
         self.voice_var = ctk.BooleanVar(value=False)
-        self.bot_var = ctk.BooleanVar(value=False)
         self.voice_worker: VoiceWorker | None = None
-        self.bot_host = BotProcessHost(on_log=self._append_log)
         self._cache_person_key: str | None = None
         self._cache_todos: list[dict] = []
         self._drag_id: int = 0
@@ -760,8 +705,6 @@ class DesktopTodoApp(ctk.CTk):
         self.theme_menu.pack(side="left", padx=(0, 8))
         self.voice_switch = ctk.CTkSwitch(self.top_actions, text="Голос", variable=self.voice_var, command=self.toggle_voice)
         self.voice_switch.pack(side="left", padx=(0, 8))
-        self.bot_switch = ctk.CTkSwitch(self.top_actions, text="Бот", variable=self.bot_var, command=self.toggle_bot)
-        self.bot_switch.pack(side="left", padx=(0, 8))
         self.new_task_button = ctk.CTkButton(self.top_actions, text="+ Новая задача", command=lambda: self.open_task_editor(None))
         self.new_task_button.pack(side="left")
         self.sidebar = ctk.CTkFrame(
@@ -879,7 +822,6 @@ class DesktopTodoApp(ctk.CTk):
         self.page_title.configure(text_color=self._c("text_primary"))
         self.new_task_button.configure(fg_color=self._c("accent"), hover_color=self._c("accent_hover"))
         self.voice_switch.configure(text_color=self._c("text_primary"))
-        self.bot_switch.configure(text_color=self._c("text_primary"))
         for menu in (self.person_menu, self.appearance_menu, self.theme_menu):
             menu.configure(
                 fg_color=self._c("selected_nav_bg"),
@@ -1993,17 +1935,6 @@ class DesktopTodoApp(ctk.CTk):
             self.voice_worker.stop()
         self.voice_var.set(False)
 
-    def toggle_bot(self) -> None:
-        if self.bot_var.get():
-            if not os.getenv("TELEGRAM_BOT_TOKEN", "").strip():
-                self._append_log("Нельзя включить бота: TELEGRAM_BOT_TOKEN не задан")
-                self.bot_var.set(False)
-                return
-            self.bot_var.set(self.bot_host.start())
-            return
-        self.bot_host.stop()
-        self.bot_var.set(False)
-
     def on_close(self) -> None:
         if self._sync_poll_after_id is not None:
             try:
@@ -2019,19 +1950,10 @@ class DesktopTodoApp(ctk.CTk):
             self._sync_notify_flush_after_id = None
         if self.voice_worker:
             self.voice_worker.stop()
-        self.bot_host.stop()
         self.destroy()
 
 
-def run_bot_only() -> None:
-    import telegram_bot
-    telegram_bot.main()
-
-
 def main() -> None:
-    if "--bot-only" in sys.argv:
-        run_bot_only()
-        return
     app = DesktopTodoApp()
     app.mainloop()
 

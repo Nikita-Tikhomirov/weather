@@ -6,7 +6,6 @@ require_once dirname(__DIR__) . '/src/bootstrap.php';
 require_once dirname(__DIR__) . '/src/db.php';
 require_once dirname(__DIR__) . '/src/auth.php';
 require_once dirname(__DIR__) . '/src/repository.php';
-require_once dirname(__DIR__) . '/src/telegram_outbox.php';
 require_once dirname(__DIR__) . '/src/push_outbox.php';
 
 function apply_event(PDO $db, array $event, string $actor, string $source): array
@@ -68,19 +67,6 @@ function apply_event(PDO $db, array $event, string $actor, string $source): arra
     }
 
     register_event($db, $eventId, $source);
-    if ($source !== 'telegram') {
-        // Only notify for family tasks via Telegram
-        if ($entity === 'family_task') {
-            enqueue_telegram_event($db, $eventId, [
-            'event_id' => $eventId,
-            'entity' => $entity,
-            'action' => $action,
-            'payload' => $payload,
-            'actor_profile' => $actor,
-        ], $recipients);
-        }
-    }
-    // Delivery policy: Telegram messages only.
     return ['status' => 'accepted'];
 }
 
@@ -209,61 +195,13 @@ try {
             throw $inner;
         }
 
-        $telegramResult = process_outbox($db, $config, 200);
         json_response(200, [
             'ok' => true,
             'accepted' => $accepted,
             'duplicates' => $duplicates,
-            'telegram' => $telegramResult,
             'push' => ['disabled' => true],
             'server_time' => iso_now(),
         ]);
-        exit;
-    }
-
-    if ($method === 'POST' && $path === '/telegram/events') {
-        require_api_key($config);
-        $body = read_json_body();
-        $actor = ensure_actor((string)($body['actor_profile'] ?? ''));
-        $events = $body['events'] ?? [];
-        if (!is_array($events)) {
-            throw new InvalidArgumentException('events must be array');
-        }
-        $accepted = 0;
-        $duplicates = 0;
-        $db->beginTransaction();
-        try {
-            foreach ($events as $event) {
-                if (!is_array($event)) {
-                    continue;
-                }
-                $result = apply_event($db, $event, $actor, 'telegram');
-                if ($result['status'] === 'accepted') {
-                    $accepted++;
-                } elseif ($result['status'] === 'duplicate') {
-                    $duplicates++;
-                }
-            }
-            $db->commit();
-        } catch (Throwable $inner) {
-            $db->rollBack();
-            throw $inner;
-        }
-        $telegramResult = process_outbox($db, $config, 200);
-        json_response(200, [
-            'ok' => true,
-            'accepted' => $accepted,
-            'duplicates' => $duplicates,
-            'telegram' => $telegramResult,
-            'push' => ['disabled' => true],
-        ]);
-        exit;
-    }
-
-    if ($method === 'POST' && $path === '/telegram/outbox/retry') {
-        require_api_key($config);
-        $result = process_outbox($db, $config);
-        json_response(200, ['ok' => true, 'result' => $result]);
         exit;
     }
 

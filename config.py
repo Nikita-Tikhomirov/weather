@@ -49,7 +49,6 @@ COMMAND_DEFINITIONS: tuple[tuple[str, str | None, bool], ...] = (
     ("тудушка", "family_todo.py", False),
     ("туду", "family_todo.py", False),
     ("задачи", "family_todo.py", False),
-    ("телеграм бот", "telegram_bot.py", False),
     ("зоны", "audio_zones_voice.py", False),
     ("выход", None, True),
 )

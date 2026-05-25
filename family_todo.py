@@ -8,7 +8,7 @@ This module handles:
   - Backend sync (pull snapshot, pull delta, push events)
   - Family task CRUD with conflict detection
 
-Presentation (UI) lives in desktop_app.py and telegram_bot.py.
+Presentation (UI) lives in desktop_app.py.
 Storage abstractions live in todo_storage.py.
 Task operations live in todo_ops.py.
 Command routing lives in todo_router.py.
