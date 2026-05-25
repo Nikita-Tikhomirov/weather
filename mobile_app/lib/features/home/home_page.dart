@@ -1879,43 +1879,59 @@ class _HomePageState extends State<HomePage> {
     if (mounted) setState(() {});
 
     try {
-      // Phase 1: Compress video (0% → 30%)
+      // Phase 1: Compress video (0% → 25%)
       _updateUploadProgress(conversationKey, clientId, 0, 1, 0.0);
       final compressStart = DateTime.now();
 
-      final compressedFile = await _compressVideo(video.path, (progress) {
-        // progress 0..1 → mapped to 0.0..0.3
-        final p = progress * 0.3;
-        _updateUploadProgress(conversationKey, clientId, 0, 1, p);
+      // Simulate smooth progress during compression
+      Timer? compressTimer;
+      double simProgress = 0.0;
+      compressTimer = Timer.periodic(const Duration(milliseconds: 80), (t) {
+        simProgress += 0.01;
+        if (simProgress > 0.24) simProgress = 0.24;
+        _updateUploadProgress(conversationKey, clientId, 0, 1, simProgress);
       });
+
+      final compressedFile = await _compressVideo(video.path, (_) {});
+      compressTimer?.cancel();
+      _updateUploadProgress(conversationKey, clientId, 0, 1, 0.25);
 
       final compressMs =
           DateTime.now().difference(compressStart).inMilliseconds;
       debugPrint(
           'Video compression took ${compressMs}ms, path: $compressedFile');
 
-      // Phase 2: Read compressed file (30% → 35%)
+      // Phase 2: Read compressed file (25% → 30%)
       final compressedMedia = compressedFile != null
           ? File(compressedFile)
           : File(video.path);
 
-      _updateUploadProgress(conversationKey, clientId, 0, 1, 0.3);
-      final bytes = await compressedMedia.readAsBytes();
-      _updateUploadProgress(conversationKey, clientId, 0, 1, 0.35);
+      // Simulate smooth progress during read
+      double readProgress = 0.25;
+      Timer? readTimer;
+      readTimer = Timer.periodic(const Duration(milliseconds: 60), (t) {
+        readProgress += 0.01;
+        if (readProgress > 0.29) readProgress = 0.29;
+        _updateUploadProgress(conversationKey, clientId, 0, 1, readProgress);
+      });
 
-      // Phase 3: Upload with real network progress (35% → 90%)
+      final bytes = await compressedMedia.readAsBytes();
+      readTimer?.cancel();
+      _updateUploadProgress(conversationKey, clientId, 0, 1, 0.30);
+
+      // Phase 3: Upload with real network progress (30% → 98%)
       final uploaded = await api.chatUploadMedia(
         actorProfile: actor,
         bytes: bytes,
         filename: 'video_compressed.mp4',
         onProgress: (progress) {
-          // progress 0..1 → mapped to 0.35..0.90
-          final p = 0.35 + (progress * 0.55);
+          // progress 0..1 → mapped to 0.30..0.98 with 1% steps
+          final p = 0.30 + (progress * 0.68);
           _updateUploadProgress(conversationKey, clientId, 0, 1, p);
         },
       );
 
-      _updateUploadProgress(conversationKey, clientId, 0, 1, 0.92);
+      _updateUploadProgress(conversationKey, clientId, 0, 1, 0.98);
       final meta = Map<String, dynamic>.from(uploaded.imageMeta);
 
       final attachment = ChatAttachment(

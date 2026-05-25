@@ -394,6 +394,9 @@ class ChatMessageBubble extends StatelessWidget {
   Widget _buildVideoBubble(BuildContext context) {
     final urls = _attachmentUrlsForKinds(['video']);
     final cs = Theme.of(context).colorScheme;
+    final thumbUrl = message.imageUrl is String && (message.imageUrl as String).isNotEmpty
+        ? message.imageUrl as String
+        : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -413,16 +416,15 @@ class ChatMessageBubble extends StatelessWidget {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  Container(
-                    width: compact ? 260 : 420,
-                    height: compact ? 180 : 280,
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Center(
-                      child: Icon(Icons.videocam,
-                          size: 56, color: Color(0xFF6B7280)),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      width: compact ? 260 : 420,
+                      height: compact ? 180 : 280,
+                      child: _VideoThumbnail(
+                        url: _bubbleAssetUrl(urls[i]),
+                        thumbnailUrl: thumbUrl != null ? _bubbleAssetUrl(thumbUrl) : null,
+                      ),
                     ),
                   ),
                   Container(
@@ -578,12 +580,11 @@ class ChatMessageBubble extends StatelessWidget {
       return 'Завершение...';
     }
     // Video has phases: compress → read → upload → finalize
-    if (progress < 0.05) return 'Подготовка...';
-    if (progress < 0.30) return 'Сжатие...';
-    if (progress < 0.35) return 'Чтение...';
-    if (progress < 0.85) return 'Загрузка...';
-    if (progress < 0.95) return 'Завершение...';
-    return 'Отправка...';
+    if (progress < 0.01) return 'Подготовка...';
+    if (progress < 0.25) return 'Сжатие...';
+    if (progress < 0.30) return 'Чтение...';
+    if (progress < 0.98) return 'Загрузка...';
+    return 'Завершение...';
   }
 
   Widget _buildAudioBubble(BuildContext context) {
@@ -1003,6 +1004,7 @@ class _VideoPlayerScreen extends StatefulWidget {
 }
 
 class _VideoPlayerScreenState extends State<_VideoPlayerScreen> {
+  final _ctrlKey = GlobalKey<_VideoControlsState>();
   VideoPlayerController? _controller;
   bool _ready = false;
   bool _hasError = false;
@@ -1052,9 +1054,7 @@ class _VideoPlayerScreenState extends State<_VideoPlayerScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Center(
-        child: _buildBody(),
-      ),
+      body: _buildBody(),
     );
   }
 
@@ -1071,24 +1071,120 @@ class _VideoPlayerScreenState extends State<_VideoPlayerScreen> {
       );
     }
     if (!_ready || _controller == null) {
-      return const CircularProgressIndicator(color: Colors.white);
+      return const Center(child: CircularProgressIndicator(color: Colors.white));
     }
-    return AspectRatio(
-      aspectRatio: _controller!.value.aspectRatio,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          VideoPlayer(_controller!),
-          _VideoControls(controller: _controller!),
-        ],
+    return Column(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () => _ctrlKey.currentState?.toggleVisibility(),
+            child: Stack(
+              fit: StackFit.expand,
+              alignment: Alignment.center,
+              children: [
+                VideoPlayer(_controller!),
+                _VideoControls(key: _ctrlKey, controller: _controller!),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Loads the first frame of a video as thumbnail, falls back to videocam icon.
+class _VideoThumbnail extends StatefulWidget {
+  const _VideoThumbnail({required this.url, this.thumbnailUrl});
+
+  final String url;
+  final String? thumbnailUrl;
+
+  @override
+  State<_VideoThumbnail> createState() => _VideoThumbnailState();
+}
+
+class _VideoThumbnailState extends State<_VideoThumbnail> {
+  VideoPlayerController? _ctrl;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    // Prefer dedicated thumbnail URL
+    if (widget.thumbnailUrl != null && widget.thumbnailUrl!.isNotEmpty) {
+      setState(() => _ready = true);
+      return;
+    }
+    // Otherwise seek to first frame
+    final uri = Uri.tryParse(widget.url);
+    if (uri == null) return;
+    try {
+      final ctrl = VideoPlayerController.networkUrl(uri);
+      await ctrl.initialize();
+      await ctrl.seekTo(const Duration(seconds: 1));
+      await ctrl.play();
+      // Wait one frame then pause
+      await Future.delayed(const Duration(milliseconds: 300));
+      await ctrl.pause();
+      if (mounted) {
+        _ctrl = ctrl;
+        setState(() => _ready = true);
+      }
+    } catch (_) {
+      // keep showing placeholder
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Dedicated thumbnail URL
+    if (widget.thumbnailUrl != null && widget.thumbnailUrl!.isNotEmpty) {
+      return Image.network(
+        widget.thumbnailUrl!,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _placeholder(),
+      );
+    }
+    // VideoPlayer thumbnail
+    if (_ready && _ctrl != null && _ctrl!.value.isInitialized) {
+      return ClipRRect(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: _ctrl!.value.size.width,
+            height: _ctrl!.value.size.height,
+            child: VideoPlayer(_ctrl!),
+          ),
+        ),
+      );
+    }
+    return _placeholder();
+  }
+
+  Widget _placeholder() {
+    return Container(
+      color: const Color(0xFF374151),
+      child: const Center(
+        child: Icon(Icons.videocam, size: 56, color: Color(0xFF6B7280)),
       ),
     );
   }
 }
 
-/// Play/pause controls overlay for video player.
+/// Play/pause + progress controls at bottom, full width.
 class _VideoControls extends StatefulWidget {
-  const _VideoControls({required this.controller});
+  const _VideoControls({super.key, required this.controller});
 
   final VideoPlayerController controller;
 
@@ -1115,6 +1211,10 @@ class _VideoControlsState extends State<_VideoControls> {
     super.dispose();
   }
 
+  void toggleVisibility() {
+    setState(() => _showControls = !_showControls);
+  }
+
   void _togglePlay() {
     setState(() {
       if (widget.controller.value.isPlaying) {
@@ -1131,76 +1231,90 @@ class _VideoControlsState extends State<_VideoControls> {
     final isPlaying = value.isPlaying;
     final position = value.position;
     final duration = value.duration;
-    final progress =
-        duration.inMilliseconds > 0
-            ? position.inMilliseconds / duration.inMilliseconds
-            : 0.0;
+    final progress = duration.inMilliseconds > 0
+        ? position.inMilliseconds / duration.inMilliseconds
+        : 0.0;
 
-    return GestureDetector(
-      onTap: () => setState(() => _showControls = !_showControls),
-      child: AnimatedOpacity(
-        opacity: _showControls ? 1.0 : 0.0,
-        duration: const Duration(milliseconds: 300),
-        child: Container(
-          color: Colors.black26,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Play/pause button
-              IconButton(
-                icon: Icon(
-                  isPlaying ? Icons.pause_circle : Icons.play_circle,
-                  color: Colors.white,
-                  size: 64,
-                ),
-                onPressed: _togglePlay,
+    final posStr =
+        '${position.inMinutes}:${(position.inSeconds % 60).toString().padLeft(2, '0')}';
+    final durStr =
+        '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}';
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Center play/pause
+        Center(
+          child: AnimatedOpacity(
+            opacity: _showControls ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 300),
+            child: IconButton(
+              icon: Icon(
+                isPlaying ? Icons.pause_circle : Icons.play_circle,
+                color: Colors.white,
+                size: 64,
               ),
-              // Progress bar at bottom
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
+              onPressed: _togglePlay,
+            ),
+          ),
+        ),
+        // Bottom bar
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: AnimatedOpacity(
+            opacity: _showControls ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 300),
+            child: Container(
+              color: Colors.black54,
+              padding: const EdgeInsets.only(bottom: 8, top: 4),
+              child: SafeArea(
+                top: false,
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     SliderTheme(
                       data: const SliderThemeData(
-                        trackHeight: 3,
-                        thumbShape: RoundSliderThumbShape(enabledThumbRadius: 6),
+                        trackHeight: 4,
+                        thumbShape:
+                            RoundSliderThumbShape(enabledThumbRadius: 8),
+                        overlayShape:
+                            RoundSliderOverlayShape(overlayRadius: 16),
                       ),
                       child: Slider(
                         value: progress.clamp(0.0, 1.0),
                         activeColor: Colors.white,
-                        inactiveColor: Colors.white24,
+                        inactiveColor: Colors.white30,
                         onChanged: (v) {
-                          final pos =
-                              Duration(milliseconds: (v * duration.inMilliseconds).round());
-                          widget.controller.seekTo(pos);
+                          final ms =
+                              (v * duration.inMilliseconds).round();
+                          widget.controller
+                              .seekTo(Duration(milliseconds: ms));
                         },
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            '${position.inMinutes}:${(position.inSeconds % 60).toString().padLeft(2, '0')}',
-                            style: const TextStyle(color: Colors.white70, fontSize: 12),
-                          ),
-                          Text(
-                            '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}',
-                            style: const TextStyle(color: Colors.white70, fontSize: 12),
-                          ),
+                          Text(posStr,
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 13)),
+                          Text(durStr,
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 13)),
                         ],
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
