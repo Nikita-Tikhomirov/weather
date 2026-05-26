@@ -26,7 +26,6 @@ jobs:
         with:
           flutter-version: '3.32.0'
           channel: 'stable'
-      - run: flutter clean
       - run: flutter pub get
       - run: flutter test
 
