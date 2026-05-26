@@ -4,12 +4,14 @@ class ChatConversation {
     required this.kind,
     required this.title,
     required this.members,
+    this.avatarUrl,
   });
 
   final String conversationKey;
   final String kind;
   final String title;
   final List<String> members;
+  final String? avatarUrl;
 
   factory ChatConversation.fromJson(Map<String, dynamic> json) {
     final rawMembers = (json['members'] as List? ?? const [])
@@ -21,6 +23,7 @@ class ChatConversation {
       kind: (json['kind'] ?? 'direct').toString(),
       title: (json['title'] ?? '').toString(),
       members: rawMembers,
+      avatarUrl: json['avatar_url']?.toString(),
     );
   }
 
@@ -30,6 +33,7 @@ class ChatConversation {
       'kind': kind,
       'title': title,
       'members': members,
+      if (avatarUrl != null) 'avatar_url': avatarUrl,
     };
   }
 }

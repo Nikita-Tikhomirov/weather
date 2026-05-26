@@ -689,6 +689,21 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     );
   }
 
+  Future<void> setGroupAvatar({
+    required String actorProfile,
+    required String conversationKey,
+    required String avatarUrl,
+  }) async {
+    await _postWithFallback(
+      paths: const ['/chat/conversations/avatar'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'conversation_key': conversationKey,
+        'avatar_url': avatarUrl,
+      }),
+    );
+  }
+
   Future<void> deleteGroup({
     required String actorProfile,
     required String conversationKey,

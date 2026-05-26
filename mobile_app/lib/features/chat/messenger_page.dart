@@ -227,6 +227,24 @@ class _ContactList extends StatelessWidget {
     return const CircleAvatar(child: Icon(Icons.person));
   }
 
+  Widget _buildGroupAvatar(ChatConversation conv) {
+    final url = conv.avatarUrl;
+    if (url != null && url.isNotEmpty) {
+      if (url.startsWith('http') || url.startsWith('/')) {
+        return CircleAvatar(
+          backgroundImage: NetworkImage(
+              url.startsWith('/') ? 'http://31.129.97.211$url' : url),
+          onBackgroundImageError: (_, __) {},
+        );
+      }
+      return CircleAvatar(
+        backgroundImage: FileImage(File(url)),
+        onBackgroundImageError: (_, __) {},
+      );
+    }
+    return const CircleAvatar(child: Icon(Icons.group));
+  }
+
   bool _isGroupConversation(ChatConversation conv) {
     return conv.kind == 'group' ||
         conv.conversationKey == 'group:common' ||
@@ -277,9 +295,7 @@ class _ContactList extends StatelessWidget {
                 ),
                 ...groups.map((conv) {
                   return ListTile(
-                    leading: const CircleAvatar(
-                      child: Icon(Icons.group),
-                    ),
+                    leading: _buildGroupAvatar(conv),
                     title: Text(groupLabel(conv, owner)),
                     onTap: () => onOpenConversation(conv.conversationKey),
                     onLongPress: () => onManageGroup(conv),
@@ -399,6 +415,12 @@ class _ChatHeader extends StatelessWidget {
             )
           : conversations.first,
     );
+    final isGroup = conv.kind == 'group' ||
+        conv.conversationKey == 'group:common' ||
+        conv.conversationKey.startsWith('grp:');
+    final avatarUrl = conv.avatarUrl;
+    const baseUrl = 'http://31.129.97.211';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
@@ -413,7 +435,17 @@ class _ChatHeader extends StatelessWidget {
             tooltip: 'Контакты',
             onPressed: onBackToContacts,
           ),
-          const SizedBox(width: 4),
+          if (isGroup && avatarUrl != null && avatarUrl.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: CircleAvatar(
+                radius: 16,
+                backgroundImage: NetworkImage(
+                  avatarUrl.startsWith('/') ? '$baseUrl$avatarUrl' : avatarUrl,
+                ),
+                onBackgroundImageError: (_, __) {},
+              ),
+            ),
           Expanded(
             child: Text(
               conversationLabel(conv, owner),

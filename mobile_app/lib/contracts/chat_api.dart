@@ -114,6 +114,12 @@ abstract class ChatApi {
     required String title,
   });
 
+  Future<void> setGroupAvatar({
+    required String actorProfile,
+    required String conversationKey,
+    required String avatarUrl,
+  });
+
   Future<void> deleteGroup({
     required String actorProfile,
     required String conversationKey,

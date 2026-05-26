@@ -1308,9 +1308,11 @@ class _HomePageState extends State<HomePage> {
   Future<void> _openManageGroupSheet(
       TaskStore store, ChatConversation conv) async {
     final members = List<String>.from(conv.members);
+    final initialAvatarUrl = conv.avatarUrl;
     final canManage = conv.kind == 'group' ||
         conv.conversationKey == 'group:common' ||
         conv.conversationKey.startsWith('grp:');
+    String? avatarUrl = initialAvatarUrl;
 
     if (!mounted) return;
     await showModalBottomSheet<void>(
@@ -1324,6 +1326,49 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Group avatar — tap to change
+                  GestureDetector(
+                    onTap: canManage
+                        ? () async {
+                            final url = await _pickAndSetGroupAvatar(
+                                store, conv);
+                            if (url != null && url.isNotEmpty) {
+                              setSheetState(() => avatarUrl = url);
+                              setState(() {
+                                final idx = _chatConversations.indexWhere(
+                                    (c) =>
+                                        c.conversationKey ==
+                                        conv.conversationKey);
+                                if (idx >= 0) {
+                                  _chatConversations[idx] = ChatConversation(
+                                    conversationKey: conv.conversationKey,
+                                    kind: conv.kind,
+                                    title: conv.title,
+                                    members: conv.members,
+                                    avatarUrl: url,
+                                  );
+                                }
+                              });
+                            }
+                          }
+                        : null,
+                    child: CircleAvatar(
+                      radius: 36,
+                      backgroundImage: (avatarUrl != null &&
+                              avatarUrl.isNotEmpty)
+                          ? NetworkImage(
+                              avatarUrl.startsWith('/')
+                                  ? 'http://31.129.97.211$avatarUrl'
+                                  : avatarUrl,
+                            )
+                          : null,
+                      onBackgroundImageError: (_, __) {},
+                      child: (avatarUrl == null || avatarUrl.isEmpty)
+                          ? const Icon(Icons.camera_alt, size: 32)
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   Text(
                     conv.title.isNotEmpty ? conv.title : 'Группа',
                     style: const TextStyle(
@@ -1466,32 +1511,95 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Future<String?> _pickAndSetGroupAvatar(
+      TaskStore store, ChatConversation conv) async {
+    final picked = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 512,
+      maxHeight: 512,
+    );
+    if (picked == null) return null;
+    try {
+      final bytes = await picked.readAsBytes();
+      final ext = picked.name.split('.').lastOrNull ?? 'jpg';
+      final uploadResult = await store.repository.api.chatUploadMedia(
+        actorProfile: store.owner.value,
+        bytes: bytes,
+        filename: 'group_avatar.$ext',
+      );
+      final avatarUrl = uploadResult.assetUrl;
+      if (avatarUrl.isEmpty) return null;
+      await store.repository.api.setGroupAvatar(
+        actorProfile: store.owner.value,
+        conversationKey: conv.conversationKey,
+        avatarUrl: avatarUrl,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Аватар обновлён')),
+        );
+      }
+      return avatarUrl;
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка загрузки аватара: $error')),
+        );
+      }
+      return null;
+    }
+  }
+
   Future<String?> _promptGroupTitle(String initial) async {
     if (!mounted) return null;
     final controller = TextEditingController(text: initial);
-    return showDialog<String>(
+    return showModalBottomSheet<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Название группы'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 60,
-          decoration: const InputDecoration(
-            hintText: 'Например: Семья',
-            border: OutlineInputBorder(),
-          ),
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 8,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('Сохранить'),
-          ),
-        ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Название группы',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              maxLength: 60,
+              decoration: const InputDecoration(
+                hintText: 'Например: Семья',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Отмена'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+                  child: const Text('Сохранить'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

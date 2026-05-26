@@ -27,7 +27,7 @@ class LocalDb implements TaskDataSource {
     final dbPath = p.join(basePath, 'family_todo_mobile.db');
     final db = await openDatabase(
       dbPath,
-      version: 6,
+      version: 7,
       onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE tasks(
@@ -98,6 +98,14 @@ class LocalDb implements TaskDataSource {
         }
         if (oldVersion < 6) {
           await _createProjectMessagesTable(db);
+        }
+        if (oldVersion < 7) {
+          await _addColumnIfMissing(
+            db,
+            'chat_conversations',
+            'avatar_url',
+            "TEXT NOT NULL DEFAULT ''",
+          );
         }
       },
     );
@@ -285,6 +293,7 @@ class LocalDb implements TaskDataSource {
         'kind': item.kind,
         'title': item.title,
         'members_json': jsonEncode(item.members),
+        'avatar_url': item.avatarUrl ?? '',
         'updated_at': DateTime.now().toIso8601String(),
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
@@ -318,6 +327,7 @@ class LocalDb implements TaskDataSource {
             'kind': item.kind,
             'title': item.title,
             'members_json': jsonEncode(item.members),
+            'avatar_url': item.avatarUrl ?? '',
             'updated_at': DateTime.now().toIso8601String(),
           },
           conflictAlgorithm: ConflictAlgorithm.replace,
@@ -566,6 +576,7 @@ class LocalDb implements TaskDataSource {
         kind TEXT NOT NULL,
         title TEXT NOT NULL,
         members_json TEXT NOT NULL,
+        avatar_url TEXT NOT NULL DEFAULT '',
         updated_at TEXT NOT NULL
       );
     ''');
