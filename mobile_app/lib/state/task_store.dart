@@ -83,8 +83,6 @@ class TaskStore {
   );
   final ValueNotifier<int> pageIndex = ValueNotifier<int>(0);
   final ValueNotifier<String> searchQuery = ValueNotifier<String>('');
-  final ValueNotifier<String> tasksDateFilter = ValueNotifier<String>('');
-  final ValueNotifier<String> familyFilter = ValueNotifier<String>('upcoming');
   final ValueNotifier<bool> selectionMode = ValueNotifier<bool>(false);
   final ValueNotifier<Set<String>> selectedTaskIds = ValueNotifier<Set<String>>(
     <String>{},
@@ -107,15 +105,12 @@ class TaskStore {
     'in_progress': <TaskItem>[],
     'in_review': <TaskItem>[],
     'done': <TaskItem>[],
+    'archive': <TaskItem>[],
   });
   final ValueNotifier<List<TaskItem>> tasksForSelectedDate =
       ValueNotifier<List<TaskItem>>(const <TaskItem>[]);
-  final ValueNotifier<List<TaskItem>> familyTasksView =
-      ValueNotifier<List<TaskItem>>(const <TaskItem>[]);
   final ValueNotifier<List<TaskItem>> allTasksView =
-      ValueNotifier<List<TaskItem>>(
-    const <TaskItem>[],
-  );
+      ValueNotifier<List<TaskItem>>(const <TaskItem>[]);
   // ── Projects & Family Groups ──
   final ValueNotifier<String> currentProjectId = ValueNotifier<String>('');
   final ValueNotifier<List<TaskProject>> projects =
@@ -160,8 +155,6 @@ class TaskStore {
     loading.value = true;
     owner.value = profile;
     searchQuery.value = '';
-    tasksDateFilter.value = '';
-    familyFilter.value = 'upcoming';
     selectionMode.value = false;
     selectedTaskIds.value = <String>{};
     _lastUndoAction = null;
@@ -187,27 +180,6 @@ class TaskStore {
   void setSearchQuery(String value) {
     searchQuery.value = value.trim().toLowerCase();
     _recomputeKanbanOnly();
-  }
-
-  void setTasksDateFilter(String value) {
-    tasksDateFilter.value = value.trim();
-    _recomputeKanbanOnly();
-  }
-
-  void clearTasksDateFilter() {
-    if (tasksDateFilter.value.isEmpty) {
-      return;
-    }
-    tasksDateFilter.value = '';
-    _recomputeKanbanOnly();
-  }
-
-  void setFamilyFilter(String value) {
-    if (familyFilter.value == value) {
-      return;
-    }
-    familyFilter.value = value;
-    _recomputeFamilyOnly();
   }
 
   void setSelectionMode(bool enabled) {
@@ -468,11 +440,8 @@ class TaskStore {
   }
 
   void _trimSelectionToExisting() {
-    final existingIds = _allTasks
-        .where((task) => !task.isFamily)
-        .map((task) => task.id)
-        .toSet();
-    final trimmed = selectedTaskIds.value.where(existingIds.contains).toSet();
+    final taskIds = _kanbanSource().map((task) => task.id).toSet();
+    final trimmed = selectedTaskIds.value.where(taskIds.contains).toSet();
     if (trimmed.length != selectedTaskIds.value.length) {
       selectedTaskIds.value = trimmed;
     }
@@ -483,7 +452,6 @@ class TaskStore {
     _recomputeDashboardOnly();
     _recomputeKanbanOnly();
     _recomputeDateSlicesOnly();
-    _recomputeFamilyOnly();
   }
 
   void setDesktopTheme({
@@ -531,80 +499,51 @@ class TaskStore {
     );
   }
 
+  /// Returns tasks visible in kanban — filtered by current project if selected,
+  /// otherwise all personal tasks the user is responsible for.
+  List<TaskItem> _kanbanSource() {
+    if (currentProjectId.value.isNotEmpty) {
+      return _allTasks
+          .where((task) =>
+              task.projectId == currentProjectId.value &&
+              task.assignees.contains(owner.value))
+          .toList();
+    }
+    return _allTasks
+        .where((task) => !task.isFamily && task.assignees.contains(owner.value))
+        .toList();
+  }
+
   void _recomputeKanbanOnly() {
-    final selectedDateKey = _dateKey(selectedDate.value);
-    final personalTasks = _allTasks
-        .where((task) => !task.isFamily && task.dueDate == selectedDateKey)
-        .toList()
+    final kanbanTasks = _kanbanSource()
       ..sort(
         (a, b) =>
             ('${a.dueDate} ${a.time}').compareTo('${b.dueDate} ${b.time}'),
       );
 
-    final visibleIds = personalTasks.map((task) => task.id).toSet();
+    final visibleIds = kanbanTasks.map((task) => task.id).toSet();
     final trimmed = selectedTaskIds.value.where(visibleIds.contains).toSet();
     if (trimmed.length != selectedTaskIds.value.length) {
       selectedTaskIds.value = trimmed;
     }
 
     personalByStatus.value = <String, List<TaskItem>>{
-      'todo':
-          personalTasks.where((task) => task.workflowStatus == 'todo').toList(),
-      'in_progress': personalTasks
-          .where((task) => task.workflowStatus == 'in_progress')
-          .toList(),
-      'in_review': personalTasks
-          .where((task) => task.workflowStatus == 'in_review')
-          .toList(),
-      'done':
-          personalTasks.where((task) => task.workflowStatus == 'done').toList(),
+      'todo': kanbanTasks.where((task) => task.workflowStatus == 'todo').toList(),
+      'in_progress': kanbanTasks.where((task) => task.workflowStatus == 'in_progress').toList(),
+      'in_review': kanbanTasks.where((task) => task.workflowStatus == 'in_review').toList(),
+      'done': kanbanTasks.where((task) => task.workflowStatus == 'done').toList(),
+      'archive': kanbanTasks.where((task) => task.workflowStatus == 'archive').toList(),
     };
   }
 
   void _recomputeDateSlicesOnly() {
     final dateKey = _dateKey(selectedDate.value);
-    tasksForSelectedDate.value =
-        _allTasks.where((task) => task.dueDate == dateKey).toList();
-    _recomputeDashboardOnly();
-  }
-
-  void _recomputeFamilyOnly() {
-    final mode = familyFilter.value;
-    final todayKey = _dateKey(DateTime.now());
-    final selectedDateKey = _dateKey(selectedDate.value);
-    final source = _allTasks
-        .where(
-          (task) => task.isFamily && task.assignees.contains(owner.value),
-        )
+    // Show all tasks for the selected date: personal + family, any project
+    tasksForSelectedDate.value = _allTasks
+        .where((task) => task.dueDate == dateKey && task.assignees.contains(owner.value))
         .toList()
-      ..sort(
-        (a, b) =>
-            ('${a.dueDate} ${a.time}').compareTo('${b.dueDate} ${b.time}'),
-      );
-    List<TaskItem> filtered;
-    if (mode == 'done') {
-      filtered = source.where((task) => task.workflowStatus == 'done').toList();
-    } else if (mode == 'overdue') {
-      filtered = source
-          .where(
-            (task) =>
-                task.dueDate.compareTo(todayKey) < 0 &&
-                task.workflowStatus != 'done',
-          )
-          .toList();
-    } else if (mode == 'all') {
-      filtered = source;
-    } else {
-      filtered = source
-          .where(
-            (task) =>
-                task.dueDate.compareTo(todayKey) >= 0 &&
-                task.workflowStatus != 'done',
-          )
-          .toList();
-    }
-    familyTasksView.value =
-        filtered.where((task) => task.dueDate == selectedDateKey).toList();
+      ..sort((a, b) => ('${a.dueDate} ${a.time}').compareTo('${b.dueDate} ${b.time}'));
+    _recomputeDashboardOnly();
   }
 
   String _dateKey(DateTime value) {
@@ -619,15 +558,12 @@ class TaskStore {
     selectedDate.dispose();
     pageIndex.dispose();
     searchQuery.dispose();
-    tasksDateFilter.dispose();
-    familyFilter.dispose();
     selectionMode.dispose();
     selectedTaskIds.dispose();
     canUndo.dispose();
     dashboard.dispose();
     personalByStatus.dispose();
     tasksForSelectedDate.dispose();
-    familyTasksView.dispose();
     allTasksView.dispose();
     currentProjectId.dispose();
     projects.dispose();

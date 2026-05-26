@@ -46,7 +46,7 @@ extension _DesktopShellExtension on _HomePageState {
                       children: [
                         Expanded(
                           child: Text(
-                            'Семейные задачи - $selectedDateKey',
+                            'Задачи - $selectedDateKey',
                             style: TextStyle(
                               color: textPrimary,
                               fontWeight: FontWeight.w700,
@@ -60,17 +60,11 @@ extension _DesktopShellExtension on _HomePageState {
                               showSelectedIcon: false,
                               segments: const [
                                 ButtonSegment(
-                                    value: 0, label: Text('Сводка')),
+                                    value: 0, label: Text('Задачи')),
                                 ButtonSegment(
-                                    value: 1, label: Text('Задачи')),
+                                    value: 1, label: Text('Календарь')),
                                 ButtonSegment(
-                                    value: 2, label: Text('Календарь')),
-                                ButtonSegment(
-                                    value: 3, label: Text('Семья')),
-                                ButtonSegment(
-                                    value: 4, label: Text('Проекты')),
-                                ButtonSegment(
-                                    value: 5, label: Text('Мессенджер')),
+                                    value: 2, label: Text('Мессенджер')),
                               ],
                               selected: {page},
                               onSelectionChanged: (value) =>
@@ -156,10 +150,7 @@ extension _DesktopShellExtension on _HomePageState {
                           valueListenable: store.pageIndex,
                           builder: (context, page, __) {
                             return FilledButton.icon(
-                              onPressed: () => _openTaskEditor(
-                                store,
-                                forceFamily: page == 3,
-                              ),
+                              onPressed: () => _openTaskEditor(store),
                               icon: const Icon(Icons.add),
                               label: const Text('Добавить'),
                             );
@@ -276,54 +267,15 @@ extension _DesktopShellExtension on _HomePageState {
       valueListenable: store.pageIndex,
       builder: (context, page, _) {
         if (page == 0) {
-          return ValueListenableBuilder<DashboardVm>(
-            valueListenable: store.dashboard,
-            builder: (context, vm, __) {
-              return DashboardView(
-                vm: vm,
-                labelFor: _profileLabel,
-                onOpenCalendar: () async {
-                  store.setPage(2);
-                },
-              );
-            },
-          );
-        }
-        if (page == 1) {
-          return ValueListenableBuilder<
-              Map<String, List<TaskItem>>>(
-            valueListenable: store.personalByStatus,
-            builder: (context, byStatus, __) {
-              final selectedDateKey = dateKey(selectedDate);
-              return Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                        12, 10, 12, 6),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          final picked =
-                              await showDatePicker(
-                            context: context,
-                            initialDate: selectedDate,
-                            firstDate: DateTime(2024),
-                            lastDate: DateTime(2035),
-                          );
-                          if (picked != null) {
-                            store.setSelectedDate(picked);
-                          }
-                        },
-                        icon: const Icon(
-                            Icons.calendar_month),
-                        label: Text(
-                            'Дата: $selectedDateKey'),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: DesktopTasksBoard(
+          return Column(
+            children: [
+              _buildProjectSelector(store),
+              Expanded(
+                child: ValueListenableBuilder<
+                    Map<String, List<TaskItem>>>(
+                  valueListenable: store.personalByStatus,
+                  builder: (context, byStatus, __) {
+                    return DesktopTasksBoard(
                       byStatus: byStatus,
                       labelFor: _profileLabel,
                       selectionMode: false,
@@ -331,35 +283,26 @@ extension _DesktopShellExtension on _HomePageState {
                       onToggleSelect: (_) {},
                       onDropStatus: (item, status) async {
                         await store.move(item, status);
-                        await _safeSyncDelta(
-                          store,
-                          showErrors: true,
-                        );
+                        await _safeSyncDelta(store, showErrors: true);
                       },
-                      onEdit: (task) => _openTaskEditor(
-                          store, existing: task),
+                      onEdit: (task) =>
+                          _openTaskEditor(store, existing: task),
                       onDelete: (task) async {
                         await store.delete(task);
-                        await _safeSyncDelta(
-                          store,
-                          showErrors: true,
-                        );
+                        await _safeSyncDelta(store, showErrors: true);
                       },
                       onDoneToggle: (task) async {
                         await store.toggleDone(task);
-                        await _safeSyncDelta(
-                          store,
-                          showErrors: true,
-                        );
+                        await _safeSyncDelta(store, showErrors: true);
                       },
-                    ),
-                  ),
-                ],
-              );
-            },
+                    );
+                  },
+                ),
+              ),
+            ],
           );
         }
-        if (page == 2) {
+        if (page == 1) {
           return ValueListenableBuilder<List<TaskItem>>(
             valueListenable: store.allTasksView,
             builder: (context, tasks, __) {
@@ -377,18 +320,15 @@ extension _DesktopShellExtension on _HomePageState {
                     _moveToDate(store, task, targetDay),
                 onDropToStatus: (task, status) async {
                   await store.move(task, status);
-                  await _safeSyncDelta(store,
-                      showErrors: true);
+                  await _safeSyncDelta(store, showErrors: true);
                 },
                 onOpenEditor: (day, task) async {
                   store.setSelectedDate(day);
-                  await _openTaskEditor(store,
-                      existing: task);
+                  await _openTaskEditor(store, existing: task);
                 },
                 onDelete: (task) async {
                   await store.delete(task);
-                  await _safeSyncDelta(store,
-                      showErrors: true);
+                  await _safeSyncDelta(store, showErrors: true);
                 },
                 onAddForDate: (day) async {
                   store.setSelectedDate(day);
@@ -398,39 +338,7 @@ extension _DesktopShellExtension on _HomePageState {
             },
           );
         }
-        if (page == 3) {
-          return ValueListenableBuilder<String>(
-            valueListenable: store.familyFilter,
-            builder: (context, familyFilter, _) {
-              return ValueListenableBuilder<
-                  List<TaskItem>>(
-                valueListenable: store.familyTasksView,
-                builder: (context, tasks, __) {
-                  return FamilyView(
-                    familyTasks: tasks,
-                    familyFilter: familyFilter,
-                    labelFor: _profileLabel,
-                    onFilterChanged:
-                        store.setFamilyFilter,
-                    onEdit: (task) =>
-                        _openTaskEditor(store,
-                            existing: task),
-                    onDelete: (task) async {
-                      await store.delete(task);
-                      await _safeSyncDelta(store,
-                          showErrors: true);
-                    },
-                  );
-                },
-              );
-            },
-          );
-        }
-        if (page == 4) {
-          return ProjectsAndGroupsScreen(store: store);
-        }
-        return _buildMessengerPage(store,
-            compact: false);
+        return _buildMessengerPage(store, compact: false);
       },
     );
   }

@@ -19,7 +19,6 @@ import '../../domain/task_domain_service.dart';
 import '../chat/call_screen.dart';
 import '../chat/chat_photo_viewer.dart';
 import '../chat/messenger_page.dart';
-import '../family/family_view.dart';
 import '../projects/project_file_browser.dart';
 import '../projects/project_chat_view.dart';
 import '../projects/projects_and_groups_screen.dart';
@@ -79,6 +78,7 @@ class _HomePageState extends State<HomePage> {
   Timer? _incomingCallPollTimer;
   bool _desktopLogExpanded = false;
   DateTime _desktopMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  DateTime _calendarMonth = DateTime(DateTime.now().year, DateTime.now().month);
   final ValueNotifier<String> _fcmDiagnostics =
       ValueNotifier('FCM: not initialized');
   final TextEditingController _chatInputCtl = TextEditingController();
@@ -257,6 +257,24 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       final now = DateTime.now();
       _desktopMonth = DateTime(now.year, now.month);
+      _store?.setSelectedDate(now);
+    });
+  }
+
+  void _goCalendarMonthPrev() {
+    setState(() =>
+        _calendarMonth = DateTime(_calendarMonth.year, _calendarMonth.month - 1));
+  }
+
+  void _goCalendarMonthNext() {
+    setState(() =>
+        _calendarMonth = DateTime(_calendarMonth.year, _calendarMonth.month + 1));
+  }
+
+  void _goCalendarMonthToday() {
+    setState(() {
+      final now = DateTime.now();
+      _calendarMonth = DateTime(now.year, now.month);
       _store?.setSelectedDate(now);
     });
   }
@@ -3637,135 +3655,10 @@ class _HomePageState extends State<HomePage> {
                                 valueListenable: store.pageIndex,
                                 builder: (context, page, ____) {
                                   if (page == 0) {
-                                    return ValueListenableBuilder<DashboardVm>(
-                                      valueListenable: store.dashboard,
-                                      builder: (context, vm, _) {
-                                        return DashboardView(
-                                          vm: vm,
-                                          labelFor: _profileLabel,
-                                          onOpenCalendar: () async {
-                                            final picked = await showDatePicker(
-                                              context: context,
-                                              initialDate: selectedDate,
-                                              firstDate: DateTime(2024),
-                                              lastDate: DateTime(2035),
-                                            );
-                                            if (picked != null) {
-                                              store.setSelectedDate(picked);
-                                            }
-                                          },
-                                        );
-                                      },
-                                    );
+                                    return _buildTasksPage(store);
                                   }
                                   if (page == 1) {
-                                    return ValueListenableBuilder<
-                                        Map<String, List<TaskItem>>>(
-                                      valueListenable: store.personalByStatus,
-                                      builder: (context, byStatus, _) {
-                                        return TasksBoard(
-                                          byStatus: byStatus,
-                                          labelFor: _profileLabel,
-                                          selectionMode: false,
-                                          selectedIds: const <String>{},
-                                          onToggleSelect: (_) {},
-                                          onDrop: (item, status) async {
-                                            await store.move(
-                                              item,
-                                              status,
-                                            );
-                                            await _safeSyncDelta(
-                                              store,
-                                              showErrors: true,
-                                            );
-                                          },
-                                          onEdit: (task) => _openTaskEditor(
-                                            store,
-                                            existing: task,
-                                          ),
-                                          onDelete: (task) async {
-                                            await store.delete(
-                                              task,
-                                            );
-                                            await _safeSyncDelta(
-                                              store,
-                                              showErrors: true,
-                                            );
-                                          },
-                                          onDoneToggle: (task) async {
-                                            await store.toggleDone(
-                                              task,
-                                            );
-                                            await _safeSyncDelta(
-                                              store,
-                                              showErrors: true,
-                                            );
-                                          },
-                                        );
-                                      },
-                                    );
-                                  }
-                                  if (page == 2) {
-                                    return ValueListenableBuilder<
-                                        List<TaskItem>>(
-                                      valueListenable:
-                                          store.tasksForSelectedDate,
-                                      builder: (context, tasks, _) {
-                                        return CalendarView(
-                                          selectedDate: selectedDate,
-                                          tasksForSelectedDate: tasks,
-                                          labelFor: _profileLabel,
-                                          onDateChange: store.setSelectedDate,
-                                          onEdit: (task) => _openTaskEditor(
-                                            store,
-                                            existing: task,
-                                          ),
-                                          onDelete: (task) async {
-                                            await store.delete(task);
-                                            await _safeSyncDelta(
-                                              store,
-                                              showErrors: true,
-                                            );
-                                          },
-                                        );
-                                      },
-                                    );
-                                  }
-                                  if (page == 3) {
-                                    return ValueListenableBuilder<String>(
-                                      valueListenable: store.familyFilter,
-                                      builder: (context, familyFilter, _) {
-                                        return ValueListenableBuilder<
-                                            List<TaskItem>>(
-                                          valueListenable:
-                                              store.familyTasksView,
-                                          builder: (context, tasks, __) {
-                                            return FamilyView(
-                                              familyTasks: tasks,
-                                              familyFilter: familyFilter,
-                                              labelFor: _profileLabel,
-                                              onFilterChanged:
-                                                  store.setFamilyFilter,
-                                              onEdit: (task) => _openTaskEditor(
-                                                store,
-                                                existing: task,
-                                              ),
-                                              onDelete: (task) async {
-                                                await store.delete(task);
-                                                await _safeSyncDelta(
-                                                  store,
-                                                  showErrors: true,
-                                                );
-                                              },
-                                            );
-                                          },
-                                        );
-                                      },
-                                    );
-                                  }
-                                  if (page == 4) {
-                                    return ProjectsAndGroupsScreen(
-                                        store: store);
+                                    return _buildCalendarPage(store);
                                   }
                                   return _buildMessengerPage(store,
                                       compact: true);
@@ -3777,14 +3670,13 @@ class _HomePageState extends State<HomePage> {
                   floatingActionButton: ValueListenableBuilder<int>(
                     valueListenable: store.pageIndex,
                     builder: (context, page, _) {
-                      if (page != 1 && page != 3) {
+                      if (page != 0) {
                         return const SizedBox.shrink();
                       }
                       return FloatingActionButton.extended(
-                        onPressed: () =>
-                            _openTaskEditor(store, forceFamily: page == 3),
+                        onPressed: () => _openTaskEditor(store),
                         icon: const Icon(Icons.add),
-                        label: Text(page == 3 ? 'Семейная задача' : 'Задача'),
+                        label: const Text('Задача'),
                       );
                     },
                   ),
@@ -3798,24 +3690,12 @@ class _HomePageState extends State<HomePage> {
                         },
                         destinations: const [
                           NavigationDestination(
-                            icon: Icon(Icons.dashboard_outlined),
-                            label: 'Сводка',
-                          ),
-                          NavigationDestination(
                             icon: Icon(Icons.view_kanban_outlined),
                             label: 'Задачи',
                           ),
                           NavigationDestination(
                             icon: Icon(Icons.calendar_month_outlined),
                             label: 'Календарь',
-                          ),
-                          NavigationDestination(
-                            icon: Icon(Icons.family_restroom_outlined),
-                            label: 'Семья',
-                          ),
-                          NavigationDestination(
-                            icon: Icon(Icons.folder_outlined),
-                            label: 'Проекты',
                           ),
                           NavigationDestination(
                             icon: Icon(Icons.forum_outlined),
@@ -3826,6 +3706,143 @@ class _HomePageState extends State<HomePage> {
                     },
                   ),
                 );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ── Task management pages (replaces old Dashboard/Kanban/Family/Projects tabs) ──
+
+  Widget _buildTasksPage(TaskStore store) {
+    return Column(
+      children: [
+        // Project selector bar
+        _buildProjectSelector(store),
+        // Kanban board
+        Expanded(
+          child: ValueListenableBuilder<Map<String, List<TaskItem>>>(
+            valueListenable: store.personalByStatus,
+            builder: (context, byStatus, _) {
+              return TasksBoard(
+                byStatus: byStatus,
+                labelFor: _profileLabel,
+                selectionMode: false,
+                selectedIds: const <String>{},
+                onToggleSelect: (_) {},
+                onDrop: (item, status) async {
+                  await store.move(item, status);
+                  await _safeSyncDelta(store, showErrors: true);
+                },
+                onEdit: (task) => _openTaskEditor(store, existing: task),
+                onDelete: (task) async {
+                  await store.delete(task);
+                  await _safeSyncDelta(store, showErrors: true);
+                },
+                onDoneToggle: (task) async {
+                  await store.toggleDone(task);
+                  await _safeSyncDelta(store, showErrors: true);
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProjectSelector(TaskStore store) {
+    return ValueListenableBuilder<List<TaskProject>>(
+      valueListenable: store.projects,
+      builder: (context, projects, _) {
+        return ValueListenableBuilder<String>(
+          valueListenable: store.currentProjectId,
+          builder: (context, currentId, _) {
+            final currentProject = projects.cast<TaskProject?>().firstWhere(
+                  (p) => p?.id == currentId,
+                  orElse: () => null,
+                );
+            final projectName = currentProject?.name ?? 'Все задачи';
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+              child: Row(
+                children: [
+                  Icon(Icons.folder_outlined,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: currentId.isEmpty ? null : currentId,
+                        isExpanded: true,
+                        hint: Text(projectName,
+                            style: Theme.of(context).textTheme.titleSmall),
+                        items: [
+                          const DropdownMenuItem<String>(
+                            value: null,
+                            child: Text('Все задачи (личные)'),
+                          ),
+                          for (final p in projects)
+                            DropdownMenuItem<String>(
+                              value: p.id,
+                              child: Text(p.name),
+                            ),
+                        ],
+                        onChanged: (value) {
+                          store.setCurrentProject(value ?? '');
+                        },
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.settings, size: 20),
+                    tooltip: 'Управление проектами и группами',
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ProjectsAndGroupsScreen(store: store),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCalendarPage(TaskStore store) {
+    return ValueListenableBuilder<List<TaskItem>>(
+      valueListenable: store.allTasksView,
+      builder: (context, allTasks, _) {
+        return ValueListenableBuilder<DateTime>(
+          valueListenable: store.selectedDate,
+          builder: (context, selectedDate, _) {
+            return CalendarView(
+              monthDate: _calendarMonth,
+              selectedDate: selectedDate,
+              allTasks: allTasks,
+              labelFor: _profileLabel,
+              onMonthPrev: _goCalendarMonthPrev,
+              onMonthNext: _goCalendarMonthNext,
+              onGoToday: _goCalendarMonthToday,
+              onSelectDate: (date) {
+                store.setSelectedDate(date);
+              },
+              onEdit: (task) => _openTaskEditor(store, existing: task),
+              onDelete: (task) async {
+                await store.delete(task);
+                await _safeSyncDelta(store, showErrors: true);
+              },
+              onAddForDate: (date) async {
+                store.setSelectedDate(date);
+                await _openTaskEditor(store);
               },
             );
           },

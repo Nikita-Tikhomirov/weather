@@ -65,6 +65,8 @@ class KanbanColumnStyle {
         return const Color(0xFFFBBF24);
       case 'done':
         return const Color(0xFFA78BFA);
+      case 'archive':
+        return const Color(0xFF9CA3AF);
       default:
         return const Color(0xFF94A3B8);
     }
@@ -100,6 +102,7 @@ class TasksBoard extends StatelessWidget {
     'in_progress': 'В работе',
     'in_review': 'На проверке',
     'done': 'Выполнено',
+    'archive': 'Архив',
   };
 
   @override
@@ -342,6 +345,8 @@ class _KanbanColumnHeader extends StatelessWidget {
         return Icons.rate_review_outlined;
       case 'done':
         return Icons.task_alt;
+      case 'archive':
+        return Icons.archive_outlined;
       default:
         return Icons.view_kanban_outlined;
     }
@@ -438,6 +443,7 @@ class DesktopTasksBoard extends StatelessWidget {
     'in_progress': 'В работе',
     'in_review': 'На проверке',
     'done': 'Выполнено',
+    'archive': 'Архив',
   };
 
   @override
@@ -448,7 +454,7 @@ class DesktopTasksBoard extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
           child: SizedBox(
-            width: 4 * 340,
+            width: 5 * 340,
             height: constraints.maxHeight,
             child: Row(
               children: _titles.keys.map((status) {
