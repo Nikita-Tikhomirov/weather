@@ -39,18 +39,18 @@ void main() {
           isNull);
     });
 
-    // ── Family task permissions ──
+    // ── Family task permissions (any registered user can create shared tasks) ──
 
-    test('rejects family task from child profile', () {
+    test('accepts family task from any profile', () {
       final draft = validDraft().copyWith(
         isFamily: true,
         assignees: ['misha'],
       );
-      expect(service.validateDraft(draft: draft, actorProfile: 'misha'),
-          isNotNull);
+      expect(
+          service.validateDraft(draft: draft, actorProfile: 'misha'), isNull);
     });
 
-    test('accepts family task from adult profile', () {
+    test('accepts family task from any profile (nik)', () {
       final draft = validDraft().copyWith(
         isFamily: true,
         assignees: ['misha', 'arisha'],

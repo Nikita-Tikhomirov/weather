@@ -2,7 +2,6 @@ import '../models/task_item.dart';
 import 'task_draft.dart';
 
 class TaskDomainService {
-  static const Set<String> adults = {}; // No longer restricted — any registered user
   static const Set<String> allowedStatuses = {
     'todo',
     'in_progress',
@@ -28,9 +27,6 @@ class TaskDomainService {
   }) {
     if (draft.title.trim().isEmpty) {
       return 'Укажите название задачи.';
-    }
-    if (draft.isFamily && !adults.contains(actorProfile)) {
-      return 'Общие задачи можно создавать только зарегистрированным пользователям.';
     }
     if (draft.isFamily && draft.assignees.isEmpty) {
       return 'Выберите хотя бы одного ответственного.';
