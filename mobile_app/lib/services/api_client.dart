@@ -11,9 +11,11 @@ import '../models/call_models.dart';
 import '../models/chat_models.dart';
 import '../models/chat_snapshots.dart';
 import '../models/device_snapshots.dart';
+import '../models/family_group.dart';
 import '../models/pending_event.dart';
 import '../models/sync_snapshots.dart';
 import '../models/task_item.dart';
+import '../models/task_project.dart';
 
 // Re-export for backward compatibility — consumers that import
 // api_client.dart still see these types.
@@ -154,6 +156,25 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
       source['is_family'] = true;
       return TaskItem.fromJson(source);
     }).toList();
+    final projects = (body['projects'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => TaskProject.fromJson(Map<String, dynamic>.from(row)))
+        .toList();
+    final familyGroups = (body['family_groups'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => FamilyGroup.fromJson(Map<String, dynamic>.from(row)))
+        .toList();
+    final projectGroupMap = <String, List<String>>{};
+    final rawPg = body['project_groups'];
+    if (rawPg is Map) {
+      for (final entry in rawPg.entries) {
+        final pid = entry.key.toString();
+        final gids = (entry.value is List)
+            ? (entry.value as List).map((v) => v.toString()).toList()
+            : <String>[];
+        projectGroupMap[pid] = gids;
+      }
+    }
     final serverTime =
         (body['server_time'] ?? DateTime.now().toIso8601String()).toString();
     final nextCursor = (body['next_cursor'] ?? serverTime).toString();
@@ -164,6 +185,9 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
       serverTime: serverTime,
       nextCursor: nextCursor,
       isDelta: mode == 'changes' || changesMode,
+      projects: projects,
+      familyGroups: familyGroups,
+      projectGroupMap: projectGroupMap,
     );
   }
 
@@ -751,6 +775,148 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
         .whereType<Map>()
         .map((row) => StickerPack.fromJson(Map<String, dynamic>.from(row)))
         .toList();
+  }
+
+  // ---- Projects & Family Groups ----
+
+  Future<List<TaskProject>> listProjects({
+    required String actorProfile,
+  }) async {
+    final response = await _getWithFallback(
+      paths: const ['/projects'],
+      query: {'actor_profile': actorProfile},
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return (body['projects'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => TaskProject.fromJson(Map<String, dynamic>.from(row)))
+        .toList();
+  }
+
+  Future<TaskProject> createProject({
+    required String actorProfile,
+    required String name,
+    String description = '',
+  }) async {
+    final response = await _postWithFallback(
+      paths: const ['/projects/create'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'name': name,
+        'description': description,
+      }),
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return TaskProject.fromJson(
+      Map<String, dynamic>.from(body['project'] as Map),
+    );
+  }
+
+  Future<void> updateProject({
+    required String actorProfile,
+    required String id,
+    required String name,
+    String description = '',
+    List<String>? groupIds,
+  }) async {
+    await _postWithFallback(
+      paths: const ['/projects/update'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'id': id,
+        'name': name,
+        'description': description,
+        if (groupIds != null) 'group_ids': groupIds,
+      }),
+    );
+  }
+
+  Future<void> deleteProject({
+    required String actorProfile,
+    required String id,
+  }) async {
+    await _postWithFallback(
+      paths: const ['/projects/delete'],
+      body: jsonEncode({'actor_profile': actorProfile, 'id': id}),
+    );
+  }
+
+  Future<void> setProjectGroups({
+    required String actorProfile,
+    required String projectId,
+    required List<String> groupIds,
+  }) async {
+    await _postWithFallback(
+      paths: const ['/projects/set-groups'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'project_id': projectId,
+        'group_ids': groupIds,
+      }),
+    );
+  }
+
+  Future<List<FamilyGroup>> listFamilyGroups({
+    required String actorProfile,
+  }) async {
+    final response = await _getWithFallback(
+      paths: const ['/family-groups'],
+      query: {'actor_profile': actorProfile},
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return (body['groups'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => FamilyGroup.fromJson(Map<String, dynamic>.from(row)))
+        .toList();
+  }
+
+  Future<FamilyGroup> createFamilyGroup({
+    required String actorProfile,
+    required String name,
+    required List<String> members,
+  }) async {
+    final response = await _postWithFallback(
+      paths: const ['/family-groups/create'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'name': name,
+        'members': members,
+      }),
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return FamilyGroup.fromJson(
+      Map<String, dynamic>.from(body['group'] as Map),
+    );
+  }
+
+  Future<void> updateFamilyGroup({
+    required String actorProfile,
+    required String id,
+    required String name,
+    List<String>? members,
+  }) async {
+    final payload = <String, dynamic>{
+      'actor_profile': actorProfile,
+      'id': id,
+      'name': name,
+    };
+    if (members != null) {
+      payload['members'] = members;
+    }
+    await _postWithFallback(
+      paths: const ['/family-groups/update'],
+      body: jsonEncode(payload),
+    );
+  }
+
+  Future<void> deleteFamilyGroup({
+    required String actorProfile,
+    required String id,
+  }) async {
+    await _postWithFallback(
+      paths: const ['/family-groups/delete'],
+      body: jsonEncode({'actor_profile': actorProfile, 'id': id}),
+    );
   }
 
   // ---- Call (audio/video) ----

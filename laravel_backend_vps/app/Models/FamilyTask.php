@@ -13,7 +13,7 @@ class FamilyTask extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id', 'title', 'details', 'due_date', 'time_value', 'workflow_status',
+        'id', 'project_id', 'title', 'details', 'due_date', 'time_value', 'workflow_status',
         'participants_json', 'reminder_offsets_json', 'duration_minutes', 'updated_at', 'version',
     ];
 

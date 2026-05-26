@@ -1,4 +1,6 @@
 import '../models/task_item.dart';
+import '../models/task_project.dart';
+import '../models/family_group.dart';
 import '../services/api_client.dart';
 import '../services/local_db.dart';
 import '../services/sync_service.dart';
@@ -25,12 +27,43 @@ class TaskRepository {
   Future<void> syncDelta() async {
     await _ensureReady();
     await _syncService!.syncDelta();
+    await _syncProjectsAndGroups();
   }
 
   Future<void> syncFull() async {
     await _ensureReady();
-    await _syncService!.syncFull();
+    final snapshot = await _syncService!.syncFull();
+    await _applyProjectsAndGroups(snapshot.projects, snapshot.familyGroups,
+        snapshot.projectGroupMap);
   }
+
+  Future<void> _syncProjectsAndGroups() async {
+    try {
+      final snapshot = await api.pull(since: '1970-01-01T00:00:00');
+      await _applyProjectsAndGroups(
+          snapshot.projects, snapshot.familyGroups, snapshot.projectGroupMap);
+    } catch (_) {}
+  }
+
+  Future<void> _applyProjectsAndGroups(List<TaskProject> projects,
+      List<FamilyGroup> groups, Map<String, List<String>> pgMap) async {
+    if (projects.isNotEmpty) {
+      await db.replaceProjects(projects);
+    }
+    if (groups.isNotEmpty) {
+      await db.replaceFamilyGroups(groups);
+    }
+    if (pgMap.isNotEmpty) {
+      await db.replaceProjectGroupMap(pgMap);
+    }
+  }
+
+  Future<List<TaskProject>> readProjects() => db.readProjects();
+
+  Future<List<FamilyGroup>> readFamilyGroups() => db.readFamilyGroups();
+
+  Future<Map<String, List<String>>> readProjectGroupMap() =>
+      db.readProjectGroupMap();
 
   Future<void> upsert(TaskItem task) async {
     await _ensureReady();

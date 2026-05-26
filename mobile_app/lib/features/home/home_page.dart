@@ -22,6 +22,7 @@ import '../chat/messenger_page.dart';
 import '../family/family_view.dart';
 import '../projects/project_file_browser.dart';
 import '../projects/project_chat_view.dart';
+import '../projects/projects_and_groups_screen.dart';
 import '../profile/profile_page.dart';
 import '../tasks/calendar_view.dart';
 import '../tasks/dashboard_view.dart';
@@ -3762,6 +3763,10 @@ class _HomePageState extends State<HomePage> {
                                       },
                                     );
                                   }
+                                  if (page == 4) {
+                                    return ProjectsAndGroupsScreen(
+                                        store: store);
+                                  }
                                   return _buildMessengerPage(store,
                                       compact: true);
                                 },
@@ -3807,6 +3812,10 @@ class _HomePageState extends State<HomePage> {
                           NavigationDestination(
                             icon: Icon(Icons.family_restroom_outlined),
                             label: 'Семья',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(Icons.folder_outlined),
+                            label: 'Проекты',
                           ),
                           NavigationDestination(
                             icon: Icon(Icons.forum_outlined),

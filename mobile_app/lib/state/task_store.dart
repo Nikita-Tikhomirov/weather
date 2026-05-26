@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 
 import '../domain/task_domain_service.dart';
 import '../domain/task_draft.dart';
+import '../models/family_group.dart';
 import '../models/task_item.dart';
+import '../models/task_project.dart';
 import '../repositories/task_repository.dart';
 import '../services/desktop_process_host_service.dart';
 import 'desktop_state.dart';
@@ -114,6 +116,15 @@ class TaskStore {
       ValueNotifier<List<TaskItem>>(
     const <TaskItem>[],
   );
+  // ── Projects & Family Groups ──
+  final ValueNotifier<String> currentProjectId = ValueNotifier<String>('');
+  final ValueNotifier<List<TaskProject>> projects =
+      ValueNotifier<List<TaskProject>>(const <TaskProject>[]);
+  final ValueNotifier<List<FamilyGroup>> familyGroups =
+      ValueNotifier<List<FamilyGroup>>(const <FamilyGroup>[]);
+  final ValueNotifier<Map<String, List<String>>> projectGroupMap =
+      ValueNotifier<Map<String, List<String>>>(const <String, List<String>>{});
+
   // ── Desktop state (theme / voice / logs) extracted ──
   final DesktopState desktop = DesktopState();
 
@@ -138,6 +149,7 @@ class TaskStore {
     selectedDate.value = initialDate ?? DateTime.now();
     await repository.bindActor(initialOwner);
     await refreshLocal();
+    await refreshProjectsAndGroups();
     loading.value = false;
   }
 
@@ -156,6 +168,7 @@ class TaskStore {
     canUndo.value = false;
     await repository.bindActor(profile);
     await refreshLocal();
+    await refreshProjectsAndGroups();
     loading.value = false;
   }
 
@@ -235,6 +248,112 @@ class TaskStore {
   Future<void> syncFull() async {
     await repository.syncFull();
     await refreshLocal();
+    await refreshProjectsAndGroups();
+  }
+
+  // ── Project & group management ──────────────────────────────────────
+
+  Future<void> refreshProjectsAndGroups() async {
+    try {
+      final projList = await repository.readProjects();
+      final grpList = await repository.readFamilyGroups();
+      final pgMap = await repository.readProjectGroupMap();
+      projects.value = projList;
+      familyGroups.value = grpList;
+      projectGroupMap.value = pgMap;
+      // Keep current project valid
+      if (currentProjectId.value.isNotEmpty &&
+          !projList.any((p) => p.id == currentProjectId.value)) {
+        currentProjectId.value = '';
+      }
+    } catch (_) {}
+  }
+
+  void setCurrentProject(String projectId) {
+    if (currentProjectId.value == projectId) return;
+    currentProjectId.value = projectId;
+    _recomputeAllSlices();
+  }
+
+  Future<String> createProject(String name, String description) async {
+    final api = repository.api;
+    final project = await api.createProject(
+      actorProfile: owner.value,
+      name: name,
+      description: description,
+    );
+    await refreshProjectsAndGroups();
+    return project.id;
+  }
+
+  Future<void> editProject(String id, String name, String description,
+      List<String> groupIds) async {
+    final api = repository.api;
+    await api.updateProject(
+      actorProfile: owner.value,
+      id: id,
+      name: name,
+      description: description,
+      groupIds: groupIds,
+    );
+    await refreshProjectsAndGroups();
+  }
+
+  Future<void> deleteProject(String id) async {
+    await repository.api.deleteProject(
+      actorProfile: owner.value,
+      id: id,
+    );
+    if (currentProjectId.value == id) {
+      currentProjectId.value = '';
+    }
+    await refreshProjectsAndGroups();
+  }
+
+  Future<String> createFamilyGroup(String name, List<String> members) async {
+    final group = await repository.api.createFamilyGroup(
+      actorProfile: owner.value,
+      name: name,
+      members: members,
+    );
+    await refreshProjectsAndGroups();
+    return group.id;
+  }
+
+  Future<void> editFamilyGroup(
+      String id, String name, List<String> members) async {
+    await repository.api.updateFamilyGroup(
+      actorProfile: owner.value,
+      id: id,
+      name: name,
+      members: members,
+    );
+    await refreshProjectsAndGroups();
+  }
+
+  Future<void> deleteFamilyGroup(String id) async {
+    await repository.api.deleteFamilyGroup(
+      actorProfile: owner.value,
+      id: id,
+    );
+    await refreshProjectsAndGroups();
+  }
+
+  /// Members of all groups assigned to the current project
+  List<String> get currentProjectGroupMembers {
+    if (currentProjectId.value.isEmpty) return [];
+    final gids = projectGroupMap.value[currentProjectId.value] ?? [];
+    final members = <String>{};
+    for (final gid in gids) {
+      final group = familyGroups.value.cast<FamilyGroup?>().firstWhere(
+            (g) => g?.id == gid,
+            orElse: () => null,
+          );
+      if (group != null) {
+        members.addAll(group.members);
+      }
+    }
+    return members.toList()..sort();
   }
 
   Future<String?> saveDraft({
@@ -510,6 +629,10 @@ class TaskStore {
     tasksForSelectedDate.dispose();
     familyTasksView.dispose();
     allTasksView.dispose();
+    currentProjectId.dispose();
+    projects.dispose();
+    familyGroups.dispose();
+    projectGroupMap.dispose();
     desktop.dispose();
   }
 }

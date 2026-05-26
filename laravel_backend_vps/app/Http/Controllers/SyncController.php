@@ -53,6 +53,9 @@ class SyncController extends Controller
 
             $tasks = $this->repo->changedTasks($since, $actor, $isChangesMode);
             $familyTasks = $this->repo->changedFamilyTasks($since, $isChangesMode);
+            $projects = $this->repo->allProjects();
+            $familyGroups = $this->repo->allFamilyGroups();
+            $projectGroupMap = $this->repo->projectGroupMap();
             $serverTime = $this->repo->nowIso();
             $cursorFallback = $isChangesMode ? $since : $serverTime;
             $nextCursor = Cursor::nextSyncCursor($tasks, $familyTasks, $cursorFallback);
@@ -61,6 +64,9 @@ class SyncController extends Controller
                 'ok' => true,
                 'tasks' => $tasks,
                 'family_tasks' => $familyTasks,
+                'projects' => $projects,
+                'family_groups' => $familyGroups,
+                'project_groups' => $projectGroupMap,
                 'server_time' => $serverTime,
                 'cursor' => $since,
                 'next_cursor' => $nextCursor,

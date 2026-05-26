@@ -68,7 +68,9 @@ extension _DesktopShellExtension on _HomePageState {
                                 ButtonSegment(
                                     value: 3, label: Text('Семья')),
                                 ButtonSegment(
-                                    value: 4, label: Text('Мессенджер')),
+                                    value: 4, label: Text('Проекты')),
+                                ButtonSegment(
+                                    value: 5, label: Text('Мессенджер')),
                               ],
                               selected: {page},
                               onSelectionChanged: (value) =>
@@ -423,6 +425,9 @@ extension _DesktopShellExtension on _HomePageState {
               );
             },
           );
+        }
+        if (page == 4) {
+          return ProjectsAndGroupsScreen(store: store);
         }
         return _buildMessengerPage(store,
             compact: false);

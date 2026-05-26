@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/task_draft.dart';
 import '../../models/chat_models.dart';
 import '../../models/task_item.dart';
+import '../../models/task_project.dart';
 import '../../state/task_store.dart';
 
 const _reminderOptions = <int, String>{
@@ -41,6 +42,7 @@ Future<void> showTaskEditorSheet({
   String priority = existing?.priority ?? 'medium';
   String status = existing?.workflowStatus ?? 'todo';
   bool isFamily = forceFamily || (existing?.isFamily ?? false);
+  String selectedProjectId = existing?.projectId ?? store.currentProjectId.value;
   final selectedReminderOffsets = <int>{
     ...(existing?.reminderOffsetsMinutes ?? const <int>[]),
   };
@@ -166,6 +168,39 @@ Future<void> showTaskEditorSheet({
                         ? null
                         : (value) => setModalState(() => isFamily = value),
                   ),
+                  // Project selector
+                  ValueListenableBuilder<List<TaskProject>>(
+                    valueListenable: store.projects,
+                    builder: (context, projectList, _) {
+                      if (projectList.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return DropdownButtonFormField<String>(
+                        value: projectList.any(
+                                (p) => p.id == selectedProjectId)
+                            ? selectedProjectId
+                            : null,
+                        decoration: const InputDecoration(
+                            labelText: 'Проект'),
+                        hint: const Text('Без проекта'),
+                        items: [
+                          const DropdownMenuItem<String>(
+                            value: '',
+                            child: Text('Без проекта'),
+                          ),
+                          for (final p in projectList)
+                            DropdownMenuItem<String>(
+                              value: p.id,
+                              child: Text(p.name),
+                            ),
+                        ],
+                        onChanged: (value) {
+                          setModalState(() =>
+                              selectedProjectId = value ?? '');
+                        },
+                      );
+                    },
+                  ),
                   if (isFamily) ...[
                     TextField(
                       controller: durationCtl,
@@ -253,6 +288,7 @@ Future<void> showTaskEditorSheet({
                                   int.tryParse(durationCtl.text.trim()) ?? 0,
                               reminderOffsetsMinutes:
                                   selectedReminderOffsets.toList(),
+                              projectId: selectedProjectId,
                             );
                             final messenger =
                                 ScaffoldMessenger.of(sheetContext);

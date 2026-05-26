@@ -13,7 +13,7 @@ class Task extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id', 'owner_key', 'is_family', 'title', 'details', 'due_date', 'time_value',
+        'id', 'owner_key', 'project_id', 'is_family', 'title', 'details', 'due_date', 'time_value',
         'workflow_status', 'priority', 'tags_json', 'participants_json', 'reminder_offsets_json',
         'duration_minutes', 'updated_at', 'version',
     ];

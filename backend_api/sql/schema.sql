@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS tasks (
   id VARCHAR(64) PRIMARY KEY,
   owner_key VARCHAR(32) NOT NULL,
+  project_id VARCHAR(64) NOT NULL DEFAULT '',
   is_family TINYINT(1) NOT NULL DEFAULT 0,
   title VARCHAR(255) NOT NULL,
   details TEXT NOT NULL,
@@ -19,6 +20,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 
 CREATE TABLE IF NOT EXISTS family_tasks (
   id VARCHAR(64) PRIMARY KEY,
+  project_id VARCHAR(64) NOT NULL DEFAULT '',
   title VARCHAR(255) NOT NULL,
   details TEXT NOT NULL,
   due_date VARCHAR(16) NOT NULL DEFAULT '',
@@ -81,4 +83,31 @@ CREATE TABLE IF NOT EXISTS push_outbox (
   updated_at VARCHAR(32) NOT NULL,
   UNIQUE KEY uq_push_outbox_event_token (event_id, token),
   INDEX idx_push_outbox_status_next (status, next_retry_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS task_projects (
+  id VARCHAR(64) PRIMARY KEY,
+  name VARCHAR(128) NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  owner_key VARCHAR(32) NOT NULL,
+  created_at VARCHAR(32) NOT NULL,
+  updated_at VARCHAR(32) NOT NULL,
+  INDEX idx_task_projects_owner (owner_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS family_groups (
+  id VARCHAR(64) PRIMARY KEY,
+  name VARCHAR(128) NOT NULL,
+  members_json JSON NOT NULL,
+  owner_key VARCHAR(32) NOT NULL,
+  created_at VARCHAR(32) NOT NULL,
+  updated_at VARCHAR(32) NOT NULL,
+  INDEX idx_family_groups_owner (owner_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS project_family_groups (
+  project_id VARCHAR(64) NOT NULL,
+  group_id VARCHAR(64) NOT NULL,
+  PRIMARY KEY (project_id, group_id),
+  INDEX idx_pfg_group (group_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

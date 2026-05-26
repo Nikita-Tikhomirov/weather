@@ -67,6 +67,7 @@ class TaskDomainService {
               id: 'm-${now.microsecondsSinceEpoch}',
               ownerKey: draft.isFamily ? 'family' : actorProfile,
               isFamily: draft.isFamily,
+              projectId: draft.projectId,
               title: draft.title.trim(),
               details: draft.details.trim(),
               dueDate: draft.dueDate,
@@ -83,6 +84,7 @@ class TaskDomainService {
         .copyWith(
       ownerKey: draft.isFamily ? 'family' : actorProfile,
       isFamily: draft.isFamily,
+      projectId: draft.projectId,
       title: draft.title.trim(),
       details: draft.details.trim(),
       dueDate: draft.dueDate,

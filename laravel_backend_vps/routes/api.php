@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CallController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\ProjectGroupController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', [SyncController::class, 'health']);
@@ -76,6 +77,17 @@ Route::middleware('sync.apikey')->group(function (): void {
     Route::post('/call/signal', [CallController::class, 'signal']);
     Route::get('/call/signals', [CallController::class, 'pollSignals']);
     Route::get('/call/incoming', [CallController::class, 'incomingCall']);
+
+    // Task projects & family groups
+    Route::get('/projects', [ProjectGroupController::class, 'listProjects']);
+    Route::post('/projects/create', [ProjectGroupController::class, 'createProject']);
+    Route::post('/projects/update', [ProjectGroupController::class, 'updateProject']);
+    Route::post('/projects/delete', [ProjectGroupController::class, 'deleteProject']);
+    Route::post('/projects/set-groups', [ProjectGroupController::class, 'setProjectGroups']);
+    Route::get('/family-groups', [ProjectGroupController::class, 'listGroups']);
+    Route::post('/family-groups/create', [ProjectGroupController::class, 'createGroup']);
+    Route::post('/family-groups/update', [ProjectGroupController::class, 'updateGroup']);
+    Route::post('/family-groups/delete', [ProjectGroupController::class, 'deleteGroup']);
 });
 
 Route::fallback(function () {

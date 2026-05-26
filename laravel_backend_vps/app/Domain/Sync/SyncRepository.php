@@ -34,6 +34,7 @@ final class SyncRepository
         return [
             'id' => (string)($task['id'] ?? ''),
             'owner_key' => (string)($task['owner_key'] ?? ''),
+            'project_id' => (string)($task['project_id'] ?? ''),
             'is_family' => (bool)($task['is_family'] ?? false),
             'title' => trim((string)($task['title'] ?? '')),
             'details' => trim((string)($task['details'] ?? '')),
@@ -56,6 +57,7 @@ final class SyncRepository
 
         return [
             'id' => (string)($item['id'] ?? ''),
+            'project_id' => (string)($item['project_id'] ?? ''),
             'owner_key' => 'family',
             'is_family' => true,
             'title' => trim((string)($item['title'] ?? '')),
@@ -137,6 +139,7 @@ final class SyncRepository
             ['id' => $storedId],
             [
                 'owner_key' => $ownerKey,
+                'project_id' => $task['project_id'] ?? '',
                 'is_family' => $isFamily ? 1 : 0,
                 'title' => $task['title'],
                 'details' => $task['details'],
@@ -185,6 +188,7 @@ final class SyncRepository
         DB::table('family_tasks')->updateOrInsert(
             ['id' => $item['id']],
             [
+                'project_id' => $item['project_id'] ?? '',
                 'title' => $item['title'],
                 'details' => $item['details'],
                 'due_date' => $item['due_date'],
@@ -231,6 +235,7 @@ final class SyncRepository
             $storedId = (string)$row->id;
             $out[] = [
                 'id' => $this->taskExternalId($owner, $storedId, $isFamily),
+                'project_id' => (string)($row->project_id ?? ''),
                 'owner_key' => $owner,
                 'is_family' => $isFamily,
                 'title' => (string)$row->title,
@@ -264,6 +269,7 @@ final class SyncRepository
             $participants = $this->decodeJsonArray($row->participants_json);
             $out[] = [
                 'id' => (string)$row->id,
+                'project_id' => (string)($row->project_id ?? ''),
                 'owner_key' => 'family',
                 'is_family' => true,
                 'title' => (string)$row->title,
@@ -452,6 +458,110 @@ final class SyncRepository
         }
         $decoded = json_decode($value, true);
         return is_array($decoded) ? $decoded : [];
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function allProjects(): array
+    {
+        return DB::table('task_projects')
+            ->orderBy('name')
+            ->get()
+            ->map(fn($row) => [
+                'id' => (string)$row->id,
+                'name' => (string)$row->name,
+                'description' => (string)$row->description,
+                'owner_key' => (string)$row->owner_key,
+                'created_at' => (string)$row->created_at,
+                'updated_at' => (string)$row->updated_at,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function allFamilyGroups(): array
+    {
+        return DB::table('family_groups')
+            ->orderBy('name')
+            ->get()
+            ->map(fn($row) => [
+                'id' => (string)$row->id,
+                'name' => (string)$row->name,
+                'members' => $this->decodeJsonArray($row->members_json),
+                'owner_key' => (string)$row->owner_key,
+                'created_at' => (string)$row->created_at,
+                'updated_at' => (string)$row->updated_at,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /** @return array<string, list<string>> project_id => [group_id, ...] */
+    public function projectGroupMap(): array
+    {
+        $rows = DB::table('project_family_groups')->get();
+        $map = [];
+        foreach ($rows as $row) {
+            $pid = (string)$row->project_id;
+            $gid = (string)$row->group_id;
+            if (!isset($map[$pid])) {
+                $map[$pid] = [];
+            }
+            $map[$pid][] = $gid;
+        }
+        return $map;
+    }
+
+    public function upsertProject(array $project): void
+    {
+        DB::table('task_projects')->updateOrInsert(
+            ['id' => $project['id']],
+            [
+                'name' => $project['name'],
+                'description' => $project['description'] ?? '',
+                'owner_key' => $project['owner_key'],
+                'created_at' => $project['created_at'] ?? $this->nowIso(),
+                'updated_at' => $project['updated_at'] ?? $this->nowIso(),
+            ],
+        );
+    }
+
+    public function deleteProject(string $id): void
+    {
+        DB::table('task_projects')->where('id', $id)->delete();
+        DB::table('project_family_groups')->where('project_id', $id)->delete();
+    }
+
+    public function upsertFamilyGroupRecord(array $group): void
+    {
+        DB::table('family_groups')->updateOrInsert(
+            ['id' => $group['id']],
+            [
+                'name' => $group['name'],
+                'members_json' => json_encode($group['members'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'owner_key' => $group['owner_key'],
+                'created_at' => $group['created_at'] ?? $this->nowIso(),
+                'updated_at' => $group['updated_at'] ?? $this->nowIso(),
+            ],
+        );
+    }
+
+    public function deleteFamilyGroup(string $id): void
+    {
+        DB::table('family_groups')->where('id', $id)->delete();
+        DB::table('project_family_groups')->where('group_id', $id)->delete();
+    }
+
+    public function setProjectGroups(string $projectId, array $groupIds): void
+    {
+        DB::table('project_family_groups')->where('project_id', $projectId)->delete();
+        $now = $this->nowIso();
+        foreach ($groupIds as $gid) {
+            DB::table('project_family_groups')->insert([
+                'project_id' => $projectId,
+                'group_id' => $gid,
+            ]);
+        }
     }
 
     private function normalizeReminderOffsets(mixed $raw): array

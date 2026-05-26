@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../contracts/sync_api.dart';
 import '../contracts/task_data_source.dart';
 import '../models/pending_event.dart';
+import '../models/sync_snapshots.dart';
 import '../models/task_item.dart';
 
 class SyncService {
@@ -26,6 +27,7 @@ class SyncService {
             'id': task.id,
             'owner_key': 'family',
             'is_family': true,
+            'project_id': task.projectId,
             'title': task.title,
             'details': task.details,
             'due_date': task.dueDate,
@@ -102,7 +104,7 @@ class SyncService {
     await db.writeSince(snapshot.nextCursor);
   }
 
-  Future<void> syncFull() async {
+  Future<PullSnapshot> syncFull() async {
     final pending = await db.readPending();
     if (pending.isNotEmpty) {
       await api.push(
@@ -120,6 +122,7 @@ class SyncService {
     await db.replacePersonalTasks(ownerKey: actorProfile, items: personal);
     await db.reconcileFamilyTasks(family);
     await db.writeSince(snapshot.nextCursor);
+    return snapshot;
   }
 
   String _eventId(String prefix) {
