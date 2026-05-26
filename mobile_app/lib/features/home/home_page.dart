@@ -3881,7 +3881,7 @@ class _HomePageState extends State<HomePage> {
           day: day,
           tasks: dayTasks,
           labelFor: _profileLabel,
-          onEdit: (task) {
+          onEdit: (task) async {
             Navigator.of(context).pop();
             _openTaskEditor(store, existing: task);
           },
