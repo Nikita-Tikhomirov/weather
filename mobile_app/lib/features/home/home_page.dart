@@ -1352,21 +1352,25 @@ class _HomePageState extends State<HomePage> {
                             }
                           }
                         : null,
-                    child: CircleAvatar(
-                      radius: 36,
-                      backgroundImage: (avatarUrl != null &&
-                              avatarUrl.isNotEmpty)
-                          ? NetworkImage(
-                              avatarUrl.startsWith('/')
-                                  ? 'http://31.129.97.211$avatarUrl'
-                                  : avatarUrl,
-                            )
-                          : null,
-                      onBackgroundImageError: (_, __) {},
-                      child: (avatarUrl == null || avatarUrl.isEmpty)
-                          ? const Icon(Icons.camera_alt, size: 32)
-                          : null,
-                    ),
+                    child: () {
+                      final effectiveUrl = avatarUrl;
+                      return CircleAvatar(
+                        radius: 36,
+                        backgroundImage: (effectiveUrl != null &&
+                                effectiveUrl.isNotEmpty)
+                            ? NetworkImage(
+                                effectiveUrl.startsWith('/')
+                                    ? 'http://31.129.97.211$effectiveUrl'
+                                    : effectiveUrl,
+                              )
+                            : null,
+                        onBackgroundImageError: (_, __) {},
+                        child: (effectiveUrl == null ||
+                                effectiveUrl.isEmpty)
+                            ? const Icon(Icons.camera_alt, size: 32)
+                            : null,
+                      );
+                    }(),
                   ),
                   const SizedBox(height: 12),
                   Text(
