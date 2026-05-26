@@ -39,9 +39,13 @@ class TaskRepository {
 
   Future<void> _syncProjectsAndGroups() async {
     try {
-      final snapshot = await api.pull(since: '1970-01-01T00:00:00');
-      await _applyProjectsAndGroups(
-          snapshot.projects, snapshot.familyGroups, snapshot.projectGroupMap);
+      final projects = await api.listProjects(actorProfile: _actorProfile);
+      final groups = await api.listFamilyGroups(actorProfile: _actorProfile);
+      // The sync pull returns project_groups map; we also need it.
+      // On first init, syncFull already provides it via the pull response.
+      // For delta syncs, the map rarely changes but we fetch it through listProjects.
+      // listProjects on the backend returns project_groups alongside projects.
+      await _applyProjectsAndGroups(projects, groups, {});
     } catch (_) {}
   }
 
@@ -56,6 +60,14 @@ class TaskRepository {
     if (pgMap.isNotEmpty) {
       await db.replaceProjectGroupMap(pgMap);
     }
+  }
+
+  Future<void> upsertProject(TaskProject project) async {
+    await db.upsertProjectLocal(project);
+  }
+
+  Future<void> upsertFamilyGroup(FamilyGroup group) async {
+    await db.upsertFamilyGroupLocal(group);
   }
 
   Future<List<TaskProject>> readProjects() => db.readProjects();

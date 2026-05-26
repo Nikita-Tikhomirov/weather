@@ -107,15 +107,27 @@ Future<void> showFamilyGroupEditSheet({
                               );
                               return;
                             }
-                            if (isCreate) {
-                              await store.createFamilyGroup(
-                                  name, selectedMembers.toList());
-                            } else {
-                              await store.editFamilyGroup(
-                                  group!.id, name, selectedMembers.toList());
-                            }
-                            if (sheetContext.mounted) {
-                              Navigator.pop(sheetContext);
+                            try {
+                              if (isCreate) {
+                                await store.createFamilyGroup(
+                                    name, selectedMembers.toList());
+                              } else {
+                                await store.editFamilyGroup(
+                                    group!.id, name, selectedMembers.toList());
+                              }
+                              if (sheetContext.mounted) {
+                                Navigator.pop(sheetContext);
+                              }
+                            } catch (e) {
+                              if (sheetContext.mounted) {
+                                ScaffoldMessenger.of(sheetContext).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        'Ошибка: ${e.toString().replaceFirst("Exception: ", "")}'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
                             }
                           },
                           child: Text(isCreate ? 'Создать' : 'Сохранить'),

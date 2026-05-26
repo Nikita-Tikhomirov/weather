@@ -109,19 +109,32 @@ Future<void> showProjectEditSheet({
                                   );
                                   return;
                                 }
-                                if (isCreate) {
-                                  await store.createProject(
-                                      name, descCtl.text.trim());
-                                } else {
-                                  await store.editProject(
-                                    project!.id,
-                                    name,
-                                    descCtl.text.trim(),
-                                    selectedGroupIds.toList(),
-                                  );
-                                }
-                                if (sheetContext.mounted) {
-                                  Navigator.pop(sheetContext);
+                                try {
+                                  if (isCreate) {
+                                    await store.createProject(
+                                        name, descCtl.text.trim());
+                                  } else {
+                                    await store.editProject(
+                                      project!.id,
+                                      name,
+                                      descCtl.text.trim(),
+                                      selectedGroupIds.toList(),
+                                    );
+                                  }
+                                  if (sheetContext.mounted) {
+                                    Navigator.pop(sheetContext);
+                                  }
+                                } catch (e) {
+                                  if (sheetContext.mounted) {
+                                    ScaffoldMessenger.of(sheetContext)
+                                        .showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                            'Ошибка: ${e.toString().replaceFirst("Exception: ", "")}'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
                                 }
                               },
                               child: Text(isCreate ? 'Создать' : 'Сохранить'),

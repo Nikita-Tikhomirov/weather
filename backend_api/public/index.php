@@ -123,6 +123,9 @@ try {
             'ok' => true,
             'tasks' => $tasks,
             'family_tasks' => $familyTasks,
+            'projects' => all_projects($db),
+            'family_groups' => all_family_groups($db),
+            'project_groups' => project_group_map($db),
             'server_time' => $serverTime,
             'cursor' => $since,
             'next_cursor' => $nextCursor,
@@ -208,6 +211,149 @@ try {
     if ($method === 'POST' && $path === '/push/outbox/retry') {
         require_api_key($config);
         json_response(200, ['ok' => true, 'result' => ['disabled' => true]]);
+        exit;
+    }
+
+    // ── Task Projects ─────────────────────────────────────────
+
+    if ($method === 'GET' && $path === '/projects') {
+        require_api_key($config);
+        $projects = all_projects($db);
+        $pgMap = project_group_map($db);
+        json_response(200, ['ok' => true, 'projects' => $projects, 'project_groups' => $pgMap]);
+        exit;
+    }
+
+    if ($method === 'POST' && $path === '/projects/create') {
+        require_api_key($config);
+        $body = read_json_body();
+        $actor = ensure_actor((string)($body['actor_profile'] ?? ''));
+        $name = trim((string)($body['name'] ?? ''));
+        if ($name === '') {
+            throw new InvalidArgumentException('name is required');
+        }
+        $id = 'prj-' . str_replace('.', '', uniqid('', true));
+        $description = trim((string)($body['description'] ?? ''));
+        $now = iso_now();
+        upsert_project($db, [
+            'id' => $id,
+            'name' => $name,
+            'description' => $description,
+            'owner_key' => $actor,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        json_response(200, [
+            'ok' => true,
+            'project' => ['id' => $id, 'name' => $name, 'description' => $description, 'owner_key' => $actor, 'created_at' => $now, 'updated_at' => $now],
+        ]);
+        exit;
+    }
+
+    if ($method === 'POST' && $path === '/projects/update') {
+        require_api_key($config);
+        $body = read_json_body();
+        $actor = ensure_actor((string)($body['actor_profile'] ?? ''));
+        $id = trim((string)($body['id'] ?? ''));
+        if ($id === '') {
+            throw new InvalidArgumentException('id is required');
+        }
+        $name = trim((string)($body['name'] ?? ''));
+        $description = trim((string)($body['description'] ?? ''));
+        $now = iso_now();
+        upsert_project($db, ['id' => $id, 'name' => $name, 'description' => $description, 'owner_key' => $actor, 'updated_at' => $now]);
+        if (isset($body['group_ids']) && is_array($body['group_ids'])) {
+            set_project_groups($db, $id, array_map('strval', $body['group_ids']));
+        }
+        json_response(200, ['ok' => true]);
+        exit;
+    }
+
+    if ($method === 'POST' && $path === '/projects/delete') {
+        require_api_key($config);
+        $body = read_json_body();
+        $id = trim((string)($body['id'] ?? ''));
+        if ($id === '') {
+            throw new InvalidArgumentException('id is required');
+        }
+        delete_project($db, $id);
+        json_response(200, ['ok' => true]);
+        exit;
+    }
+
+    if ($method === 'POST' && $path === '/projects/set-groups') {
+        require_api_key($config);
+        $body = read_json_body();
+        $projectId = trim((string)($body['project_id'] ?? ''));
+        if ($projectId === '') {
+            throw new InvalidArgumentException('project_id is required');
+        }
+        $groupIds = $body['group_ids'] ?? [];
+        if (!is_array($groupIds)) {
+            throw new InvalidArgumentException('group_ids must be array');
+        }
+        set_project_groups($db, $projectId, array_map('strval', $groupIds));
+        json_response(200, ['ok' => true]);
+        exit;
+    }
+
+    // ── Family Groups ─────────────────────────────────────────
+
+    if ($method === 'GET' && $path === '/family-groups') {
+        require_api_key($config);
+        $groups = all_family_groups($db);
+        $pgMap = project_group_map($db);
+        json_response(200, ['ok' => true, 'groups' => $groups, 'project_groups' => $pgMap]);
+        exit;
+    }
+
+    if ($method === 'POST' && $path === '/family-groups/create') {
+        require_api_key($config);
+        $body = read_json_body();
+        $actor = ensure_actor((string)($body['actor_profile'] ?? ''));
+        $name = trim((string)($body['name'] ?? ''));
+        if ($name === '') {
+            throw new InvalidArgumentException('name is required');
+        }
+        $members = $body['members'] ?? [];
+        if (!is_array($members)) {
+            throw new InvalidArgumentException('members must be array');
+        }
+        $id = 'grp-' . str_replace('.', '', uniqid('', true));
+        $now = iso_now();
+        upsert_family_group($db, ['id' => $id, 'name' => $name, 'members' => $members, 'owner_key' => $actor, 'created_at' => $now, 'updated_at' => $now]);
+        json_response(200, ['ok' => true, 'group' => ['id' => $id, 'name' => $name, 'members' => $members, 'owner_key' => $actor, 'created_at' => $now, 'updated_at' => $now]]);
+        exit;
+    }
+
+    if ($method === 'POST' && $path === '/family-groups/update') {
+        require_api_key($config);
+        $body = read_json_body();
+        $actor = ensure_actor((string)($body['actor_profile'] ?? ''));
+        $id = trim((string)($body['id'] ?? ''));
+        if ($id === '') {
+            throw new InvalidArgumentException('id is required');
+        }
+        $name = trim((string)($body['name'] ?? ''));
+        $now = iso_now();
+        $record = ['id' => $id, 'name' => $name, 'owner_key' => $actor, 'updated_at' => $now];
+        if (isset($body['members']) && is_array($body['members'])) {
+            $record['members'] = $body['members'];
+        }
+        upsert_family_group($db, $record);
+        json_response(200, ['ok' => true]);
+        exit;
+    }
+
+    if ($method === 'POST' && $path === '/family-groups/delete') {
+        require_api_key($config);
+        $body = read_json_body();
+        $id = trim((string)($body['id'] ?? ''));
+        if ($id === '') {
+            throw new InvalidArgumentException('id is required');
+        }
+        delete_family_group($db, $id);
+        json_response(200, ['ok' => true]);
         exit;
     }
 

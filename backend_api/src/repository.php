@@ -98,13 +98,14 @@ function upsert_task(PDO $db, array $task): void
     $storedId = task_storage_id($ownerKey, (string)$task['id'], $isFamily);
     $sql = <<<SQL
 INSERT INTO tasks (
-    id, owner_key, is_family, title, details, due_date, time_value, workflow_status, priority,
+    id, owner_key, is_family, project_id, title, details, due_date, time_value, workflow_status, priority,
     tags_json, participants_json, duration_minutes, updated_at, version
 ) VALUES (
-    :id, :owner_key, :is_family, :title, :details, :due_date, :time_value, :workflow_status, :priority,
+    :id, :owner_key, :is_family, :project_id, :title, :details, :due_date, :time_value, :workflow_status, :priority,
     :tags_json, :participants_json, :duration_minutes, :updated_at, :version
 )
 ON DUPLICATE KEY UPDATE
+    project_id = VALUES(project_id),
     owner_key = VALUES(owner_key),
     is_family = VALUES(is_family),
     title = VALUES(title),
@@ -124,6 +125,7 @@ SQL;
         'id' => $storedId,
         'owner_key' => $ownerKey,
         'is_family' => $isFamily ? 1 : 0,
+        'project_id' => (string)($task['project_id'] ?? ''),
         'title' => $task['title'],
         'details' => $task['details'],
         'due_date' => $task['due_date'],
@@ -212,6 +214,8 @@ function replace_family_tasks(PDO $db, array $items): void
     }
 }
 
+// ── Tasks (existing) ─────────────────────────────────────────────
+
 function changed_tasks_since(PDO $db, string $since): array
 {
     $stmt = $db->prepare('SELECT * FROM tasks WHERE updated_at >= :since ORDER BY updated_at, id');
@@ -226,6 +230,7 @@ function changed_tasks_since(PDO $db, string $since): array
             'id' => task_external_id($owner, $storedId, $isFamily),
             'owner_key' => $owner,
             'is_family' => $isFamily,
+            'project_id' => (string)$row['project_id'],
             'title' => (string)$row['title'],
             'details' => (string)$row['details'],
             'due_date' => (string)$row['due_date'],
@@ -256,6 +261,7 @@ function changed_tasks_after_cursor(PDO $db, string $cursor): array
             'id' => task_external_id($owner, $storedId, $isFamily),
             'owner_key' => $owner,
             'is_family' => $isFamily,
+            'project_id' => (string)$row['project_id'],
             'title' => (string)$row['title'],
             'details' => (string)$row['details'],
             'due_date' => (string)$row['due_date'],
@@ -291,6 +297,7 @@ function changed_tasks_since_for_actor(PDO $db, string $since, string $actor): a
             'id' => task_external_id($owner, $storedId, $isFamily),
             'owner_key' => $owner,
             'is_family' => $isFamily,
+            'project_id' => (string)$row['project_id'],
             'title' => (string)$row['title'],
             'details' => (string)$row['details'],
             'due_date' => (string)$row['due_date'],
@@ -326,6 +333,7 @@ function changed_tasks_after_cursor_for_actor(PDO $db, string $cursor, string $a
             'id' => task_external_id($owner, $storedId, $isFamily),
             'owner_key' => $owner,
             'is_family' => $isFamily,
+            'project_id' => (string)$row['project_id'],
             'title' => (string)$row['title'],
             'details' => (string)$row['details'],
             'due_date' => (string)$row['due_date'],
@@ -465,4 +473,124 @@ function active_device_tokens_for_profiles(PDO $db, array $profiles): array
     $stmt = $db->prepare($sql);
     $stmt->execute($profiles);
     return $stmt->fetchAll();
+}
+
+// ── Task Projects ──────────────────────────────────────────────
+
+function all_projects(PDO $db): array
+{
+    $stmt = $db->query('SELECT * FROM task_projects ORDER BY created_at');
+    $rows = $stmt->fetchAll();
+    $out = [];
+    foreach ($rows as $row) {
+        $out[] = [
+            'id' => (string)$row['id'],
+            'name' => (string)$row['name'],
+            'description' => (string)$row['description'],
+            'owner_key' => (string)$row['owner_key'],
+            'created_at' => (string)$row['created_at'],
+            'updated_at' => (string)$row['updated_at'],
+        ];
+    }
+    return $out;
+}
+
+function upsert_project(PDO $db, array $project): void
+{
+    $sql = <<<SQL
+INSERT INTO task_projects (id, name, description, owner_key, created_at, updated_at)
+VALUES (:id, :name, :description, :owner_key, :created_at, :updated_at)
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    description = VALUES(description),
+    updated_at = VALUES(updated_at)
+SQL;
+    $stmt = $db->prepare($sql);
+    $stmt->execute([
+        'id' => (string)($project['id'] ?? ''),
+        'name' => (string)($project['name'] ?? ''),
+        'description' => (string)($project['description'] ?? ''),
+        'owner_key' => (string)($project['owner_key'] ?? ''),
+        'created_at' => (string)($project['created_at'] ?? iso_now()),
+        'updated_at' => (string)($project['updated_at'] ?? iso_now()),
+    ]);
+}
+
+function delete_project(PDO $db, string $id): void
+{
+    $db->prepare('DELETE FROM project_family_groups WHERE project_id = :id')->execute(['id' => $id]);
+    $db->prepare('DELETE FROM task_projects WHERE id = :id')->execute(['id' => $id]);
+}
+
+function set_project_groups(PDO $db, string $projectId, array $groupIds): void
+{
+    $db->prepare('DELETE FROM project_family_groups WHERE project_id = :id')->execute(['id' => $projectId]);
+    $insert = $db->prepare('INSERT INTO project_family_groups (project_id, group_id) VALUES (:pid, :gid)');
+    foreach ($groupIds as $gid) {
+        $insert->execute(['pid' => $projectId, 'gid' => (string)$gid]);
+    }
+}
+
+function project_group_map(PDO $db): array
+{
+    $rows = $db->query('SELECT project_id, group_id FROM project_family_groups')->fetchAll();
+    $map = [];
+    foreach ($rows as $row) {
+        $pid = (string)$row['project_id'];
+        $gid = (string)$row['group_id'];
+        $map[$pid][] = $gid;
+    }
+    return $map;
+}
+
+// ── Family Groups ─────────────────────────────────────────────
+
+function all_family_groups(PDO $db): array
+{
+    $stmt = $db->query('SELECT * FROM family_groups ORDER BY created_at');
+    $rows = $stmt->fetchAll();
+    $out = [];
+    foreach ($rows as $row) {
+        $members = json_decode((string)$row['members_json'], true) ?: [];
+        $out[] = [
+            'id' => (string)$row['id'],
+            'name' => (string)$row['name'],
+            'members' => $members,
+            'owner_key' => (string)$row['owner_key'],
+            'created_at' => (string)$row['created_at'],
+            'updated_at' => (string)$row['updated_at'],
+        ];
+    }
+    return $out;
+}
+
+function upsert_family_group_record(PDO $db, array $group): void
+{
+    $members = $group['members'] ?? [];
+    if (!is_array($members)) {
+        $members = [];
+    }
+    $sql = <<<SQL
+INSERT INTO family_groups (id, name, members_json, owner_key, created_at, updated_at)
+VALUES (:id, :name, :members_json, :owner_key, :created_at, :updated_at)
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    members_json = VALUES(members_json),
+    updated_at = VALUES(updated_at)
+SQL;
+    $stmt = $db->prepare($sql);
+    $stmt->execute([
+        'id' => (string)($group['id'] ?? ''),
+        'name' => (string)($group['name'] ?? ''),
+        'members_json' => json_encode($members, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'owner_key' => (string)($group['owner_key'] ?? ''),
+        'created_at' => (string)($group['created_at'] ?? iso_now()),
+        'updated_at' => (string)($group['updated_at'] ?? iso_now()),
+    ]);
+}
+
+function delete_family_group(PDO $db, string $id): void
+{
+    $db->prepare('DELETE FROM project_family_groups WHERE group_id = :id')->execute(['id' => $id]);
+    $db->prepare('DELETE FROM family_groups WHERE id = :id')->execute(['id' => $id]);
 }

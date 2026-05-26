@@ -783,7 +783,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     required String actorProfile,
   }) async {
     final response = await _getWithFallback(
-      paths: const ['/projects'],
+      paths: const ['/projects', '/projects.php'],
       query: {'actor_profile': actorProfile},
     );
     final body = jsonDecode(response.body) as Map<String, dynamic>;
@@ -799,7 +799,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     String description = '',
   }) async {
     final response = await _postWithFallback(
-      paths: const ['/projects/create'],
+      paths: const ['/projects/create', '/projects_create.php'],
       body: jsonEncode({
         'actor_profile': actorProfile,
         'name': name,
@@ -820,7 +820,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     List<String>? groupIds,
   }) async {
     await _postWithFallback(
-      paths: const ['/projects/update'],
+      paths: const ['/projects/update', '/projects_update.php'],
       body: jsonEncode({
         'actor_profile': actorProfile,
         'id': id,
@@ -836,7 +836,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     required String id,
   }) async {
     await _postWithFallback(
-      paths: const ['/projects/delete'],
+      paths: const ['/projects/delete', '/projects_delete.php'],
       body: jsonEncode({'actor_profile': actorProfile, 'id': id}),
     );
   }
@@ -847,7 +847,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     required List<String> groupIds,
   }) async {
     await _postWithFallback(
-      paths: const ['/projects/set-groups'],
+      paths: const ['/projects/set-groups', '/projects_set_groups.php'],
       body: jsonEncode({
         'actor_profile': actorProfile,
         'project_id': projectId,
@@ -860,7 +860,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     required String actorProfile,
   }) async {
     final response = await _getWithFallback(
-      paths: const ['/family-groups'],
+      paths: const ['/family-groups', '/family_groups.php'],
       query: {'actor_profile': actorProfile},
     );
     final body = jsonDecode(response.body) as Map<String, dynamic>;
@@ -876,7 +876,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     required List<String> members,
   }) async {
     final response = await _postWithFallback(
-      paths: const ['/family-groups/create'],
+      paths: const ['/family-groups/create', '/family_groups_create.php'],
       body: jsonEncode({
         'actor_profile': actorProfile,
         'name': name,
@@ -904,7 +904,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
       payload['members'] = members;
     }
     await _postWithFallback(
-      paths: const ['/family-groups/update'],
+      paths: const ['/family-groups/update', '/family_groups_update.php'],
       body: jsonEncode(payload),
     );
   }
@@ -914,7 +914,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     required String id,
   }) async {
     await _postWithFallback(
-      paths: const ['/family-groups/delete'],
+      paths: const ['/family-groups/delete', '/family_groups_delete.php'],
       body: jsonEncode({'actor_profile': actorProfile, 'id': id}),
     );
   }

@@ -3847,9 +3847,6 @@ class _HomePageState extends State<HomePage> {
                         onMonthPrev: _goCalendarMonthPrev,
                         onMonthNext: _goCalendarMonthNext,
                         onGoToday: _goCalendarMonthToday,
-                        onSelectDate: (date) {
-                          store.setSelectedDate(date);
-                        },
                         onDayTap: (day, dayTasks) {
                           _openDayTasksScreen(store, day, dayTasks);
                         },
@@ -3877,53 +3874,29 @@ class _HomePageState extends State<HomePage> {
 
   void _openDayTasksScreen(
       TaskStore store, DateTime day, List<TaskItem> dayTasks) {
-    final title =
-        '${day.day.toString().padLeft(2, '0')}.${day.month.toString().padLeft(2, '0')}.${day.year}';
+    store.setSelectedDate(day);
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(
-            title: Text(title),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.add),
-                tooltip: 'Добавить задачу',
-                onPressed: () async {
-                  store.setSelectedDate(day);
-                  await _openTaskEditor(store);
-                  // Re-read tasks after edit
-                  store.refreshLocal();
-                },
-              ),
-            ],
-          ),
-          body: dayTasks.isEmpty
-              ? const Center(child: Text('На эту дату задач нет'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(12),
-                  itemCount: dayTasks.length,
-                  itemBuilder: (context, index) {
-                    final task = dayTasks[index];
-                    return TaskCard(
-                      item: task,
-                      labelFor: _profileLabel,
-                      onEdit: () => _openTaskEditor(store, existing: task),
-                      onDelete: () async {
-                        await store.delete(task);
-                        await _safeSyncDelta(store, showErrors: true);
-                        // Refresh the screen by popping
-                        if (context.mounted) {
-                          Navigator.of(context).pop();
-                          _openDayTasksScreenFromStore(store, day);
-                        }
-                      },
-                      onDoneToggle: () async {
-                        await store.toggleDone(task);
-                        await _safeSyncDelta(store, showErrors: true);
-                      },
-                    );
-                  },
-                ),
+        builder: (_) => DayTasksPage(
+          day: day,
+          tasks: dayTasks,
+          labelFor: _profileLabel,
+          onEdit: (task) {
+            Navigator.of(context).pop();
+            _openTaskEditor(store, existing: task);
+          },
+          onDelete: (task) async {
+            await store.delete(task);
+            await _safeSyncDelta(store, showErrors: true);
+            if (context.mounted) {
+              Navigator.of(context).pop();
+            }
+          },
+          onAddForDate: (date) async {
+            store.setSelectedDate(date);
+            Navigator.of(context).pop();
+            await _openTaskEditor(store);
+          },
         ),
       ),
     );
