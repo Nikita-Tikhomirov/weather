@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/task_draft.dart';
 import '../../models/chat_models.dart';
+import '../../models/family_group.dart';
 import '../../models/task_item.dart';
 import '../../models/task_project.dart';
 import '../../state/task_store.dart';
@@ -43,6 +44,7 @@ Future<void> showTaskEditorSheet({
   String status = existing?.workflowStatus ?? 'todo';
   bool isFamily = forceFamily || (existing?.isFamily ?? false);
   String selectedProjectId = existing?.projectId ?? store.currentProjectId.value;
+  String selectedGroupId = existing?.groupId ?? '';
   final selectedReminderOffsets = <int>{
     ...(existing?.reminderOffsetsMinutes ?? const <int>[]),
   };
@@ -179,29 +181,85 @@ Future<void> showTaskEditorSheet({
                       if (projectList.isEmpty) {
                         return const SizedBox.shrink();
                       }
-                      return DropdownButtonFormField<String>(
-                        value: projectList.any(
-                                (p) => p.id == selectedProjectId)
-                            ? selectedProjectId
-                            : null,
-                        decoration: const InputDecoration(
-                            labelText: 'Проект'),
-                        hint: const Text('Без проекта'),
-                        items: [
-                          const DropdownMenuItem<String>(
-                            value: '',
-                            child: Text('Без проекта'),
+                      return Column(
+                        children: [
+                          DropdownButtonFormField<String>(
+                            value: projectList.any(
+                                    (p) => p.id == selectedProjectId)
+                                ? selectedProjectId
+                                : null,
+                            decoration: const InputDecoration(
+                                labelText: 'Проект'),
+                            hint: const Text('Без проекта'),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                value: '',
+                                child: Text('Без проекта'),
+                              ),
+                              for (final p in projectList)
+                                DropdownMenuItem<String>(
+                                  value: p.id,
+                                  child: Text(p.name),
+                                ),
+                            ],
+                            onChanged: (value) {
+                              setModalState(() {
+                                selectedProjectId = value ?? '';
+                                selectedGroupId = '';
+                                selectedAssignees.clear();
+                              });
+                            },
                           ),
-                          for (final p in projectList)
-                            DropdownMenuItem<String>(
-                              value: p.id,
-                              child: Text(p.name),
+                          // Group selector — only show when a project is selected
+                          if (selectedProjectId.isNotEmpty)
+                            ValueListenableBuilder<
+                                Map<String, List<String>>>(
+                              valueListenable: store.projectGroupMap,
+                              builder: (context, pgMap, _) {
+                                return ValueListenableBuilder<
+                                    List<FamilyGroup>>(
+                                  valueListenable: store.familyGroups,
+                                  builder: (context, groups, __) {
+                                    final projectGroupIds =
+                                        pgMap[selectedProjectId] ?? [];
+                                    final projectGroups = groups
+                                        .where((g) =>
+                                            projectGroupIds.contains(g.id))
+                                        .toList();
+                                    if (projectGroups.isEmpty) {
+                                      return const Padding(
+                                        padding: EdgeInsets.only(top: 8),
+                                        child: Text(
+                                            'У проекта нет групп. Назначьте группы в настройках проекта.'),
+                                      );
+                                    }
+                                    return DropdownButtonFormField<String>(
+                                      value: projectGroups.any((g) =>
+                                              g.id == selectedGroupId)
+                                          ? selectedGroupId
+                                          : null,
+                                      decoration: const InputDecoration(
+                                          labelText: 'Группа'),
+                                      hint: const Text('Выберите группу'),
+                                      items: [
+                                        for (final g in projectGroups)
+                                          DropdownMenuItem<String>(
+                                            value: g.id,
+                                            child: Text(g.name),
+                                          ),
+                                      ],
+                                      onChanged: (value) {
+                                        setModalState(() {
+                                          selectedGroupId = value ?? '';
+                                          selectedAssignees.clear();
+                                        });
+                                      },
+                                    );
+                                  },
+                                );
+                              },
                             ),
                         ],
-                        onChanged: (value) {
-                          setModalState(() =>
-                              selectedProjectId = value ?? '');
-                        },
                       );
                     },
                   ),
@@ -219,25 +277,53 @@ Future<void> showTaskEditorSheet({
                       style: Theme.of(sheetContext).textTheme.titleSmall,
                     ),
                     const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: knownContacts.map((member) {
-                        final profile = member.profileKey;
-                        return FilterChip(
-                          label: Text(contactLabel(member)),
-                          selected: selectedAssignees.contains(profile),
-                          onSelected: (selected) {
-                            setModalState(() {
-                              if (selected) {
-                                selectedAssignees.add(profile);
-                              } else {
-                                selectedAssignees.remove(profile);
-                              }
-                            });
-                          },
+                    // When a group is selected, show only its members
+                    ValueListenableBuilder<List<FamilyGroup>>(
+                      valueListenable: store.familyGroups,
+                      builder: (context, groups, _) {
+                        final selectedGroup = selectedGroupId.isNotEmpty
+                            ? groups.cast<FamilyGroup?>().firstWhere(
+                                  (g) => g?.id == selectedGroupId,
+                                  orElse: () => null,
+                                )
+                            : null;
+                        final groupMembers =
+                            selectedGroup?.members ?? <String>[];
+                        final assigneeContacts = selectedGroup != null
+                            ? knownContacts
+                                .where((c) =>
+                                    groupMembers.contains(c.profileKey))
+                                .toList()
+                            : knownContacts;
+
+                        if (selectedGroup != null &&
+                            assigneeContacts.isEmpty) {
+                          return const Text(
+                              'Участники группы не найдены в контактах');
+                        }
+
+                        return Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: assigneeContacts.map((member) {
+                            final profile = member.profileKey;
+                            return FilterChip(
+                              label: Text(contactLabel(member)),
+                              selected:
+                                  selectedAssignees.contains(profile),
+                              onSelected: (selected) {
+                                setModalState(() {
+                                  if (selected) {
+                                    selectedAssignees.add(profile);
+                                  } else {
+                                    selectedAssignees.remove(profile);
+                                  }
+                                });
+                              },
+                            );
+                          }).toList(),
                         );
-                      }).toList(),
+                      },
                     ),
                   ],
                   const SizedBox(height: 8),
@@ -293,6 +379,7 @@ Future<void> showTaskEditorSheet({
                               reminderOffsetsMinutes:
                                   selectedReminderOffsets.toList(),
                               projectId: selectedProjectId,
+                              groupId: selectedGroupId,
                             );
                             final messenger =
                                 ScaffoldMessenger.of(sheetContext);

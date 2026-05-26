@@ -513,19 +513,35 @@ class TaskStore {
     );
   }
 
-  /// Returns tasks visible in kanban — filtered by current project if selected,
-  /// otherwise all personal tasks the user is responsible for.
+  /// Returns tasks visible in kanban — user sees tasks from groups they belong to.
   List<TaskItem> _kanbanSource() {
+    final myGroups = _myGroupIds();
+
     if (currentProjectId.value.isNotEmpty) {
       return _allTasks
           .where((task) =>
               task.projectId == currentProjectId.value &&
-              task.assignees.contains(owner.value))
+              (task.assignees.contains(owner.value) ||
+                  (task.groupId.isNotEmpty && myGroups.contains(task.groupId))))
           .toList();
     }
+    // No project selected: show tasks from all projects where user is in the task's group
     return _allTasks
-        .where((task) => !task.isFamily && task.assignees.contains(owner.value))
+        .where((task) =>
+            task.assignees.contains(owner.value) ||
+            (task.groupId.isNotEmpty && myGroups.contains(task.groupId)))
         .toList();
+  }
+
+  /// Set of group IDs where the current user is a member.
+  Set<String> _myGroupIds() {
+    final ids = <String>{};
+    for (final group in familyGroups.value) {
+      if (group.members.contains(owner.value)) {
+        ids.add(group.id);
+      }
+    }
+    return ids;
   }
 
   void _recomputeKanbanOnly() {
@@ -552,9 +568,13 @@ class TaskStore {
 
   void _recomputeDateSlicesOnly() {
     final dateKey = _dateKey(selectedDate.value);
-    // Show all tasks for the selected date: personal + family, any project
+    final myGroups = _myGroupIds();
+    // Show all tasks for the selected date where user is assignee or group member
     tasksForSelectedDate.value = _allTasks
-        .where((task) => task.dueDate == dateKey && task.assignees.contains(owner.value))
+        .where((task) =>
+            task.dueDate == dateKey &&
+            (task.assignees.contains(owner.value) ||
+                (task.groupId.isNotEmpty && myGroups.contains(task.groupId))))
         .toList()
       ..sort((a, b) => ('${a.dueDate} ${a.time}').compareTo('${b.dueDate} ${b.time}'));
     _recomputeDashboardOnly();

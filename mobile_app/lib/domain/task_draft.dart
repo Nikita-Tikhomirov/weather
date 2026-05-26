@@ -11,6 +11,7 @@ class TaskDraft {
     required this.durationMinutes,
     required this.reminderOffsetsMinutes,
     this.projectId = '',
+    this.groupId = '',
   });
 
   final String title;
@@ -24,4 +25,5 @@ class TaskDraft {
   final int durationMinutes;
   final List<int> reminderOffsetsMinutes;
   final String projectId;
+  final String groupId;
 }

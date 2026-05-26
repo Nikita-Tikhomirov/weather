@@ -18,6 +18,7 @@ class TaskItem {
     required this.updatedAt,
     required this.version,
     this.projectId = '',
+    this.groupId = '',
   });
 
   final String id;
@@ -25,6 +26,7 @@ class TaskItem {
   final bool isFamily;
   final String title;
   final String projectId;
+  final String groupId;
   final String details;
   final String dueDate;
   final String time;
@@ -45,6 +47,7 @@ class TaskItem {
       ownerKey: (json['owner_key'] ?? '').toString(),
       isFamily: json['is_family'] == true || json['is_family'] == 1,
       projectId: (json['project_id'] ?? '').toString(),
+      groupId: (json['group_id'] ?? '').toString(),
       title: (json['title'] ?? '').toString(),
       details: (json['details'] ?? '').toString(),
       dueDate: (json['due_date'] ?? '').toString(),
@@ -77,6 +80,7 @@ class TaskItem {
       'owner_key': ownerKey,
       'is_family': isFamily,
       'project_id': projectId,
+      'group_id': groupId,
       'title': title,
       'details': details,
       'due_date': dueDate,
@@ -99,6 +103,7 @@ class TaskItem {
       'owner_key': ownerKey,
       'is_family': isFamily ? 1 : 0,
       'project_id': projectId,
+      'group_id': groupId,
       'title': title,
       'details': details,
       'due_date': dueDate,
@@ -120,6 +125,7 @@ class TaskItem {
       ownerKey: (row['owner_key'] ?? '').toString(),
       isFamily: (row['is_family'] ?? 0).toString() == '1',
       projectId: (row['project_id'] ?? '').toString(),
+      groupId: (row['group_id'] ?? '').toString(),
       title: (row['title'] ?? '').toString(),
       details: (row['details'] ?? '').toString(),
       dueDate: (row['due_date'] ?? '').toString(),
@@ -142,6 +148,7 @@ class TaskItem {
     String? ownerKey,
     bool? isFamily,
     String? projectId,
+    String? groupId,
     String? title,
     String? details,
     String? dueDate,
@@ -160,6 +167,7 @@ class TaskItem {
       ownerKey: ownerKey ?? this.ownerKey,
       isFamily: isFamily ?? this.isFamily,
       projectId: projectId ?? this.projectId,
+      groupId: groupId ?? this.groupId,
       title: title ?? this.title,
       details: details ?? this.details,
       dueDate: dueDate ?? this.dueDate,

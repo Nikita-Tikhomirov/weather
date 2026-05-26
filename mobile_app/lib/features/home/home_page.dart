@@ -3269,6 +3269,16 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  String _groupLabel(String groupId) {
+    final store = _store;
+    if (store == null) return groupId;
+    final group = store.familyGroups.value.cast<FamilyGroup?>().firstWhere(
+          (g) => g?.id == groupId,
+          orElse: () => null,
+        );
+    return group?.name ?? groupId;
+  }
+
   String _profileLabel(String profile) {
     for (final contact in [
       ..._chatContacts,
@@ -3758,6 +3768,7 @@ class _HomePageState extends State<HomePage> {
               return TasksBoard(
                 byStatus: byStatus,
                 labelFor: _profileLabel,
+                groupLabel: _groupLabel,
                 selectionMode: false,
                 selectedIds: const <String>{},
                 onToggleSelect: (_) {},

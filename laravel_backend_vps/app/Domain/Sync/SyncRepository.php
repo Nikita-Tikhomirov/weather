@@ -35,6 +35,7 @@ final class SyncRepository
             'id' => (string)($task['id'] ?? ''),
             'owner_key' => (string)($task['owner_key'] ?? ''),
             'project_id' => (string)($task['project_id'] ?? ''),
+            'group_id' => (string)($task['group_id'] ?? ''),
             'is_family' => (bool)($task['is_family'] ?? false),
             'title' => trim((string)($task['title'] ?? '')),
             'details' => trim((string)($task['details'] ?? '')),
@@ -58,6 +59,7 @@ final class SyncRepository
         return [
             'id' => (string)($item['id'] ?? ''),
             'project_id' => (string)($item['project_id'] ?? ''),
+            'group_id' => (string)($item['group_id'] ?? ''),
             'owner_key' => 'family',
             'is_family' => true,
             'title' => trim((string)($item['title'] ?? '')),
@@ -140,6 +142,7 @@ final class SyncRepository
             [
                 'owner_key' => $ownerKey,
                 'project_id' => $task['project_id'] ?? '',
+                'group_id' => $task['group_id'] ?? '',
                 'is_family' => $isFamily ? 1 : 0,
                 'title' => $task['title'],
                 'details' => $task['details'],
@@ -189,6 +192,7 @@ final class SyncRepository
             ['id' => $item['id']],
             [
                 'project_id' => $item['project_id'] ?? '',
+                'group_id' => $item['group_id'] ?? '',
                 'title' => $item['title'],
                 'details' => $item['details'],
                 'due_date' => $item['due_date'],
@@ -236,6 +240,7 @@ final class SyncRepository
             $out[] = [
                 'id' => $this->taskExternalId($owner, $storedId, $isFamily),
                 'project_id' => (string)($row->project_id ?? ''),
+                'group_id' => (string)($row->group_id ?? ''),
                 'owner_key' => $owner,
                 'is_family' => $isFamily,
                 'title' => (string)$row->title,
@@ -270,6 +275,7 @@ final class SyncRepository
             $out[] = [
                 'id' => (string)$row->id,
                 'project_id' => (string)($row->project_id ?? ''),
+                'group_id' => (string)($row->group_id ?? ''),
                 'owner_key' => 'family',
                 'is_family' => true,
                 'title' => (string)$row->title,

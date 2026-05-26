@@ -78,6 +78,7 @@ class TasksBoard extends StatelessWidget {
     super.key,
     required this.byStatus,
     required this.labelFor,
+    this.groupLabel,
     required this.selectionMode,
     required this.selectedIds,
     required this.onToggleSelect,
@@ -89,6 +90,7 @@ class TasksBoard extends StatelessWidget {
 
   final Map<String, List<TaskItem>> byStatus;
   final String Function(String profile) labelFor;
+  final String Function(String groupId)? groupLabel;
   final bool selectionMode;
   final Set<String> selectedIds;
   final void Function(String) onToggleSelect;
@@ -116,6 +118,7 @@ class TasksBoard extends StatelessWidget {
           title: _titles[status]!,
           items: items,
           labelFor: labelFor,
+          groupLabel: groupLabel,
           selectionMode: selectionMode,
           selectedIds: selectedIds,
           onToggleSelect: onToggleSelect,
@@ -152,6 +155,7 @@ class _KanbanColumn extends StatelessWidget {
   final String title;
   final List<TaskItem> items;
   final String Function(String profile) labelFor;
+  final String Function(String groupId)? groupLabel;
   final bool selectionMode;
   final Set<String> selectedIds;
   final void Function(String) onToggleSelect;
@@ -229,6 +233,7 @@ class _KanbanColumn extends StatelessWidget {
                                     child: TaskCard(
                                       item: item,
                                       labelFor: labelFor,
+                                      groupLabel: groupLabel,
                                       onEdit: () async {},
                                       onDelete: () async {},
                                       onDoneToggle: () async {},
@@ -239,6 +244,7 @@ class _KanbanColumn extends StatelessWidget {
                                 child: TaskCard(
                                   item: item,
                                   labelFor: labelFor,
+                                  groupLabel: groupLabel,
                                   selectionMode: selectionMode,
                                   selected: selectedIds.contains(item.id),
                                   onSelectionToggle: () =>
@@ -430,6 +436,7 @@ class DesktopTasksBoard extends StatelessWidget {
 
   final Map<String, List<TaskItem>> byStatus;
   final String Function(String profile) labelFor;
+  final String Function(String groupId)? groupLabel;
   final bool selectionMode;
   final Set<String> selectedIds;
   final void Function(String) onToggleSelect;

@@ -11,6 +11,7 @@ class TaskCard extends StatelessWidget {
     required this.onDelete,
     required this.onDoneToggle,
     this.labelFor,
+    this.groupLabel,
     this.selectionMode = false,
     this.selected = false,
     this.onSelectionToggle,
@@ -21,6 +22,7 @@ class TaskCard extends StatelessWidget {
   final bool selected;
   final VoidCallback? onSelectionToggle;
   final String Function(String profile)? labelFor;
+  final String Function(String groupId)? groupLabel;
   final Future<void> Function() onEdit;
   final Future<void> Function() onDelete;
   final Future<void> Function() onDoneToggle;
@@ -129,6 +131,25 @@ class TaskCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         color: textColor.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (item.groupId.isNotEmpty && groupLabel != null) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.group, size: 12, color: statusColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      groupLabel!(item.groupId),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: statusColor,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
