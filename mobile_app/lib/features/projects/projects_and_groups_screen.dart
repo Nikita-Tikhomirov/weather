@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../models/chat_models.dart';
 import '../../models/family_group.dart';
 import '../../models/task_project.dart';
 import '../../state/task_store.dart';
@@ -10,9 +11,17 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
   const ProjectsAndGroupsScreen({
     super.key,
     required this.store,
+    this.contacts = const [],
+    this.contactLabel = _defaultContactLabel,
   });
 
   final TaskStore store;
+  final List<ChatContact> contacts;
+  final String Function(ChatContact) contactLabel;
+
+  static String _defaultContactLabel(ChatContact c) => c.displayName.isNotEmpty
+      ? c.displayName
+      : (c.phone.isNotEmpty ? c.phone : c.profileKey);
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +96,7 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  'Семейные группы',
+                  'Группы',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const Spacer(),
@@ -252,6 +261,8 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
       context: context,
       store: store,
       isCreate: true,
+      contacts: contacts,
+      contactLabel: contactLabel,
     );
   }
 
@@ -261,6 +272,8 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
       store: store,
       isCreate: false,
       group: group,
+      contacts: contacts,
+      contactLabel: contactLabel,
     );
   }
 

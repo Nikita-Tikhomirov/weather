@@ -4,7 +4,7 @@ const kProfileLabels = {
   'nastya': 'Настя',
   'misha': 'Миша',
   'arisha': 'Ариша',
-  'family': 'Семья',
+  'family': 'Общие',
 };
 
 const kWorkflowLabels = {

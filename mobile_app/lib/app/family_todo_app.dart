@@ -40,7 +40,7 @@ class _FamilyTodoAppState extends State<FamilyTodoApp> {
   Widget build(BuildContext context) {
     final option = themeOptionByKey(_themeKey);
     return MaterialApp(
-      title: 'Семейные задачи',
+      title: 'Задачи',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(option),
       home: HomePage(

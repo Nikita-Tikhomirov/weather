@@ -166,7 +166,7 @@ Future<void> showTaskEditorSheet({
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Семейная задача'),
+                    title: const Text('Общая задача'),
                     value: isFamily,
                     onChanged: forceFamily
                         ? null

@@ -1,21 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../../models/chat_models.dart';
 import '../../models/family_group.dart';
 import '../../state/task_store.dart';
-
-const _knownMembers = ['nik', 'nastya', 'misha', 'arisha'];
-const _memberLabels = {
-  'nik': 'Ник',
-  'nastya': 'Настя',
-  'misha': 'Миша',
-  'arisha': 'Ариша',
-};
 
 Future<void> showFamilyGroupEditSheet({
   required BuildContext context,
   required TaskStore store,
   required bool isCreate,
   FamilyGroup? group,
+  required List<ChatContact> contacts,
+  required String Function(ChatContact) contactLabel,
 }) async {
   final nameCtl =
       TextEditingController(text: isCreate ? '' : group?.name ?? '');
@@ -30,6 +25,10 @@ Future<void> showFamilyGroupEditSheet({
     builder: (sheetContext) {
       return StatefulBuilder(
         builder: (sheetContext, setModalState) {
+          final availableContacts = contacts
+              .where((c) => c.profileKey.isNotEmpty)
+              .toList();
+
           return Padding(
             padding: EdgeInsets.only(
               left: 16,
@@ -58,20 +57,25 @@ Future<void> showFamilyGroupEditSheet({
                     style: Theme.of(sheetContext).textTheme.titleSmall,
                   ),
                   const SizedBox(height: 6),
+                  if (availableContacts.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Text('Нет контактов. Добавьте контакты в мессенджере.'),
+                    ),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: _knownMembers.map((member) {
+                    children: availableContacts.map((contact) {
+                      final profile = contact.profileKey;
                       return FilterChip(
-                        label:
-                            Text(_memberLabels[member] ?? member),
-                        selected: selectedMembers.contains(member),
+                        label: Text(contactLabel(contact)),
+                        selected: selectedMembers.contains(profile),
                         onSelected: (selected) {
                           setModalState(() {
                             if (selected) {
-                              selectedMembers.add(member);
+                              selectedMembers.add(profile);
                             } else {
-                              selectedMembers.remove(member);
+                              selectedMembers.remove(profile);
                             }
                           });
                         },

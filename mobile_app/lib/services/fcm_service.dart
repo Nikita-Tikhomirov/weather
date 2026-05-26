@@ -14,7 +14,7 @@ import 'api_client.dart';
 // ── Constants ──────────────────────────────────────────────────
 
 const _notificationChannelId = 'family_updates';
-const _notificationChannelName = 'Семейные уведомления';
+const _notificationChannelName = 'Уведомления';
 const _notificationChannelDescription =
     'Пуш-уведомления о задачах и напоминаниях';
 const _appVersion =
@@ -286,7 +286,7 @@ class FcmService {
       }
 
       final title = msg.notification?.title ??
-          (msg.data['title'] ?? 'Семейные задачи').toString();
+          (msg.data['title'] ?? 'Задачи').toString();
       final body = msg.notification?.body ??
           (msg.data['body'] ?? 'Появились новые изменения').toString();
       await _showForegroundNotification(

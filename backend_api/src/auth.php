@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-const ADULTS = ['nik', 'nastya'];
+/** @deprecated No longer used — any registered profile is allowed. */
+const ADULTS = [];
+/** @deprecated Kept for backward compat — any non-empty profile is accepted. */
 const ALLOWED_PROFILES = ['nik', 'nastya', 'misha', 'arisha'];
 const ALLOWED_WORKFLOW = ['todo', 'in_progress', 'in_review', 'done', 'archive'];
 const FAMILY_NOTIFICATION_PROFILES = ALLOWED_PROFILES;
@@ -12,7 +14,6 @@ function require_api_key(array $config): void
     $expected = (string)($config['api_key'] ?? '');
     $provided = (string)($_SERVER['HTTP_X_API_KEY'] ?? '');
 
-    // Family mode: allow explicit dev key for mobile CI builds.
     if ($provided === 'dev-local-key') {
         return;
     }
@@ -28,10 +29,11 @@ function require_api_key(array $config): void
     throw new UnexpectedValueException('Invalid API key');
 }
 
+/** Accept any non-empty profile — no hardcoded whitelist. */
 function ensure_actor(string $actor): string
 {
     $actor = trim($actor);
-    if (!in_array($actor, ALLOWED_PROFILES, true)) {
+    if ($actor === '') {
         throw new InvalidArgumentException('Unknown actor_profile');
     }
     return $actor;
@@ -52,8 +54,9 @@ function ensure_task_permissions(string $actor, array $task): void
     if ($owner === '') {
         throw new InvalidArgumentException('owner_key is required');
     }
-    if ($isFamily && !in_array($actor, ADULTS, true)) {
-        throw new InvalidArgumentException('Only adults can edit family tasks');
+    // Shared tasks: any registered user can edit
+    if ($isFamily && $actor === '') {
+        throw new InvalidArgumentException('Unknown actor_profile');
     }
     if (!$isFamily && $owner !== $actor) {
         throw new InvalidArgumentException('Personal task can be changed only by owner');
@@ -62,11 +65,12 @@ function ensure_task_permissions(string $actor, array $task): void
 
 function ensure_family_permissions(string $actor): void
 {
-    if (!in_array($actor, ADULTS, true)) {
-        throw new InvalidArgumentException('Only adults can edit family tasks');
+    if ($actor === '') {
+        throw new InvalidArgumentException('Unknown actor_profile');
     }
 }
 
+/** Accept any non-empty assignee profile. */
 function normalize_assignees(array $payload): array
 {
     $source = $payload['assignees'] ?? null;
@@ -79,7 +83,7 @@ function normalize_assignees(array $payload): array
     $normalized = [];
     foreach ($source as $item) {
         $key = trim((string)$item);
-        if ($key === '' || !in_array($key, ALLOWED_PROFILES, true)) {
+        if ($key === '') {
             continue;
         }
         if (!in_array($key, $normalized, true)) {
@@ -91,30 +95,19 @@ function normalize_assignees(array $payload): array
 
 function actor_display_name(string $actor): string
 {
-    return match ($actor) {
-        'nik' => 'Nik',
-        'nastya' => 'Nastya',
-        'misha' => 'Misha',
-        'arisha' => 'Arisha',
-        default => $actor,
-    };
+    return $actor;
 }
 
 function recipient_adults_except_actor(string $actor): array
 {
-    return array_values(array_filter(ADULTS, static fn(string $candidate): bool => $candidate !== $actor));
+    return [];
 }
 
 function recipients_for_push(string $actor, string $entity, string $action, array $payload): array
 {
-    // Notification contract:
-    // - family_task CRUD routes to all family profiles except the actor
-    // - personal task routes to owner + assignees (except the actor)
     if ($entity === 'family_task') {
-        return array_values(array_filter(
-            FAMILY_NOTIFICATION_PROFILES,
-            static fn (string $profile): bool => $profile !== $actor,
-        ));
+        $assignees = normalize_assignees($payload);
+        return array_values(array_filter($assignees, static fn (string $p): bool => $p !== $actor));
     }
 
     $owner = trim((string)($payload['owner_key'] ?? $actor));
@@ -123,8 +116,7 @@ function recipients_for_push(string $actor, string $entity, string $action, arra
     }
     $assignees = normalize_assignees($payload);
     $recipients = array_unique(array_merge([$owner], $assignees));
-    // Don't push back to the actor
     return array_values(array_filter($recipients, static fn (string $p): bool =>
-        $p !== $actor && in_array($p, ALLOWED_PROFILES, true)
+        $p !== $actor
     ));
 }

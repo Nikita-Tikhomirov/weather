@@ -1612,7 +1612,7 @@ class _HomePageState extends State<HomePage> {
               autofocus: true,
               maxLength: 60,
               decoration: const InputDecoration(
-                hintText: 'Например: Семья',
+                hintText: 'Например: Работа',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -3455,10 +3455,38 @@ class _HomePageState extends State<HomePage> {
     TaskItem? existing,
     bool forceFamily = false,
   }) async {
+    // When a project is selected, show assignees from project groups
+    // Otherwise, show all known contacts
+    List<ChatContact> contacts;
+    if (store.currentProjectId.value.isNotEmpty) {
+      final members = store.currentProjectGroupMembers;
+      contacts = members
+          .map((profile) => ChatContact(
+                profileKey: profile,
+                displayName: _profileLabel(profile),
+                phone: '',
+                conversationKey: '',
+              ))
+          .toList();
+      // Always include self
+      if (!contacts.any((c) => c.profileKey == store.owner.value)) {
+        contacts.insert(
+            0,
+            ChatContact(
+              profileKey: store.owner.value,
+              displayName: _profileLabel(store.owner.value),
+              phone: '',
+              conversationKey: '',
+            ));
+      }
+    } else {
+      contacts = _allKnownContacts(store);
+    }
+
     await showTaskEditorSheet(
       context: context,
       store: store,
-      knownContacts: _allKnownContacts(store),
+      knownContacts: contacts,
       contactLabel: contactLabel,
       dateKey: dateKey,
       existing: existing,
@@ -3804,7 +3832,13 @@ class _HomePageState extends State<HomePage> {
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => ProjectsAndGroupsScreen(store: store),
+                          builder: (_) => ProjectsAndGroupsScreen(
+                            store: store,
+                            contacts: _chatContacts,
+                            contactLabel: (c) => c.displayName.isNotEmpty
+                                ? c.displayName
+                                : c.profileKey,
+                          ),
                         ),
                       );
                     },

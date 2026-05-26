@@ -30,8 +30,9 @@ final class SyncRules
         if ($owner === '') {
             throw new InvalidArgumentException('owner_key is required');
         }
-        if ($isFamily && Profiles::isAllowed($actor) && !Profiles::isAdult($actor)) {
-            throw new InvalidArgumentException('Only adults can edit family tasks');
+        // Shared tasks: any registered user can edit
+        if ($isFamily && !Profiles::isAllowed($actor) && !self::profileExists($actor)) {
+            throw new InvalidArgumentException('Unknown actor_profile');
         }
         if (!$isFamily && $owner !== $actor) {
             throw new InvalidArgumentException('Personal task can be changed only by owner');
@@ -40,11 +41,8 @@ final class SyncRules
 
     public static function ensureFamilyPermissions(string $actor): void
     {
-        if (Profiles::isAllowed($actor) && !Profiles::isAdult($actor)) {
-            throw new InvalidArgumentException('Only adults can edit family tasks');
-        }
         if (!Profiles::isAllowed($actor) && !self::profileExists($actor)) {
-            throw new InvalidArgumentException('Only adults can edit family tasks');
+            throw new InvalidArgumentException('Unknown actor_profile');
         }
     }
 

@@ -61,7 +61,7 @@ Future<void> showProjectEditSheet({
                       const SizedBox(height: 12),
                       if (groups.isNotEmpty) ...[
                         Text(
-                          'Семейные группы',
+                          'Группы',
                           style: Theme.of(sheetContext).textTheme.titleSmall,
                         ),
                         const SizedBox(height: 6),
