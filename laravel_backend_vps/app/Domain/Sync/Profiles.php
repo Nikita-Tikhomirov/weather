@@ -6,7 +6,7 @@ final class Profiles
 {
     public const ADULTS = ['nik', 'nastya'];
     public const ALLOWED = ['nik', 'nastya', 'misha', 'arisha'];
-    public const ALLOWED_WORKFLOW = ['todo', 'in_progress', 'in_review', 'done'];
+    public const ALLOWED_WORKFLOW = ['todo', 'in_progress', 'in_review', 'done', 'archive'];
 
     public static function isAdult(string $profile): bool
     {

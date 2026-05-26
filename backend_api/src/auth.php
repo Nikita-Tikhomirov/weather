@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 const ADULTS = ['nik', 'nastya'];
 const ALLOWED_PROFILES = ['nik', 'nastya', 'misha', 'arisha'];
-const ALLOWED_WORKFLOW = ['todo', 'in_progress', 'in_review', 'done'];
+const ALLOWED_WORKFLOW = ['todo', 'in_progress', 'in_review', 'done', 'archive'];
 const FAMILY_NOTIFICATION_PROFILES = ALLOWED_PROFILES;
 
 function require_api_key(array $config): void
@@ -109,7 +109,7 @@ function recipients_for_push(string $actor, string $entity, string $action, arra
 {
     // Notification contract:
     // - family_task CRUD routes to all family profiles except the actor
-    // - personal task routes only to task owner (skip if owner is the actor)
+    // - personal task routes to owner + assignees (except the actor)
     if ($entity === 'family_task') {
         return array_values(array_filter(
             FAMILY_NOTIFICATION_PROFILES,
@@ -121,12 +121,10 @@ function recipients_for_push(string $actor, string $entity, string $action, arra
     if ($owner === '') {
         $owner = $actor;
     }
-    // Don't push own task changes back to the actor
-    if ($owner === $actor) {
-        return [];
-    }
-    if (in_array($owner, ALLOWED_PROFILES, true)) {
-        return [$owner];
-    }
-    return [];
+    $assignees = normalize_assignees($payload);
+    $recipients = array_unique(array_merge([$owner], $assignees));
+    // Don't push back to the actor
+    return array_values(array_filter($recipients, static fn (string $p): bool =>
+        $p !== $actor && in_array($p, ALLOWED_PROFILES, true)
+    ));
 }
