@@ -102,9 +102,10 @@ jobs:
           flutter pub get
 
       - name: Flutter analyze
+        continue-on-error: true
         run: |
           cd /tmp/family_todo_mobile
-          flutter analyze --no-fatal-infos || true
+          flutter analyze --no-fatal-infos
 
       - name: Flutter tests
         run: |
