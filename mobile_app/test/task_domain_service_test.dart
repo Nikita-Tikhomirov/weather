@@ -200,36 +200,4 @@ void main() {
   });
 }
 
-// Minimal copyWith for TaskDraft since the original doesn't have one.
-extension _TaskDraftCopy on TaskDraft {
-  TaskDraft copyWith({
-    String? title,
-    String? details,
-    String? dueDate,
-    String? time,
-    String? priority,
-    String? workflowStatus,
-    bool? isFamily,
-    List<String>? assignees,
-    int? durationMinutes,
-    List<int>? reminderOffsetsMinutes,
-    String? projectId,
-    String? groupId,
-  }) {
-    return TaskDraft(
-      title: title ?? this.title,
-      details: details ?? this.details,
-      dueDate: dueDate ?? this.dueDate,
-      time: time ?? this.time,
-      priority: priority ?? this.priority,
-      workflowStatus: workflowStatus ?? this.workflowStatus,
-      isFamily: isFamily ?? this.isFamily,
-      assignees: assignees ?? this.assignees,
-      durationMinutes: durationMinutes ?? this.durationMinutes,
-      reminderOffsetsMinutes:
-          reminderOffsetsMinutes ?? this.reminderOffsetsMinutes,
-      projectId: projectId ?? this.projectId,
-      groupId: groupId ?? this.groupId,
-    );
-  }
-}
+
