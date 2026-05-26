@@ -321,7 +321,7 @@ try {
         }
         $id = 'grp-' . str_replace('.', '', uniqid('', true));
         $now = iso_now();
-        upsert_family_group($db, ['id' => $id, 'name' => $name, 'members' => $members, 'owner_key' => $actor, 'created_at' => $now, 'updated_at' => $now]);
+        upsert_family_group_record($db, ['id' => $id, 'name' => $name, 'members' => $members, 'owner_key' => $actor, 'created_at' => $now, 'updated_at' => $now]);
         json_response(200, ['ok' => true, 'group' => ['id' => $id, 'name' => $name, 'members' => $members, 'owner_key' => $actor, 'created_at' => $now, 'updated_at' => $now]]);
         exit;
     }
@@ -340,7 +340,7 @@ try {
         if (isset($body['members']) && is_array($body['members'])) {
             $record['members'] = $body['members'];
         }
-        upsert_family_group($db, $record);
+        upsert_family_group_record($db, $record);
         json_response(200, ['ok' => true]);
         exit;
     }
