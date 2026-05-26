@@ -133,7 +133,7 @@ class TaskStore {
       desktop.voiceHostState;
   ValueNotifier<List<String>> get desktopLogEntries => desktop.logEntries;
 
-  bool get isAdult => TaskDomainService.adults.contains(owner.value);
+  bool get isAdult => true; // Any registered user has full permissions
 
   Future<void> initialize({
     required String initialOwner,
