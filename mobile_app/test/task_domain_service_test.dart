@@ -213,6 +213,8 @@ extension _TaskDraftCopy on TaskDraft {
     List<String>? assignees,
     int? durationMinutes,
     List<int>? reminderOffsetsMinutes,
+    String? projectId,
+    String? groupId,
   }) {
     return TaskDraft(
       title: title ?? this.title,
@@ -226,6 +228,8 @@ extension _TaskDraftCopy on TaskDraft {
       durationMinutes: durationMinutes ?? this.durationMinutes,
       reminderOffsetsMinutes:
           reminderOffsetsMinutes ?? this.reminderOffsetsMinutes,
+      projectId: projectId ?? this.projectId,
+      groupId: groupId ?? this.groupId,
     );
   }
 }
