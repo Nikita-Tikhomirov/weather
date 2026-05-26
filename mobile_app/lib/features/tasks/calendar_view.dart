@@ -226,13 +226,13 @@ class CalendarView extends StatelessWidget {
                             return TaskCard(
                               item: task,
                               labelFor: labelFor,
-                              onEdit: () {
+                              onEdit: () async {
                                 Navigator.of(sheetContext).pop();
-                                onEdit(task);
+                                await onEdit(task);
                               },
-                              onDelete: () {
+                              onDelete: () async {
                                 Navigator.of(sheetContext).pop();
-                                onDelete(task);
+                                await onDelete(task);
                               },
                               onDoneToggle: () async {},
                             );
