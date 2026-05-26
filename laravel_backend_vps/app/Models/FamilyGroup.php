@@ -13,10 +13,10 @@ class FamilyGroup extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id', 'name', 'members_json', 'owner_key', 'created_at', 'updated_at',
+        'id', 'name', 'members', 'owner_key', 'created_at', 'updated_at',
     ];
 
     protected $casts = [
-        'members_json' => 'array',
+        'members' => 'array',
     ];
 }

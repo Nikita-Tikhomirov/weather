@@ -493,7 +493,7 @@ final class SyncRepository
         return [
             'id' => (string)$row->id,
             'name' => (string)$row->name,
-            'members' => $this->decodeJsonArray($row->members_json),
+            'members' => $this->decodeJsonArray($row->members),
             'owner_key' => (string)$row->owner_key,
             'created_at' => (string)$row->created_at,
             'updated_at' => (string)$row->updated_at,
@@ -527,7 +527,7 @@ final class SyncRepository
             ->map(fn($row) => [
                 'id' => (string)$row->id,
                 'name' => (string)$row->name,
-                'members' => $this->decodeJsonArray($row->members_json),
+                'members' => $this->decodeJsonArray($row->members),
                 'owner_key' => (string)$row->owner_key,
                 'created_at' => (string)$row->created_at,
                 'updated_at' => (string)$row->updated_at,
@@ -578,7 +578,7 @@ final class SyncRepository
             ['id' => $group['id']],
             [
                 'name' => $group['name'],
-                'members_json' => json_encode($group['members'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'members' => json_encode($group['members'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'owner_key' => $group['owner_key'],
                 'created_at' => $group['created_at'] ?? $this->nowIso(),
                 'updated_at' => $group['updated_at'] ?? $this->nowIso(),

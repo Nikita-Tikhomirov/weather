@@ -1,0 +1,86 @@
+# Deploy backend_api (simple PHP) to VPS
+param(
+    [switch]$DryRun
+)
+
+$hostIp = "31.129.97.211"
+$hostUser = "root"
+$hostPassword = "WCw8eJo&TIxu"
+# The simple PHP backend is served directly from this path
+$remoteBase = "/var/www/html"
+
+$files = @(
+    @{Local="backend_api\public\index.php";                      Remote="$remoteBase/public/index.php"},
+    @{Local="backend_api\src\repository.php";                    Remote="$remoteBase/src/repository.php"},
+    @{Local="backend_api\src\auth.php";                          Remote="$remoteBase/src/auth.php"},
+    @{Local="backend_api\public\_route.php";                     Remote="$remoteBase/public/_route.php"},
+    @{Local="backend_api\public\projects.php";                   Remote="$remoteBase/public/projects.php"},
+    @{Local="backend_api\public\projects_create.php";            Remote="$remoteBase/public/projects_create.php"},
+    @{Local="backend_api\public\projects_update.php";            Remote="$remoteBase/public/projects_update.php"},
+    @{Local="backend_api\public\projects_delete.php";            Remote="$remoteBase/public/projects_delete.php"},
+    @{Local="backend_api\public\projects_set_groups.php";        Remote="$remoteBase/public/projects_set_groups.php"},
+    @{Local="backend_api\public\family_groups.php";              Remote="$remoteBase/public/family_groups.php"},
+    @{Local="backend_api\public\family_groups_create.php";       Remote="$remoteBase/public/family_groups_create.php"},
+    @{Local="backend_api\public\family_groups_update.php";       Remote="$remoteBase/public/family_groups_update.php"},
+    @{Local="backend_api\public\family_groups_delete.php";       Remote="$remoteBase/public/family_groups_delete.php"}
+)
+
+if ($DryRun) {
+    Write-Host "=== DRY RUN ==="
+    foreach ($f in $files) {
+        Write-Host "Would upload: $($f.Local) -> $($f.Remote)"
+    }
+    exit 0
+}
+
+Write-Host "Deploying backend_api to $hostIp ..."
+
+$script = @"
+import paramiko, sys, os
+
+host = "$hostIp"
+user = "$hostUser"
+password = "$hostPassword"
+
+client = paramiko.SSHClient()
+client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+client.connect(host, username=user, password=password, timeout=15)
+sftp = client.open_sftp()
+
+files = [
+$($files | ForEach-Object { "    ('$($_.Local)', '$($_.Remote)')," }) 
+]
+
+for local, remote in files:
+    local_path = os.path.join(r'C:\Users\user\Desktop\weather', local)
+    if not os.path.exists(local_path):
+        print(f'  SKIP (not found): {local}')
+        continue
+    print(f'Uploading {local} ...')
+    # backup
+    try:
+        sftp.stat(remote + '.bak')
+        sftp.remove(remote + '.bak')
+    except:
+        pass
+    try:
+        sftp.rename(remote, remote + '.bak')
+    except:
+        pass
+    sftp.put(local_path, remote)
+    print(f'  OK: {local} -> {remote}')
+
+sftp.close()
+
+# Test the endpoints
+stdin, stdout, stderr = client.exec_command(f'curl -s -o /dev/null -w "%{{http_code}}" -X POST http://localhost/projects/create -H "Content-Type: application/json" -H "X-Api-Key: dev-local-key" -d \'{{"actor_profile":"nik","name":"test"}}\' 2>&1')
+print('Test /projects/create:', stdout.read().decode().strip())
+
+stdin, stdout, stderr = client.exec_command(f'curl -s -o /dev/null -w "%{{http_code}}" -X POST http://localhost/family-groups/create -H "Content-Type: application/json" -H "X-Api-Key: dev-local-key" -d \'{{"actor_profile":"nik","name":"test_group","members":["nik"]}}\' 2>&1')
+print('Test /family-groups/create:', stdout.read().decode().strip())
+
+client.close()
+print('Deploy done.')
+"@
+
+$script | python -
