@@ -690,6 +690,20 @@ class LocalDb implements TaskDataSource {
     });
   }
 
+  Future<void> setProjectGroupsLocal(
+      String projectId, List<String> groupIds) async {
+    await _db.transaction((txn) async {
+      await txn.delete('project_family_groups_local',
+          where: 'project_id = ?', whereArgs: [projectId]);
+      for (final gid in groupIds) {
+        await txn.insert('project_family_groups_local', {
+          'project_id': projectId,
+          'group_id': gid,
+        });
+      }
+    });
+  }
+
   static Future<void> _createProjectMessagesTable(DatabaseExecutor db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS project_messages(

@@ -18,10 +18,8 @@ const _monthNamesRu = [
   'Ноябрь',
   'Декабрь',
 ];
-const _weekDayNamesRu = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
-/// Full-screen month grid calendar for mobile.
-/// Shows all tasks in day cells; tap opens a day detail sheet with full task cards.
+/// Full month grid calendar (4 columns). Tap a day → navigate to DayTasksPage.
 class CalendarView extends StatelessWidget {
   const CalendarView({
     super.key,
@@ -32,7 +30,7 @@ class CalendarView extends StatelessWidget {
     required this.onMonthPrev,
     required this.onMonthNext,
     required this.onGoToday,
-    required this.onSelectDate,
+    required this.onDayTap,
     required this.onEdit,
     required this.onDelete,
     required this.onAddForDate,
@@ -45,18 +43,21 @@ class CalendarView extends StatelessWidget {
   final VoidCallback onMonthPrev;
   final VoidCallback onMonthNext;
   final VoidCallback onGoToday;
-  final void Function(DateTime) onSelectDate;
+  final void Function(DateTime, List<TaskItem>) onDayTap;
   final Future<void> Function(TaskItem) onEdit;
   final Future<void> Function(TaskItem) onDelete;
   final Future<void> Function(DateTime) onAddForDate;
 
+  static const int _columns = 4;
+
   @override
   Widget build(BuildContext context) {
-    final monthGrid = _buildMonthGrid(monthDate);
     final byDate = <String, List<TaskItem>>{};
     for (final task in allTasks) {
       byDate.putIfAbsent(task.dueDate, () => <TaskItem>[]).add(task);
     }
+
+    final days = _daysInMonth(monthDate);
 
     return Column(
       children: [
@@ -75,8 +76,8 @@ class CalendarView extends StatelessWidget {
                   '${_monthNamesRu[monthDate.month - 1]} ${monthDate.year}',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               IconButton(
@@ -92,55 +93,30 @@ class CalendarView extends StatelessWidget {
             ],
           ),
         ),
-        // ── Weekday header ──
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6),
-          child: Row(
-            children: [
-              for (final label in _weekDayNamesRu)
-                Expanded(
-                  child: Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 4),
-        // ── Month grid (scrollable if many weeks) ──
+        // ── Month grid ──
         Expanded(
           child: GridView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.all(4),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 7,
-              crossAxisSpacing: 3,
-              mainAxisSpacing: 3,
-              childAspectRatio: 0.80,
+              crossAxisCount: _columns,
+              crossAxisSpacing: 4,
+              mainAxisSpacing: 4,
+              childAspectRatio: 0.85,
             ),
-            itemCount: monthGrid.length,
+            itemCount: days.length,
             itemBuilder: (context, index) {
-              final day = monthGrid[index];
+              final day = days[index];
               final dateKey = _dateKey(day);
               final dayTasks = byDate[dateKey] ?? const <TaskItem>[];
-              final isCurrentMonth = day.month == monthDate.month;
               final isToday = _isSameDay(day, DateTime.now());
               final isSelected = _isSameDay(day, selectedDate);
 
               return _DayCell(
                 day: day.day,
-                isCurrentMonth: isCurrentMonth,
                 isToday: isToday,
                 isSelected: isSelected,
                 tasks: dayTasks,
-                onTap: () => onSelectDate(day),
-                onLongPress: () => _openDaySheet(
-                  context, day, dayTasks, onEdit, onDelete, onAddForDate, labelFor,
-                ),
+                onTap: () => onDayTap(day, dayTasks),
               );
             },
           ),
@@ -149,121 +125,9 @@ class CalendarView extends StatelessWidget {
     );
   }
 
-  void _openDaySheet(
-    BuildContext context,
-    DateTime day,
-    List<TaskItem> tasks,
-    Future<void> Function(TaskItem) onEdit,
-    Future<void> Function(TaskItem) onDelete,
-    Future<void> Function(DateTime) onAddForDate,
-    String Function(String) labelFor,
-  ) {
-    final title =
-        '${day.day.toString().padLeft(2, '0')}.${day.month.toString().padLeft(2, '0')}.${day.year}';
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetContext) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.6,
-          minChildSize: 0.3,
-          maxChildSize: 0.92,
-          expand: false,
-          builder: (context, scrollController) {
-            return Column(
-              children: [
-                const SizedBox(height: 8),
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ),
-                      FilledButton.tonalIcon(
-                        onPressed: () {
-                          Navigator.of(sheetContext).pop();
-                          onAddForDate(day);
-                        },
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('Добавить'),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(),
-                Expanded(
-                  child: tasks.isEmpty
-                      ? Center(
-                          child: Text(
-                            'На эту дату задач нет',
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                ),
-                          ),
-                        )
-                      : ListView.builder(
-                          controller: scrollController,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          itemCount: tasks.length,
-                          itemBuilder: (context, index) {
-                            final task = tasks[index];
-                            return TaskCard(
-                              item: task,
-                              labelFor: labelFor,
-                              onEdit: () async {
-                                Navigator.of(sheetContext).pop();
-                                await onEdit(task);
-                              },
-                              onDelete: () async {
-                                Navigator.of(sheetContext).pop();
-                                await onDelete(task);
-                              },
-                              onDoneToggle: () async {},
-                            );
-                          },
-                        ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  static List<DateTime> _buildMonthGrid(DateTime month) {
-    final firstDay = DateTime(month.year, month.month, 1);
+  static List<DateTime> _daysInMonth(DateTime month) {
     final lastDay = DateTime(month.year, month.month + 1, 0);
-    // Monday = 1, Sunday = 7; weekday is 1-7
-    final startOffset = (firstDay.weekday - 1) % 7; // how many days to prepend
-    final grid = <DateTime>[];
-    for (var i = startOffset; i > 0; i--) {
-      grid.add(firstDay.subtract(Duration(days: i)));
-    }
-    for (var d = 1; d <= lastDay.day; d++) {
-      grid.add(DateTime(month.year, month.month, d));
-    }
-    // Fill remaining cells to complete last week
-    while (grid.length % 7 != 0) {
-      grid.add(grid.last.add(const Duration(days: 1)));
-    }
-    return grid;
+    return List.generate(lastDay.day, (i) => DateTime(month.year, month.month, i + 1));
   }
 
   static bool _isSameDay(DateTime a, DateTime b) {
@@ -279,84 +143,67 @@ class CalendarView extends StatelessWidget {
 class _DayCell extends StatelessWidget {
   const _DayCell({
     required this.day,
-    required this.isCurrentMonth,
     required this.isToday,
     required this.isSelected,
     required this.tasks,
     required this.onTap,
-    required this.onLongPress,
   });
 
   final int day;
-  final bool isCurrentMonth;
   final bool isToday;
   final bool isSelected;
   final List<TaskItem> tasks;
   final VoidCallback onTap;
-  final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
+    final colors = Theme.of(context).colorScheme;
 
     Color bgColor;
     if (isSelected) {
       bgColor = colors.primaryContainer;
     } else if (isToday) {
       bgColor = colors.primaryContainer.withValues(alpha: 0.35);
-    } else if (!isCurrentMonth) {
-      bgColor = colors.surfaceContainerLowest;
     } else {
       bgColor = colors.surface;
     }
 
     return GestureDetector(
       onTap: onTap,
-      onLongPress: onLongPress,
       child: Container(
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isToday
                 ? colors.primary.withValues(alpha: 0.5)
                 : colors.outlineVariant.withValues(alpha: 0.4),
           ),
         ),
-        padding: const EdgeInsets.all(3),
+        padding: const EdgeInsets.all(4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Day number
             Container(
-              width: 22,
-              height: 22,
+              width: 24,
+              height: 24,
               alignment: Alignment.center,
               decoration: isToday
-                  ? BoxDecoration(
-                      color: colors.primary,
-                      shape: BoxShape.circle,
-                    )
+                  ? BoxDecoration(color: colors.primary, shape: BoxShape.circle)
                   : null,
               child: Text(
                 '$day',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: isToday ? FontWeight.w800 : FontWeight.w600,
-                  color: isToday
-                      ? colors.onPrimary
-                      : isCurrentMonth
-                          ? colors.onSurface
-                          : colors.onSurfaceVariant.withValues(alpha: 0.5),
+                  color: isToday ? colors.onPrimary : colors.onSurface,
                 ),
               ),
             ),
-            // Task indicators (compact dots with title snippets)
             if (tasks.isNotEmpty)
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 1),
+                  padding: const EdgeInsets.only(top: 2),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -380,7 +227,7 @@ class _DayCell extends StatelessWidget {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    fontSize: 9,
+                                    fontSize: 10,
                                     color: colors.onSurface.withValues(alpha: 0.7),
                                   ),
                                 ),
@@ -392,7 +239,7 @@ class _DayCell extends StatelessWidget {
                         Text(
                           '+${tasks.length - 3}',
                           style: TextStyle(
-                            fontSize: 9,
+                            fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: colors.primary,
                           ),
@@ -409,24 +256,81 @@ class _DayCell extends StatelessWidget {
 
   static Color _statusDot(String status) {
     switch (status) {
-      case 'todo':
-        return const Color(0xFF38BDF8);
-      case 'in_progress':
-        return const Color(0xFF34D399);
-      case 'in_review':
-        return const Color(0xFFFBBF24);
-      case 'done':
-        return const Color(0xFFA78BFA);
-      case 'archive':
-        return const Color(0xFF9CA3AF);
-      default:
-        return const Color(0xFF94A3B8);
+      case 'todo': return const Color(0xFF38BDF8);
+      case 'in_progress': return const Color(0xFF34D399);
+      case 'in_review': return const Color(0xFFFBBF24);
+      case 'done': return const Color(0xFFA78BFA);
+      case 'archive': return const Color(0xFF9CA3AF);
+      default: return const Color(0xFF94A3B8);
     }
   }
 }
 
+// ── Full-screen day tasks page ────────────────────────────────────
 
-// ── Desktop calendar (unchanged, adapted) ─────────────────────────────────
+class DayTasksPage extends StatelessWidget {
+  const DayTasksPage({
+    super.key,
+    required this.day,
+    required this.tasks,
+    required this.labelFor,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onAddForDate,
+  });
+
+  final DateTime day;
+  final List<TaskItem> tasks;
+  final String Function(String) labelFor;
+  final Future<void> Function(TaskItem) onEdit;
+  final Future<void> Function(TaskItem) onDelete;
+  final Future<void> Function(DateTime) onAddForDate;
+
+  @override
+  Widget build(BuildContext context) {
+    final title =
+        '${day.day.toString().padLeft(2, '0')}.${day.month.toString().padLeft(2, '0')}.${day.year}';
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'Добавить задачу',
+            onPressed: () => onAddForDate(day),
+          ),
+        ],
+      ),
+      body: tasks.isEmpty
+          ? Center(
+              child: Text(
+                'На эту дату задач нет',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: tasks.length,
+              itemBuilder: (context, index) {
+                final task = tasks[index];
+                return TaskCard(
+                  item: task,
+                  labelFor: labelFor,
+                  onEdit: () => onEdit(task),
+                  onDelete: () => onDelete(task),
+                  onDoneToggle: () async {},
+                );
+              },
+            ),
+    );
+  }
+}
+
+
+// ── Desktop calendar (unchanged) ─────────────────────────────────
 
 class DesktopCalendarView extends StatelessWidget {
   const DesktopCalendarView({
@@ -460,6 +364,7 @@ class DesktopCalendarView extends StatelessWidget {
   final Future<void> Function(TaskItem) onDelete;
   final Future<void> Function(DateTime) onAddForDate;
 
+  static const _weekDayNamesRu = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
   static const _statusTitles = {
     'todo': 'К выполнению',
     'in_progress': 'В работе',
@@ -580,8 +485,7 @@ class DesktopCalendarView extends StatelessWidget {
                                   child: Container(
                                     width: double.infinity,
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 3,
+                                      horizontal: 6, vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFDBEAFE),
@@ -628,9 +532,7 @@ class DesktopCalendarView extends StatelessWidget {
                             border: Border.all(color: const Color(0xFFD9E2EF)),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Center(
-                            child: Text(_statusTitles[status]!),
-                          ),
+                          child: Center(child: Text(_statusTitles[status]!)),
                         );
                       },
                     ),

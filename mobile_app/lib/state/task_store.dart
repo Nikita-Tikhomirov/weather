@@ -254,6 +254,8 @@ class TaskStore {
       name: name,
       description: description,
     );
+    // Persist immediately so the UI sees the new project without waiting for sync
+    await repository.db.upsertProjectLocal(project);
     await refreshProjectsAndGroups();
     return project.id;
   }
@@ -268,6 +270,17 @@ class TaskStore {
       description: description,
       groupIds: groupIds,
     );
+    // Update local DB immediately
+    await repository.db.upsertProjectLocal(TaskProject(
+      id: id,
+      name: name,
+      description: description,
+      ownerKey: owner.value,
+      createdAt: DateTime.now().toIso8601String(),
+      updatedAt: DateTime.now().toIso8601String(),
+    ));
+    // Update project-group mapping locally
+    await repository.db.setProjectGroupsLocal(id, groupIds);
     await refreshProjectsAndGroups();
   }
 
@@ -288,6 +301,7 @@ class TaskStore {
       name: name,
       members: members,
     );
+    await repository.db.upsertFamilyGroupLocal(group);
     await refreshProjectsAndGroups();
     return group.id;
   }

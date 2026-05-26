@@ -24,6 +24,7 @@ import '../projects/project_chat_view.dart';
 import '../projects/projects_and_groups_screen.dart';
 import '../profile/profile_page.dart';
 import '../tasks/calendar_view.dart';
+import '../tasks/task_card.dart';
 import '../tasks/task_editor_sheet.dart';
 import '../tasks/tasks_board.dart';
 import '../../models/call_models.dart';
@@ -3818,37 +3819,122 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildCalendarPage(TaskStore store) {
-    return ValueListenableBuilder<List<TaskItem>>(
-      valueListenable: store.allTasksView,
-      builder: (context, allTasks, _) {
-        return ValueListenableBuilder<DateTime>(
-          valueListenable: store.selectedDate,
-          builder: (context, selectedDate, _) {
-            return CalendarView(
-              monthDate: _calendarMonth,
-              selectedDate: selectedDate,
-              allTasks: allTasks,
-              labelFor: _profileLabel,
-              onMonthPrev: _goCalendarMonthPrev,
-              onMonthNext: _goCalendarMonthNext,
-              onGoToday: _goCalendarMonthToday,
-              onSelectDate: (date) {
-                store.setSelectedDate(date);
-              },
-              onEdit: (task) => _openTaskEditor(store, existing: task),
-              onDelete: (task) async {
-                await store.delete(task);
-                await _safeSyncDelta(store, showErrors: true);
-              },
-              onAddForDate: (date) async {
-                store.setSelectedDate(date);
-                await _openTaskEditor(store);
-              },
-            );
-          },
-        );
-      },
+    return Column(
+      children: [
+        _buildProjectSelector(store),
+        Expanded(
+          child: ValueListenableBuilder<List<TaskItem>>(
+            valueListenable: store.allTasksView,
+            builder: (context, allTasks, _) {
+              return ValueListenableBuilder<String>(
+                valueListenable: store.currentProjectId,
+                builder: (context, currentProjectId, _) {
+                  return ValueListenableBuilder<DateTime>(
+                    valueListenable: store.selectedDate,
+                    builder: (context, selectedDate, _) {
+                      // Filter tasks by current project
+                      final filteredTasks = currentProjectId.isEmpty
+                          ? allTasks
+                          : allTasks
+                              .where((t) => t.projectId == currentProjectId)
+                              .toList();
+
+                      return CalendarView(
+                        monthDate: _calendarMonth,
+                        selectedDate: selectedDate,
+                        allTasks: filteredTasks,
+                        labelFor: _profileLabel,
+                        onMonthPrev: _goCalendarMonthPrev,
+                        onMonthNext: _goCalendarMonthNext,
+                        onGoToday: _goCalendarMonthToday,
+                        onSelectDate: (date) {
+                          store.setSelectedDate(date);
+                        },
+                        onDayTap: (day, dayTasks) {
+                          _openDayTasksScreen(store, day, dayTasks);
+                        },
+                        onEdit: (task) =>
+                            _openTaskEditor(store, existing: task),
+                        onDelete: (task) async {
+                          await store.delete(task);
+                          await _safeSyncDelta(store, showErrors: true);
+                        },
+                        onAddForDate: (date) async {
+                          store.setSelectedDate(date);
+                          await _openTaskEditor(store);
+                        },
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
+  }
+
+  void _openDayTasksScreen(
+      TaskStore store, DateTime day, List<TaskItem> dayTasks) {
+    final title =
+        '${day.day.toString().padLeft(2, '0')}.${day.month.toString().padLeft(2, '0')}.${day.year}';
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(
+            title: Text(title),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.add),
+                tooltip: 'Добавить задачу',
+                onPressed: () async {
+                  store.setSelectedDate(day);
+                  await _openTaskEditor(store);
+                  // Re-read tasks after edit
+                  store.refreshLocal();
+                },
+              ),
+            ],
+          ),
+          body: dayTasks.isEmpty
+              ? const Center(child: Text('На эту дату задач нет'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: dayTasks.length,
+                  itemBuilder: (context, index) {
+                    final task = dayTasks[index];
+                    return TaskCard(
+                      item: task,
+                      labelFor: _profileLabel,
+                      onEdit: () => _openTaskEditor(store, existing: task),
+                      onDelete: () async {
+                        await store.delete(task);
+                        await _safeSyncDelta(store, showErrors: true);
+                        // Refresh the screen by popping
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                          _openDayTasksScreenFromStore(store, day);
+                        }
+                      },
+                      onDoneToggle: () async {
+                        await store.toggleDone(task);
+                        await _safeSyncDelta(store, showErrors: true);
+                      },
+                    );
+                  },
+                ),
+        ),
+      ),
+    );
+  }
+
+  void _openDayTasksScreenFromStore(TaskStore store, DateTime day) {
+    final dateKeyStr =
+        '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+    final tasks =
+        store.allTasksView.value.where((t) => t.dueDate == dateKeyStr).toList();
+    _openDayTasksScreen(store, day, tasks);
   }
 
   @override
