@@ -280,7 +280,7 @@ jobs:
 
           # Force-update the 'latest' tag to current commit
           git tag -f latest
-          git push origin latest --force
+          git push origin latest --force || echo "::warning::Failed to push latest tag (may be rate-limited)"
 
           # Delete old latest release if exists (ignore error)
           gh release delete latest --yes --cleanup-tag 2>/dev/null || true
@@ -289,4 +289,4 @@ jobs:
           gh release create latest \
             --title "Latest Mobile APK" \
             --notes "Сборка #${{ github.run_number }} | Коммит ${{ github.sha }}" \
-            "$APK"
+            "$APK" || echo "::warning::Failed to create latest release (may be rate-limited)"
