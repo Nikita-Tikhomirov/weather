@@ -225,10 +225,16 @@ jobs:
           set -euo pipefail
           APK_PATH="/tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk"
           # Find apksigner in common locations
-          APKSIGNER="$(find "${ANDROID_HOME:-}" /usr/local/lib/android /opt/android -maxdepth 4 -type f -name apksigner 2>/dev/null | sort -V | tail -n 1 || true)"
-          if [ -z "$APKSIGNER" ]; then
-            APKSIGNER="$(find "$HOME" /tmp -maxdepth 6 -type f -name apksigner 2>/dev/null | sort -V | tail -n 1 || true)"
-          fi
+          APKSIGNER=""
+          for d in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" /usr/local/lib/android /opt/android "$HOME"; do
+            if [ -n "$d" ] && [ -d "$d" ]; then
+              found="$(find "$d" -maxdepth 6 -type f -name apksigner 2>/dev/null | sort -V | tail -n 1 || true)"
+              if [ -n "$found" ]; then
+                APKSIGNER="$found"
+                break
+              fi
+            fi
+          done
           if [ -z "$APKSIGNER" ]; then
             echo "::warning::Android apksigner was not found — skipping signing verification."
             exit 0
