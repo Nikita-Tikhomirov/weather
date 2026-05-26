@@ -1534,11 +1534,20 @@ class _HomePageState extends State<HomePage> {
       );
       final avatarUrl = uploadResult.assetUrl;
       if (avatarUrl.isEmpty) return null;
-      await store.repository.api.setGroupAvatar(
-        actorProfile: store.owner.value,
-        conversationKey: conv.conversationKey,
-        avatarUrl: avatarUrl,
+
+      // Persist locally: SharedPreferences + local DB
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('group_avatar_${conv.conversationKey}', avatarUrl);
+      await store.repository.db.upsertConversation(
+        ChatConversation(
+          conversationKey: conv.conversationKey,
+          kind: conv.kind,
+          title: conv.title,
+          members: conv.members,
+          avatarUrl: avatarUrl,
+        ),
       );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Аватар обновлён')),

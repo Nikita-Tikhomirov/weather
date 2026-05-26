@@ -12,16 +12,23 @@ extension _ChatInitExtension on _HomePageState {
       );
       await store.repository.db.replaceConversations(bootstrap.conversations);
       await store.repository.db.replaceStickerPacks(bootstrap.stickerPacks);
+
+      // Restore locally-stored group avatars
+      await _restoreLocalGroupAvatars(store, bootstrap.conversations);
+
+      // Re-read conversations from DB to pick up restored avatars
+      final mergedConversations = await store.repository.db.readConversations();
+
       final contacts = bootstrap.contacts;
       if (mounted) {
         await _saveAvatarUrlsFromContacts(contacts);
         await _loadProfileAvatars([
           ...contacts.map((item) => item.profileKey),
-          ...bootstrap.conversations.expand((item) => item.members),
+          ...mergedConversations.expand((item) => item.members),
         ]);
         _setChatBootstrapState(
           contacts,
-          bootstrap.conversations,
+          mergedConversations,
           bootstrap.stickerPacks,
         );
       }
@@ -33,6 +40,28 @@ extension _ChatInitExtension on _HomePageState {
   Future<void> _refreshMessengerContacts(TaskStore store) async {
     await _refreshChatBootstrap(store);
     await _loadPhoneContacts(store);
+  }
+
+  Future<void> _restoreLocalGroupAvatars(
+    TaskStore store,
+    List<ChatConversation> serverConversations,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final conv in serverConversations) {
+      final key = 'group_avatar_${conv.conversationKey}';
+      final savedUrl = prefs.getString(key);
+      if (savedUrl != null && savedUrl.isNotEmpty) {
+        await store.repository.db.upsertConversation(
+          ChatConversation(
+            conversationKey: conv.conversationKey,
+            kind: conv.kind,
+            title: conv.title,
+            members: conv.members,
+            avatarUrl: savedUrl,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _removeLocalConversation(
@@ -73,6 +102,9 @@ extension _ChatInitExtension on _HomePageState {
       final bootstrap = await api.chatBootstrap(actorProfile: actor);
       await db.replaceConversations(bootstrap.conversations);
       await db.replaceStickerPacks(bootstrap.stickerPacks);
+
+      // Restore locally-stored group avatars
+      await _restoreLocalGroupAvatars(store, bootstrap.conversations);
 
       final conversations = await db.readConversations();
       final stickerPacks = await db.readStickerPacks();
