@@ -14,7 +14,14 @@ $files = @(
     @{Local="laravel_backend_vps\app\Http\Controllers\ChatController.php"; Remote="$remoteBase/app/Http/Controllers/ChatController.php"},
     @{Local="laravel_backend_vps\app\Domain\Chat\ChatRepository.php";      Remote="$remoteBase/app/Domain/Chat/ChatRepository.php"},
     @{Local="laravel_backend_vps\app\Services\Push\PushOutboxService.php"; Remote="$remoteBase/app/Services/Push/PushOutboxService.php"},
-    @{Local="laravel_backend_vps\database\migrations\2026_05_21_000700_add_avatar_url_to_messenger_users.php"; Remote="$remoteBase/database/migrations/2026_05_21_000700_add_avatar_url_to_messenger_users.php"}
+    @{Local="laravel_backend_vps\database\migrations\2026_05_21_000700_add_avatar_url_to_messenger_users.php"; Remote="$remoteBase/database/migrations/2026_05_21_000700_add_avatar_url_to_messenger_users.php"},
+    @{Local="laravel_backend_vps\app\Http\Controllers\ProjectGroupController.php"; Remote="$remoteBase/app/Http/Controllers/ProjectGroupController.php"},
+    @{Local="laravel_backend_vps\app\Domain\Sync\SyncRules.php";           Remote="$remoteBase/app/Domain/Sync/SyncRules.php"},
+    @{Local="laravel_backend_vps\app\Domain\Sync\SyncRepository.php";      Remote="$remoteBase/app/Domain/Sync/SyncRepository.php"},
+    @{Local="laravel_backend_vps\app\Domain\Sync\Profiles.php";            Remote="$remoteBase/app/Domain/Sync/Profiles.php"},
+    @{Local="laravel_backend_vps\app\Domain\Sync\ActorProfileGuard.php";   Remote="$remoteBase/app/Domain/Sync/ActorProfileGuard.php"},
+    @{Local="laravel_backend_vps\routes\api.php";                          Remote="$remoteBase/routes/api.php"},
+    @{Local="laravel_backend_vps\database\migrations\2026_05_26_000800_add_projects_and_family_groups.php"; Remote="$remoteBase/database/migrations/2026_05_26_000800_add_projects_and_family_groups.php"}
 )
 
 if ($DryRun) {
