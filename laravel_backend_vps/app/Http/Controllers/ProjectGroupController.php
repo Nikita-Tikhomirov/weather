@@ -88,6 +88,15 @@ class ProjectGroupController extends Controller
                 throw new InvalidArgumentException('id is required');
             }
 
+            // Only the project owner can edit
+            $project = $this->repo->findProject($id);
+            if ($project === null) {
+                throw new InvalidArgumentException('Project not found');
+            }
+            if ($project['owner_key'] !== $actor) {
+                throw new InvalidArgumentException('Only the project owner can edit');
+            }
+
             $name = trim((string)$request->input('name', ''));
             $description = trim((string)$request->input('description', ''));
             $groupIds = $request->input('group_ids', null);
@@ -107,7 +116,7 @@ class ProjectGroupController extends Controller
 
             return $this->json(200, ['ok' => true]);
         } catch (InvalidArgumentException $e) {
-            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+            return $this->json(403, ['ok' => false, 'error' => $e->getMessage()]);
         } catch (Throwable $e) {
             return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
         }
@@ -116,15 +125,22 @@ class ProjectGroupController extends Controller
     public function deleteProject(Request $request): JsonResponse
     {
         try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
             $id = trim((string)$request->input('id', ''));
             if ($id === '') {
                 throw new InvalidArgumentException('id is required');
             }
 
+            // Only the project owner can delete
+            $project = $this->repo->findProject($id);
+            if ($project !== null && $project['owner_key'] !== $actor) {
+                throw new InvalidArgumentException('Only the project owner can delete');
+            }
+
             $this->repo->deleteProject($id);
             return $this->json(200, ['ok' => true]);
         } catch (InvalidArgumentException $e) {
-            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+            return $this->json(403, ['ok' => false, 'error' => $e->getMessage()]);
         } catch (Throwable $e) {
             return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
         }
@@ -133,9 +149,19 @@ class ProjectGroupController extends Controller
     public function setProjectGroups(Request $request): JsonResponse
     {
         try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
             $projectId = trim((string)$request->input('project_id', ''));
             if ($projectId === '') {
                 throw new InvalidArgumentException('project_id is required');
+            }
+
+            // Only the project owner can assign groups
+            $project = $this->repo->findProject($projectId);
+            if ($project === null) {
+                throw new InvalidArgumentException('Project not found');
+            }
+            if ($project['owner_key'] !== $actor) {
+                throw new InvalidArgumentException('Only the project owner can assign groups');
             }
 
             $groupIds = $request->input('group_ids', []);
@@ -146,7 +172,7 @@ class ProjectGroupController extends Controller
             $this->repo->setProjectGroups($projectId, array_map('strval', $groupIds));
             return $this->json(200, ['ok' => true]);
         } catch (InvalidArgumentException $e) {
-            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+            return $this->json(403, ['ok' => false, 'error' => $e->getMessage()]);
         } catch (Throwable $e) {
             return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
         }
@@ -205,6 +231,15 @@ class ProjectGroupController extends Controller
                 throw new InvalidArgumentException('id is required');
             }
 
+            // Only the group owner can edit
+            $group = $this->repo->findGroup($id);
+            if ($group === null) {
+                throw new InvalidArgumentException('Group not found');
+            }
+            if ($group['owner_key'] !== $actor) {
+                throw new InvalidArgumentException('Only the group owner can edit');
+            }
+
             $name = trim((string)$request->input('name', ''));
             $members = $request->input('members', null);
             $now = $this->repo->nowIso();
@@ -223,7 +258,7 @@ class ProjectGroupController extends Controller
 
             return $this->json(200, ['ok' => true]);
         } catch (InvalidArgumentException $e) {
-            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+            return $this->json(403, ['ok' => false, 'error' => $e->getMessage()]);
         } catch (Throwable $e) {
             return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
         }
@@ -232,15 +267,22 @@ class ProjectGroupController extends Controller
     public function deleteGroup(Request $request): JsonResponse
     {
         try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
             $id = trim((string)$request->input('id', ''));
             if ($id === '') {
                 throw new InvalidArgumentException('id is required');
             }
 
+            // Only the group owner can delete
+            $group = $this->repo->findGroup($id);
+            if ($group !== null && $group['owner_key'] !== $actor) {
+                throw new InvalidArgumentException('Only the group owner can delete');
+            }
+
             $this->repo->deleteFamilyGroup($id);
             return $this->json(200, ['ok' => true]);
         } catch (InvalidArgumentException $e) {
-            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+            return $this->json(403, ['ok' => false, 'error' => $e->getMessage()]);
         } catch (Throwable $e) {
             return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
         }

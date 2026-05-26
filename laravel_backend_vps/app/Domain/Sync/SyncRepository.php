@@ -460,6 +460,40 @@ final class SyncRepository
         return is_array($decoded) ? $decoded : [];
     }
 
+    /** @return array<string, mixed>|null */
+    public function findProject(string $id): ?array
+    {
+        $row = DB::table('task_projects')->where('id', $id)->first();
+        if ($row === null) {
+            return null;
+        }
+        return [
+            'id' => (string)$row->id,
+            'name' => (string)$row->name,
+            'description' => (string)$row->description,
+            'owner_key' => (string)$row->owner_key,
+            'created_at' => (string)$row->created_at,
+            'updated_at' => (string)$row->updated_at,
+        ];
+    }
+
+    /** @return array<string, mixed>|null */
+    public function findGroup(string $id): ?array
+    {
+        $row = DB::table('family_groups')->where('id', $id)->first();
+        if ($row === null) {
+            return null;
+        }
+        return [
+            'id' => (string)$row->id,
+            'name' => (string)$row->name,
+            'members' => $this->decodeJsonArray($row->members_json),
+            'owner_key' => (string)$row->owner_key,
+            'created_at' => (string)$row->created_at,
+            'updated_at' => (string)$row->updated_at,
+        ];
+    }
+
     /** @return array<int, array<string, mixed>> */
     public function allProjects(): array
     {
