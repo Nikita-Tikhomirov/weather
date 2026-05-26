@@ -465,6 +465,7 @@ class DesktopCalendarView extends StatelessWidget {
     'in_progress': 'В работе',
     'in_review': 'На проверке',
     'done': 'Выполнено',
+    'archive': 'Архив',
   };
 
   @override

@@ -109,12 +109,19 @@ final class SyncRules
             return array_values(array_filter($profiles, static fn (string $p): bool => $p !== $actor));
         }
 
+        // Personal tasks: push to owner + assignees (but not back to actor)
         $owner = trim((string)($payload['owner_key'] ?? $actor));
         if ($owner === '') {
             $owner = $actor;
         }
-
-        return (Profiles::isAllowed($owner) || self::profileExists($owner)) ? [$owner] : [];
+        $assignees = self::normalizeAssignees($payload);
+        $recipients = array_unique(array_merge([$owner], $assignees));
+        // Don't push back to the actor
+        $recipients = array_values(array_filter($recipients, static fn (string $p): bool => $p !== $actor));
+        // Filter to valid profiles
+        return array_values(array_filter($recipients, static fn (string $p): bool =>
+            Profiles::isAllowed($p) || self::profileExists($p)
+        ));
     }
 
     public static function recipientsForReminder(string $entity, array $payload): array
@@ -123,8 +130,13 @@ final class SyncRules
             return self::normalizeAssignees($payload);
         }
 
+        // Personal tasks: remind owner + assignees
         $owner = trim((string)($payload['owner_key'] ?? ''));
-        return (Profiles::isAllowed($owner) || self::profileExists($owner)) ? [$owner] : [];
+        $assignees = self::normalizeAssignees($payload);
+        $recipients = array_unique(array_merge([$owner], $assignees));
+        return array_values(array_filter($recipients, static fn (string $p): bool =>
+            Profiles::isAllowed($p) || self::profileExists($p)
+        ));
     }
 
     private static function profileExists(string $profile): bool

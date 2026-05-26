@@ -156,6 +156,10 @@ Future<void> showTaskEditorSheet({
                         child: Text('На проверке'),
                       ),
                       DropdownMenuItem(value: 'done', child: Text('Выполнено')),
+                      DropdownMenuItem(
+                        value: 'archive',
+                        child: Text('Архив'),
+                      ),
                     ],
                     onChanged: (value) =>
                         setModalState(() => status = value ?? 'todo'),

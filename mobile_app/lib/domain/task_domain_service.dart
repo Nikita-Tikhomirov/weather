@@ -8,6 +8,7 @@ class TaskDomainService {
     'in_progress',
     'in_review',
     'done',
+    'archive',
   };
   static const Set<String> allowedPriority = {'low', 'medium', 'high'};
   static const Set<int> allowedReminderOffsets = {
