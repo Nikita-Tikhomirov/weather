@@ -25,14 +25,16 @@ return new class extends Migration
         // Family groups — named sets of family members
         if (!Schema::hasTable('family_groups')) {
             Schema::create('family_groups', function (Blueprint $table): void {
-            $table->string('name', 128);
-            $table->json('members');
-            $table->string('owner_key', 32);
-            $table->string('created_at', 32);
-            $table->string('updated_at', 32);
+                $table->string('id', 64)->primary();
+                $table->string('name', 128);
+                $table->json('members_json');
+                $table->string('owner_key', 32);
+                $table->string('created_at', 32);
+                $table->string('updated_at', 32);
 
-            $table->index('owner_key', 'idx_family_groups_owner');
-        });
+                $table->index('owner_key', 'idx_family_groups_owner');
+            });
+        }
 
         // Junction: which groups belong to which projects
         Schema::create('project_family_groups', function (Blueprint $table): void {
