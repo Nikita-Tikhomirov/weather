@@ -1,9 +1,3 @@
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
-
-// ignore_for_file: annotate_overrides
-
 import '../contracts/call_api.dart';
 import '../contracts/chat_api.dart';
 import '../contracts/sync_api.dart';
@@ -17,186 +11,72 @@ import '../models/sync_snapshots.dart';
 import '../models/task_item.dart';
 import '../models/task_project.dart';
 
+import 'call_api_client.dart';
+import 'chat_api_client.dart';
+import 'sync_api_client.dart';
+
 // Re-export for backward compatibility — consumers that import
 // api_client.dart still see these types.
 export '../models/chat_snapshots.dart';
 export '../models/device_snapshots.dart';
 export '../models/sync_snapshots.dart';
 
+/// Facade that delegates to the focused API clients.
+///
+/// This preserves backward compatibility for all existing imports of
+/// [ApiClient] while the implementation is split across:
+/// - [SyncApiClient] (sync + projects/family-groups)
+/// - [ChatApiClient] (chat)
+/// - [CallApiClient] (audio/video calls)
 class ApiClient implements SyncApi, ChatApi, CallApi {
-  ApiClient({required this.baseUrl, required this.apiKey});
+  ApiClient({required String baseUrl, required String apiKey})
+      : _sync = SyncApiClient(baseUrl: baseUrl, apiKey: apiKey),
+        _chat = ChatApiClient(baseUrl: baseUrl, apiKey: apiKey),
+        _call = CallApiClient(baseUrl: baseUrl, apiKey: apiKey);
 
-  final String baseUrl;
-  final String apiKey;
+  final SyncApiClient _sync;
+  final ChatApiClient _chat;
+  final CallApiClient _call;
 
-  Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        'X-Api-Key': apiKey,
-      };
+  /// Public getters for backward compatibility with code that reads
+  /// [baseUrl] or [apiKey] directly from an [ApiClient] reference.
+  String get baseUrl => _sync.baseUrl;
+  String get apiKey => _sync.apiKey;
 
-  Future<http.Response> _postWithFallback({
-    required List<String> paths,
-    required String body,
-  }) async {
-    Object? lastError;
-    for (final path in paths) {
-      final uri = Uri.parse('$baseUrl$path');
-      try {
-        final response = await http.post(uri, headers: _headers, body: body);
-        if (response.statusCode >= 200 && response.statusCode < 300) {
-          return response;
-        }
-        lastError = StateError(
-          'POST failed: ${response.statusCode} ${response.body}',
-        );
-      } catch (err) {
-        lastError = err;
-      }
-    }
-    throw StateError('Unable to complete POST request: $lastError');
-  }
+  // -- SyncApi -----------------------------------------------------------
 
-  Future<http.Response> _getWithFallback({
-    required List<String> paths,
-    Map<String, String>? query,
-  }) async {
-    Object? lastError;
-    for (final path in paths) {
-      final uri = Uri.parse('$baseUrl$path').replace(queryParameters: query);
-      try {
-        final response = await http.get(uri, headers: _headers);
-        if (response.statusCode >= 200 && response.statusCode < 300) {
-          return response;
-        }
-        lastError = StateError(
-          'GET failed: ${response.statusCode} ${response.body}',
-        );
-      } catch (err) {
-        lastError = err;
-      }
-    }
-    throw StateError('Unable to complete GET request: $lastError');
-  }
-
+  @override
   Future<void> push({
     required String actorProfile,
     required List<PendingEvent> events,
     String source = 'mobile',
-  }) async {
-    if (events.isEmpty) {
-      return;
-    }
-    final payload = {
-      'actor_profile': actorProfile,
-      'source': source,
-      'events': events.map((e) {
-        return {
-          'event_id': e.eventId,
-          'entity': e.entity,
-          'action': e.action,
-          'payload': jsonDecode(e.payloadJson),
-          'happened_at': e.happenedAt,
-        };
-      }).toList(),
-    };
-    await _postWithFallback(
-      paths: const [
-        '/sync_push.php',
-        '/sync_push.php/',
-        '/sync/push/',
-        '/sync/push',
-      ],
-      body: jsonEncode(payload),
+  }) {
+    return _sync.push(
+      actorProfile: actorProfile,
+      events: events,
+      source: source,
     );
   }
 
+  @override
   Future<PullSnapshot> pull({
     required String since,
     bool changesMode = false,
     String? cursor,
-  }) async {
-    final query = <String, String>{'since': since};
-    if (changesMode) {
-      query['mode'] = 'changes';
-      query['cursor'] = (cursor == null || cursor.isEmpty) ? since : cursor;
-    }
-    if (_actorProfileForPull.isNotEmpty) {
-      query['actor_profile'] = _actorProfileForPull;
-    }
-    final paths = changesMode
-        ? const [
-            '/sync_changes.php',
-            '/sync_changes.php/',
-            '/sync_pull.php',
-            '/sync_pull.php/',
-            '/sync/changes/',
-            '/sync/changes',
-            '/sync/pull/',
-            '/sync/pull',
-          ]
-        : const [
-            '/sync_pull.php',
-            '/sync_pull.php/',
-            '/sync/pull/',
-            '/sync/pull',
-          ];
-    final response = await _getWithFallback(
-      paths: paths,
-      query: query,
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final tasks = (body['tasks'] as List? ?? const [])
-        .whereType<Map>()
-        .map((row) => TaskItem.fromJson(Map<String, dynamic>.from(row)))
-        .toList();
-    final familyTasks =
-        (body['family_tasks'] as List? ?? const []).whereType<Map>().map((row) {
-      final source = Map<String, dynamic>.from(row);
-      source['owner_key'] = 'family';
-      source['is_family'] = true;
-      return TaskItem.fromJson(source);
-    }).toList();
-    final projects = (body['projects'] as List? ?? const [])
-        .whereType<Map>()
-        .map((row) => TaskProject.fromJson(Map<String, dynamic>.from(row)))
-        .toList();
-    final familyGroups = (body['family_groups'] as List? ?? const [])
-        .whereType<Map>()
-        .map((row) => FamilyGroup.fromJson(Map<String, dynamic>.from(row)))
-        .toList();
-    final projectGroupMap = <String, List<String>>{};
-    final rawPg = body['project_groups'];
-    if (rawPg is Map) {
-      for (final entry in rawPg.entries) {
-        final pid = entry.key.toString();
-        final gids = (entry.value is List)
-            ? (entry.value as List).map((v) => v.toString()).toList()
-            : <String>[];
-        projectGroupMap[pid] = gids;
-      }
-    }
-    final serverTime =
-        (body['server_time'] ?? DateTime.now().toIso8601String()).toString();
-    final nextCursor = (body['next_cursor'] ?? serverTime).toString();
-    final mode = (body['mode'] ?? '').toString();
-    return PullSnapshot(
-      tasks: tasks,
-      familyTasks: familyTasks,
-      serverTime: serverTime,
-      nextCursor: nextCursor,
-      isDelta: mode == 'changes' || changesMode,
-      projects: projects,
-      familyGroups: familyGroups,
-      projectGroupMap: projectGroupMap,
+  }) {
+    return _sync.pull(
+      since: since,
+      changesMode: changesMode,
+      cursor: cursor,
     );
   }
 
-  String _actorProfileForPull = '';
-
+  @override
   void setActorProfileForPull(String actorProfile) {
-    _actorProfileForPull = actorProfile.trim();
+    _sync.setActorProfileForPull(actorProfile);
   }
 
+  @override
   Future<DeviceTokenRegistration> registerDeviceToken({
     required String actorProfile,
     required String token,
@@ -206,33 +86,20 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     String playServices = 'unknown',
     String tokenStatus = 'active',
     String lastError = '',
-  }) async {
-    final payload = {
-      'actor_profile': actorProfile,
-      'token': token,
-      'platform': platform,
-      'app_version': appVersion,
-      'play_services': playServices,
-      'token_status': tokenStatus,
-      'last_error': lastError,
-      if (deviceId != null && deviceId.isNotEmpty) 'device_id': deviceId,
-    };
-    final response = await _postWithFallback(
-      paths: const [
-        '/devices_register.php',
-        '/devices_register.php/',
-        '/devices/register/',
-        '/devices/register',
-      ],
-      body: jsonEncode(payload),
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return DeviceTokenRegistration(
-      shouldResetToken: body['should_reset_token'] == true,
-      previousTokenStatus: (body['previous_token_status'] ?? '').toString(),
+  }) {
+    return _sync.registerDeviceToken(
+      actorProfile: actorProfile,
+      token: token,
+      platform: platform,
+      appVersion: appVersion,
+      deviceId: deviceId,
+      playServices: playServices,
+      tokenStatus: tokenStatus,
+      lastError: lastError,
     );
   }
 
+  @override
   Future<void> reportDeviceStatus({
     required String actorProfile,
     required String platform,
@@ -242,201 +109,104 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     String? token,
     String? deviceId,
     String? lastError,
-  }) async {
-    final payload = {
-      'actor_profile': actorProfile,
-      'platform': platform,
-      'app_version': appVersion,
-      'token_status': tokenStatus,
-      'play_services': playServices,
-      'last_error': lastError ?? '',
-      if (token != null && token.isNotEmpty) 'token': token,
-      if (deviceId != null && deviceId.isNotEmpty) 'device_id': deviceId,
-    };
-    await _postWithFallback(
-      paths: const [
-        '/devices_status.php',
-        '/devices_status.php/',
-        '/devices/status/',
-        '/devices/status',
-      ],
-      body: jsonEncode(payload),
+  }) {
+    return _sync.reportDeviceStatus(
+      actorProfile: actorProfile,
+      platform: platform,
+      appVersion: appVersion,
+      tokenStatus: tokenStatus,
+      playServices: playServices,
+      token: token,
+      deviceId: deviceId,
+      lastError: lastError,
     );
   }
 
+  @override
   Future<PushDeviceStatus> pushDeviceStatus({
     required String actorProfile,
-  }) async {
-    final response = await _getWithFallback(
-      paths: const ['/push/device_status', '/push_device_status.php'],
-      query: {'actor_profile': actorProfile},
-    );
-    return PushDeviceStatus.fromJson(
-      jsonDecode(response.body) as Map<String, dynamic>,
-    );
+  }) {
+    return _sync.pushDeviceStatus(actorProfile: actorProfile);
   }
 
+  @override
   Future<void> unregisterDeviceToken({
     required String actorProfile,
     required String token,
-  }) async {
-    final payload = {'actor_profile': actorProfile, 'token': token};
-    await _postWithFallback(
-      paths: const [
-        '/devices_unregister.php',
-        '/devices_unregister.php/',
-        '/devices/unregister/',
-        '/devices/unregister',
-      ],
-      body: jsonEncode(payload),
+  }) {
+    return _sync.unregisterDeviceToken(
+      actorProfile: actorProfile,
+      token: token,
     );
   }
 
+  // -- ChatApi -----------------------------------------------------------
+
+  @override
   Future<ChatBootstrapSnapshot> chatBootstrap({
     required String actorProfile,
-  }) async {
-    final response = await _getWithFallback(
-      paths: const ['/chat/bootstrap'],
-      query: {'actor_profile': actorProfile},
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-
-    final contacts = (body['contacts'] as List? ?? const [])
-        .whereType<Map>()
-        .map((row) => ChatContact.fromJson(Map<String, dynamic>.from(row)))
-        .toList();
-
-    final conversations = (body['conversations'] as List? ?? const [])
-        .whereType<Map>()
-        .map((row) => ChatConversation.fromJson(Map<String, dynamic>.from(row)))
-        .toList();
-
-    final packs = (body['sticker_packs'] as List? ?? const [])
-        .whereType<Map>()
-        .map((row) => StickerPack.fromJson(Map<String, dynamic>.from(row)))
-        .toList();
-
-    return ChatBootstrapSnapshot(
-      contacts: contacts,
-      groupConversationKey:
-          (body['group'] as Map?)?['conversation_key']?.toString() ??
-              'group:common',
-      conversations: conversations,
-      stickerPacks: packs,
-    );
+  }) {
+    return _chat.chatBootstrap(actorProfile: actorProfile);
   }
 
+  @override
   Future<PhoneProfileSession> deviceStart({
     required String phone,
     required String deviceId,
     String displayName = '',
-  }) async {
-    final response = await _postWithFallback(
-      paths: const ['/auth/device-start'],
-      body: jsonEncode({
-        'phone': phone,
-        'device_id': deviceId,
-        'display_name': displayName,
-        'platform': 'android',
-      }),
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final user = Map<String, dynamic>.from((body['user'] as Map?) ?? const {});
-    final members = (body['family_members'] as List? ?? const [])
-        .whereType<Map>()
-        .map((row) => ChatContact.fromJson(Map<String, dynamic>.from(row)))
-        .toList();
-    return PhoneProfileSession(
-      profileKey: (user['profile_key'] ?? '').toString(),
-      phone: (user['phone'] ?? '').toString(),
-      displayName: (user['display_name'] ?? '').toString(),
-      deviceId: (user['device_id'] ?? deviceId).toString(),
-      familyMembers: members,
+  }) {
+    return _chat.deviceStart(
+      phone: phone,
+      deviceId: deviceId,
+      displayName: displayName,
     );
   }
 
+  @override
   Future<List<ChatContact>> resolveContacts({
     required String actorProfile,
     required List<String> phones,
-  }) async {
-    final response = await _postWithFallback(
-      paths: const ['/contacts/resolve'],
-      body: jsonEncode({'actor_profile': actorProfile, 'phones': phones}),
+  }) {
+    return _chat.resolveContacts(
+      actorProfile: actorProfile,
+      phones: phones,
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return (body['contacts'] as List? ?? const [])
-        .whereType<Map>()
-        .map((row) => ChatContact.fromJson(Map<String, dynamic>.from(row)))
-        .toList();
   }
 
+  @override
   Future<List<ChatContact>> familyMembers({
     required String actorProfile,
-  }) async {
-    final response = await _getWithFallback(
-      paths: const ['/family/members'],
-      query: {'actor_profile': actorProfile},
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return (body['members'] as List? ?? const [])
-        .whereType<Map>()
-        .map((row) => ChatContact.fromJson(Map<String, dynamic>.from(row)))
-        .toList();
+  }) {
+    return _chat.familyMembers(actorProfile: actorProfile);
   }
 
+  @override
   Future<List<ChatContact>> addFamilyMembers({
     required String actorProfile,
     required List<String> profiles,
-  }) async {
-    final response = await _postWithFallback(
-      paths: const ['/family/members/add'],
-      body: jsonEncode({'actor_profile': actorProfile, 'profiles': profiles}),
+  }) {
+    return _chat.addFamilyMembers(
+      actorProfile: actorProfile,
+      profiles: profiles,
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return (body['members'] as List? ?? const [])
-        .whereType<Map>()
-        .map((row) => ChatContact.fromJson(Map<String, dynamic>.from(row)))
-        .toList();
   }
 
+  @override
   Future<ChatMessagesSnapshot> chatFetchMessages({
     required String actorProfile,
     required String conversationKey,
     String? cursor,
     int limit = 50,
-  }) async {
-    final query = <String, String>{
-      'actor_profile': actorProfile,
-      'conversation_key': conversationKey,
-      'limit': limit.toString(),
-    };
-    if (cursor != null && cursor.isNotEmpty) {
-      query['cursor'] = cursor;
-    }
-
-    final response = await _getWithFallback(
-      paths: const ['/chat/messages'],
-      query: query,
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-
-    final messages = (body['messages'] as List? ?? const [])
-        .whereType<Map>()
-        .map((row) => ChatMessage.fromJson(Map<String, dynamic>.from(row)))
-        .toList();
-
-    final nextCursor = body['next_cursor']?.toString();
-    final typingProfiles = (body['typing_profiles'] as List? ?? const [])
-        .map((item) => item.toString())
-        .where((item) => item.trim().isNotEmpty)
-        .toList();
-    return ChatMessagesSnapshot(
-      messages: messages,
-      nextCursor: nextCursor,
-      typingProfiles: typingProfiles,
+  }) {
+    return _chat.chatFetchMessages(
+      actorProfile: actorProfile,
+      conversationKey: conversationKey,
+      cursor: cursor,
+      limit: limit,
     );
   }
 
+  @override
   Future<ChatMessage> chatSendMessage({
     required String actorProfile,
     required String conversationKey,
@@ -447,368 +217,320 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     Map<String, dynamic>? imageMeta,
     List<ChatAttachment> attachments = const [],
     String? clientMessageId,
-  }) async {
-    final payload = {
-      'actor_profile': actorProfile,
-      'conversation_key': conversationKey,
-      'message_type': messageType,
-      'text': text,
-      if (stickerId != null && stickerId.isNotEmpty) 'sticker_id': stickerId,
-      if (imageUrl != null && imageUrl.isNotEmpty) 'image_url': imageUrl,
-      if (imageMeta != null) 'image_meta': imageMeta,
-      if (attachments.isNotEmpty)
-        'attachments': attachments.map((item) => item.toJson()).toList(),
-      if (clientMessageId != null && clientMessageId.isNotEmpty)
-        'client_message_id': clientMessageId,
-    };
-
-    final response = await _postWithFallback(
-      paths: const ['/chat/messages/send'],
-      body: jsonEncode(payload),
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return ChatMessage.fromJson(
-      Map<String, dynamic>.from((body['message'] as Map?) ?? const {}),
+  }) {
+    return _chat.chatSendMessage(
+      actorProfile: actorProfile,
+      conversationKey: conversationKey,
+      messageType: messageType,
+      text: text,
+      stickerId: stickerId,
+      imageUrl: imageUrl,
+      imageMeta: imageMeta,
+      attachments: attachments,
+      clientMessageId: clientMessageId,
     );
   }
 
+  @override
   Future<ChatConversation> chatCreateGroup({
     required String actorProfile,
     required String title,
     required List<String> memberProfiles,
-  }) async {
-    final response = await _postWithFallback(
-      paths: const ['/chat/conversations'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'title': title,
-        'member_profiles': memberProfiles,
-      }),
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return ChatConversation.fromJson(
-      Map<String, dynamic>.from((body['conversation'] as Map?) ?? const {}),
+  }) {
+    return _chat.chatCreateGroup(
+      actorProfile: actorProfile,
+      title: title,
+      memberProfiles: memberProfiles,
     );
   }
 
+  @override
   Future<ChatMessage> chatSetReaction({
     required String actorProfile,
     required String messageId,
     required String reaction,
-  }) async {
-    final response = await _postWithFallback(
-      paths: const ['/chat/messages/reaction'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'message_id': messageId,
-        'reaction': reaction,
-      }),
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return ChatMessage.fromJson(
-      Map<String, dynamic>.from((body['message'] as Map?) ?? const {}),
+  }) {
+    return _chat.chatSetReaction(
+      actorProfile: actorProfile,
+      messageId: messageId,
+      reaction: reaction,
     );
   }
 
+  @override
   Future<ChatMessage> chatEditMessage({
     required String actorProfile,
     required String messageId,
     required String text,
-  }) async {
-    final response = await _postWithFallback(
-      paths: const ['/chat/messages/edit'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'message_id': messageId,
-        'text': text,
-      }),
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return ChatMessage.fromJson(
-      Map<String, dynamic>.from((body['message'] as Map?) ?? const {}),
+  }) {
+    return _chat.chatEditMessage(
+      actorProfile: actorProfile,
+      messageId: messageId,
+      text: text,
     );
   }
 
+  @override
   Future<ChatMessage> chatDeleteMessage({
     required String actorProfile,
     required String messageId,
-  }) async {
-    final response = await _postWithFallback(
-      paths: const ['/chat/messages/delete'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'message_id': messageId,
-      }),
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return ChatMessage.fromJson(
-      Map<String, dynamic>.from((body['message'] as Map?) ?? const {}),
+  }) {
+    return _chat.chatDeleteMessage(
+      actorProfile: actorProfile,
+      messageId: messageId,
     );
   }
 
+  @override
   Future<ChatUploadResult> chatUploadSticker({
     required String actorProfile,
     required List<int> bytes,
     String filename = 'sticker.png',
-  }) async {
-    return chatUploadMedia(
+  }) {
+    return _chat.chatUploadSticker(
       actorProfile: actorProfile,
       bytes: bytes,
       filename: filename,
     );
   }
 
+  @override
   Future<ChatUploadResult> chatUploadMedia({
     required String actorProfile,
     required List<int> bytes,
     required String filename,
     void Function(double progress)? onProgress,
-  }) async {
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse('$baseUrl/chat/stickers/upload'),
-    );
-    request.headers['X-Api-Key'] = apiKey;
-    request.fields['actor_profile'] = actorProfile;
-    request.files.add(
-      http.MultipartFile.fromBytes('image', bytes, filename: filename),
-    );
-
-    final streamedResponse = await request.send();
-    final totalBytes = streamedResponse.contentLength ?? bytes.length;
-    var receivedBytes = 0;
-    final chunks = <int>[];
-
-    await for (final chunk in streamedResponse.stream) {
-      chunks.addAll(chunk);
-      receivedBytes += chunk.length;
-      if (onProgress != null && totalBytes > 0) {
-        onProgress((receivedBytes / totalBytes).clamp(0.0, 1.0));
-      }
-    }
-
-    final text = utf8.decode(chunks);
-    if (streamedResponse.statusCode < 200 ||
-        streamedResponse.statusCode >= 300) {
-      throw StateError('Upload failed: ${streamedResponse.statusCode} $text');
-    }
-
-    final body = jsonDecode(text) as Map<String, dynamic>;
-    return ChatUploadResult(
-      assetUrl: (body['asset_url'] ?? '').toString(),
-      imageMeta:
-          (body['image_meta'] as Map?)?.cast<String, dynamic>() ?? const {},
+  }) {
+    return _chat.chatUploadMedia(
+      actorProfile: actorProfile,
+      bytes: bytes,
+      filename: filename,
+      onProgress: onProgress,
     );
   }
 
+  @override
   Future<ChatUploadResult> chatUploadDocument({
     required String actorProfile,
     required List<int> bytes,
     required String filename,
     void Function(double progress)? onProgress,
-  }) async {
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse('$baseUrl/chat/documents/upload'),
-    );
-    request.headers['X-Api-Key'] = apiKey;
-    request.fields['actor_profile'] = actorProfile;
-    request.files.add(
-      http.MultipartFile.fromBytes('file', bytes, filename: filename),
-    );
-
-    final streamedResponse = await request.send();
-    final totalBytes = streamedResponse.contentLength ?? bytes.length;
-    var receivedBytes = 0;
-    final chunks = <int>[];
-
-    await for (final chunk in streamedResponse.stream) {
-      chunks.addAll(chunk);
-      receivedBytes += chunk.length;
-      if (onProgress != null && totalBytes > 0) {
-        onProgress((receivedBytes / totalBytes).clamp(0.0, 1.0));
-      }
-    }
-
-    final text = utf8.decode(chunks);
-    if (streamedResponse.statusCode < 200 ||
-        streamedResponse.statusCode >= 300) {
-      throw StateError('Document upload failed: ${streamedResponse.statusCode} $text');
-    }
-
-    final body = jsonDecode(text) as Map<String, dynamic>;
-    return ChatUploadResult(
-      assetUrl: (body['asset_url'] ?? '').toString(),
-      imageMeta:
-          (body['image_meta'] as Map?)?.cast<String, dynamic>() ?? const {},
+  }) {
+    return _chat.chatUploadDocument(
+      actorProfile: actorProfile,
+      bytes: bytes,
+      filename: filename,
+      onProgress: onProgress,
     );
   }
 
+  @override
   Future<String> uploadProfileAvatar({
     required String actorProfile,
     required List<int> bytes,
     String filename = 'avatar.jpg',
-  }) async {
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse('$baseUrl/profile/avatar'),
+  }) {
+    return _chat.uploadProfileAvatar(
+      actorProfile: actorProfile,
+      bytes: bytes,
+      filename: filename,
     );
-    request.headers['X-Api-Key'] = apiKey;
-    request.fields['actor_profile'] = actorProfile;
-    request.files.add(
-      http.MultipartFile.fromBytes('image', bytes, filename: filename),
-    );
-
-    final response = await http.Response.fromStream(await request.send());
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError(
-          'Avatar upload failed: ${response.statusCode} ${response.body}');
-    }
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return ((body['user'] as Map?)?['avatar_url'] ?? '').toString();
   }
 
+  @override
   Future<void> addGroupMember({
     required String actorProfile,
     required String conversationKey,
     required String profile,
-  }) async {
-    await _postWithFallback(
-      paths: const ['/chat/conversations/members/add'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'conversation_key': conversationKey,
-        'profile': profile,
-      }),
+  }) {
+    return _chat.addGroupMember(
+      actorProfile: actorProfile,
+      conversationKey: conversationKey,
+      profile: profile,
     );
   }
 
+  @override
   Future<void> removeGroupMember({
     required String actorProfile,
     required String conversationKey,
     required String profile,
-  }) async {
-    await _postWithFallback(
-      paths: const ['/chat/conversations/members/remove'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'conversation_key': conversationKey,
-        'profile': profile,
-      }),
+  }) {
+    return _chat.removeGroupMember(
+      actorProfile: actorProfile,
+      conversationKey: conversationKey,
+      profile: profile,
     );
   }
 
+  @override
   Future<void> renameGroup({
     required String actorProfile,
     required String conversationKey,
     required String title,
-  }) async {
-    await _postWithFallback(
-      paths: const ['/chat/conversations/rename'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'conversation_key': conversationKey,
-        'title': title,
-      }),
+  }) {
+    return _chat.renameGroup(
+      actorProfile: actorProfile,
+      conversationKey: conversationKey,
+      title: title,
     );
   }
 
+  @override
   Future<void> setGroupAvatar({
     required String actorProfile,
     required String conversationKey,
     required String avatarUrl,
-  }) async {
-    await _postWithFallback(
-      paths: const ['/chat/conversations/avatar'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'conversation_key': conversationKey,
-        'avatar_url': avatarUrl,
-      }),
+  }) {
+    return _chat.setGroupAvatar(
+      actorProfile: actorProfile,
+      conversationKey: conversationKey,
+      avatarUrl: avatarUrl,
     );
   }
 
+  @override
   Future<void> deleteGroup({
     required String actorProfile,
     required String conversationKey,
-  }) async {
-    await _postWithFallback(
-      paths: const ['/chat/conversations/delete'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'conversation_key': conversationKey,
-      }),
+  }) {
+    return _chat.deleteGroup(
+      actorProfile: actorProfile,
+      conversationKey: conversationKey,
     );
   }
 
+  @override
   Future<void> chatSendTyping({
     required String actorProfile,
     required String conversationKey,
-  }) async {
-    await _postWithFallback(
-      paths: const ['/chat/typing'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'conversation_key': conversationKey,
-      }),
+  }) {
+    return _chat.chatSendTyping(
+      actorProfile: actorProfile,
+      conversationKey: conversationKey,
     );
   }
 
+  @override
   Future<void> chatMarkRead({
     required String actorProfile,
     required String conversationKey,
-  }) async {
-    await _postWithFallback(
-      paths: const ['/chat/conversations/read'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'conversation_key': conversationKey,
-      }),
+  }) {
+    return _chat.chatMarkRead(
+      actorProfile: actorProfile,
+      conversationKey: conversationKey,
     );
   }
 
-  Future<List<StickerPack>> chatStickerPacks() async {
-    final response =
-        await _getWithFallback(paths: const ['/chat/stickers/packs']);
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return (body['sticker_packs'] as List? ?? const [])
-        .whereType<Map>()
-        .map((row) => StickerPack.fromJson(Map<String, dynamic>.from(row)))
-        .toList();
+  @override
+  Future<List<StickerPack>> chatStickerPacks() {
+    return _chat.chatStickerPacks();
   }
 
-  // ---- Projects & Family Groups ----
+  // -- CallApi -----------------------------------------------------------
+
+  @override
+  Future<CallSession> callInitiate({
+    required String actorProfile,
+    required String conversationKey,
+    String callType = 'audio',
+    String? calleeProfile,
+  }) {
+    return _call.callInitiate(
+      actorProfile: actorProfile,
+      conversationKey: conversationKey,
+      callType: callType,
+      calleeProfile: calleeProfile,
+    );
+  }
+
+  @override
+  Future<CallSession> callAccept({
+    required String actorProfile,
+    required String sessionId,
+  }) {
+    return _call.callAccept(
+      actorProfile: actorProfile,
+      sessionId: sessionId,
+    );
+  }
+
+  @override
+  Future<CallSession> callReject({
+    required String actorProfile,
+    required String sessionId,
+  }) {
+    return _call.callReject(
+      actorProfile: actorProfile,
+      sessionId: sessionId,
+    );
+  }
+
+  @override
+  Future<CallSession> callEnd({
+    required String actorProfile,
+    required String sessionId,
+  }) {
+    return _call.callEnd(
+      actorProfile: actorProfile,
+      sessionId: sessionId,
+    );
+  }
+
+  @override
+  Future<void> callSignal({
+    required String actorProfile,
+    required String sessionId,
+    required String signalType,
+    dynamic sdp,
+    dynamic candidate,
+  }) {
+    return _call.callSignal(
+      actorProfile: actorProfile,
+      sessionId: sessionId,
+      signalType: signalType,
+      sdp: sdp,
+      candidate: candidate,
+    );
+  }
+
+  @override
+  Future<CallSignalsPoll> callPollSignals({
+    required String actorProfile,
+    required String sessionId,
+    String? cursor,
+  }) {
+    return _call.callPollSignals(
+      actorProfile: actorProfile,
+      sessionId: sessionId,
+      cursor: cursor,
+    );
+  }
+
+  @override
+  Future<CallSession?> callCheckIncoming({
+    required String actorProfile,
+  }) {
+    return _call.callCheckIncoming(actorProfile: actorProfile);
+  }
+
+  // -- Projects & Family Groups (delegated to SyncApiClient) -------------
 
   Future<List<TaskProject>> listProjects({
     required String actorProfile,
-  }) async {
-    final response = await _getWithFallback(
-      paths: const ['/projects', '/projects.php'],
-      query: {'actor_profile': actorProfile},
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return (body['projects'] as List? ?? const [])
-        .whereType<Map>()
-        .map((row) => TaskProject.fromJson(Map<String, dynamic>.from(row)))
-        .toList();
+  }) {
+    return _sync.listProjects(actorProfile: actorProfile);
   }
 
   Future<TaskProject> createProject({
     required String actorProfile,
     required String name,
     String description = '',
-  }) async {
-    final response = await _postWithFallback(
-      paths: const ['/projects/create', '/projects_create.php'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'name': name,
-        'description': description,
-      }),
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return TaskProject.fromJson(
-      Map<String, dynamic>.from(body['project'] as Map),
+  }) {
+    return _sync.createProject(
+      actorProfile: actorProfile,
+      name: name,
+      description: description,
     );
   }
 
@@ -818,85 +540,56 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     required String name,
     String description = '',
     List<String>? groupIds,
-  }) async {
-    await _postWithFallback(
-      paths: const ['/projects/update', '/projects_update.php'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'id': id,
-        'name': name,
-        'description': description,
-        if (groupIds != null) 'group_ids': groupIds,
-      }),
+  }) {
+    return _sync.updateProject(
+      actorProfile: actorProfile,
+      id: id,
+      name: name,
+      description: description,
+      groupIds: groupIds,
     );
   }
 
   Future<void> deleteProject({
     required String actorProfile,
     required String id,
-  }) async {
-    await _postWithFallback(
-      paths: const ['/projects/delete', '/projects_delete.php'],
-      body: jsonEncode({'actor_profile': actorProfile, 'id': id}),
-    );
+  }) {
+    return _sync.deleteProject(actorProfile: actorProfile, id: id);
   }
 
   Future<void> setProjectGroups({
     required String actorProfile,
     required String projectId,
     required List<String> groupIds,
-  }) async {
-    await _postWithFallback(
-      paths: const ['/projects/set-groups', '/projects_set_groups.php'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'project_id': projectId,
-        'group_ids': groupIds,
-      }),
+  }) {
+    return _sync.setProjectGroups(
+      actorProfile: actorProfile,
+      projectId: projectId,
+      groupIds: groupIds,
     );
   }
 
   Future<List<FamilyGroup>> listFamilyGroups({
     required String actorProfile,
-  }) async {
-    final response = await _getWithFallback(
-      paths: const ['/family-groups', '/family_groups.php'],
-      query: {'actor_profile': actorProfile},
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return (body['groups'] as List? ?? const [])
-        .whereType<Map>()
-        .map((row) => FamilyGroup.fromJson(Map<String, dynamic>.from(row)))
-        .toList();
+  }) {
+    return _sync.listFamilyGroups(actorProfile: actorProfile);
   }
 
   Future<Map<String, List<String>>> listProjectGroupMap({
     required String actorProfile,
-  }) async {
-    final response = await _getWithFallback(
-      paths: const ['/family-groups', '/family_groups.php'],
-      query: {'actor_profile': actorProfile},
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return _decodeProjectGroupMap(body['project_groups']);
+  }) {
+    return _sync.listProjectGroupMap(actorProfile: actorProfile);
   }
 
   Future<FamilyGroup> createFamilyGroup({
     required String actorProfile,
     required String name,
     required List<String> members,
-  }) async {
-    final response = await _postWithFallback(
-      paths: const ['/family-groups/create', '/family_groups_create.php'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'name': name,
-        'members': members,
-      }),
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return FamilyGroup.fromJson(
-      Map<String, dynamic>.from(body['group'] as Map),
+  }) {
+    return _sync.createFamilyGroup(
+      actorProfile: actorProfile,
+      name: name,
+      members: members,
     );
   }
 
@@ -905,176 +598,19 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     required String id,
     required String name,
     List<String>? members,
-  }) async {
-    final payload = <String, dynamic>{
-      'actor_profile': actorProfile,
-      'id': id,
-      'name': name,
-    };
-    if (members != null) {
-      payload['members'] = members;
-    }
-    await _postWithFallback(
-      paths: const ['/family-groups/update', '/family_groups_update.php'],
-      body: jsonEncode(payload),
+  }) {
+    return _sync.updateFamilyGroup(
+      actorProfile: actorProfile,
+      id: id,
+      name: name,
+      members: members,
     );
   }
 
   Future<void> deleteFamilyGroup({
     required String actorProfile,
     required String id,
-  }) async {
-    await _postWithFallback(
-      paths: const ['/family-groups/delete', '/family_groups_delete.php'],
-      body: jsonEncode({'actor_profile': actorProfile, 'id': id}),
-    );
-  }
-
-  // ---- Call (audio/video) ----
-
-  Map<String, List<String>> _decodeProjectGroupMap(Object? raw) {
-    final projectGroupMap = <String, List<String>>{};
-    if (raw is! Map) {
-      return projectGroupMap;
-    }
-    for (final entry in raw.entries) {
-      final projectId = entry.key.toString();
-      final groupIds = (entry.value is List)
-          ? (entry.value as List).map((value) => value.toString()).toList()
-          : <String>[];
-      projectGroupMap[projectId] = groupIds;
-    }
-    return projectGroupMap;
-  }
-
-  Future<CallSession> callInitiate({
-    required String actorProfile,
-    required String conversationKey,
-    String callType = 'audio',
-    String? calleeProfile,
-  }) async {
-    final response = await _postWithFallback(
-      paths: const ['/call/initiate'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'conversation_key': conversationKey,
-        'call_type': callType,
-        if (calleeProfile != null) 'callee_profile': calleeProfile,
-      }),
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return CallSession.fromJson(
-      Map<String, dynamic>.from((body['session'] as Map?) ?? const {}),
-    );
-  }
-
-  Future<CallSession> callAccept({
-    required String actorProfile,
-    required String sessionId,
-  }) async {
-    final response = await _postWithFallback(
-      paths: const ['/call/accept'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'session_id': sessionId,
-      }),
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return CallSession.fromJson(
-      Map<String, dynamic>.from((body['session'] as Map?) ?? const {}),
-    );
-  }
-
-  Future<CallSession> callReject({
-    required String actorProfile,
-    required String sessionId,
-  }) async {
-    final response = await _postWithFallback(
-      paths: const ['/call/reject'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'session_id': sessionId,
-      }),
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return CallSession.fromJson(
-      Map<String, dynamic>.from((body['session'] as Map?) ?? const {}),
-    );
-  }
-
-  Future<CallSession> callEnd({
-    required String actorProfile,
-    required String sessionId,
-  }) async {
-    final response = await _postWithFallback(
-      paths: const ['/call/end'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'session_id': sessionId,
-      }),
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return CallSession.fromJson(
-      Map<String, dynamic>.from((body['session'] as Map?) ?? const {}),
-    );
-  }
-
-  Future<void> callSignal({
-    required String actorProfile,
-    required String sessionId,
-    required String signalType,
-    dynamic sdp,
-    dynamic candidate,
-  }) async {
-    await _postWithFallback(
-      paths: const ['/call/signal'],
-      body: jsonEncode({
-        'actor_profile': actorProfile,
-        'session_id': sessionId,
-        'signal_type': signalType,
-        if (sdp != null) 'sdp': sdp is String ? sdp : jsonEncode(sdp),
-        if (candidate != null)
-          'candidate': candidate is String ? candidate : jsonEncode(candidate),
-      }),
-    );
-  }
-
-  Future<CallSignalsPoll> callPollSignals({
-    required String actorProfile,
-    required String sessionId,
-    String? cursor,
-  }) async {
-    final query = <String, String>{
-      'actor_profile': actorProfile,
-      'session_id': sessionId,
-      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
-    };
-    final response = await _getWithFallback(
-      paths: const ['/call/signals'],
-      query: query,
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final signals = (body['signals'] as List? ?? const [])
-        .whereType<Map>()
-        .map((row) => CallSignal.fromJson(Map<String, dynamic>.from(row)))
-        .toList();
-    return CallSignalsPoll(
-      signals: signals,
-      cursor: (body['cursor'] ?? '0').toString(),
-      sessionStatus: (body['session_status'] ?? 'ringing').toString(),
-    );
-  }
-
-  Future<CallSession?> callCheckIncoming({
-    required String actorProfile,
-  }) async {
-    final response = await _getWithFallback(
-      paths: const ['/call/incoming'],
-      query: {'actor_profile': actorProfile},
-    );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final incoming = body['incoming_call'];
-    if (incoming == null) return null;
-    return CallSession.fromJson(Map<String, dynamic>.from(incoming as Map));
+  }) {
+    return _sync.deleteFamilyGroup(actorProfile: actorProfile, id: id);
   }
 }
