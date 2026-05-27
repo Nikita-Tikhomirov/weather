@@ -111,7 +111,7 @@ class TasksBoard extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 88),
-      children: _titles.keys.map((status) {
+      children: _titles.keys.map<Widget>((status) {
         final items = byStatus[status] ?? const <TaskItem>[];
         return _KanbanColumn(
           status: status,
@@ -140,6 +140,7 @@ class _KanbanColumn extends StatelessWidget {
     required this.title,
     required this.items,
     required this.labelFor,
+    this.groupLabel,
     required this.selectionMode,
     required this.selectedIds,
     required this.onToggleSelect,
@@ -436,7 +437,6 @@ class DesktopTasksBoard extends StatelessWidget {
 
   final Map<String, List<TaskItem>> byStatus;
   final String Function(String profile) labelFor;
-  final String Function(String groupId)? groupLabel;
   final bool selectionMode;
   final Set<String> selectedIds;
   final void Function(String) onToggleSelect;
@@ -464,7 +464,7 @@ class DesktopTasksBoard extends StatelessWidget {
             width: 5 * 340,
             height: constraints.maxHeight,
             child: Row(
-              children: _titles.keys.map((status) {
+              children: _titles.keys.map<Widget>((status) {
                 final items = byStatus[status] ?? const <TaskItem>[];
                 return SizedBox(
                   width: 330,
