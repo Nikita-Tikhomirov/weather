@@ -12,8 +12,10 @@ import 'package:video_compress/video_compress.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../app/app_config.dart';
 import '../../app/app_labels.dart';
 import '../../app/app_theme.dart';
+import '../../shared/utils/avatar_url_resolver.dart';
 import 'home_helpers.dart';
 import '../../domain/task_domain_service.dart';
 import '../chat/call_screen.dart';
@@ -145,23 +147,18 @@ class _HomePageState extends State<HomePage> {
         prefs.getString('profile_display_name')?.trim() ?? '';
     _currentProfilePhone = prefs.getString('profile_phone')?.trim() ?? '';
     _currentProfileAvatarUrl = prefs
-        .getString('avatar_${savedOwner.isNotEmpty ? savedOwner : 'default'}');
+        .getString('${AppConfig.prefAvatarPrefix}${savedOwner.isNotEmpty ? savedOwner : 'default'}');
     final api = ApiClient(
-      baseUrl: const String.fromEnvironment(
-        'API_BASE_URL',
-        defaultValue: 'http://31.129.97.211',
-      ),
-      apiKey: const String.fromEnvironment(
-        'API_KEY',
-        defaultValue: 'dev-local-key',
-      ),
+      baseUrl: AppConfig.apiBaseUrl,
+      apiKey: AppConfig.apiKey,
     );
     String? owner;
     final savedPhone = prefs.getString('profile_phone')?.trim() ?? '';
     if (savedPhone.isNotEmpty) {
       try {
         owner = await _restoreProfileByPhone(api, prefs, savedPhone);
-      } catch (_) {
+      } catch (e, st) {
+        debugPrint('[home] restore profile by phone error: $e\n$st');
         owner = savedOwner.isNotEmpty
             ? savedOwner
             : await _promptForInitialProfile(api);
@@ -560,7 +557,8 @@ class _HomePageState extends State<HomePage> {
           _chatOlderLoading.remove(canonicalKey);
         });
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[chat] load older messages error: $e\n$st');
       if (mounted) {
         setState(() {
           _chatOlderLoading.remove(conversationKey);
@@ -820,7 +818,8 @@ class _HomePageState extends State<HomePage> {
           _familyMembers = members;
         });
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[contacts] load phone contacts error: $e\n$st');
       if (mounted) {
         setState(() {
           _phoneContacts = _chatContacts;
@@ -851,7 +850,8 @@ class _HomePageState extends State<HomePage> {
           await db.upsertMessages([sent]);
           msgs[i] = sent.copyWith(deliveryStatus: 'sent');
           _chatMessagesByConversation[convKey] = msgs;
-        } catch (_) {
+        } catch (e, st) {
+          debugPrint('[push] retry send error: $e\n$st');
           // Will retry next cycle
         }
       }
@@ -1005,7 +1005,8 @@ class _HomePageState extends State<HomePage> {
       }
       _chatMessagesByConversation[conversationKey] = updated;
       if (mounted) setState(() {});
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[chat] send message error: $e\n$st');
       // Message stays in 'sending' state — retry on next sync
     }
   }
@@ -1378,11 +1379,7 @@ class _HomePageState extends State<HomePage> {
                         radius: 36,
                         backgroundImage: (effectiveUrl != null &&
                                 effectiveUrl.isNotEmpty)
-                            ? NetworkImage(
-                                effectiveUrl.startsWith('/')
-                                    ? 'http://31.129.97.211$effectiveUrl'
-                                    : effectiveUrl,
-                              )
+                            ? AvatarUrlResolver.imageProvider(effectiveUrl)
                             : null,
                         onBackgroundImageError: (_, __) {},
                         child: (effectiveUrl == null ||
@@ -2032,7 +2029,8 @@ class _HomePageState extends State<HomePage> {
         }
         return;
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[attach] file size check error: $e\n$st');
       // silently ignored
     }
 
@@ -2199,7 +2197,8 @@ class _HomePageState extends State<HomePage> {
         onProgress(1.0);
         return info.path;
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[video] native compression error: $e');
       // compression not available on all platforms
     }
     // Fallback: compress using ffmpeg via VideoCompress if available
@@ -2214,7 +2213,8 @@ class _HomePageState extends State<HomePage> {
       if (info != null && info.path != null && info.path!.isNotEmpty) {
         return info.path;
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[video] ffmpeg compression error: $e');
       // compression failed, will send original
     }
     onProgress(1.0);
@@ -2891,7 +2891,8 @@ class _HomePageState extends State<HomePage> {
       Uint8List bytes;
       try {
         bytes = await file.readAsBytes();
-      } catch (_) {
+      } catch (e, st) {
+        debugPrint('[bridge] file read error: $e\n$st');
         failed += 1;
         continue;
       }
@@ -3368,7 +3369,8 @@ class _HomePageState extends State<HomePage> {
           const SnackBar(content: Text('Фото сохранено в галерею')),
         );
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[gallery] save photo error: $e\n$st');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Не удалось сохранить фото')),

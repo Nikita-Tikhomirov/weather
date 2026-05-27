@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../models/chat_models.dart';
+import '../../shared/utils/avatar_url_resolver.dart';
 
 class ChatMessageBubble extends StatelessWidget {
   const ChatMessageBubble({
@@ -103,7 +104,7 @@ class ChatMessageBubble extends StatelessWidget {
     if (avatarUrl != null && avatarUrl!.isNotEmpty) {
       final image = avatarUrl!.startsWith('http') || avatarUrl!.startsWith('/')
           ? NetworkImage(avatarUrl!.startsWith('/')
-              ? 'http://31.129.97.211$avatarUrl'
+              ? AvatarUrlResolver.resolveUrl(avatarUrl!)
               : avatarUrl!) as ImageProvider
           : FileImage(File(avatarUrl!));
       return CircleAvatar(
@@ -469,7 +470,8 @@ class ChatMessageBubble extends StatelessWidget {
         if (uri == null) return;
         try {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
-        } catch (_) {
+        } catch (e) {
+          debugPrint('[chat] launchUrl error: $e');
           // launchUrl may fail if no browser is available
         }
       },
@@ -629,7 +631,7 @@ class ChatMessageBubble extends StatelessWidget {
       return value;
     }
     if (value.startsWith('/')) {
-      return 'http://31.129.97.211$value';
+      return AvatarUrlResolver.resolveUrl(value);
     }
     return value;
   }
@@ -802,7 +804,8 @@ class ChatMessageBubble extends StatelessWidget {
       final hour = dt.hour.toString().padLeft(2, '0');
       final minute = dt.minute.toString().padLeft(2, '0');
       return '$day $month $hour:$minute';
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[chat] date format error: $e\n$st');
       return iso;
     }
   }
@@ -885,7 +888,8 @@ class _VoiceBubbleState extends State<_VoiceBubble>
         await const MethodChannel('family_todo_mobile/voice')
             .invokeMethod('pauseVoice');
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[chat] voice playback error: $e\n$st');
       if (mounted) {
         setState(() => _playing = false);
       }
@@ -1028,7 +1032,8 @@ class _VideoPlayerScreenState extends State<_VideoPlayerScreen> {
         setState(() => _ready = true);
         ctrl.play();
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[chat] video init error: $e\n$st');
       if (mounted) setState(() => _hasError = true);
     }
   }
@@ -1134,7 +1139,8 @@ class _VideoThumbnailState extends State<_VideoThumbnail> {
         _ctrl = ctrl;
         setState(() => _ready = true);
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[chat] video thumbnail error: $e\n$st');
       // keep showing placeholder
     }
   }

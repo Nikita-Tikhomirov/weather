@@ -92,7 +92,8 @@ extension _ShareReceiverExtension on _HomePageState {
                 imageMeta: uploaded.imageMeta,
                 sortOrder: attachments.length,
               ));
-            } catch (_) {
+            } catch (e, st) {
+              debugPrint('[share] image upload error: $e\n$st');
               // skip images that fail to read or upload
             }
           }
@@ -123,7 +124,8 @@ extension _ShareReceiverExtension on _HomePageState {
                 imageMeta: uploaded.imageMeta,
                 sortOrder: attachments.length,
               ));
-            } catch (_) {
+            } catch (e, st) {
+              debugPrint('[share] video upload error: $e\n$st');
               // skip videos that fail to read or upload
             }
           }
@@ -146,7 +148,8 @@ extension _ShareReceiverExtension on _HomePageState {
             .catchError((_) {});
         await _refreshConversation(store, conversationKey,
             useNetwork: true, quiet: true);
-      } catch (_) {
+      } catch (e, st) {
+        debugPrint('[share] share error: $e\n$st');
         // silently ignore share errors
       }
     });

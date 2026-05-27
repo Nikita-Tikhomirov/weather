@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+
 class TaskItem {
   TaskItem({
     required this.id,
@@ -193,7 +195,9 @@ class TaskItem {
       if (parsed is List) {
         return parsed.map((e) => e.toString()).toList();
       }
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[task_item] _decodeStringList error: $e\n$st');
+    }
     return const [];
   }
 
@@ -206,7 +210,9 @@ class TaskItem {
       if (parsed is List) {
         return parsed;
       }
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[task_item] _decodeDynamicList error: $e\n$st');
+    }
     return const [];
   }
 

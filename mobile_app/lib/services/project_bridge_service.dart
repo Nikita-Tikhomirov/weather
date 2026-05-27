@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../app/app_config.dart';
 import '../models/project_contact.dart';
 import '../models/project_file.dart';
 
@@ -178,7 +179,7 @@ class ProjectBridgeService {
   /// Resolve server address from SharedPreferences.
   static Future<String> getServerAddress() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('bridge_host') ?? '31.129.97.211:9877';
+    return prefs.getString(AppConfig.prefBridgeHost) ?? AppConfig.bridgeDefaultHost;
   }
 
   /// Save server address to SharedPreferences.

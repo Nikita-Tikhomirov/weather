@@ -2,8 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../../app/app_config.dart';
 import '../../models/chat_models.dart';
 import '../../models/project_contact.dart';
+import '../../shared/utils/avatar_url_resolver.dart';
 import '../projects/project_icons.dart';
 import 'chat_messages_list.dart';
 
@@ -215,7 +217,7 @@ class _ContactList extends StatelessWidget {
       if (url.startsWith('http') || url.startsWith('/')) {
         return CircleAvatar(
           backgroundImage: NetworkImage(
-              url.startsWith('/') ? 'http://31.129.97.211$url' : url),
+              AvatarUrlResolver.resolveUrl(url)),
           onBackgroundImageError: (_, __) {},
         );
       }
@@ -233,7 +235,7 @@ class _ContactList extends StatelessWidget {
       if (url.startsWith('http') || url.startsWith('/')) {
         return CircleAvatar(
           backgroundImage: NetworkImage(
-              url.startsWith('/') ? 'http://31.129.97.211$url' : url),
+              AvatarUrlResolver.resolveUrl(url)),
           onBackgroundImageError: (_, __) {},
         );
       }
@@ -419,7 +421,7 @@ class _ChatHeader extends StatelessWidget {
         conv.conversationKey == 'group:common' ||
         conv.conversationKey.startsWith('grp:');
     final avatarUrl = conv.avatarUrl;
-    const baseUrl = 'http://31.129.97.211';
+    final baseUrl = AppConfig.apiBaseUrl;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),

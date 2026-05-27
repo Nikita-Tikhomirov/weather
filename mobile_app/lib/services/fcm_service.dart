@@ -6,6 +6,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
+
+import '../app/app_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/home/home_helpers.dart' show isChatMessageData;
@@ -21,10 +23,8 @@ const _appVersion =
     String.fromEnvironment('APP_VERSION', defaultValue: '0.1.6');
 const _markReadActionId = 'chat_mark_read';
 const _openChatActionId = 'chat_open';
-const _defaultApiBaseUrl = String.fromEnvironment('API_BASE_URL',
-    defaultValue: 'http://31.129.97.211');
-const _defaultApiKey =
-    String.fromEnvironment('API_KEY', defaultValue: 'dev-local-key');
+const _defaultApiBaseUrl = AppConfig.apiBaseUrl;
+const _defaultApiKey = AppConfig.apiKey;
 
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();

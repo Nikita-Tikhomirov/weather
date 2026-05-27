@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../services/api_client.dart';
+import '../../shared/utils/avatar_url_resolver.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({
@@ -156,14 +157,6 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   ImageProvider? _avatarImageProvider(String? url) {
-    final value = url?.trim() ?? '';
-    if (value.isEmpty) return null;
-    if (value.startsWith('http://') || value.startsWith('https://')) {
-      return NetworkImage(value);
-    }
-    if (value.startsWith('/')) {
-      return NetworkImage('http://31.129.97.211$value');
-    }
-    return FileImage(File(value));
+    return AvatarUrlResolver.imageProvider(url);
   }
 }

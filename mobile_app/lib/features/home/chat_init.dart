@@ -32,7 +32,8 @@ extension _ChatInitExtension on _HomePageState {
           bootstrap.stickerPacks,
         );
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[chat] bootstrap refresh error: $e\n$st');
       // Silently fail — user will see stale data
     }
   }

@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+
 class FamilyGroup {
   const FamilyGroup({
     required this.id,
@@ -54,7 +56,8 @@ class FamilyGroup {
     try {
       final raw = (row['members_json'] ?? '').toString();
       members = (jsonDecode(raw) as List).map((e) => e.toString()).toList();
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[family_group] JSON decode members error: $e\n$st');
       members = [];
     }
     return FamilyGroup(

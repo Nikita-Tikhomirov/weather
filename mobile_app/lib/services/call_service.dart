@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
+import '../app/app_config.dart';
 import '../models/call_models.dart';
 import 'api_client.dart';
 
@@ -14,31 +15,14 @@ enum CallState {
 }
 
 class CallIceServerConfig {
-  static const _defaultTurnUrls =
-      'turn:31.129.97.211:3478?transport=udp,turn:31.129.97.211:3478?transport=tcp';
-  static const _defaultTurnUsername = 'family';
-  static const _defaultTurnCredential = 'WCw8eJo&TIxu';
-
   static Map<String, dynamic> build({
-    String turnUrls = const String.fromEnvironment(
-      'TURN_URLS',
-      defaultValue: _defaultTurnUrls,
-    ),
-    String turnUsername = const String.fromEnvironment(
-      'TURN_USERNAME',
-      defaultValue: _defaultTurnUsername,
-    ),
-    String turnCredential = const String.fromEnvironment(
-      'TURN_CREDENTIAL',
-      defaultValue: _defaultTurnCredential,
-    ),
+    String turnUrls = AppConfig.turnUrls,
+    String turnUsername = AppConfig.turnUsername,
+    String turnCredential = AppConfig.turnCredential,
   }) {
     final iceServers = <Map<String, dynamic>>[
       {
-        'urls': [
-          'stun:stun.l.google.com:19302',
-          'stun:stun1.l.google.com:19302',
-        ],
+        'urls': AppConfig.stunUrls,
       },
     ];
     final urls = turnUrls
