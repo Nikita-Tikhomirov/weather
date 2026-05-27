@@ -33,8 +33,8 @@ class TaskRepository {
   Future<void> syncFull() async {
     await _ensureReady();
     final snapshot = await _syncService!.syncFull();
-    await _applyProjectsAndGroups(snapshot.projects, snapshot.familyGroups,
-        snapshot.projectGroupMap);
+    await _applyProjectsAndGroups(
+        snapshot.projects, snapshot.familyGroups, snapshot.projectGroupMap);
   }
 
   Future<void> _syncProjectsAndGroups() async {
@@ -49,15 +49,9 @@ class TaskRepository {
 
   Future<void> _applyProjectsAndGroups(List<TaskProject> projects,
       List<FamilyGroup> groups, Map<String, List<String>> pgMap) async {
-    if (projects.isNotEmpty) {
-      await db.replaceProjects(projects);
-    }
-    if (groups.isNotEmpty) {
-      await db.replaceFamilyGroups(groups);
-    }
-    if (pgMap.isNotEmpty) {
-      await db.replaceProjectGroupMap(pgMap);
-    }
+    await db.replaceProjects(projects);
+    await db.replaceFamilyGroups(groups);
+    await db.replaceProjectGroupMap(pgMap);
   }
 
   Future<void> upsertProject(TaskProject project) async {

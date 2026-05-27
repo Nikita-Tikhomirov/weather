@@ -30,7 +30,7 @@ class TaskDomainService {
     if (draft.title.trim().isEmpty) {
       return 'Укажите название задачи.';
     }
-    if (draft.isFamily && draft.assignees.isEmpty) {
+    if (draft.isFamily && draft.projectId.isEmpty && draft.assignees.isEmpty) {
       return 'Выберите хотя бы одного ответственного.';
     }
     if (!allowedStatuses.contains(draft.workflowStatus)) {
@@ -68,6 +68,24 @@ class TaskDomainService {
     }
 
     return null;
+  }
+
+  bool isVisibleToActor({
+    required TaskItem task,
+    required String actorProfile,
+    required Set<String> actorGroupIds,
+    String currentProjectId = '',
+  }) {
+    if (currentProjectId.isNotEmpty && task.projectId != currentProjectId) {
+      return false;
+    }
+    if (task.assignees.contains(actorProfile)) {
+      return true;
+    }
+    if (task.groupId.isEmpty) {
+      return false;
+    }
+    return actorGroupIds.contains(task.groupId);
   }
 
   TaskItem materializeTask({

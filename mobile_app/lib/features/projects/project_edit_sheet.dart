@@ -34,8 +34,7 @@ Future<void> showProjectEditSheet({
                   left: 16,
                   right: 16,
                   top: 8,
-                  bottom:
-                      MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+                  bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
                 ),
                 child: SingleChildScrollView(
                   child: Column(
@@ -71,8 +70,7 @@ Future<void> showProjectEditSheet({
                           children: groups.map((group) {
                             return FilterChip(
                               label: Text(group.name),
-                              selected:
-                                  selectedGroupIds.contains(group.id),
+                              selected: selectedGroupIds.contains(group.id),
                               onSelected: (selected) {
                                 setModalState(() {
                                   if (selected) {
@@ -104,15 +102,18 @@ Future<void> showProjectEditSheet({
                                   ScaffoldMessenger.of(sheetContext)
                                       .showSnackBar(
                                     const SnackBar(
-                                        content: Text(
-                                            'Введите название проекта')),
+                                        content:
+                                            Text('Введите название проекта')),
                                   );
                                   return;
                                 }
                                 try {
                                   if (isCreate) {
-                                    await store.createProject(
-                                        name, descCtl.text.trim());
+                                    await store.createProjectWithGroups(
+                                      name,
+                                      descCtl.text.trim(),
+                                      selectedGroupIds.toList(),
+                                    );
                                   } else {
                                     await store.editProject(
                                       project!.id,

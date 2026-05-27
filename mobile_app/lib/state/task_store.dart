@@ -129,8 +129,7 @@ class TaskStore {
   ValueNotifier<List<String>> get availableSchemes => desktop.availableSchemes;
   ValueNotifier<Map<String, String>> get desktopThemeTokens =>
       desktop.themeTokens;
-  ValueNotifier<DesktopHostState> get voiceHostState =>
-      desktop.voiceHostState;
+  ValueNotifier<DesktopHostState> get voiceHostState => desktop.voiceHostState;
   ValueNotifier<List<String>> get desktopLogEntries => desktop.logEntries;
 
   bool get isAdult => true; // Any registered user has full permissions
@@ -248,20 +247,36 @@ class TaskStore {
   }
 
   Future<String> createProject(String name, String description) async {
+    return createProjectWithGroups(name, description, const <String>[]);
+  }
+
+  Future<String> createProjectWithGroups(
+    String name,
+    String description,
+    List<String> groupIds,
+  ) async {
     final api = repository.api;
     final project = await api.createProject(
       actorProfile: owner.value,
       name: name,
       description: description,
     );
+    if (groupIds.isNotEmpty) {
+      await api.setProjectGroups(
+        actorProfile: owner.value,
+        projectId: project.id,
+        groupIds: groupIds,
+      );
+    }
     // Persist immediately so the UI sees the new project without waiting for sync
     await repository.db.upsertProjectLocal(project);
+    await repository.db.setProjectGroupsLocal(project.id, groupIds);
     await refreshProjectsAndGroups();
     return project.id;
   }
 
-  Future<void> editProject(String id, String name, String description,
-      List<String> groupIds) async {
+  Future<void> editProject(
+      String id, String name, String description, List<String> groupIds) async {
     final api = repository.api;
     await api.updateProject(
       actorProfile: owner.value,
@@ -292,6 +307,7 @@ class TaskStore {
     if (currentProjectId.value == id) {
       currentProjectId.value = '';
     }
+    await repository.db.deleteProjectLocal(id);
     await refreshProjectsAndGroups();
   }
 
@@ -314,6 +330,20 @@ class TaskStore {
       name: name,
       members: members,
     );
+    final existing = familyGroups.value.cast<FamilyGroup?>().firstWhere(
+          (item) => item?.id == id,
+          orElse: () => null,
+        );
+    await repository.db.upsertFamilyGroupLocal(
+      FamilyGroup(
+        id: id,
+        name: name,
+        members: members,
+        ownerKey: existing?.ownerKey ?? owner.value,
+        createdAt: existing?.createdAt ?? '',
+        updatedAt: DateTime.now().toIso8601String(),
+      ),
+    );
     await refreshProjectsAndGroups();
   }
 
@@ -322,6 +352,7 @@ class TaskStore {
       actorProfile: owner.value,
       id: id,
     );
+    await repository.db.deleteFamilyGroupLocal(id);
     await refreshProjectsAndGroups();
   }
 
@@ -476,7 +507,8 @@ class TaskStore {
     required List<String> schemes,
     required Map<String, String> tokens,
   }) {
-    desktop.setTheme(mode: mode, scheme: scheme, schemes: schemes, tokens: tokens);
+    desktop.setTheme(
+        mode: mode, scheme: scheme, schemes: schemes, tokens: tokens);
   }
 
   void setVoiceHostState(DesktopHostState state) {
@@ -489,18 +521,20 @@ class TaskStore {
 
   void _recomputeDashboardOnly() {
     final dateKey = _dateKey(selectedDate.value);
-    final today = _allTasks.where((task) => task.dueDate == dateKey).toList();
+    final visibleTasks = _visibleTasks();
+    final today =
+        visibleTasks.where((task) => task.dueDate == dateKey).toList();
     final doneToday =
         today.where((task) => task.workflowStatus == 'done').length;
     final familyToday = today.where((task) => task.isFamily).length;
-    final overdue = _allTasks
+    final overdue = visibleTasks
         .where(
           (task) =>
               task.dueDate.compareTo(dateKey) < 0 &&
               task.workflowStatus != 'done',
         )
         .length;
-    final upcoming = _allTasks.toList()
+    final upcoming = visibleTasks.toList()
       ..sort(
         (a, b) =>
             ('${a.dueDate} ${a.time}').compareTo('${b.dueDate} ${b.time}'),
@@ -515,24 +549,23 @@ class TaskStore {
     );
   }
 
-  /// Returns tasks visible in kanban — user sees tasks from groups they belong to.
-  List<TaskItem> _kanbanSource() {
+  List<TaskItem> _visibleTasks() {
     final myGroups = _myGroupIds();
-
-    if (currentProjectId.value.isNotEmpty) {
-      return _allTasks
-          .where((task) =>
-              task.projectId == currentProjectId.value &&
-              (task.assignees.contains(owner.value) ||
-                  (task.groupId.isNotEmpty && myGroups.contains(task.groupId))))
-          .toList();
-    }
-    // No project selected: show tasks from all projects where user is in the task's group
     return _allTasks
-        .where((task) =>
-            task.assignees.contains(owner.value) ||
-            (task.groupId.isNotEmpty && myGroups.contains(task.groupId)))
+        .where(
+          (task) => domainService.isVisibleToActor(
+            task: task,
+            actorProfile: owner.value,
+            actorGroupIds: myGroups,
+            currentProjectId: currentProjectId.value,
+          ),
+        )
         .toList();
+  }
+
+  /// Returns tasks visible in kanban — user sees assigned tasks and group tasks.
+  List<TaskItem> _kanbanSource() {
+    return _visibleTasks();
   }
 
   /// Set of group IDs where the current user is a member.
@@ -585,25 +618,31 @@ class TaskStore {
     }
 
     personalByStatus.value = <String, List<TaskItem>>{
-      'todo': kanbanTasks.where((task) => task.workflowStatus == 'todo').toList(),
-      'in_progress': kanbanTasks.where((task) => task.workflowStatus == 'in_progress').toList(),
-      'in_review': kanbanTasks.where((task) => task.workflowStatus == 'in_review').toList(),
-      'done': kanbanTasks.where((task) => task.workflowStatus == 'done').toList(),
-      'archive': kanbanTasks.where((task) => task.workflowStatus == 'archive').toList(),
+      'todo':
+          kanbanTasks.where((task) => task.workflowStatus == 'todo').toList(),
+      'in_progress': kanbanTasks
+          .where((task) => task.workflowStatus == 'in_progress')
+          .toList(),
+      'in_review': kanbanTasks
+          .where((task) => task.workflowStatus == 'in_review')
+          .toList(),
+      'done':
+          kanbanTasks.where((task) => task.workflowStatus == 'done').toList(),
+      'archive': kanbanTasks
+          .where((task) => task.workflowStatus == 'archive')
+          .toList(),
     };
   }
 
   void _recomputeDateSlicesOnly() {
     final dateKey = _dateKey(selectedDate.value);
-    final myGroups = _myGroupIds();
-    // Show all tasks for the selected date where user is assignee or group member
-    tasksForSelectedDate.value = _allTasks
-        .where((task) =>
-            task.dueDate == dateKey &&
-            (task.assignees.contains(owner.value) ||
-                (task.groupId.isNotEmpty && myGroups.contains(task.groupId))))
+    tasksForSelectedDate.value = _visibleTasks()
+        .where(
+          (task) => task.dueDate == dateKey,
+        )
         .toList()
-      ..sort((a, b) => ('${a.dueDate} ${a.time}').compareTo('${b.dueDate} ${b.time}'));
+      ..sort((a, b) =>
+          ('${a.dueDate} ${a.time}').compareTo('${b.dueDate} ${b.time}'));
     _recomputeDashboardOnly();
   }
 

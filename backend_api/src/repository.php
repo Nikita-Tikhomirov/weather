@@ -9,6 +9,8 @@ function normalize_task(array $task): array
     return [
         'id' => (string)($task['id'] ?? ''),
         'owner_key' => (string)($task['owner_key'] ?? ''),
+        'project_id' => (string)($task['project_id'] ?? ''),
+        'group_id' => (string)($task['group_id'] ?? ''),
         'is_family' => (bool)($task['is_family'] ?? false),
         'title' => trim((string)($task['title'] ?? '')),
         'details' => trim((string)($task['details'] ?? '')),
@@ -51,11 +53,15 @@ function task_external_id(string $ownerKey, string $storedId, bool $isFamily): s
 function normalize_family_task(array $item): array
 {
     $assignees = normalize_assignees($item);
-    if (count($assignees) === 0) {
+    $projectId = (string)($item['project_id'] ?? '');
+    $groupId = (string)($item['group_id'] ?? '');
+    if (count($assignees) === 0 && ($projectId === '' || $groupId === '')) {
         throw new InvalidArgumentException('assignees must contain at least one allowed profile');
     }
     return [
         'id' => (string)($item['id'] ?? ''),
+        'project_id' => $projectId,
+        'group_id' => $groupId,
         'owner_key' => 'family',
         'is_family' => true,
         'title' => trim((string)($item['title'] ?? '')),
@@ -98,14 +104,15 @@ function upsert_task(PDO $db, array $task): void
     $storedId = task_storage_id($ownerKey, (string)$task['id'], $isFamily);
     $sql = <<<SQL
 INSERT INTO tasks (
-    id, owner_key, is_family, project_id, title, details, due_date, time_value, workflow_status, priority,
+    id, owner_key, is_family, project_id, group_id, title, details, due_date, time_value, workflow_status, priority,
     tags_json, participants_json, duration_minutes, updated_at, version
 ) VALUES (
-    :id, :owner_key, :is_family, :project_id, :title, :details, :due_date, :time_value, :workflow_status, :priority,
+    :id, :owner_key, :is_family, :project_id, :group_id, :title, :details, :due_date, :time_value, :workflow_status, :priority,
     :tags_json, :participants_json, :duration_minutes, :updated_at, :version
 )
 ON DUPLICATE KEY UPDATE
     project_id = VALUES(project_id),
+    group_id = VALUES(group_id),
     owner_key = VALUES(owner_key),
     is_family = VALUES(is_family),
     title = VALUES(title),
@@ -126,6 +133,7 @@ SQL;
         'owner_key' => $ownerKey,
         'is_family' => $isFamily ? 1 : 0,
         'project_id' => (string)($task['project_id'] ?? ''),
+        'group_id' => (string)($task['group_id'] ?? ''),
         'title' => $task['title'],
         'details' => $task['details'],
         'due_date' => $task['due_date'],
@@ -169,11 +177,13 @@ function upsert_family_task(PDO $db, array $item): void
 {
     $sql = <<<SQL
 INSERT INTO family_tasks (
-    id, title, details, due_date, time_value, workflow_status, participants_json, duration_minutes, updated_at, version
+    id, project_id, group_id, title, details, due_date, time_value, workflow_status, participants_json, duration_minutes, updated_at, version
 ) VALUES (
-    :id, :title, :details, :due_date, :time_value, :workflow_status, :participants_json, :duration_minutes, :updated_at, :version
+    :id, :project_id, :group_id, :title, :details, :due_date, :time_value, :workflow_status, :participants_json, :duration_minutes, :updated_at, :version
 )
 ON DUPLICATE KEY UPDATE
+    project_id = VALUES(project_id),
+    group_id = VALUES(group_id),
     title = VALUES(title),
     details = VALUES(details),
     due_date = VALUES(due_date),
@@ -187,6 +197,8 @@ SQL;
     $stmt = $db->prepare($sql);
     $stmt->execute([
         'id' => $item['id'],
+        'project_id' => (string)($item['project_id'] ?? ''),
+        'group_id' => (string)($item['group_id'] ?? ''),
         'title' => $item['title'],
         'details' => $item['details'],
         'due_date' => $item['due_date'],
@@ -231,6 +243,7 @@ function changed_tasks_since(PDO $db, string $since): array
             'owner_key' => $owner,
             'is_family' => $isFamily,
             'project_id' => (string)$row['project_id'],
+            'group_id' => (string)($row['group_id'] ?? ''),
             'title' => (string)$row['title'],
             'details' => (string)$row['details'],
             'due_date' => (string)$row['due_date'],
@@ -262,6 +275,7 @@ function changed_tasks_after_cursor(PDO $db, string $cursor): array
             'owner_key' => $owner,
             'is_family' => $isFamily,
             'project_id' => (string)$row['project_id'],
+            'group_id' => (string)($row['group_id'] ?? ''),
             'title' => (string)$row['title'],
             'details' => (string)$row['details'],
             'due_date' => (string)$row['due_date'],
@@ -298,6 +312,7 @@ function changed_tasks_since_for_actor(PDO $db, string $since, string $actor): a
             'owner_key' => $owner,
             'is_family' => $isFamily,
             'project_id' => (string)$row['project_id'],
+            'group_id' => (string)($row['group_id'] ?? ''),
             'title' => (string)$row['title'],
             'details' => (string)$row['details'],
             'due_date' => (string)$row['due_date'],
@@ -334,6 +349,7 @@ function changed_tasks_after_cursor_for_actor(PDO $db, string $cursor, string $a
             'owner_key' => $owner,
             'is_family' => $isFamily,
             'project_id' => (string)$row['project_id'],
+            'group_id' => (string)($row['group_id'] ?? ''),
             'title' => (string)$row['title'],
             'details' => (string)$row['details'],
             'due_date' => (string)$row['due_date'],
@@ -360,6 +376,8 @@ function changed_family_tasks_since(PDO $db, string $since): array
         $assignees = json_decode((string)$row['participants_json'], true) ?: [];
         $out[] = [
             'id' => (string)$row['id'],
+            'project_id' => (string)($row['project_id'] ?? ''),
+            'group_id' => (string)($row['group_id'] ?? ''),
             'owner_key' => 'family',
             'is_family' => true,
             'title' => (string)$row['title'],
@@ -387,6 +405,8 @@ function changed_family_tasks_after_cursor(PDO $db, string $cursor): array
         $assignees = json_decode((string)$row['participants_json'], true) ?: [];
         $out[] = [
             'id' => (string)$row['id'],
+            'project_id' => (string)($row['project_id'] ?? ''),
+            'group_id' => (string)($row['group_id'] ?? ''),
             'owner_key' => 'family',
             'is_family' => true,
             'title' => (string)$row['title'],

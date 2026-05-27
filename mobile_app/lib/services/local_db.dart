@@ -29,7 +29,7 @@ class LocalDb implements TaskDataSource {
     final dbPath = p.join(basePath, 'family_todo_mobile.db');
     final db = await openDatabase(
       dbPath,
-      version: 8,
+      version: 9,
       onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE tasks(
@@ -120,6 +120,8 @@ class LocalDb implements TaskDataSource {
             'project_id',
             "TEXT NOT NULL DEFAULT ''",
           );
+        }
+        if (oldVersion < 9) {
           await _addColumnIfMissing(
             db,
             'tasks',
@@ -615,8 +617,7 @@ class LocalDb implements TaskDataSource {
   }
 
   Future<List<TaskProject>> readProjects() async {
-    final rows =
-        await _db.query('task_projects', orderBy: 'name ASC, id ASC');
+    final rows = await _db.query('task_projects', orderBy: 'name ASC, id ASC');
     return rows.map(TaskProject.fromDbRow).toList();
   }
 
@@ -683,16 +684,18 @@ class LocalDb implements TaskDataSource {
     return map;
   }
 
-  Future<void> replaceProjectGroupMap(
-      Map<String, List<String>> map) async {
+  Future<void> replaceProjectGroupMap(Map<String, List<String>> map) async {
     await _db.transaction((txn) async {
       await txn.delete('project_family_groups_local');
       for (final entry in map.entries) {
         for (final gid in entry.value) {
-          await txn.insert('project_family_groups_local', {
-            'project_id': entry.key,
-            'group_id': gid,
-          }, conflictAlgorithm: ConflictAlgorithm.replace);
+          await txn.insert(
+              'project_family_groups_local',
+              {
+                'project_id': entry.key,
+                'group_id': gid,
+              },
+              conflictAlgorithm: ConflictAlgorithm.replace);
         }
       }
     });
@@ -704,10 +707,13 @@ class LocalDb implements TaskDataSource {
       await txn.delete('project_family_groups_local',
           where: 'project_id = ?', whereArgs: [projectId]);
       for (final gid in groupIds) {
-        await txn.insert('project_family_groups_local', {
-          'project_id': projectId,
-          'group_id': gid,
-        }, conflictAlgorithm: ConflictAlgorithm.replace);
+        await txn.insert(
+            'project_family_groups_local',
+            {
+              'project_id': projectId,
+              'group_id': gid,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace);
       }
     });
   }
