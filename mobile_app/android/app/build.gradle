@@ -14,8 +14,7 @@ def releaseVersionName = System.getenv("APP_VERSION") ?: "0.1.6"
 
 android {
     namespace "com.example.family_todo_mobile"
-    compileSdk 36
-    ndkVersion "28.2.13676358"
+    compileSdk 35
 
     signingConfigs {
         release {
@@ -42,7 +41,7 @@ android {
     defaultConfig {
         applicationId "com.example.family_todo_mobile"
         minSdkVersion flutter.minSdkVersion
-        targetSdk 36
+        targetSdk 35
         versionCode releaseVersionCode
         versionName releaseVersionName
     }
