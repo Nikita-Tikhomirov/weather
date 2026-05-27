@@ -13,11 +13,13 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
     required this.store,
     this.contacts = const [],
     this.contactLabel = _defaultContactLabel,
+    this.actorProfile,
   });
 
   final TaskStore store;
   final List<ChatContact> contacts;
   final String Function(ChatContact) contactLabel;
+  final String? actorProfile;
 
   static String _defaultContactLabel(ChatContact c) => c.displayName.isNotEmpty
       ? c.displayName
@@ -263,6 +265,7 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
       isCreate: true,
       contacts: contacts,
       contactLabel: contactLabel,
+      actorProfile: actorProfile,
     );
   }
 
@@ -274,6 +277,7 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
       group: group,
       contacts: contacts,
       contactLabel: contactLabel,
+      actorProfile: actorProfile,
     );
   }
 

@@ -3846,10 +3846,11 @@ class _HomePageState extends State<HomePage> {
                         MaterialPageRoute(
                           builder: (_) => ProjectsAndGroupsScreen(
                             store: store,
-                            contacts: _chatContacts,
+                            contacts: _allKnownContacts(store),
                             contactLabel: (c) => c.displayName.isNotEmpty
                                 ? c.displayName
                                 : c.profileKey,
+                            actorProfile: store.owner.value,
                           ),
                         ),
                       );

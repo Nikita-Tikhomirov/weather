@@ -11,6 +11,7 @@ Future<void> showFamilyGroupEditSheet({
   FamilyGroup? group,
   required List<ChatContact> contacts,
   required String Function(ChatContact) contactLabel,
+  String? actorProfile,
 }) async {
   final nameCtl =
       TextEditingController(text: isCreate ? '' : group?.name ?? '');
@@ -25,7 +26,21 @@ Future<void> showFamilyGroupEditSheet({
     builder: (sheetContext) {
       return StatefulBuilder(
         builder: (sheetContext, setModalState) {
-          final availableContacts = contacts
+          // Ensure the current actor can select themselves
+          final selfKey = actorProfile ?? store.owner.value;
+          final hasSelf = contacts.any((c) => c.profileKey == selfKey);
+          final effectiveContacts = hasSelf
+              ? contacts
+              : [
+                  ChatContact(
+                    profileKey: selfKey,
+                    displayName: selfKey,
+                    phone: '',
+                    conversationKey: '',
+                  ),
+                  ...contacts,
+                ];
+          final availableContacts = effectiveContacts
               .where((c) => c.profileKey.isNotEmpty)
               .toList();
 
