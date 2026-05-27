@@ -34,4 +34,12 @@ void main() {
     expect(servers.last['username'], 'demo');
     expect(servers.last['credential'], 'secret');
   });
+
+  test('call ICE configuration default credential is NOT hardcoded password', () {
+    final config = CallIceServerConfig.build();
+    final servers = config['iceServers'] as List<dynamic>;
+    final credential = servers.last['credential'] as String;
+    // Safety: the default must never be the old hardcoded password
+    expect(credential, isNot('WCw8eJo&TIxu'));
+  });
 }
