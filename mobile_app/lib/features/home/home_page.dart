@@ -24,7 +24,6 @@ import '../projects/project_chat_view.dart';
 import '../projects/projects_and_groups_screen.dart';
 import '../profile/profile_page.dart';
 import '../tasks/calendar_view.dart';
-import '../tasks/task_card.dart';
 import '../tasks/task_editor_sheet.dart';
 import '../tasks/tasks_board.dart';
 import '../../models/call_models.dart';
@@ -3933,10 +3932,11 @@ class _HomePageState extends State<HomePage> {
             _openTaskEditor(store, existing: task);
           },
           onDelete: (task) async {
+            final navigator = Navigator.of(context);
             await store.delete(task);
             await _safeSyncDelta(store, showErrors: true);
-            if (context.mounted) {
-              Navigator.of(context).pop();
+            if (mounted) {
+              navigator.pop();
             }
           },
           onAddForDate: (date) async {
@@ -3947,14 +3947,6 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
-  }
-
-  void _openDayTasksScreenFromStore(TaskStore store, DateTime day) {
-    final dateKeyStr =
-        '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
-    final tasks =
-        store.allTasksView.value.where((t) => t.dueDate == dateKeyStr).toList();
-    _openDayTasksScreen(store, day, tasks);
   }
 
   @override

@@ -870,6 +870,17 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
         .toList();
   }
 
+  Future<Map<String, List<String>>> listProjectGroupMap({
+    required String actorProfile,
+  }) async {
+    final response = await _getWithFallback(
+      paths: const ['/family-groups', '/family_groups.php'],
+      query: {'actor_profile': actorProfile},
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return _decodeProjectGroupMap(body['project_groups']);
+  }
+
   Future<FamilyGroup> createFamilyGroup({
     required String actorProfile,
     required String name,
@@ -920,6 +931,21 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
   }
 
   // ---- Call (audio/video) ----
+
+  Map<String, List<String>> _decodeProjectGroupMap(Object? raw) {
+    final projectGroupMap = <String, List<String>>{};
+    if (raw is! Map) {
+      return projectGroupMap;
+    }
+    for (final entry in raw.entries) {
+      final projectId = entry.key.toString();
+      final groupIds = (entry.value is List)
+          ? (entry.value as List).map((value) => value.toString()).toList()
+          : <String>[];
+      projectGroupMap[projectId] = groupIds;
+    }
+    return projectGroupMap;
+  }
 
   Future<CallSession> callInitiate({
     required String actorProfile,

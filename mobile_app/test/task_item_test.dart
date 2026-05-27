@@ -53,6 +53,8 @@ void main() {
         id: 'task-3',
         ownerKey: 'nik',
         isFamily: true,
+        projectId: 'project-1',
+        groupId: 'group-1',
         title: 'Test',
         details: '',
         dueDate: '2025-01-01',
@@ -69,6 +71,33 @@ void main() {
       final json = task.toJson();
       expect(json['assignees'], ['nik']);
       expect(json['participants'], ['nik']);
+      expect(json['project_id'], 'project-1');
+      expect(json['group_id'], 'group-1');
+    });
+
+    test('toDbRow includes project and group assignment', () {
+      final task = TaskItem(
+        id: 'task-3-db',
+        ownerKey: 'nik',
+        isFamily: true,
+        projectId: 'project-1',
+        groupId: 'group-1',
+        title: 'Test',
+        details: '',
+        dueDate: '2025-01-01',
+        time: '12:00',
+        workflowStatus: 'todo',
+        priority: 'medium',
+        tags: [],
+        assignees: ['nik'],
+        reminderOffsetsMinutes: [30],
+        durationMinutes: 60,
+        updatedAt: '2025-01-01T00:00:00',
+        version: 1,
+      );
+      final row = task.toDbRow();
+      expect(row['project_id'], 'project-1');
+      expect(row['group_id'], 'group-1');
     });
 
     test('copyWith preserves assignees', () {

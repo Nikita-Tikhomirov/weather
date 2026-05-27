@@ -29,6 +29,7 @@ extension _PushHandlerExtension on _HomePageState {
       try {
         final file =
             File('${Directory.systemTemp.path}/family_todo_pending_push.json');
+        // ignore: avoid_slow_async_io
         if (await file.exists()) {
           final raw = await file.readAsString();
           if (raw.isNotEmpty) {
@@ -80,7 +81,10 @@ extension _PushHandlerExtension on _HomePageState {
     try {
       final file =
           File('${Directory.systemTemp.path}/family_todo_pending_push.json');
-      if (await file.exists()) await file.delete();
+      // ignore: avoid_slow_async_io
+      if (await file.exists()) {
+        await file.delete();
+      }
     } catch (_) {
       // non-critical
     }

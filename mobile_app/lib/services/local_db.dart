@@ -36,6 +36,8 @@ class LocalDb implements TaskDataSource {
             id TEXT PRIMARY KEY,
             owner_key TEXT NOT NULL,
             is_family INTEGER NOT NULL,
+            project_id TEXT NOT NULL DEFAULT '',
+            group_id TEXT NOT NULL DEFAULT '',
             title TEXT NOT NULL,
             details TEXT NOT NULL,
             due_date TEXT NOT NULL,
@@ -116,6 +118,12 @@ class LocalDb implements TaskDataSource {
             db,
             'tasks',
             'project_id',
+            "TEXT NOT NULL DEFAULT ''",
+          );
+          await _addColumnIfMissing(
+            db,
+            'tasks',
+            'group_id',
             "TEXT NOT NULL DEFAULT ''",
           );
         }
@@ -684,7 +692,7 @@ class LocalDb implements TaskDataSource {
           await txn.insert('project_family_groups_local', {
             'project_id': entry.key,
             'group_id': gid,
-          });
+          }, conflictAlgorithm: ConflictAlgorithm.replace);
         }
       }
     });
@@ -699,7 +707,7 @@ class LocalDb implements TaskDataSource {
         await txn.insert('project_family_groups_local', {
           'project_id': projectId,
           'group_id': gid,
-        });
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
       }
     });
   }

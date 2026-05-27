@@ -131,6 +131,7 @@ Future<void> showTaskEditorSheet({
                     ],
                   ),
                   DropdownButtonFormField<String>(
+                    // ignore: deprecated_member_use
                     value: priority,
                     decoration: const InputDecoration(labelText: 'Приоритет'),
                     items: const [
@@ -142,6 +143,7 @@ Future<void> showTaskEditorSheet({
                         setModalState(() => priority = value ?? 'medium'),
                   ),
                   DropdownButtonFormField<String>(
+                    // ignore: deprecated_member_use
                     value: status,
                     decoration: const InputDecoration(labelText: 'Статус'),
                     items: const [
@@ -184,6 +186,7 @@ Future<void> showTaskEditorSheet({
                       return Column(
                         children: [
                           DropdownButtonFormField<String>(
+                            // ignore: deprecated_member_use
                             value: projectList.any(
                                     (p) => p.id == selectedProjectId)
                                 ? selectedProjectId
@@ -234,6 +237,7 @@ Future<void> showTaskEditorSheet({
                                       );
                                     }
                                     return DropdownButtonFormField<String>(
+                                      // ignore: deprecated_member_use
                                       value: projectGroups.any((g) =>
                                               g.id == selectedGroupId)
                                           ? selectedGroupId

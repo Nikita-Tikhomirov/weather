@@ -41,11 +41,9 @@ class TaskRepository {
     try {
       final projects = await api.listProjects(actorProfile: _actorProfile);
       final groups = await api.listFamilyGroups(actorProfile: _actorProfile);
-      // The sync pull returns project_groups map; we also need it.
-      // On first init, syncFull already provides it via the pull response.
-      // For delta syncs, the map rarely changes but we fetch it through listProjects.
-      // listProjects on the backend returns project_groups alongside projects.
-      await _applyProjectsAndGroups(projects, groups, {});
+      final groupMap =
+          await api.listProjectGroupMap(actorProfile: _actorProfile);
+      await _applyProjectsAndGroups(projects, groups, groupMap);
     } catch (_) {}
   }
 

@@ -349,6 +349,8 @@ class TaskStore {
     final error = domainService.validateDraft(
       draft: draft,
       actorProfile: owner.value,
+      projectOwnerKey: _projectOwnerKey(draft.projectId),
+      projectGroupMembers: _projectGroupMembers(draft.projectId),
     );
     if (error != null) {
       return error;
@@ -542,6 +544,31 @@ class TaskStore {
       }
     }
     return ids;
+  }
+
+  String _projectOwnerKey(String projectId) {
+    if (projectId.isEmpty) {
+      return '';
+    }
+    final project = projects.value.cast<TaskProject?>().firstWhere(
+          (item) => item?.id == projectId,
+          orElse: () => null,
+        );
+    return project?.ownerKey ?? '';
+  }
+
+  Map<String, List<String>> _projectGroupMembers(String projectId) {
+    if (projectId.isEmpty) {
+      return const {};
+    }
+    final allowedGroupIds = projectGroupMap.value[projectId] ?? const [];
+    final out = <String, List<String>>{};
+    for (final group in familyGroups.value) {
+      if (allowedGroupIds.contains(group.id)) {
+        out[group.id] = List<String>.from(group.members);
+      }
+    }
+    return out;
   }
 
   void _recomputeKanbanOnly() {

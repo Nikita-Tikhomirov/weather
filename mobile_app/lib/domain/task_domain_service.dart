@@ -24,6 +24,8 @@ class TaskDomainService {
   String? validateDraft({
     required TaskDraft draft,
     required String actorProfile,
+    String projectOwnerKey = '',
+    Map<String, List<String>> projectGroupMembers = const {},
   }) {
     if (draft.title.trim().isEmpty) {
       return 'Укажите название задачи.';
@@ -43,6 +45,26 @@ class TaskDomainService {
         .toList();
     if (invalidOffsets.isNotEmpty) {
       return 'Некорректные интервалы напоминаний.';
+    }
+    if (draft.projectId.isNotEmpty) {
+      if (draft.groupId.isEmpty) {
+        return 'Выберите группу проекта.';
+      }
+      final groupMembers = projectGroupMembers[draft.groupId] ?? const [];
+      if (groupMembers.isEmpty) {
+        return 'Выбранная группа не входит в проект.';
+      }
+      final isProjectOwner =
+          projectOwnerKey.isNotEmpty && projectOwnerKey == actorProfile;
+      final isGroupMember = groupMembers.contains(actorProfile);
+      if (!isProjectOwner && !isGroupMember) {
+        return 'Нет прав на создание задачи в этой группе.';
+      }
+      final invalidAssignees =
+          draft.assignees.where((assignee) => !groupMembers.contains(assignee));
+      if (invalidAssignees.isNotEmpty) {
+        return 'Ответственные должны входить в выбранную группу.';
+      }
     }
 
     return null;

@@ -28,6 +28,7 @@ class SyncService {
             'owner_key': 'family',
             'is_family': true,
             'project_id': task.projectId,
+            'group_id': task.groupId,
             'title': task.title,
             'details': task.details,
             'due_date': task.dueDate,

@@ -127,6 +127,85 @@ void main() {
       expect(service.validateDraft(draft: draft, actorProfile: 'nik'),
           isNull);
     });
+
+    test('rejects project task without selected group', () {
+      final draft = validDraft().copyWith(projectId: 'project-1');
+      expect(
+        service.validateDraft(
+          draft: draft,
+          actorProfile: 'nik',
+          projectGroupMembers: const {'group-1': ['nik']},
+        ),
+        'Выберите группу проекта.',
+      );
+    });
+
+    test('rejects assignee outside selected project group', () {
+      final draft = validDraft().copyWith(
+        projectId: 'project-1',
+        groupId: 'group-1',
+        assignees: const ['nik', 'misha'],
+      );
+      expect(
+        service.validateDraft(
+          draft: draft,
+          actorProfile: 'nik',
+          projectGroupMembers: const {'group-1': ['nik']},
+        ),
+        'Ответственные должны входить в выбранную группу.',
+      );
+    });
+
+    test('rejects project group task when actor is not project owner or group member', () {
+      final draft = validDraft().copyWith(
+        projectId: 'project-1',
+        groupId: 'group-1',
+        assignees: const ['misha'],
+      );
+      expect(
+        service.validateDraft(
+          draft: draft,
+          actorProfile: 'nik',
+          projectOwnerKey: 'owner',
+          projectGroupMembers: const {'group-1': ['misha']},
+        ),
+        'Нет прав на создание задачи в этой группе.',
+      );
+    });
+
+    test('accepts project group task for project owner', () {
+      final draft = validDraft().copyWith(
+        projectId: 'project-1',
+        groupId: 'group-1',
+        assignees: const ['misha'],
+      );
+      expect(
+        service.validateDraft(
+          draft: draft,
+          actorProfile: 'nik',
+          projectOwnerKey: 'nik',
+          projectGroupMembers: const {'group-1': ['misha']},
+        ),
+        isNull,
+      );
+    });
+
+    test('accepts project group task for group member', () {
+      final draft = validDraft().copyWith(
+        projectId: 'project-1',
+        groupId: 'group-1',
+        assignees: const ['nik'],
+      );
+      expect(
+        service.validateDraft(
+          draft: draft,
+          actorProfile: 'nik',
+          projectOwnerKey: 'owner',
+          projectGroupMembers: const {'group-1': ['nik']},
+        ),
+        isNull,
+      );
+    });
   });
 
   group('materializeTask', () {
@@ -199,5 +278,4 @@ void main() {
     });
   });
 }
-
 

@@ -393,7 +393,6 @@ class ChatMessageBubble extends StatelessWidget {
 
   Widget _buildVideoBubble(BuildContext context) {
     final urls = _attachmentUrlsForKinds(['video']);
-    final cs = Theme.of(context).colorScheme;
     final thumbUrl = message.imageUrl is String && (message.imageUrl as String).isNotEmpty
         ? message.imageUrl as String
         : null;

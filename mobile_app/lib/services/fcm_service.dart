@@ -230,6 +230,7 @@ class FcmService {
     try {
       final file =
           File('${Directory.systemTemp.path}/family_todo_pending_push.json');
+      // ignore: avoid_slow_async_io
       if (await file.exists()) {
         final raw = await file.readAsString();
         if (raw.isNotEmpty) {
@@ -328,7 +329,10 @@ class FcmService {
       _updateDiagnostics('push:prefs_payload_cleaned');
       try {
         final file = File('${Directory.systemTemp.path}/family_todo_pending_push.json');
-        if (await file.exists()) await file.delete();
+        // ignore: avoid_slow_async_io
+        if (await file.exists()) {
+          await file.delete();
+        }
       } catch (_) {}
     }
   }
@@ -435,14 +439,20 @@ class FcmService {
     String? token, {PushDeviceStatus? serverStatus,}
   ) async {
     final currentToken = token?.trim() ?? '';
-    if (currentToken.isEmpty) return;
+    if (currentToken.isEmpty) {
+      return;
+    }
     final status = serverStatus ?? await api.pushDeviceStatus(actorProfile: actorProfile);
     if (status.effectiveTokenStatus != 'unregistered' &&
-        status.effectiveTokenStatus != 'missing') return;
+        status.effectiveTokenStatus != 'missing') {
+      return;
+    }
 
     final now = DateTime.now();
     final last = _lastServerTokenRecoveryAt;
-    if (last != null && now.difference(last) < const Duration(minutes: 2)) return;
+    if (last != null && now.difference(last) < const Duration(minutes: 2)) {
+      return;
+    }
     _lastServerTokenRecoveryAt = now;
     _lastRegisteredToken = '';
     _lastTokenError = 'server_effective_${status.effectiveTokenStatus}';
@@ -529,9 +539,13 @@ class FcmService {
 
   String _detectPlayServicesState(String errorText) {
     final lower = errorText.toLowerCase();
-    if (lower.contains('fis_auth_error')) return 'fis_auth_error';
+    if (lower.contains('fis_auth_error')) {
+      return 'fis_auth_error';
+    }
     if (lower.contains('service_not_available') ||
-        lower.contains('google play services')) return 'unavailable_or_restricted';
+        lower.contains('google play services')) {
+      return 'unavailable_or_restricted';
+    }
     return 'unknown_or_network';
   }
 
@@ -540,7 +554,9 @@ class FcmService {
   /// immediately invalidates the token on Firebase servers, causing
   /// every queued server push to fail with NOT_FOUND.
   Future<void> _recoverFromFisAuthError({bool force = false}) async {
-    if (_isFisRecoveryInProgress) return;
+    if (_isFisRecoveryInProgress) {
+      return;
+    }
     final now = DateTime.now();
     final last = _lastFisRecoveryAt;
     if (!force && last != null && now.difference(last) < const Duration(minutes: 3)) return;
