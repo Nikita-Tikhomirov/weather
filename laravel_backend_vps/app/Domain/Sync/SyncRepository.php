@@ -518,6 +518,65 @@ final class SyncRepository
             ->all();
     }
 
+    /**
+     * Projects visible to the actor: owner OR member of an attached group.
+     * @return array<int, array<string, mixed>>
+     */
+    public function visibleProjectsForActor(string $actor): array
+    {
+        if ($actor === '') {
+            return [];
+        }
+
+        // 1) Projects owned by actor
+        $ownedIds = DB::table('task_projects')
+            ->where('owner_key', $actor)
+            ->pluck('id')
+            ->map(fn($v) => (string)$v)
+            ->toArray();
+
+        // 2) Groups where actor is a member OR owner
+        $allGroups = DB::table('family_groups')->get();
+        $actorGroupIds = [];
+        foreach ($allGroups as $group) {
+            $isOwner = (string)$group->owner_key === $actor;
+            $members = $this->decodeJsonArray($group->members_json);
+            if ($isOwner || in_array($actor, $members, true)) {
+                $actorGroupIds[] = (string)$group->id;
+            }
+        }
+
+        // 3) Projects linked to those groups
+        $groupProjectIds = [];
+        if (!empty($actorGroupIds)) {
+            $groupProjectIds = DB::table('project_family_groups')
+                ->whereIn('group_id', $actorGroupIds)
+                ->pluck('project_id')
+                ->map(fn($v) => (string)$v)
+                ->toArray();
+        }
+
+        $visibleIds = array_unique(array_merge($ownedIds, $groupProjectIds));
+        if (empty($visibleIds)) {
+            return [];
+        }
+
+        return DB::table('task_projects')
+            ->whereIn('id', $visibleIds)
+            ->orderBy('name')
+            ->get()
+            ->map(fn($row) => [
+                'id' => (string)$row->id,
+                'name' => (string)$row->name,
+                'description' => (string)$row->description,
+                'owner_key' => (string)$row->owner_key,
+                'created_at' => (string)$row->created_at,
+                'updated_at' => (string)$row->updated_at,
+            ])
+            ->values()
+            ->all();
+    }
+
     /** @return array<int, array<string, mixed>> */
     public function allFamilyGroups(): array
     {
@@ -534,6 +593,67 @@ final class SyncRepository
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Groups visible to the actor: owner OR member.
+     * @return array<int, array<string, mixed>>
+     */
+    public function visibleGroupsForActor(string $actor): array
+    {
+        if ($actor === '') {
+            return [];
+        }
+
+        return DB::table('family_groups')
+            ->orderBy('name')
+            ->get()
+            ->filter(function ($row) use ($actor): bool {
+                // Owner always sees their group
+                if ((string)$row->owner_key === $actor) {
+                    return true;
+                }
+                // Member sees group they belong to
+                $members = $this->decodeJsonArray($row->members_json);
+                return in_array($actor, $members, true);
+            })
+            ->map(fn($row) => [
+                'id' => (string)$row->id,
+                'name' => (string)$row->name,
+                'members' => $this->decodeJsonArray($row->members_json),
+                'owner_key' => (string)$row->owner_key,
+                'created_at' => (string)$row->created_at,
+                'updated_at' => (string)$row->updated_at,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Project-group map filtered to projects visible to actor.
+     * @return array<string, list<string>> project_id => [group_id, ...]
+     */
+    public function visibleProjectGroupMap(string $actor): array
+    {
+        $visibleProjects = $this->visibleProjectsForActor($actor);
+        $visibleProjectIds = array_map(fn($p) => $p['id'], $visibleProjects);
+        if (empty($visibleProjectIds)) {
+            return [];
+        }
+
+        $rows = DB::table('project_family_groups')
+            ->whereIn('project_id', $visibleProjectIds)
+            ->get();
+        $map = [];
+        foreach ($rows as $row) {
+            $pid = (string)$row->project_id;
+            $gid = (string)$row->group_id;
+            if (!isset($map[$pid])) {
+                $map[$pid] = [];
+            }
+            $map[$pid][] = $gid;
+        }
+        return $map;
     }
 
     /** @return array<string, list<string>> project_id => [group_id, ...] */

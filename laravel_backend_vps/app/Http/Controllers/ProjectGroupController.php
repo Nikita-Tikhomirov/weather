@@ -14,25 +14,41 @@ class ProjectGroupController extends Controller
     public function __construct(
         private readonly SyncRepository $repo,
     ) {}
-    public function listProjects(): JsonResponse
+    public function listProjects(Request $request): JsonResponse
     {
         try {
+            $actor = trim((string)$request->query('actor_profile', ''));
+            if ($actor !== '') {
+                ActorProfileGuard::ensureAllowed($actor);
+                $projects = $this->repo->visibleProjectsForActor($actor);
+            } else {
+                $projects = $this->repo->allProjects();
+            }
             return $this->json(200, [
                 'ok' => true,
-                'projects' => $this->repo->allProjects(),
+                'projects' => $projects,
             ]);
         } catch (Throwable $e) {
             return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
         }
     }
 
-    public function listGroups(): JsonResponse
+    public function listGroups(Request $request): JsonResponse
     {
         try {
+            $actor = trim((string)$request->query('actor_profile', ''));
+            if ($actor !== '') {
+                ActorProfileGuard::ensureAllowed($actor);
+                $groups = $this->repo->visibleGroupsForActor($actor);
+                $projectGroups = $this->repo->visibleProjectGroupMap($actor);
+            } else {
+                $groups = $this->repo->allFamilyGroups();
+                $projectGroups = $this->repo->projectGroupMap();
+            }
             return $this->json(200, [
                 'ok' => true,
-                'groups' => $this->repo->allFamilyGroups(),
-                'project_groups' => $this->repo->projectGroupMap(),
+                'groups' => $groups,
+                'project_groups' => $projectGroups,
             ]);
         } catch (Throwable $e) {
             return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);

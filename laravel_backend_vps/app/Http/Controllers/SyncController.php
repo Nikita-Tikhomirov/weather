@@ -53,9 +53,16 @@ class SyncController extends Controller
 
             $tasks = $this->repo->changedTasks($since, $actor, $isChangesMode);
             $familyTasks = $this->repo->changedFamilyTasks($since, $isChangesMode);
-            $projects = $this->repo->allProjects();
-            $familyGroups = $this->repo->allFamilyGroups();
-            $projectGroupMap = $this->repo->projectGroupMap();
+            // Filter projects and groups by actor visibility
+            if ($actor !== null && $actor !== '') {
+                $projects = $this->repo->visibleProjectsForActor($actor);
+                $familyGroups = $this->repo->visibleGroupsForActor($actor);
+                $projectGroupMap = $this->repo->visibleProjectGroupMap($actor);
+            } else {
+                $projects = $this->repo->allProjects();
+                $familyGroups = $this->repo->allFamilyGroups();
+                $projectGroupMap = $this->repo->projectGroupMap();
+            }
             $serverTime = $this->repo->nowIso();
             $cursorFallback = $isChangesMode ? $since : $serverTime;
             $nextCursor = Cursor::nextSyncCursor($tasks, $familyTasks, $cursorFallback);

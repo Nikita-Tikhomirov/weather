@@ -3465,7 +3465,6 @@ class _HomePageState extends State<HomePage> {
   Future<void> _openTaskEditor(
     TaskStore store, {
     TaskItem? existing,
-    bool forceFamily = false,
   }) async {
     // When a project is selected, show assignees from project groups
     // Otherwise, show all known contacts
@@ -3502,7 +3501,6 @@ class _HomePageState extends State<HomePage> {
       contactLabel: contactLabel,
       dateKey: dateKey,
       existing: existing,
-      forceFamily: forceFamily,
       onSaved: () => _safeSyncDelta(store, showErrors: true),
     );
   }

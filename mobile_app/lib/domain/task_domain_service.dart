@@ -30,8 +30,8 @@ class TaskDomainService {
     if (draft.title.trim().isEmpty) {
       return 'Укажите название задачи.';
     }
-    if (draft.isFamily && draft.projectId.isEmpty && draft.assignees.isEmpty) {
-      return 'Выберите хотя бы одного ответственного.';
+    if (draft.projectId.isEmpty) {
+      return 'Выберите проект.';
     }
     if (!allowedStatuses.contains(draft.workflowStatus)) {
       return 'Некорректный статус задачи.';
@@ -70,22 +70,50 @@ class TaskDomainService {
     return null;
   }
 
+  /// Returns true if the task should be visible to the actor.
+  ///
+  /// Rules (project-scoped, no shared tasks):
+  /// 1. If a project filter is active, only tasks of that project are shown.
+  /// 2. Tasks without a project are visible only to the owner/assignee.
+  /// 3. Tasks with a project are visible if actor is assignee OR belongs to the
+  ///    task's group.
   bool isVisibleToActor({
     required TaskItem task,
     required String actorProfile,
     required Set<String> actorGroupIds,
     String currentProjectId = '',
   }) {
-    if (currentProjectId.isNotEmpty && task.projectId != currentProjectId) {
+    // 1) Project filter active — only show matching project tasks
+    if (currentProjectId.isNotEmpty) {
+      if (task.projectId != currentProjectId) {
+        return false;
+      }
+      // Within the project, actor must be assignee or group member
+      if (task.assignees.contains(actorProfile)) {
+        return true;
+      }
+      if (task.groupId.isNotEmpty && actorGroupIds.contains(task.groupId)) {
+        return true;
+      }
       return false;
     }
+
+    // 2) No project filter — show personal tasks (owned/assigned) and
+    //    project tasks where actor participates (assignee or group member).
+    //    Tasks without projectId are personal and visible only to assignee/owner.
+
+    // Actor is direct assignee — always visible
     if (task.assignees.contains(actorProfile)) {
       return true;
     }
-    if (task.groupId.isEmpty) {
-      return false;
+
+    // Task belongs to a group — visible if actor is in that group
+    if (task.groupId.isNotEmpty && actorGroupIds.contains(task.groupId)) {
+      return true;
     }
-    return actorGroupIds.contains(task.groupId);
+
+    // Task without project/group and actor is not assignee — hidden
+    return false;
   }
 
   TaskItem materializeTask({

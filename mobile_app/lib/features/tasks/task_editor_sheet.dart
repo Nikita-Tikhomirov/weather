@@ -26,7 +26,6 @@ Future<void> showTaskEditorSheet({
   required String Function(DateTime value) dateKey,
   required Future<void> Function() onSaved,
   TaskItem? existing,
-  bool forceFamily = false,
 }) async {
   final titleCtl = TextEditingController(text: existing?.title ?? '');
   final detailsCtl = TextEditingController(text: existing?.details ?? '');
@@ -137,13 +136,12 @@ Future<void> showTaskEditorSheet({
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     // ignore: deprecated_member_use
-                    value: selectedProjectId,
-                    decoration: const InputDecoration(labelText: 'Проект'),
+                    value: projectList.any((p) => p.id == selectedProjectId)
+                        ? selectedProjectId
+                        : null,
+                    decoration: const InputDecoration(labelText: 'Проект *'),
+                    hint: const Text('Выберите проект'),
                     items: [
-                      const DropdownMenuItem<String>(
-                        value: '',
-                        child: Text('Без проекта'),
-                      ),
                       for (final project in projectList)
                         DropdownMenuItem<String>(
                           value: project.id,
@@ -373,6 +371,14 @@ Future<void> showTaskEditorSheet({
                       Expanded(
                         child: FilledButton(
                           onPressed: () async {
+                            if (selectedProjectId.isEmpty) {
+                              ScaffoldMessenger.of(sheetContext).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Выберите проект'),
+                                ),
+                              );
+                              return;
+                            }
                             final draft = TaskDraft(
                               title: titleCtl.text.trim(),
                               details: detailsCtl.text.trim(),
@@ -380,9 +386,7 @@ Future<void> showTaskEditorSheet({
                               time: time,
                               priority: priority,
                               workflowStatus: status,
-                              isFamily: forceFamily ||
-                                  selectedProjectId.isNotEmpty ||
-                                  (existing?.isFamily ?? false),
+                              isFamily: true,
                               assignees: selectedAssignees.toList(),
                               durationMinutes:
                                   int.tryParse(durationCtl.text.trim()) ?? 0,
