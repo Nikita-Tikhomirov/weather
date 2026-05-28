@@ -192,7 +192,7 @@ void main() {
     });
 
     test('rejects project task without selected group', () {
-      final draft = validDraft().copyWith(projectId: 'project-1');
+      final draft = validDraft().copyWith(projectId: 'project-1', groupId: '');
       expect(
         service.validateDraft(
           draft: draft,
