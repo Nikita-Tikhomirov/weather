@@ -147,10 +147,10 @@ class ProjectGroupController extends Controller
                 throw new InvalidArgumentException('id is required');
             }
 
-            // Only the project owner can delete
-            $project = $this->repo->findProject($id);
-            if ($project !== null && $project['owner_key'] !== $actor) {
-                throw new InvalidArgumentException('Only the project owner can delete');
+            // Actor must be able to see the project (owner OR member of attached group)
+            $visibleIds = array_column($this->repo->visibleProjectsForActor($actor), 'id');
+            if (!in_array($id, $visibleIds, true)) {
+                throw new InvalidArgumentException('Project not found or access denied');
             }
 
             $this->repo->deleteProject($id);
@@ -289,10 +289,10 @@ class ProjectGroupController extends Controller
                 throw new InvalidArgumentException('id is required');
             }
 
-            // Only the group owner can delete
-            $group = $this->repo->findGroup($id);
-            if ($group !== null && $group['owner_key'] !== $actor) {
-                throw new InvalidArgumentException('Only the group owner can delete');
+            // Actor must be able to see the group (owner OR member)
+            $visibleIds = array_column($this->repo->visibleGroupsForActor($actor), 'id');
+            if (!in_array($id, $visibleIds, true)) {
+                throw new InvalidArgumentException('Group not found or access denied');
             }
 
             $this->repo->deleteFamilyGroup($id);
