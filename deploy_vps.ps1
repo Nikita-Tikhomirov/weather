@@ -16,6 +16,7 @@ $files = @(
     @{Local="laravel_backend_vps\app\Services\Push\PushOutboxService.php"; Remote="$remoteBase/app/Services/Push/PushOutboxService.php"},
     @{Local="laravel_backend_vps\database\migrations\2026_05_21_000700_add_avatar_url_to_messenger_users.php"; Remote="$remoteBase/database/migrations/2026_05_21_000700_add_avatar_url_to_messenger_users.php"},
     @{Local="laravel_backend_vps\app\Http\Controllers\ProjectGroupController.php"; Remote="$remoteBase/app/Http/Controllers/ProjectGroupController.php"},
+    @{Local="laravel_backend_vps\app\Http\Controllers\SyncController.php";      Remote="$remoteBase/app/Http/Controllers/SyncController.php"},
     @{Local="laravel_backend_vps\app\Domain\Sync\SyncRules.php";           Remote="$remoteBase/app/Domain/Sync/SyncRules.php"},
     @{Local="laravel_backend_vps\app\Domain\Sync\SyncRepository.php";      Remote="$remoteBase/app/Domain/Sync/SyncRepository.php"},
     @{Local="laravel_backend_vps\app\Domain\Sync\Profiles.php";            Remote="$remoteBase/app/Domain/Sync/Profiles.php"},
@@ -53,7 +54,7 @@ client.connect(host, username=user, password=password, timeout=15)
 sftp = client.open_sftp()
 
 files = [
-$($files | ForEach-Object { "    ('$($_.Local)', '$($_.Remote)')," }) 
+$($files | ForEach-Object { $l = $_.Local -replace '\\', '/'; "    ('$l', '$($_.Remote)')," }) 
 ]
 
 for local, remote in files:
@@ -73,12 +74,7 @@ for local, remote in files:
 
 sftp.close()
 
-$migrationCmd = "#migration"
-if ("$SkipMigration" -ne "True") {
-    $migrationCmd = ""
-}
-
-stdin, stdout, stderr = client.exec_command(f'cd $remoteBase && php artisan migrate --force 2>&1 $migrationCmd')
+stdin, stdout, stderr = client.exec_command('cd $remoteBase && php artisan migrate --force 2>&1')
 print('Migration:', stdout.read().decode().strip())
 err = stderr.read().decode().strip()
 if err:

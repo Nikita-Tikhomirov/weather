@@ -3821,10 +3821,6 @@ class _HomePageState extends State<HomePage> {
                         hint: Text(projectName,
                             style: Theme.of(context).textTheme.titleSmall),
                         items: [
-                          const DropdownMenuItem<String>(
-                            value: null,
-                            child: Text('Все задачи (личные)'),
-                          ),
                           for (final p in projects)
                             DropdownMenuItem<String>(
                               value: p.id,
