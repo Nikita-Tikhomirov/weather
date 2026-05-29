@@ -164,7 +164,14 @@ class CodeWhaleWorkerManagerTests(unittest.TestCase):
             self.assertEqual(started["worker_pid"], process.pid)
             self.assertEqual(started["worker_port"], 43101)
             self.assertEqual(popen.call_args.kwargs["cwd"], str(workspace))
-            self.assertIn("serve", popen.call_args.args[0])
+            command = popen.call_args.args[0]
+            self.assertIn("serve", command)
+            self.assertIn("--http", command)
+            self.assertIn("--host", command)
+            self.assertIn("127.0.0.1", command)
+            self.assertIn("--port", command)
+            self.assertIn("43101", command)
+            self.assertIn("--insecure", command)
 
     def test_kill_worker_only_kills_target_process(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

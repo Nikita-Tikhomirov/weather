@@ -307,7 +307,11 @@ class CodeWhaleWorkerManager:
             self.codewhale_cmd,
             "serve",
             "--http",
-            f"127.0.0.1:{port}",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(port),
+            "--insecure",
         ]
         logs = self._open_worker_logs(workspace_id, session_id)
         try:
