@@ -57,6 +57,19 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$Wa
 "@ | Set-Content -Path $startupCmd -Encoding ascii
 }
 
+$runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+$runCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$WatchdogScript`""
+try {
+    New-Item -Path $runKey -Force | Out-Null
+    New-ItemProperty `
+        -Path $runKey `
+        -Name $TaskName `
+        -Value $runCommand `
+        -PropertyType String `
+        -Force | Out-Null
+} catch {
+}
+
 Get-CimInstance Win32_Process |
     Where-Object {
         $_.ProcessName -like 'powershell*' -and
