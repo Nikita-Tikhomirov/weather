@@ -15,6 +15,9 @@ function Write-WatchdogLog {
         Out-File -FilePath $WatchdogLog -Encoding utf8 -Append
 }
 
+Write-WatchdogLog 'legacy project bridge watchdog is retired; CodeWhaleBridgeAtLogon owns mobile workspace sessions'
+exit 0
+
 $MutexName = 'Global\WeatherProjectBridgeLauncherWatchdog'
 $CreatedNew = $false
 $Mutex = [System.Threading.Mutex]::new($true, $MutexName, [ref]$CreatedNew)
