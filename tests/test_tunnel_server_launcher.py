@@ -201,6 +201,42 @@ class TunnelServerLauncherTests(unittest.IsolatedAsyncioTestCase):
         await mobile_writer.wait_closed()
         await bridge_writer.wait_closed()
 
+    async def test_codewhale_mobile_attach_notifies_codewhale_bridge(self) -> None:
+        bridge_reader, bridge_writer = await asyncio.open_connection(
+            "127.0.0.1",
+            self.port,
+            limit=MAX_RELAY_LINE_BYTES,
+        )
+        bridge_writer.write(
+            json.dumps(
+                {"type": "codewhale_register", "project_id": "codewhale"}
+            ).encode("utf-8")
+            + b"\n"
+        )
+        await bridge_writer.drain()
+
+        mobile_reader, mobile_writer = await asyncio.open_connection(
+            "127.0.0.1",
+            self.port,
+        )
+        mobile_writer.write(
+            json.dumps({"type": "codewhale_connect", "project_id": "codewhale"}).encode(
+                "utf-8"
+            )
+            + b"\n"
+        )
+        await mobile_writer.drain()
+
+        self.assertEqual((await _read_json(mobile_reader))["type"], "status")
+        attached = await _read_json(bridge_reader)
+        self.assertEqual(attached["type"], "codewhale_mobile_attached")
+        self.assertEqual(attached["project_id"], "codewhale")
+
+        mobile_writer.close()
+        bridge_writer.close()
+        await mobile_writer.wait_closed()
+        await bridge_writer.wait_closed()
+
     async def test_new_bridge_registration_replaces_stale_bridge(self) -> None:
         first_reader, first_writer = await asyncio.open_connection(
             "127.0.0.1",

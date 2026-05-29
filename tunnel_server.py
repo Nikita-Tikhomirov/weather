@@ -61,6 +61,28 @@ class TunnelServer:
             msg_type = msg.get('type', '')
             project_id = msg.get('project_id', '').strip()
 
+            if msg_type == 'codewhale_register':
+                bridge_id = project_id or 'codewhale'
+                await self._handle_bridge(
+                    f'codewhale:{bridge_id}',
+                    reader,
+                    writer,
+                )
+                return
+            if msg_type == 'codewhale_connect':
+                bridge_id = project_id or 'codewhale'
+                session_id = msg.get('session_id', '').strip()
+                await self._handle_mobile(
+                    f'codewhale:{bridge_id}',
+                    reader,
+                    writer,
+                    session_id=session_id,
+                    public_project_id=bridge_id,
+                    attached_type='codewhale_mobile_attached',
+                    autostart=False,
+                )
+                return
+
             if not project_id:
                 writer.close()
                 return
@@ -282,13 +304,24 @@ class TunnelServer:
                 self._launcher_writers.remove(launcher)
         return delivered
 
-    async def _handle_mobile(self, project_id: str, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, session_id: str = ''):
+    async def _handle_mobile(
+        self,
+        project_id: str,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+        session_id: str = '',
+        public_project_id: str | None = None,
+        attached_type: str = 'mobile_attached',
+        autostart: bool = True,
+    ):
         """Mobile client connects. Messages from mobile go to bridge."""
+        visible_project_id = public_project_id or project_id
         bridge = self._bridges.get(project_id)
         if not bridge:
-            self._send_json(writer, {'type': 'status', 'text': f'Waiting for PC bridge ({project_id})...'})
+            self._send_json(writer, {'type': 'status', 'text': f'Waiting for PC bridge ({visible_project_id})...'})
             print(f"[tunnel] Mobile waiting for bridge: {project_id}", flush=True)
-            await self._request_bridge_start(project_id)
+            if autostart:
+                await self._request_bridge_start(project_id)
             # Wait a bit and check again
             for _ in range(30):  # 30 seconds timeout
                 await asyncio.sleep(1)
@@ -303,8 +336,8 @@ class TunnelServer:
         print(f"[tunnel] Paired mobile -> {project_id}", flush=True)
         self._send_json(writer, {
             'type': 'status',
-            'text': f'Connected to {project_id}',
-            'project_id': project_id,
+            'text': f'Connected to {visible_project_id}',
+            'project_id': visible_project_id,
         })
 
         # Register this mobile writer for broadcasts from bridge
@@ -313,8 +346,8 @@ class TunnelServer:
             b_writer.write(
                 json.dumps(
                     {
-                        'type': 'mobile_attached',
-                        'project_id': project_id,
+                        'type': attached_type,
+                        'project_id': visible_project_id,
                         'session_id': session_id,
                     },
                     ensure_ascii=False,
