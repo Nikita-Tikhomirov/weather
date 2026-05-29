@@ -5,8 +5,9 @@ import '../../models/chat_models.dart';
 /// These functions have no side effects and don't depend on widget state.
 /// They can be safely unit-tested in isolation.
 
-/// Legacy project chats are retired; CodeWhale workspaces own project sessions.
-bool isProjectConversation(String key) => false;
+/// Legacy project chats are retired; keep detecting them so push routing can
+/// ignore old project conversation keys instead of opening Messenger.
+bool isProjectConversation(String key) => key.trim().startsWith('project:');
 
 enum PendingPushAction { syncOnly, routeOpenedPush }
 

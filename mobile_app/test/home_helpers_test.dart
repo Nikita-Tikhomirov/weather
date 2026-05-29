@@ -79,9 +79,9 @@ void main() {
   });
 
   group('isProjectConversation', () {
-    test('returns false for retired project chat prefix', () {
-      expect(isProjectConversation('project:tudushka'), isFalse);
-      expect(isProjectConversation('project:cifra'), isFalse);
+    test('detects retired project chat prefix', () {
+      expect(isProjectConversation('project:tudushka'), isTrue);
+      expect(isProjectConversation('project:cifra'), isTrue);
     });
 
     test('returns false for non-project keys', () {
