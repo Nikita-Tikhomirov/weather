@@ -107,6 +107,20 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
         _activeEvents = message.events;
         _mode = _WorkspacePageMode.chat;
       }
+      if (message.type == 'session_stream_started') {
+        _statusText = 'CodeWhale думает...';
+      }
+      if (message.type == 'assistant_delta') {
+        _appendAssistantDelta(message);
+      }
+      if (message.type == 'session_stream_done') {
+        _statusText = 'CodeWhale готов';
+        final workspace = _activeWorkspace;
+        final session = _activeSession;
+        if (workspace != null && session != null) {
+          _service.openSession(workspace.id, session.id);
+        }
+      }
       if (message.type == 'session_task') {
         _handleSessionTask(message);
       }
@@ -151,6 +165,40 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
       session,
     ]..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     _sessionsByWorkspace[session.workspaceId] = next;
+  }
+
+  void _appendAssistantDelta(CodeWhaleBridgeMessage message) {
+    final workspace = _activeWorkspace;
+    final session = _activeSession;
+    if (workspace == null || session == null) {
+      return;
+    }
+    if (message.workspaceId.isNotEmpty && message.workspaceId != workspace.id) {
+      return;
+    }
+    if (message.sessionId.isNotEmpty && message.sessionId != session.id) {
+      return;
+    }
+    if (message.text.isEmpty) {
+      return;
+    }
+
+    final events = List<Map<String, dynamic>>.from(_activeEvents);
+    if (events.isNotEmpty && events.last['type'] == 'assistant_delta') {
+      final previous = events.removeLast();
+      events.add({
+        ...previous,
+        'text': '${previous['text'] ?? ''}${message.text}',
+        'final': message.isFinal,
+      });
+    } else {
+      events.add({
+        'type': 'assistant_delta',
+        'text': message.text,
+        'final': message.isFinal,
+      });
+    }
+    _activeEvents = events;
   }
 
   @override

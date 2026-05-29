@@ -48,6 +48,22 @@ void main() {
     expect(session.isRunning, isTrue);
   });
 
+  test('assistant delta parses live stream fields', () {
+    final message = CodeWhaleBridgeMessage.fromJson({
+      'type': 'assistant_delta',
+      'workspace_id': 'weather',
+      'session_id': 'session-1',
+      'text': 'При',
+      'final': false,
+    });
+
+    expect(message.type, 'assistant_delta');
+    expect(message.workspaceId, 'weather');
+    expect(message.sessionId, 'session-1');
+    expect(message.text, 'При');
+    expect(message.isFinal, isFalse);
+  });
+
   test('connect registers as codewhale mobile client', () async {
     final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
     final received = <Map<String, dynamic>>[];

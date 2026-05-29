@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from codewhale_bridge import (
     CodeWhaleBridge,
+    CodeWhaleExecClient,
     CodeWhaleRuntimeClient,
     CodeWhaleWorkerManager,
     SessionRegistry,
@@ -372,6 +373,154 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             self.assertEqual(events[-1]["type"], "assistant_delta")
             self.assertEqual(events[-1]["text"], "Готово")
 
+    def test_stream_session_message_persists_codewhale_session(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            session = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Чат",
+                }
+            )["session"]
+
+            with patch.object(
+                bridge.exec_client,
+                "stream_prompt",
+                return_value=iter(
+                    [
+                        {"type": "content", "content": "При"},
+                        {"type": "content", "content": "вет"},
+                        {"type": "session_capture", "content": "cw-session-1"},
+                        {
+                            "type": "metadata",
+                            "meta": {
+                                "session_id": "cw-session-1",
+                                "status": "completed",
+                            },
+                        },
+                        {"type": "done"},
+                    ]
+                ),
+            ) as stream_prompt:
+                replies = list(
+                    bridge.stream_session_message(
+                        {
+                            "type": "session_send",
+                            "workspace_id": workspace["id"],
+                            "session_id": session["id"],
+                            "text": "Привет",
+                        }
+                    )
+                )
+
+            stream_prompt.assert_called_once_with(
+                Path(workspace["path"]),
+                "Привет",
+                session_id=None,
+                on_process_start=bridge._remember_exec_process,
+                on_process_end=bridge._forget_exec_process,
+                process_key=(workspace["id"], session["id"]),
+            )
+            self.assertEqual(
+                [reply["type"] for reply in replies],
+                [
+                    "session_stream_started",
+                    "assistant_delta",
+                    "assistant_delta",
+                    "session_stream_done",
+                ],
+            )
+            self.assertEqual(replies[1]["text"], "При")
+            self.assertEqual(replies[2]["text"], "вет")
+
+            updated = bridge.sessions.get_session(workspace["id"], session["id"])
+            self.assertEqual(updated["runtime_session_id"], "cw-session-1")
+            events = bridge.sessions.load_events(workspace["id"], session["id"])
+            self.assertEqual([event["type"] for event in events], ["user_message", "assistant_delta"])
+            self.assertEqual(events[-1]["text"], "Привет")
+            self.assertTrue(events[-1]["final"])
+
+    def test_stream_session_message_reuses_codewhale_session(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            session = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Чат",
+                }
+            )["session"]
+            bridge.sessions.update_session(
+                workspace["id"],
+                session["id"],
+                runtime_session_id="cw-session-1",
+            )
+
+            with patch.object(
+                bridge.exec_client,
+                "stream_prompt",
+                return_value=iter([{"type": "content", "content": "OK"}, {"type": "done"}]),
+            ) as stream_prompt:
+                list(
+                    bridge.stream_session_message(
+                        {
+                            "type": "session_send",
+                            "workspace_id": workspace["id"],
+                            "session_id": session["id"],
+                            "text": "Продолжи",
+                        }
+                    )
+                )
+
+            self.assertEqual(stream_prompt.call_args.kwargs["session_id"], "cw-session-1")
+
+    def test_stream_session_message_marks_session_idle_after_exec_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            session = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Чат",
+                }
+            )["session"]
+
+            def broken_stream(*args, **kwargs):
+                kwargs["on_process_start"](kwargs["process_key"], _FakeProcess())
+                yield {"type": "content", "content": "partial"}
+                raise RuntimeError("exec failed")
+
+            with patch.object(bridge.exec_client, "stream_prompt", broken_stream):
+                stream = bridge.stream_session_message(
+                    {
+                        "type": "session_send",
+                        "workspace_id": workspace["id"],
+                        "session_id": session["id"],
+                        "text": "Привет",
+                    }
+                )
+                self.assertEqual(next(stream)["type"], "session_stream_started")
+                self.assertEqual(next(stream)["type"], "assistant_delta")
+                with self.assertRaises(RuntimeError):
+                    next(stream)
+
+            updated = bridge.sessions.get_session(workspace["id"], session["id"])
+            self.assertEqual(updated["status"], "idle")
+            self.assertIsNone(updated["active_pid"])
+
     def test_handle_unknown_message_returns_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             bridge = CodeWhaleBridge(Path(tmp) / "Desktop", Path(tmp) / "state")
@@ -423,6 +572,19 @@ class CodeWhaleRuntimeClientTests(unittest.TestCase):
 
         self.assertEqual(task["status"], "completed")
         self.assertEqual(task["result_summary"], "OK")
+
+
+class CodeWhaleExecClientTests(unittest.TestCase):
+    def test_parse_stream_json_lines_ignores_terminal_control_prefix(self) -> None:
+        lines = [
+            '\x1b]0;🐳 DeepSeek TUI\x07{"type":"content","content":"OK"}\n',
+            '{"type":"session_capture","content":"session-1"}\n',
+        ]
+
+        parsed = list(CodeWhaleExecClient._parse_stream_json_lines(lines))
+
+        self.assertEqual(parsed[0], {"type": "content", "content": "OK"})
+        self.assertEqual(parsed[1]["content"], "session-1")
 
 
 class _FakeHttpResponse:

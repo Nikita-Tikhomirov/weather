@@ -23,6 +23,7 @@ class CodeWhaleBridgeMessage {
     this.sessionId = '',
     this.taskId = '',
     this.taskStatus = '',
+    this.isFinal = false,
     this.requestId = '',
   });
 
@@ -38,6 +39,7 @@ class CodeWhaleBridgeMessage {
   final String sessionId;
   final String taskId;
   final String taskStatus;
+  final bool isFinal;
   final String requestId;
 
   factory CodeWhaleBridgeMessage.fromJson(Map<String, dynamic> json) {
@@ -66,6 +68,7 @@ class CodeWhaleBridgeMessage {
       sessionId: (json['session_id'] ?? '').toString(),
       taskId: (json['task_id'] ?? '').toString(),
       taskStatus: (json['status'] ?? '').toString(),
+      isFinal: json['final'] == true,
       requestId: (json['request_id'] ?? '').toString(),
     );
   }

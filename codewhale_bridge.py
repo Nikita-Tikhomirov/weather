@@ -12,7 +12,7 @@ import time
 import urllib.request
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Iterable, Iterator
 
 
 RECONNECT_DELAY_SECONDS = 5
@@ -141,6 +141,8 @@ class SessionRegistry:
             "status": "idle",
             "worker_pid": None,
             "worker_port": None,
+            "runtime_session_id": None,
+            "active_pid": None,
             "created_at": created_at,
             "updated_at": created_at,
             "last_event_seq": 0,
@@ -176,7 +178,15 @@ class SessionRegistry:
         **patch: Any,
     ) -> dict[str, Any]:
         session = self.get_session(workspace_id, session_id)
-        allowed = {"title", "status", "worker_pid", "worker_port", "last_event_seq"}
+        allowed = {
+            "title",
+            "status",
+            "worker_pid",
+            "worker_port",
+            "runtime_session_id",
+            "active_pid",
+            "last_event_seq",
+        }
         for key, value in patch.items():
             if key not in allowed:
                 raise ValueError(f"unsupported session field: {key}")
@@ -483,6 +493,74 @@ class CodeWhaleRuntimeClient:
         return decoded
 
 
+class CodeWhaleExecClient:
+    def __init__(
+        self,
+        codewhale_cmd: str = "codewhale",
+        popen: Callable[..., subprocess.Popen] = subprocess.Popen,
+    ) -> None:
+        self.codewhale_cmd = codewhale_cmd
+        self.popen = popen
+
+    def stream_prompt(
+        self,
+        workspace_path: Path,
+        prompt: str,
+        *,
+        session_id: str | None = None,
+        on_process_start: Callable[[tuple[str, str], subprocess.Popen], None] | None = None,
+        on_process_end: Callable[[tuple[str, str]], None] | None = None,
+        process_key: tuple[str, str] | None = None,
+    ) -> Iterator[dict[str, Any]]:
+        command = [
+            self.codewhale_cmd,
+            "exec",
+            "--output-format",
+            "stream-json",
+        ]
+        if session_id:
+            command.extend(["--resume", session_id])
+        command.append(prompt)
+
+        process = self.popen(
+            command,
+            cwd=str(workspace_path),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            stdin=subprocess.DEVNULL,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if process_key is not None and on_process_start is not None:
+            on_process_start(process_key, process)
+        try:
+            assert process.stdout is not None
+            yield from self._parse_stream_json_lines(process.stdout)
+            exit_code = process.wait(timeout=5)
+            if exit_code != 0:
+                raise RuntimeError(f"codewhale exec exited with code {exit_code}")
+        finally:
+            if process_key is not None and on_process_end is not None:
+                on_process_end(process_key)
+
+    @staticmethod
+    def _parse_stream_json_lines(lines: Iterable[str]) -> Iterator[dict[str, Any]]:
+        for line in lines:
+            start = line.find("{")
+            if start < 0:
+                continue
+            payload = line[start:].strip()
+            if not payload:
+                continue
+            try:
+                decoded = json.loads(payload)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(decoded, dict):
+                yield decoded
+
+
 class CodeWhaleBridge:
     def __init__(
         self,
@@ -498,6 +576,8 @@ class CodeWhaleBridge:
             codewhale_cmd=codewhale_cmd,
         )
         self.runtime = CodeWhaleRuntimeClient()
+        self.exec_client = CodeWhaleExecClient(codewhale_cmd=codewhale_cmd)
+        self._active_execs: dict[tuple[str, str], subprocess.Popen] = {}
         self._next_port = 43100
 
     def handle_message(self, message: dict[str, Any]) -> dict[str, Any]:
@@ -634,12 +714,14 @@ class CodeWhaleBridge:
             session = self.workers.health(self._workspace_id(message), self._session_id(message))
             return {"type": "session_health", "session": session}
         if msg_type == "session_stop":
+            self._stop_active_exec(self._workspace_id(message), self._session_id(message), force=False)
             session = self.workers.stop_worker(
                 self._workspace_id(message),
                 self._session_id(message),
             )
             return {"type": "session", "session": session}
         if msg_type == "session_kill":
+            self._stop_active_exec(self._workspace_id(message), self._session_id(message), force=True)
             session = self.workers.kill_worker(
                 self._workspace_id(message),
                 self._session_id(message),
@@ -655,6 +737,148 @@ class CodeWhaleBridge:
             )
             return {"type": "session", "session": session}
         raise ValueError(f"unsupported message type: {msg_type}")
+
+    def stream_session_message(self, message: dict[str, Any]) -> Iterator[dict[str, Any]]:
+        text = str(message.get("text") or "").strip()
+        if not text:
+            raise ValueError("message text is required")
+        workspace_id = self._workspace_id(message)
+        session_id = self._session_id(message)
+        session = self.sessions.get_session(workspace_id, session_id)
+        workspace = self._find_workspace(workspace_id)
+        runtime_session_id = str(session.get("runtime_session_id") or "").strip() or None
+
+        self.sessions.append_event(
+            workspace_id,
+            session_id,
+            {"type": "user_message", "text": text},
+        )
+        yield {
+            "type": "session_stream_started",
+            "workspace_id": workspace_id,
+            "session_id": session_id,
+        }
+
+        assistant_text: list[str] = []
+        final_status = "completed"
+        try:
+            for item in self.exec_client.stream_prompt(
+                Path(workspace["path"]),
+                text,
+                session_id=runtime_session_id,
+                on_process_start=self._remember_exec_process,
+                on_process_end=self._forget_exec_process,
+                process_key=(workspace_id, session_id),
+            ):
+                item_type = str(item.get("type") or "")
+                if item_type == "content":
+                    chunk = str(item.get("content") or "")
+                    if not chunk:
+                        continue
+                    assistant_text.append(chunk)
+                    yield {
+                        "type": "assistant_delta",
+                        "workspace_id": workspace_id,
+                        "session_id": session_id,
+                        "text": chunk,
+                        "final": False,
+                    }
+                    continue
+                if item_type == "session_capture":
+                    captured = str(item.get("content") or "").strip()
+                    if captured:
+                        runtime_session_id = captured
+                        self.sessions.update_session(
+                            workspace_id,
+                            session_id,
+                            runtime_session_id=captured,
+                        )
+                    continue
+                if item_type == "metadata":
+                    meta = item.get("meta")
+                    if not isinstance(meta, dict):
+                        continue
+                    captured = str(meta.get("session_id") or "").strip()
+                    if captured:
+                        runtime_session_id = captured
+                        self.sessions.update_session(
+                            workspace_id,
+                            session_id,
+                            runtime_session_id=captured,
+                        )
+                    final_status = str(meta.get("status") or final_status)
+        except Exception:
+            self.sessions.update_session(
+                workspace_id,
+                session_id,
+                status="idle",
+                active_pid=None,
+            )
+            raise
+
+        full_text = "".join(assistant_text).strip()
+        if full_text:
+            self.sessions.append_event(
+                workspace_id,
+                session_id,
+                {
+                    "type": "assistant_delta",
+                    "text": full_text,
+                    "final": True,
+                },
+            )
+        self.sessions.update_session(
+            workspace_id,
+            session_id,
+            status="idle",
+            active_pid=None,
+        )
+        yield {
+            "type": "session_stream_done",
+            "workspace_id": workspace_id,
+            "session_id": session_id,
+            "status": final_status,
+            "runtime_session_id": runtime_session_id or "",
+        }
+
+    def _remember_exec_process(
+        self,
+        process_key: tuple[str, str],
+        process: subprocess.Popen,
+    ) -> None:
+        self._active_execs[process_key] = process
+        self.sessions.update_session(
+            process_key[0],
+            process_key[1],
+            status="running",
+            active_pid=process.pid,
+        )
+
+    def _forget_exec_process(self, process_key: tuple[str, str]) -> None:
+        self._active_execs.pop(process_key, None)
+        try:
+            self.sessions.update_session(
+                process_key[0],
+                process_key[1],
+                active_pid=None,
+            )
+        except Exception:
+            pass
+
+    def _stop_active_exec(self, workspace_id: str, session_id: str, *, force: bool) -> None:
+        key = (workspace_id, session_id)
+        process = self._active_execs.pop(key, None)
+        if process is None:
+            return
+        if force:
+            self.workers._kill_process_tree(process)
+        else:
+            process.terminate()
+            try:
+                process.wait(timeout=8)
+            except Exception:
+                self.workers._kill_process_tree(process)
+        self.sessions.update_session(workspace_id, session_id, status="idle", active_pid=None)
 
     def _find_workspace(self, workspace_id: str) -> dict[str, Any]:
         for workspace in self.workspaces.list_workspaces():
@@ -701,6 +925,44 @@ async def _run_tunnel_once(
     project_id: str,
 ) -> None:
     reader, writer = await asyncio.open_connection(tunnel_host, tunnel_port)
+    write_lock = asyncio.Lock()
+
+    async def send_json(payload: dict[str, Any]) -> None:
+        async with write_lock:
+            writer.write(json.dumps(payload, ensure_ascii=False).encode("utf-8") + b"\n")
+            await writer.drain()
+
+    async def stream_session(message: dict[str, Any]) -> None:
+        queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
+        loop = asyncio.get_running_loop()
+
+        def run_stream() -> None:
+            try:
+                for payload in bridge.stream_session_message(message):
+                    loop.call_soon_threadsafe(queue.put_nowait, payload)
+            except Exception as exc:
+                loop.call_soon_threadsafe(
+                    queue.put_nowait,
+                    {
+                        "type": "error",
+                        "error": str(exc),
+                        "workspace_id": bridge._workspace_id(message),
+                        "session_id": bridge._session_id(message),
+                    },
+                )
+            finally:
+                loop.call_soon_threadsafe(queue.put_nowait, None)
+
+        task = loop.run_in_executor(None, run_stream)
+        try:
+            while True:
+                payload = await queue.get()
+                if payload is None:
+                    break
+                await send_json(payload)
+        finally:
+            await task
+
     writer.write(
         json.dumps(
             {"type": "codewhale_register", "project_id": project_id},
@@ -724,9 +986,11 @@ async def _run_tunnel_once(
                 continue
             if message.get("type") == "codewhale_mobile_attached":
                 continue
+            if message.get("type") == "session_send":
+                asyncio.create_task(stream_session(message))
+                continue
             reply = bridge.handle_message(message)
-            writer.write(json.dumps(reply, ensure_ascii=False).encode("utf-8") + b"\n")
-            await writer.drain()
+            await send_json(reply)
     finally:
         writer.close()
         await writer.wait_closed()

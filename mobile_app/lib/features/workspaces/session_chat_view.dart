@@ -25,6 +25,7 @@ class SessionChatView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final visibleEvents = _mergeAssistantDeltas(events);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -53,13 +54,13 @@ class SessionChatView extends StatelessWidget {
       body: Column(
         children: [
           Expanded(
-            child: events.isEmpty
+            child: visibleEvents.isEmpty
                 ? const Center(child: Text('История сессии пуста'))
                 : ListView.builder(
                     padding: const EdgeInsets.all(12),
-                    itemCount: events.length,
+                    itemCount: visibleEvents.length,
                     itemBuilder: (context, index) {
-                      final event = events[index];
+                      final event = visibleEvents[index];
                       return _EventBubble(event: event);
                     },
                   ),
@@ -102,6 +103,32 @@ class SessionChatView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  static List<Map<String, dynamic>> _mergeAssistantDeltas(
+    List<Map<String, dynamic>> source,
+  ) {
+    final merged = <Map<String, dynamic>>[];
+    for (final event in source) {
+      final type = (event['type'] ?? '').toString();
+      final text = (event['text'] ?? event['status'] ?? '').toString();
+      if (text.trim().isEmpty) {
+        continue;
+      }
+      if (type == 'assistant_delta' &&
+          merged.isNotEmpty &&
+          merged.last['type'] == 'assistant_delta') {
+        final previous = merged.removeLast();
+        merged.add({
+          ...previous,
+          'text': '${previous['text'] ?? ''}${event['text'] ?? ''}',
+          'final': event['final'] == true,
+        });
+        continue;
+      }
+      merged.add(event);
+    }
+    return merged;
   }
 }
 

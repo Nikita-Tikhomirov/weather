@@ -140,6 +140,34 @@ void main() {
     await tester.tap(find.byTooltip('Отправить'));
     expect(sent, 'новый запрос');
   });
+
+  testWidgets('session chat merges consecutive assistant deltas',
+      (tester) async {
+    final controller = TextEditingController();
+
+    await tester.pumpWidget(_testApp(
+      home: SessionChatView(
+        workspace: workspace,
+        session: session,
+        events: const [
+          {'type': 'user_message', 'text': 'Привет'},
+          {'type': 'assistant_delta', 'text': 'Го', 'final': false},
+          {'type': 'assistant_delta', 'text': 'тов', 'final': false},
+        ],
+        inputController: controller,
+        onBack: () {},
+        onOpenManagement: () {},
+        onSend: (_) {},
+      ),
+    ));
+
+    expect(find.text('Привет'), findsOneWidget);
+    expect(find.text('Готов'), findsOneWidget);
+    expect(find.text('Го'), findsNothing);
+    expect(find.text('тов'), findsNothing);
+
+    controller.dispose();
+  });
 }
 
 Widget _testApp({required Widget home}) {
