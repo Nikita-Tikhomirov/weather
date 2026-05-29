@@ -559,7 +559,17 @@ class CodeWhaleBridge:
             )
             port = session.get("worker_port")
             if not port:
-                raise ValueError("session worker is not running")
+                workspace = self._find_workspace(workspace_id)
+                port = self._allocate_port()
+                session = self.workers.start_worker(
+                    workspace_id,
+                    session_id,
+                    Path(workspace["path"]),
+                    port=int(port),
+                )
+                port = session.get("worker_port")
+            if not port:
+                raise ValueError("session worker failed to start")
             task = self.runtime.create_task(int(port), text)
             event = self.sessions.append_event(
                 workspace_id,

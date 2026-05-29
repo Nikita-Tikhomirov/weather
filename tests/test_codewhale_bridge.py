@@ -284,6 +284,49 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             self.assertEqual(opened["events"][0]["type"], "user_message")
             self.assertEqual(opened["events"][1]["type"], "runtime_task")
 
+    def test_handle_session_send_starts_worker_when_needed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            session = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Чат",
+                }
+            )["session"]
+
+            with (
+                patch.object(
+                    bridge.workers,
+                    "start_worker",
+                    return_value={
+                        **session,
+                        "status": "running",
+                        "worker_port": 43101,
+                    },
+                ) as start_worker,
+                patch.object(
+                    bridge.runtime,
+                    "create_task",
+                    return_value={"id": "task-1", "status": "queued"},
+                ),
+            ):
+                reply = bridge.handle_message(
+                    {
+                        "type": "session_send",
+                        "workspace_id": workspace["id"],
+                        "session_id": session["id"],
+                        "text": "Привет",
+                    }
+                )
+
+            self.assertEqual(reply["type"], "session_task")
+            start_worker.assert_called_once()
+
     def test_handle_session_task_poll_appends_completed_result(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
