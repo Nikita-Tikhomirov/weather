@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+import asyncio
 import json
 import os
 import re
@@ -10,6 +12,9 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any
+
+
+RECONNECT_DELAY_SECONDS = 5
 
 
 def _now_ms() -> int:
@@ -530,3 +535,86 @@ class CodeWhaleBridge:
 
     def _session_id(self, message: dict[str, Any]) -> str:
         return str(message.get("session_id") or "").strip()
+
+
+def _parse_tunnel(value: str) -> tuple[str, int]:
+    host, sep, port_text = value.rpartition(":")
+    if not sep or not host or not port_text.isdigit():
+        raise ValueError("tunnel must be in host:port format")
+    return host, int(port_text)
+
+
+async def run_tunnel_client(
+    bridge: CodeWhaleBridge,
+    tunnel_host: str,
+    tunnel_port: int,
+    project_id: str = "codewhale",
+) -> None:
+    while True:
+        try:
+            await _run_tunnel_once(bridge, tunnel_host, tunnel_port, project_id)
+        except Exception as exc:
+            print(f"[codewhale_bridge] tunnel error: {exc}", flush=True)
+        await asyncio.sleep(RECONNECT_DELAY_SECONDS)
+
+
+async def _run_tunnel_once(
+    bridge: CodeWhaleBridge,
+    tunnel_host: str,
+    tunnel_port: int,
+    project_id: str,
+) -> None:
+    reader, writer = await asyncio.open_connection(tunnel_host, tunnel_port)
+    writer.write(
+        json.dumps(
+            {"type": "codewhale_register", "project_id": project_id},
+            ensure_ascii=False,
+        ).encode("utf-8")
+        + b"\n"
+    )
+    await writer.drain()
+    print(
+        f"[codewhale_bridge] connected to {tunnel_host}:{tunnel_port}",
+        flush=True,
+    )
+    try:
+        while True:
+            line = await reader.readline()
+            if not line:
+                break
+            try:
+                message = json.loads(line.decode("utf-8", "replace").strip())
+            except json.JSONDecodeError:
+                continue
+            if message.get("type") == "codewhale_mobile_attached":
+                continue
+            reply = bridge.handle_message(message)
+            writer.write(json.dumps(reply, ensure_ascii=False).encode("utf-8") + b"\n")
+            await writer.drain()
+    finally:
+        writer.close()
+        await writer.wait_closed()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="CodeWhale workspace bridge")
+    parser.add_argument("--tunnel", default="31.129.97.211:9877")
+    parser.add_argument("--desktop", default=str(Path.home() / "Desktop"))
+    parser.add_argument("--state-dir", default=".codewhale_bridge")
+    parser.add_argument("--project-id", default="codewhale")
+    args = parser.parse_args()
+
+    tunnel_host, tunnel_port = _parse_tunnel(args.tunnel)
+    bridge = CodeWhaleBridge(Path(args.desktop), Path(args.state_dir))
+    asyncio.run(
+        run_tunnel_client(
+            bridge,
+            tunnel_host,
+            tunnel_port,
+            project_id=args.project_id,
+        )
+    )
+
+
+if __name__ == "__main__":
+    main()

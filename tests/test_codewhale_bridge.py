@@ -8,6 +8,7 @@ from codewhale_bridge import (
     CodeWhaleWorkerManager,
     SessionRegistry,
     WorkspaceRegistry,
+    _parse_tunnel,
 )
 
 
@@ -234,6 +235,15 @@ class CodeWhaleBridgeTests(unittest.TestCase):
 
             self.assertEqual(reply["type"], "error")
             self.assertIn("unsupported", reply["error"])
+
+
+class CodeWhaleBridgeCliTests(unittest.TestCase):
+    def test_parse_tunnel(self) -> None:
+        self.assertEqual(_parse_tunnel("31.129.97.211:9877"), ("31.129.97.211", 9877))
+
+    def test_parse_tunnel_rejects_invalid_value(self) -> None:
+        with self.assertRaises(ValueError):
+            _parse_tunnel("31.129.97.211")
 
 
 if __name__ == "__main__":
