@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -5,6 +6,7 @@ from unittest.mock import patch
 
 from codewhale_bridge import (
     CodeWhaleBridge,
+    CodeWhaleRuntimeClient,
     CodeWhaleWorkerManager,
     SessionRegistry,
     WorkspaceRegistry,
@@ -234,7 +236,7 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             self.assertEqual(created["session"]["title"], "Чат")
             self.assertEqual(len(listed["sessions"]), 1)
 
-    def test_handle_session_send_appends_user_event(self) -> None:
+    def test_handle_session_send_starts_runtime_task(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             bridge = CodeWhaleBridge(root / "Desktop", root / "state")
@@ -248,15 +250,26 @@ class CodeWhaleBridgeTests(unittest.TestCase):
                     "title": "Чат",
                 }
             )["session"]
-
-            reply = bridge.handle_message(
-                {
-                    "type": "session_send",
-                    "workspace_id": workspace["id"],
-                    "session_id": session["id"],
-                    "text": "Привет",
-                }
+            bridge.sessions.update_session(
+                workspace["id"],
+                session["id"],
+                status="running",
+                worker_port=43101,
             )
+
+            with patch.object(
+                bridge.runtime,
+                "create_task",
+                return_value={"id": "task-1", "status": "queued"},
+            ) as create_task:
+                reply = bridge.handle_message(
+                    {
+                        "type": "session_send",
+                        "workspace_id": workspace["id"],
+                        "session_id": session["id"],
+                        "text": "Привет",
+                    }
+                )
             opened = bridge.handle_message(
                 {
                     "type": "session_open",
@@ -265,9 +278,56 @@ class CodeWhaleBridgeTests(unittest.TestCase):
                 }
             )
 
-            self.assertEqual(reply["type"], "session_event")
-            self.assertEqual(reply["event"]["type"], "user_message")
-            self.assertEqual(opened["events"][-1]["text"], "Привет")
+            self.assertEqual(reply["type"], "session_task")
+            self.assertEqual(reply["task_id"], "task-1")
+            create_task.assert_called_once_with(43101, "Привет")
+            self.assertEqual(opened["events"][0]["type"], "user_message")
+            self.assertEqual(opened["events"][1]["type"], "runtime_task")
+
+    def test_handle_session_task_poll_appends_completed_result(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            session = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Чат",
+                }
+            )["session"]
+            bridge.sessions.update_session(
+                workspace["id"],
+                session["id"],
+                status="running",
+                worker_port=43101,
+            )
+
+            with patch.object(
+                bridge.runtime,
+                "get_task",
+                return_value={
+                    "id": "task-1",
+                    "status": "completed",
+                    "result_summary": "Готово",
+                },
+            ):
+                reply = bridge.handle_message(
+                    {
+                        "type": "session_task_poll",
+                        "workspace_id": workspace["id"],
+                        "session_id": session["id"],
+                        "task_id": "task-1",
+                    }
+                )
+
+            self.assertEqual(reply["type"], "session_task")
+            self.assertEqual(reply["status"], "completed")
+            events = bridge.sessions.load_events(workspace["id"], session["id"])
+            self.assertEqual(events[-1]["type"], "assistant_delta")
+            self.assertEqual(events[-1]["text"], "Готово")
 
     def test_handle_unknown_message_returns_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -286,6 +346,55 @@ class CodeWhaleBridgeCliTests(unittest.TestCase):
     def test_parse_tunnel_rejects_invalid_value(self) -> None:
         with self.assertRaises(ValueError):
             _parse_tunnel("31.129.97.211")
+
+
+class CodeWhaleRuntimeClientTests(unittest.TestCase):
+    def test_create_task_posts_prompt_to_runtime_api(self) -> None:
+        captured = {}
+
+        def fake_urlopen(request, timeout=0):
+            captured["url"] = request.full_url
+            captured["method"] = request.get_method()
+            captured["body"] = json.loads(request.data.decode("utf-8"))
+            return _FakeHttpResponse(201, {"id": "task-1", "status": "queued"})
+
+        client = CodeWhaleRuntimeClient(urlopen=fake_urlopen)
+
+        task = client.create_task(43101, "Привет")
+
+        self.assertEqual(task["id"], "task-1")
+        self.assertEqual(captured["url"], "http://127.0.0.1:43101/v1/tasks")
+        self.assertEqual(captured["method"], "POST")
+        self.assertEqual(captured["body"]["prompt"], "Привет")
+
+    def test_get_task_reads_runtime_task(self) -> None:
+        def fake_urlopen(request, timeout=0):
+            return _FakeHttpResponse(
+                200,
+                {"id": "task-1", "status": "completed", "result_summary": "OK"},
+            )
+
+        client = CodeWhaleRuntimeClient(urlopen=fake_urlopen)
+
+        task = client.get_task(43101, "task-1")
+
+        self.assertEqual(task["status"], "completed")
+        self.assertEqual(task["result_summary"], "OK")
+
+
+class _FakeHttpResponse:
+    def __init__(self, status: int, payload: dict) -> None:
+        self.status = status
+        self._payload = payload
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return json.dumps(self._payload).encode("utf-8")
 
 
 if __name__ == "__main__":

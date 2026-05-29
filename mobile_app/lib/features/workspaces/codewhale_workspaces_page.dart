@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../models/workspace_item.dart';
@@ -19,6 +21,7 @@ class CodeWhaleWorkspacesPage extends StatefulWidget {
 class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
   late final CodeWhaleBridgeService _service;
   final TextEditingController _inputController = TextEditingController();
+  final Map<String, Timer> _taskPollers = {};
   List<WorkspaceItem> _workspaces = const [];
   final Map<String, List<WorkspaceSession>> _sessionsByWorkspace = {};
   List<Map<String, dynamic>> _activeEvents = const [];
@@ -41,6 +44,10 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
   @override
   void dispose() {
     _service.dispose();
+    for (final timer in _taskPollers.values) {
+      timer.cancel();
+    }
+    _taskPollers.clear();
     _inputController.dispose();
     super.dispose();
   }
@@ -100,6 +107,39 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
         _activeEvents = message.events;
         _mode = _WorkspacePageMode.chat;
       }
+      if (message.type == 'session_task') {
+        _handleSessionTask(message);
+      }
+    });
+  }
+
+  void _handleSessionTask(CodeWhaleBridgeMessage message) {
+    final taskId = message.taskId;
+    if (taskId.isEmpty) {
+      return;
+    }
+    final done = message.taskStatus == 'completed' ||
+        message.taskStatus == 'failed' ||
+        message.taskStatus == 'canceled';
+    if (done) {
+      _taskPollers.remove(taskId)?.cancel();
+      final workspace = _activeWorkspace;
+      final session = _activeSession;
+      if (workspace != null && session != null) {
+        _service.openSession(workspace.id, session.id);
+      }
+      return;
+    }
+    if (_taskPollers.containsKey(taskId)) {
+      return;
+    }
+    final workspaceId = message.workspaceId;
+    final sessionId = message.sessionId;
+    if (workspaceId.isEmpty || sessionId.isEmpty) {
+      return;
+    }
+    _taskPollers[taskId] = Timer.periodic(const Duration(seconds: 2), (_) {
+      _service.pollSessionTask(workspaceId, sessionId, taskId);
     });
   }
 

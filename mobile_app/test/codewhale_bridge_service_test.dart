@@ -108,12 +108,14 @@ void main() {
     service.createWorkspace('Новый проект');
     service.createSession('weather', title: 'Чат 1');
     service.killSession('weather', 'session-1');
+    service.pollSessionTask('weather', 'session-1', 'task-1');
     await Future<void>.delayed(const Duration(milliseconds: 100));
 
     expect(received.map((row) => row['type']), contains('workspace_list'));
     expect(received.any((row) => row['type'] == 'workspace_create'), isTrue);
     expect(received.any((row) => row['type'] == 'session_create'), isTrue);
     expect(received.any((row) => row['type'] == 'session_kill'), isTrue);
+    expect(received.any((row) => row['type'] == 'session_task_poll'), isTrue);
 
     service.dispose();
     await sub.cancel();

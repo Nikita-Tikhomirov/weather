@@ -9,6 +9,7 @@ import signal
 import subprocess
 import sys
 import time
+import urllib.request
 import uuid
 from pathlib import Path
 from typing import Any
@@ -437,6 +438,51 @@ class CodeWhaleWorkerManager:
         )
 
 
+class CodeWhaleRuntimeClient:
+    def __init__(self, urlopen=urllib.request.urlopen, timeout_seconds: float = 10) -> None:
+        self.urlopen = urlopen
+        self.timeout_seconds = timeout_seconds
+
+    def create_task(self, port: int, prompt: str) -> dict[str, Any]:
+        return self._json_request(
+            port,
+            "POST",
+            "/v1/tasks",
+            {
+                "prompt": prompt,
+                "mode": "agent",
+            },
+        )
+
+    def get_task(self, port: int, task_id: str) -> dict[str, Any]:
+        return self._json_request(port, "GET", f"/v1/tasks/{task_id}")
+
+    def _json_request(
+        self,
+        port: int,
+        method: str,
+        path: str,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        data = None
+        headers = {}
+        if payload is not None:
+            data = json.dumps(payload).encode("utf-8")
+            headers["Content-Type"] = "application/json"
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{port}{path}",
+            data=data,
+            headers=headers,
+            method=method,
+        )
+        with self.urlopen(request, timeout=self.timeout_seconds) as response:
+            body = response.read().decode("utf-8", "replace")
+        decoded = json.loads(body)
+        if not isinstance(decoded, dict):
+            raise ValueError("runtime API returned non-object JSON")
+        return decoded
+
+
 class CodeWhaleBridge:
     def __init__(
         self,
@@ -451,6 +497,7 @@ class CodeWhaleBridge:
             state_dir,
             codewhale_cmd=codewhale_cmd,
         )
+        self.runtime = CodeWhaleRuntimeClient()
         self._next_port = 43100
 
     def handle_message(self, message: dict[str, Any]) -> dict[str, Any]:
@@ -502,12 +549,77 @@ class CodeWhaleBridge:
             text = str(message.get("text") or "").strip()
             if not text:
                 raise ValueError("message text is required")
-            event = self.sessions.append_event(
-                self._workspace_id(message),
-                self._session_id(message),
+            workspace_id = self._workspace_id(message)
+            session_id = self._session_id(message)
+            session = self.sessions.get_session(workspace_id, session_id)
+            self.sessions.append_event(
+                workspace_id,
+                session_id,
                 {"type": "user_message", "text": text},
             )
-            return {"type": "session_event", "event": event}
+            port = session.get("worker_port")
+            if not port:
+                raise ValueError("session worker is not running")
+            task = self.runtime.create_task(int(port), text)
+            event = self.sessions.append_event(
+                workspace_id,
+                session_id,
+                {
+                    "type": "runtime_task",
+                    "task_id": str(task.get("id") or ""),
+                    "status": str(task.get("status") or "queued"),
+                },
+            )
+            return {
+                "type": "session_task",
+                "workspace_id": workspace_id,
+                "session_id": session_id,
+                "task_id": event["task_id"],
+                "status": event["status"],
+                "event": event,
+            }
+        if msg_type == "session_task_poll":
+            workspace_id = self._workspace_id(message)
+            session_id = self._session_id(message)
+            task_id = str(message.get("task_id") or "").strip()
+            if not task_id:
+                raise ValueError("task_id is required")
+            session = self.sessions.get_session(workspace_id, session_id)
+            port = session.get("worker_port")
+            if not port:
+                raise ValueError("session worker is not running")
+            task = self.runtime.get_task(int(port), task_id)
+            status = str(task.get("status") or "")
+            event = self.sessions.append_event(
+                workspace_id,
+                session_id,
+                {
+                    "type": "runtime_task",
+                    "task_id": task_id,
+                    "status": status,
+                },
+            )
+            result_summary = str(task.get("result_summary") or "").strip()
+            if status == "completed" and result_summary:
+                self.sessions.append_event(
+                    workspace_id,
+                    session_id,
+                    {
+                        "type": "assistant_delta",
+                        "task_id": task_id,
+                        "text": result_summary,
+                        "final": True,
+                    },
+                )
+            return {
+                "type": "session_task",
+                "workspace_id": workspace_id,
+                "session_id": session_id,
+                "task_id": task_id,
+                "status": status,
+                "task": task,
+                "event": event,
+            }
         if msg_type == "session_health":
             session = self.workers.health(self._workspace_id(message), self._session_id(message))
             return {"type": "session_health", "session": session}
