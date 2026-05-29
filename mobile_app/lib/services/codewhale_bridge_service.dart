@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app/app_config.dart';
+import '../models/project_file.dart';
 import '../models/workspace_item.dart';
 import '../models/workspace_session.dart';
 
@@ -19,6 +20,15 @@ class CodeWhaleBridgeMessage {
     this.session,
     this.sessions = const [],
     this.events = const [],
+    this.files = const [],
+    this.folders = const [],
+    this.folderPath = '',
+    this.folderParent = '',
+    this.filePath = '',
+    this.fileText = '',
+    this.filename = '',
+    this.mimeType = '',
+    this.fileSize = 0,
     this.workspaceId = '',
     this.sessionId = '',
     this.taskId = '',
@@ -35,6 +45,15 @@ class CodeWhaleBridgeMessage {
   final WorkspaceSession? session;
   final List<WorkspaceSession> sessions;
   final List<Map<String, dynamic>> events;
+  final List<ProjectFileNode> files;
+  final List<Map<String, dynamic>> folders;
+  final String folderPath;
+  final String folderParent;
+  final String filePath;
+  final String fileText;
+  final String filename;
+  final String mimeType;
+  final int fileSize;
   final String workspaceId;
   final String sessionId;
   final String taskId;
@@ -64,6 +83,23 @@ class CodeWhaleBridgeMessage {
               .map(Map<String, dynamic>.from)
               .toList() ??
           const [],
+      files: (json['files'] as List<dynamic>?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(ProjectFileNode.fromJson)
+              .toList() ??
+          const [],
+      folders: (json['folders'] as List<dynamic>?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(Map<String, dynamic>.from)
+              .toList() ??
+          const [],
+      folderPath: (json['path'] ?? '').toString(),
+      folderParent: (json['parent'] ?? '').toString(),
+      filePath: (json['path'] ?? '').toString(),
+      fileText: (json['text'] ?? '').toString(),
+      filename: (json['name'] ?? json['filename'] ?? '').toString(),
+      mimeType: (json['mime_type'] ?? '').toString(),
+      fileSize: int.tryParse((json['size'] ?? 0).toString()) ?? 0,
       workspaceId: (json['workspace_id'] ?? '').toString(),
       sessionId: (json['session_id'] ?? '').toString(),
       taskId: (json['task_id'] ?? '').toString(),
@@ -183,6 +219,29 @@ class CodeWhaleBridgeService {
     _sendCommand({'type': 'workspace_list'});
   }
 
+  void requestWorkspaceFolderList({String path = ''}) {
+    _sendCommand({
+      'type': 'workspace_folder_list',
+      if (path.trim().isNotEmpty) 'path': path.trim(),
+    });
+  }
+
+  void requestWorkspaceFileList(String workspaceId, {String path = ''}) {
+    _sendCommand({
+      'type': 'workspace_file_list',
+      'workspace_id': workspaceId,
+      if (path.trim().isNotEmpty) 'path': path.trim(),
+    });
+  }
+
+  void requestWorkspaceFileRead(String workspaceId, String path) {
+    _sendCommand({
+      'type': 'workspace_file_read',
+      'workspace_id': workspaceId,
+      'path': path.trim(),
+    });
+  }
+
   void createWorkspace(String name) {
     _sendCommand({'type': 'workspace_create', 'name': name.trim()});
   }
@@ -249,6 +308,30 @@ class CodeWhaleBridgeService {
       'workspace_id': workspaceId,
       'session_id': sessionId,
       'text': trimmed,
+    });
+  }
+
+  void uploadSessionFile({
+    required String workspaceId,
+    required String sessionId,
+    required Uint8List bytes,
+    required String filename,
+    required String mimeType,
+    String caption = '',
+  }) {
+    if (bytes.isEmpty || filename.trim().isEmpty) {
+      return;
+    }
+    _sendCommand({
+      'type': 'session_upload_file',
+      'workspace_id': workspaceId,
+      'session_id': sessionId,
+      'filename': filename.trim(),
+      'mime_type': mimeType.trim().isEmpty
+          ? 'application/octet-stream'
+          : mimeType.trim(),
+      'data_base64': base64Encode(bytes),
+      if (caption.trim().isNotEmpty) 'caption': caption.trim(),
     });
   }
 

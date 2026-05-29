@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:family_todo_mobile/models/workspace_item.dart';
 import 'package:family_todo_mobile/models/workspace_session.dart';
@@ -64,6 +65,43 @@ void main() {
     expect(message.isFinal, isFalse);
   });
 
+  test('workspace folder list parses bridge folders', () {
+    final message = CodeWhaleBridgeMessage.fromJson({
+      'type': 'workspace_folder_list',
+      'path': r'C:\Users\user\Desktop',
+      'parent': null,
+      'folders': [
+        {'name': 'weather', 'path': r'C:\Users\user\Desktop\weather'},
+      ],
+    });
+
+    expect(message.type, 'workspace_folder_list');
+    expect(message.folderPath, r'C:\Users\user\Desktop');
+    expect(message.folders.single['name'], 'weather');
+  });
+
+  test('workspace file messages parse bridge payloads', () {
+    final list = CodeWhaleBridgeMessage.fromJson({
+      'type': 'workspace_file_list',
+      'workspace_id': 'weather',
+      'path': '',
+      'files': [
+        {'name': 'README.md', 'path': 'README.md', 'size': 5},
+      ],
+    });
+    final content = CodeWhaleBridgeMessage.fromJson({
+      'type': 'workspace_file_content',
+      'workspace_id': 'weather',
+      'path': 'README.md',
+      'text': 'hello',
+    });
+
+    expect(list.files.single.name, 'README.md');
+    expect(list.files.single.path, 'README.md');
+    expect(content.filePath, 'README.md');
+    expect(content.fileText, 'hello');
+  });
+
   test('connect registers as codewhale mobile client', () async {
     final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
     final received = <Map<String, dynamic>>[];
@@ -121,17 +159,32 @@ void main() {
     expect(await service.connect(), isTrue);
     await connected.future.timeout(const Duration(seconds: 2));
     service.requestWorkspaceList();
+    service.requestWorkspaceFolderList();
+    service.requestWorkspaceFileList('weather');
+    service.requestWorkspaceFileRead('weather', 'README.md');
     service.createWorkspace('Новый проект');
     service.createSession('weather', title: 'Чат 1');
     service.killSession('weather', 'session-1');
     service.pollSessionTask('weather', 'session-1', 'task-1');
+    service.uploadSessionFile(
+      workspaceId: 'weather',
+      sessionId: 'session-1',
+      bytes: Uint8List.fromList(utf8.encode('doc')),
+      filename: 'doc.txt',
+      mimeType: 'text/plain',
+    );
     await Future<void>.delayed(const Duration(milliseconds: 100));
 
     expect(received.map((row) => row['type']), contains('workspace_list'));
+    expect(
+        received.map((row) => row['type']), contains('workspace_folder_list'));
+    expect(received.any((row) => row['type'] == 'workspace_file_list'), isTrue);
+    expect(received.any((row) => row['type'] == 'workspace_file_read'), isTrue);
     expect(received.any((row) => row['type'] == 'workspace_create'), isTrue);
     expect(received.any((row) => row['type'] == 'session_create'), isTrue);
     expect(received.any((row) => row['type'] == 'session_kill'), isTrue);
     expect(received.any((row) => row['type'] == 'session_task_poll'), isTrue);
+    expect(received.any((row) => row['type'] == 'session_upload_file'), isTrue);
 
     service.dispose();
     await sub.cancel();

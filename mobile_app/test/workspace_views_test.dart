@@ -1,7 +1,9 @@
 import 'package:family_todo_mobile/features/workspaces/session_chat_view.dart';
 import 'package:family_todo_mobile/features/workspaces/session_management_view.dart';
 import 'package:family_todo_mobile/features/workspaces/workspace_detail_view.dart';
+import 'package:family_todo_mobile/features/workspaces/workspace_folder_browser_view.dart';
 import 'package:family_todo_mobile/features/workspaces/workspace_list_view.dart';
+import 'package:family_todo_mobile/models/project_file.dart';
 import 'package:family_todo_mobile/models/workspace_item.dart';
 import 'package:family_todo_mobile/models/workspace_session.dart';
 import 'package:flutter/material.dart';
@@ -83,20 +85,79 @@ void main() {
     expect(managed?.id, 'session-1');
   });
 
+  testWidgets('workspace folder browser opens and selects folders',
+      (tester) async {
+    var openedPath = '';
+    var selectedName = '';
+    var selectedPath = '';
+
+    await tester.pumpWidget(_testApp(
+      home: WorkspaceFolderBrowserView(
+        path: r'C:\Users\user\Desktop',
+        parent: '',
+        folders: const [
+          {
+            'name': 'weather',
+            'path': r'C:\Users\user\Desktop\weather',
+          },
+        ],
+        onBack: () {},
+        onRefresh: () {},
+        onOpenFolder: (path) => openedPath = path,
+        onSelectFolder: (name, path) {
+          selectedName = name;
+          selectedPath = path;
+        },
+      ),
+    ));
+
+    expect(find.text('Выбор папки'), findsOneWidget);
+    expect(find.text('weather'), findsOneWidget);
+
+    await tester.tap(find.text('weather'));
+    expect(openedPath, r'C:\Users\user\Desktop\weather');
+
+    await tester.tap(find.byTooltip('Подключить эту папку'));
+    expect(selectedName, 'weather');
+    expect(selectedPath, r'C:\Users\user\Desktop\weather');
+  });
+
   testWidgets('session management exposes kill and stop controls',
       (tester) async {
     var stopped = false;
     var killed = false;
     var restarted = false;
+    var openedPath = '';
+    var insertedPath = '';
+    var quickAction = '';
 
     await tester.pumpWidget(_testApp(
       home: SessionManagementView(
         workspace: workspace,
         session: session,
+        files: const [
+          ProjectFileNode(
+            name: 'README.md',
+            path: 'README.md',
+            isDir: false,
+            size: 12,
+          ),
+        ],
+        currentFilePath: '',
+        isFilesLoading: false,
+        filePreviewPath: '',
+        filePreviewText: '',
         onBack: () {},
         onStop: () => stopped = true,
         onKill: () => killed = true,
         onRestart: () => restarted = true,
+        onRefreshFiles: () {},
+        onOpenFilePath: (path) => openedPath = path,
+        onReadFile: (path) => openedPath = path,
+        onInsertFilePath: (path) => insertedPath = path,
+        onSendPhoto: () {},
+        onSendDocument: () {},
+        onQuickAction: (prompt) => quickAction = prompt,
       ),
     ));
 
@@ -108,6 +169,17 @@ void main() {
     expect(stopped, isTrue);
     expect(killed, isTrue);
     expect(restarted, isTrue);
+
+    await tester.tap(find.text('Файлы'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Путь в чат'));
+    expect(insertedPath, 'README.md');
+
+    await tester.tap(find.text('Действия'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Составь план'));
+    expect(quickAction, isNotEmpty);
+    expect(openedPath, isEmpty);
   });
 
   testWidgets('session chat keeps controls out of composer', (tester) async {
@@ -165,6 +237,53 @@ void main() {
     expect(find.text('Готов'), findsOneWidget);
     expect(find.text('Го'), findsNothing);
     expect(find.text('тов'), findsNothing);
+
+    controller.dispose();
+  });
+
+  testWidgets('session chat exposes copy action for message bubbles',
+      (tester) async {
+    final controller = TextEditingController();
+
+    await tester.pumpWidget(_testApp(
+      home: SessionChatView(
+        workspace: workspace,
+        session: session,
+        events: const [
+          {'type': 'assistant_delta', 'text': 'Скопируй меня'},
+        ],
+        inputController: controller,
+        onBack: () {},
+        onOpenManagement: () {},
+        onSend: (_) {},
+      ),
+    ));
+
+    expect(find.byTooltip('Копировать текст'), findsOneWidget);
+
+    controller.dispose();
+  });
+
+  testWidgets('session chat shows process events separately', (tester) async {
+    final controller = TextEditingController();
+
+    await tester.pumpWidget(_testApp(
+      home: SessionChatView(
+        workspace: workspace,
+        session: session,
+        events: const [
+          {'type': 'session_process_event', 'text': 'git status'},
+          {'type': 'assistant_delta', 'text': 'Готово'},
+        ],
+        inputController: controller,
+        onBack: () {},
+        onOpenManagement: () {},
+        onSend: (_) {},
+      ),
+    ));
+
+    expect(find.text('Ход работы: git status'), findsOneWidget);
+    expect(find.text('Готово'), findsOneWidget);
 
     controller.dispose();
   });

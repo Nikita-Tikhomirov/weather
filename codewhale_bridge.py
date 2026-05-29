@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import base64
+import mimetypes
 import os
 import re
 import signal
@@ -16,6 +18,28 @@ from typing import Any, Callable, Iterable, Iterator
 
 
 RECONNECT_DELAY_SECONDS = 5
+
+
+def _background_creation_flags() -> int:
+    if sys.platform != "win32":
+        return 0
+    return (
+        getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        | getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    )
+
+
+def _resolve_codewhale_cmd(command: str) -> str:
+    if command and (Path(command).exists() or "\\" in command or "/" in command):
+        return command
+    candidates = [
+        Path(os.environ.get("APPDATA", "")) / "npm" / "codewhale.cmd",
+        Path.home() / "AppData" / "Roaming" / "npm" / "codewhale.cmd",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+    return command
 
 
 def _now_ms() -> int:
@@ -36,6 +60,16 @@ def _safe_folder_name(name: str) -> str:
     return cleaned
 
 
+def _safe_upload_name(filename: str, mime_type: str) -> str:
+    cleaned = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", filename.strip())
+    cleaned = cleaned.strip(" ._") or "file"
+    stem = Path(cleaned).stem or "file"
+    suffix = Path(cleaned).suffix
+    if not suffix:
+        suffix = mimetypes.guess_extension(mime_type.split(";")[0].strip()) or ".bin"
+    return f"{_safe_id(stem)}-{uuid.uuid4().hex[:8]}{suffix.lower()}"
+
+
 class WorkspaceRegistry:
     def __init__(self, desktop_root: Path, state_dir: Path) -> None:
         self.desktop_root = desktop_root.resolve()
@@ -46,6 +80,27 @@ class WorkspaceRegistry:
 
     def list_workspaces(self) -> list[dict[str, Any]]:
         return [dict(item) for item in self._load()]
+
+    def list_folders(self, folder: Path | None = None) -> dict[str, Any]:
+        target = (folder or self.desktop_root).resolve()
+        self._assert_under_desktop(target)
+        if not target.exists() or not target.is_dir():
+            raise ValueError("folder does not exist")
+
+        folders = []
+        for child in sorted(target.iterdir(), key=lambda item: item.name.lower()):
+            if not child.is_dir() or child.name.startswith("."):
+                continue
+            folders.append({"name": child.name, "path": str(child.resolve())})
+
+        parent = None
+        if target != self.desktop_root:
+            parent = str(target.parent.resolve())
+        return {
+            "path": str(target),
+            "parent": parent,
+            "folders": folders,
+        }
 
     def create_workspace(self, name: str) -> dict[str, Any]:
         folder_name = _safe_folder_name(name)
@@ -69,6 +124,67 @@ class WorkspaceRegistry:
         items.append(workspace)
         self._save(items)
         return dict(workspace)
+
+    def list_files(self, workspace_id: str, rel_path: str = "") -> dict[str, Any]:
+        workspace = self.get_workspace(workspace_id)
+        base = Path(workspace["path"]).resolve()
+        target = (base / rel_path.strip().lstrip("/\\")).resolve() if rel_path else base
+        self._assert_under_base(base, target)
+        if not target.exists():
+            raise ValueError("path does not exist")
+        if target.is_file():
+            return {"path": target.relative_to(base).as_posix(), "files": [self._file_node(base, target)]}
+        nodes = []
+        for child in sorted(target.iterdir(), key=lambda item: (not item.is_dir(), item.name.lower())):
+            if child.name.startswith(".") and child.name != ".gitignore":
+                continue
+            if child.name in {"__pycache__", "node_modules", ".dart_tool", "build"}:
+                continue
+            nodes.append(self._file_node(base, child))
+        return {"path": "" if target == base else target.relative_to(base).as_posix(), "files": nodes}
+
+    def read_file(self, workspace_id: str, rel_path: str) -> dict[str, Any]:
+        workspace = self.get_workspace(workspace_id)
+        base = Path(workspace["path"]).resolve()
+        target = (base / rel_path.strip().lstrip("/\\")).resolve()
+        self._assert_under_base(base, target)
+        if not target.exists() or not target.is_file():
+            raise ValueError("file does not exist")
+        raw = target.read_bytes()
+        text = raw[:128 * 1024].decode("utf-8", "replace")
+        if len(raw) > 128 * 1024:
+            text += "\n... (truncated)"
+        return {"path": target.relative_to(base).as_posix(), "text": text, "size": len(raw)}
+
+    def save_upload(
+        self,
+        workspace_id: str,
+        filename: str,
+        mime_type: str,
+        data_base64: str,
+    ) -> dict[str, Any]:
+        workspace = self.get_workspace(workspace_id)
+        base = Path(workspace["path"]).resolve()
+        upload_dir = base / "vision"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        data = base64.b64decode(data_base64, validate=True)
+        if len(data) > 15 * 1024 * 1024:
+            raise ValueError("file is larger than 15 MB")
+        target = upload_dir / _safe_upload_name(filename, mime_type)
+        target.write_bytes(data)
+        return {
+            "path": target.relative_to(base).as_posix(),
+            "name": target.name,
+            "size": len(data),
+            "mime_type": mime_type or "application/octet-stream",
+        }
+
+    def get_workspace(self, workspace_id: str) -> dict[str, Any]:
+        workspace_key = self._unique_lookup_key(workspace_id)
+        for item in self._load():
+            if item["id"] == workspace_key:
+                return dict(item)
+        raise KeyError(f"workspace not found: {workspace_key}")
 
     def _new_workspace(self, name: str, folder: Path) -> dict[str, Any]:
         created_at = _now_ms()
@@ -106,6 +222,30 @@ class WorkspaceRegistry:
             folder.relative_to(self.desktop_root)
         except ValueError as exc:
             raise ValueError("workspace folder must be under desktop") from exc
+
+    def _assert_under_base(self, base: Path, target: Path) -> None:
+        try:
+            target.relative_to(base)
+        except ValueError as exc:
+            raise ValueError("path must stay inside workspace") from exc
+
+    def _file_node(self, base: Path, path: Path) -> dict[str, Any]:
+        try:
+            rel_path = path.relative_to(base).as_posix()
+        except ValueError:
+            rel_path = path.name
+        return {
+            "name": path.name,
+            "path": rel_path,
+            "is_dir": path.is_dir(),
+            "size": 0 if path.is_dir() else path.stat().st_size,
+        }
+
+    def _unique_lookup_key(self, value: str) -> str:
+        key = str(value or "").strip()
+        if not key:
+            raise ValueError("workspace_id is required")
+        return key
 
     def _load(self) -> list[dict[str, Any]]:
         if not self.path.exists():
@@ -383,6 +523,7 @@ class CodeWhaleWorkerManager:
             status="stopped",
             worker_pid=None,
             worker_port=None,
+            active_pid=None,
         )
 
     def kill_worker(self, workspace_id: str, session_id: str) -> dict[str, Any]:
@@ -401,6 +542,7 @@ class CodeWhaleWorkerManager:
             status="killed",
             worker_pid=None,
             worker_port=None,
+            active_pid=None,
         )
 
     def health(self, workspace_id: str, session_id: str) -> dict[str, Any]:
@@ -437,9 +579,7 @@ class CodeWhaleWorkerManager:
                 pass
 
     def _creation_flags(self) -> int:
-        if sys.platform != "win32":
-            return 0
-        return getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        return _background_creation_flags()
 
     def _key(self, workspace_id: str, session_id: str) -> tuple[str, str]:
         return (
@@ -531,6 +671,7 @@ class CodeWhaleExecClient:
             text=True,
             encoding="utf-8",
             errors="replace",
+            creationflags=_background_creation_flags(),
         )
         if process_key is not None and on_process_start is not None:
             on_process_start(process_key, process)
@@ -568,6 +709,7 @@ class CodeWhaleBridge:
         state_dir: Path,
         codewhale_cmd: str = "codewhale",
     ) -> None:
+        codewhale_cmd = _resolve_codewhale_cmd(codewhale_cmd)
         self.workspaces = WorkspaceRegistry(desktop_root, state_dir)
         self.sessions = SessionRegistry(state_dir)
         self.workers = CodeWhaleWorkerManager(
@@ -597,6 +739,24 @@ class CodeWhaleBridge:
                 "type": "workspace_list",
                 "workspaces": self.workspaces.list_workspaces(),
             }
+        if msg_type == "workspace_folder_list":
+            raw_path = str(message.get("path") or "").strip()
+            result = self.workspaces.list_folders(Path(raw_path) if raw_path else None)
+            return {"type": "workspace_folder_list", **result}
+        if msg_type == "workspace_file_list":
+            workspace_id = self._workspace_id(message)
+            result = self.workspaces.list_files(
+                workspace_id,
+                str(message.get("path") or ""),
+            )
+            return {"type": "workspace_file_list", "workspace_id": workspace_id, **result}
+        if msg_type == "workspace_file_read":
+            workspace_id = self._workspace_id(message)
+            result = self.workspaces.read_file(
+                workspace_id,
+                str(message.get("path") or ""),
+            )
+            return {"type": "workspace_file_content", "workspace_id": workspace_id, **result}
         if msg_type == "workspace_create":
             workspace = self.workspaces.create_workspace(str(message.get("name") or ""))
             return {"type": "workspace", "workspace": workspace}
@@ -667,6 +827,38 @@ class CodeWhaleBridge:
                 "task_id": event["task_id"],
                 "status": event["status"],
                 "event": event,
+            }
+        if msg_type == "session_upload_file":
+            workspace_id = self._workspace_id(message)
+            session_id = self._session_id(message)
+            upload = self.workspaces.save_upload(
+                workspace_id,
+                str(message.get("filename") or "file.bin"),
+                str(message.get("mime_type") or "application/octet-stream"),
+                str(message.get("data_base64") or ""),
+            )
+            caption = str(message.get("caption") or "").strip()
+            text = f"Файл прикреплен: {upload['path']}"
+            if caption:
+                text = f"{text}\n{caption}"
+            event = self.sessions.append_event(
+                workspace_id,
+                session_id,
+                {
+                    "type": "file_attachment",
+                    "text": text,
+                    "path": upload["path"],
+                    "filename": upload["name"],
+                    "mime_type": upload["mime_type"],
+                    "size": upload["size"],
+                },
+            )
+            return {
+                "type": "session_file_uploaded",
+                "workspace_id": workspace_id,
+                "session_id": session_id,
+                "event": event,
+                **upload,
             }
         if msg_type == "session_task_poll":
             workspace_id = self._workspace_id(message)
@@ -807,6 +999,45 @@ class CodeWhaleBridge:
                             runtime_session_id=captured,
                         )
                     final_status = str(meta.get("status") or final_status)
+                    process_text = self._process_event_text(item)
+                    if process_text:
+                        event = self.sessions.append_event(
+                            workspace_id,
+                            session_id,
+                            {
+                                "type": "session_process_event",
+                                "text": process_text,
+                                "event_type": item_type,
+                            },
+                        )
+                        yield {
+                            "type": "session_process_event",
+                            "workspace_id": workspace_id,
+                            "session_id": session_id,
+                            "event": event,
+                            "text": process_text,
+                            "event_type": item_type,
+                        }
+                    continue
+                process_text = self._process_event_text(item)
+                if process_text:
+                    event = self.sessions.append_event(
+                        workspace_id,
+                        session_id,
+                        {
+                            "type": "session_process_event",
+                            "text": process_text,
+                            "event_type": item_type,
+                        },
+                    )
+                    yield {
+                        "type": "session_process_event",
+                        "workspace_id": workspace_id,
+                        "session_id": session_id,
+                        "event": event,
+                        "text": process_text,
+                        "event_type": item_type,
+                    }
         except Exception:
             self.sessions.update_session(
                 workspace_id,
@@ -841,6 +1072,29 @@ class CodeWhaleBridge:
             "runtime_session_id": runtime_session_id or "",
         }
 
+    @staticmethod
+    def _process_event_text(item: dict[str, Any]) -> str:
+        item_type = str(item.get("type") or "").strip()
+        if item_type in {"content", "session_capture", "done"}:
+            return ""
+        if item_type == "metadata":
+            meta = item.get("meta")
+            if isinstance(meta, dict):
+                status = str(meta.get("status") or "").strip()
+                session_id = str(meta.get("session_id") or "").strip()
+                parts = []
+                if status:
+                    parts.append(f"status={status}")
+                if session_id:
+                    parts.append(f"session={session_id}")
+                return "CodeWhale metadata: " + ", ".join(parts) if parts else ""
+            return ""
+        for key in ("message", "text", "summary", "name", "command", "tool", "status"):
+            value = str(item.get(key) or "").strip()
+            if value:
+                return f"{item_type}: {value}" if item_type else value
+        return item_type
+
     def _remember_exec_process(
         self,
         process_key: tuple[str, str],
@@ -868,17 +1122,40 @@ class CodeWhaleBridge:
     def _stop_active_exec(self, workspace_id: str, session_id: str, *, force: bool) -> None:
         key = (workspace_id, session_id)
         process = self._active_execs.pop(key, None)
-        if process is None:
-            return
-        if force:
-            self.workers._kill_process_tree(process)
-        else:
-            process.terminate()
-            try:
-                process.wait(timeout=8)
-            except Exception:
+        if process is not None:
+            if force:
                 self.workers._kill_process_tree(process)
+            else:
+                process.terminate()
+                try:
+                    process.wait(timeout=8)
+                except Exception:
+                    self.workers._kill_process_tree(process)
+            self.sessions.update_session(
+                workspace_id,
+                session_id,
+                status="idle",
+                active_pid=None,
+            )
+            return
+
+        session = self.sessions.get_session(workspace_id, session_id)
+        active_pid = int(session.get("active_pid") or 0)
+        if active_pid:
+            self._kill_pid_tree(active_pid, force=force)
         self.sessions.update_session(workspace_id, session_id, status="idle", active_pid=None)
+
+    def _kill_pid_tree(self, pid: int, *, force: bool) -> None:
+        if sys.platform == "win32":
+            command = ["taskkill", "/T", "/PID", str(pid)]
+            if force:
+                command.insert(2, "/F")
+            subprocess.run(command, capture_output=True, timeout=10, check=False)
+            return
+        try:
+            os.kill(pid, signal.SIGKILL if force else signal.SIGTERM)
+        except ProcessLookupError:
+            return
 
     def _find_workspace(self, workspace_id: str) -> dict[str, Any]:
         for workspace in self.workspaces.list_workspaces():

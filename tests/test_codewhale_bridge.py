@@ -1,4 +1,5 @@
 import json
+import base64
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,7 +12,9 @@ from codewhale_bridge import (
     CodeWhaleWorkerManager,
     SessionRegistry,
     WorkspaceRegistry,
+    _background_creation_flags,
     _parse_tunnel,
+    _resolve_codewhale_cmd,
 )
 
 
@@ -84,6 +87,14 @@ class WorkspaceRegistryTests(unittest.TestCase):
             self.assertEqual(len(loaded), 1)
             self.assertEqual(loaded[0]["id"], created["id"])
             self.assertEqual(loaded[0]["name"], "Persisted")
+
+
+class CodeWhaleCommandTests(unittest.TestCase):
+    def test_resolve_codewhale_cmd_preserves_explicit_path(self) -> None:
+        self.assertEqual(
+            _resolve_codewhale_cmd(r"C:\Tools\codewhale.cmd"),
+            r"C:\Tools\codewhale.cmd",
+        )
 
 
 class SessionRegistryTests(unittest.TestCase):
@@ -175,6 +186,10 @@ class CodeWhaleWorkerManagerTests(unittest.TestCase):
             self.assertIn("--port", command)
             self.assertIn("43101", command)
             self.assertIn("--insecure", command)
+            self.assertEqual(
+                popen.call_args.kwargs["creationflags"],
+                _background_creation_flags(),
+            )
 
     def test_kill_worker_only_kills_target_process(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -213,6 +228,100 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             self.assertEqual(reply["type"], "workspace")
             self.assertEqual(reply["workspace"]["name"], "Demo")
             self.assertTrue(Path(reply["workspace"]["path"]).exists())
+
+    def test_handle_workspace_folder_list_browses_desktop_folders(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            desktop = root / "Desktop"
+            (desktop / "Weather").mkdir(parents=True)
+            (desktop / "Notes.txt").write_text("skip", encoding="utf-8")
+            bridge = CodeWhaleBridge(desktop, root / "state")
+
+            reply = bridge.handle_message({"type": "workspace_folder_list"})
+
+            self.assertEqual(reply["type"], "workspace_folder_list")
+            self.assertEqual(reply["path"], str(desktop.resolve()))
+            self.assertEqual(len(reply["folders"]), 1)
+            self.assertEqual(reply["folders"][0]["name"], "Weather")
+            self.assertEqual(
+                reply["folders"][0]["path"],
+                str((desktop / "Weather").resolve()),
+            )
+
+    def test_handle_workspace_folder_list_rejects_outside_desktop(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            desktop = root / "Desktop"
+            outside = root / "Outside"
+            outside.mkdir(parents=True)
+            bridge = CodeWhaleBridge(desktop, root / "state")
+
+            reply = bridge.handle_message(
+                {"type": "workspace_folder_list", "path": str(outside)}
+            )
+
+            self.assertEqual(reply["type"], "error")
+            self.assertIn("under desktop", reply["error"])
+
+    def test_workspace_file_list_and_read_stay_inside_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            file_path = Path(workspace["path"]) / "README.md"
+            file_path.write_text("hello", encoding="utf-8")
+
+            listed = bridge.handle_message(
+                {"type": "workspace_file_list", "workspace_id": workspace["id"]}
+            )
+            content = bridge.handle_message(
+                {
+                    "type": "workspace_file_read",
+                    "workspace_id": workspace["id"],
+                    "path": "README.md",
+                }
+            )
+
+            self.assertEqual(listed["type"], "workspace_file_list")
+            self.assertEqual(listed["files"][0]["name"], "README.md")
+            self.assertEqual(content["type"], "workspace_file_content")
+            self.assertEqual(content["text"], "hello")
+
+    def test_session_upload_file_saves_attachment_event(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            session = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Чат",
+                }
+            )["session"]
+
+            reply = bridge.handle_message(
+                {
+                    "type": "session_upload_file",
+                    "workspace_id": workspace["id"],
+                    "session_id": session["id"],
+                    "filename": "photo.png",
+                    "mime_type": "image/png",
+                    "data_base64": base64.b64encode(b"png").decode("ascii"),
+                    "caption": "посмотри",
+                }
+            )
+
+            self.assertEqual(reply["type"], "session_file_uploaded")
+            self.assertTrue(reply["path"].startswith("vision/"))
+            self.assertTrue((Path(workspace["path"]) / reply["path"]).exists())
+            events = bridge.sessions.load_events(workspace["id"], session["id"])
+            self.assertEqual(events[-1]["type"], "file_attachment")
+            self.assertIn("посмотри", events[-1]["text"])
 
     def test_handle_session_create_and_list(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -432,16 +541,21 @@ class CodeWhaleBridgeTests(unittest.TestCase):
                     "session_stream_started",
                     "assistant_delta",
                     "assistant_delta",
+                    "session_process_event",
                     "session_stream_done",
                 ],
             )
             self.assertEqual(replies[1]["text"], "При")
             self.assertEqual(replies[2]["text"], "вет")
+            self.assertIn("status=completed", replies[3]["text"])
 
             updated = bridge.sessions.get_session(workspace["id"], session["id"])
             self.assertEqual(updated["runtime_session_id"], "cw-session-1")
             events = bridge.sessions.load_events(workspace["id"], session["id"])
-            self.assertEqual([event["type"] for event in events], ["user_message", "assistant_delta"])
+            self.assertEqual(
+                [event["type"] for event in events],
+                ["user_message", "session_process_event", "assistant_delta"],
+            )
             self.assertEqual(events[-1]["text"], "Привет")
             self.assertTrue(events[-1]["final"])
 
@@ -521,6 +635,40 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             self.assertEqual(updated["status"], "idle")
             self.assertIsNone(updated["active_pid"])
 
+    def test_session_kill_clears_persisted_active_pid_after_bridge_restart(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            session = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Чат",
+                }
+            )["session"]
+            bridge.sessions.update_session(
+                workspace["id"],
+                session["id"],
+                status="running",
+                active_pid=12345,
+            )
+
+            with patch.object(bridge, "_kill_pid_tree") as kill_pid_tree:
+                reply = bridge.handle_message(
+                    {
+                        "type": "session_kill",
+                        "workspace_id": workspace["id"],
+                        "session_id": session["id"],
+                    }
+                )
+
+            kill_pid_tree.assert_called_once_with(12345, force=True)
+            self.assertEqual(reply["session"]["status"], "killed")
+            self.assertIsNone(reply["session"]["active_pid"])
+
     def test_handle_unknown_message_returns_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             bridge = CodeWhaleBridge(Path(tmp) / "Desktop", Path(tmp) / "state")
@@ -585,6 +733,22 @@ class CodeWhaleExecClientTests(unittest.TestCase):
 
         self.assertEqual(parsed[0], {"type": "content", "content": "OK"})
         self.assertEqual(parsed[1]["content"], "session-1")
+
+    def test_stream_prompt_starts_without_visible_console_window(self) -> None:
+        process = _FakeProcess()
+        process.stdout = iter(['{"type":"done"}\n'])
+        process.returncode = 0
+        captured = {}
+
+        def fake_popen(command, **kwargs):
+            captured["kwargs"] = kwargs
+            return process
+
+        client = CodeWhaleExecClient(codewhale_cmd="codewhale", popen=fake_popen)
+
+        list(client.stream_prompt(Path("C:/work"), "Привет"))
+
+        self.assertEqual(captured["kwargs"]["creationflags"], _background_creation_flags())
 
 
 class _FakeHttpResponse:

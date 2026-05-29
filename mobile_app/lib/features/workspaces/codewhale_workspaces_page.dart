@@ -1,12 +1,17 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../../models/project_file.dart';
 import '../../models/workspace_item.dart';
 import '../../models/workspace_session.dart';
 import '../../services/codewhale_bridge_service.dart';
 import 'session_chat_view.dart';
 import 'session_management_view.dart';
+import 'workspace_folder_browser_view.dart';
 import 'workspace_detail_view.dart';
 import 'workspace_list_view.dart';
 
@@ -23,12 +28,20 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
   final TextEditingController _inputController = TextEditingController();
   final Map<String, Timer> _taskPollers = {};
   List<WorkspaceItem> _workspaces = const [];
+  List<Map<String, dynamic>> _folderBrowserFolders = const [];
   final Map<String, List<WorkspaceSession>> _sessionsByWorkspace = {};
   List<Map<String, dynamic>> _activeEvents = const [];
+  List<ProjectFileNode> _workspaceFiles = const [];
+  String _folderBrowserPath = '';
+  String _folderBrowserParent = '';
+  String _currentFilePath = '';
+  String _filePreviewPath = '';
+  String _filePreviewText = '';
   WorkspaceItem? _activeWorkspace;
   WorkspaceSession? _activeSession;
   _WorkspacePageMode _mode = _WorkspacePageMode.list;
   bool _connected = false;
+  bool _filesLoading = false;
   String _statusText = 'Подключение к CodeWhale...';
 
   @override
@@ -80,6 +93,20 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
       if (message.workspaces.isNotEmpty || message.type == 'workspace_list') {
         _workspaces = message.workspaces;
       }
+      if (message.type == 'workspace_folder_list') {
+        _folderBrowserPath = message.folderPath;
+        _folderBrowserParent = message.folderParent;
+        _folderBrowserFolders = message.folders;
+      }
+      if (message.type == 'workspace_file_list') {
+        _filesLoading = false;
+        _currentFilePath = message.folderPath;
+        _workspaceFiles = ProjectFileNode.sorted(message.files);
+      }
+      if (message.type == 'workspace_file_content') {
+        _filePreviewPath = message.filePath;
+        _filePreviewText = message.fileText;
+      }
       final workspace = message.workspace;
       if (workspace != null) {
         final existing = _workspaces.where((item) => item.id != workspace.id);
@@ -109,12 +136,37 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
       }
       if (message.type == 'session_stream_started') {
         _statusText = 'CodeWhale думает...';
+        _appendSessionEvent(
+          message,
+          {'type': 'session_process_event', 'text': 'Запуск CodeWhale'},
+        );
       }
       if (message.type == 'assistant_delta') {
         _appendAssistantDelta(message);
       }
+      if (message.type == 'session_process_event') {
+        _appendSessionEvent(message, {
+          'type': 'session_process_event',
+          'text': message.text,
+        });
+      }
+      if (message.type == 'session_file_uploaded') {
+        _appendSessionEvent(message, {
+          'type': 'file_attachment',
+          'text': 'Файл прикреплен: ${message.filePath}',
+          'path': message.filePath,
+          'filename': message.filename,
+          'mime_type': message.mimeType,
+          'size': message.fileSize,
+        });
+        _statusText = 'Файл прикреплен';
+      }
       if (message.type == 'session_stream_done') {
         _statusText = 'CodeWhale готов';
+        _appendSessionEvent(
+          message,
+          {'type': 'session_process_event', 'text': 'Готово'},
+        );
         final workspace = _activeWorkspace;
         final session = _activeSession;
         if (workspace != null && session != null) {
@@ -201,6 +253,28 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
     _activeEvents = events;
   }
 
+  void _appendSessionEvent(
+    CodeWhaleBridgeMessage message,
+    Map<String, dynamic> event,
+  ) {
+    final workspace = _activeWorkspace;
+    final session = _activeSession;
+    if (workspace == null || session == null) {
+      return;
+    }
+    if (message.workspaceId.isNotEmpty && message.workspaceId != workspace.id) {
+      return;
+    }
+    if (message.sessionId.isNotEmpty && message.sessionId != session.id) {
+      return;
+    }
+    final text = (event['text'] ?? '').toString();
+    if (text.trim().isEmpty) {
+      return;
+    }
+    _activeEvents = [..._activeEvents, event];
+  }
+
   @override
   Widget build(BuildContext context) {
     final workspace = _activeWorkspace;
@@ -228,6 +302,21 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
           onCreateSession: () => _createSession(workspace),
           onOpenSession: (item) => _openSession(workspace, item),
           onManageSession: (item) => _manageSession(workspace, item),
+        );
+      case _WorkspacePageMode.folderBrowser:
+        return WorkspaceFolderBrowserView(
+          path: _folderBrowserPath,
+          parent: _folderBrowserParent,
+          folders: _folderBrowserFolders,
+          onBack: () => setState(() => _mode = _WorkspacePageMode.list),
+          onRefresh: () =>
+              _service.requestWorkspaceFolderList(path: _folderBrowserPath),
+          onOpenFolder: (path) =>
+              _service.requestWorkspaceFolderList(path: path),
+          onSelectFolder: (name, path) {
+            _service.attachWorkspace(name, path);
+            setState(() => _mode = _WorkspacePageMode.list);
+          },
         );
       case _WorkspacePageMode.chat:
         if (workspace == null || session == null) {
@@ -258,10 +347,30 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
         return SessionManagementView(
           workspace: workspace,
           session: session,
+          files: _workspaceFiles,
+          currentFilePath: _currentFilePath,
+          isFilesLoading: _filesLoading,
+          filePreviewPath: _filePreviewPath,
+          filePreviewText: _filePreviewText,
           onBack: () => setState(() => _mode = _WorkspacePageMode.chat),
           onStop: () => _service.stopSession(workspace.id, session.id),
           onKill: () => _service.killSession(workspace.id, session.id),
           onRestart: () => _service.startSession(workspace.id, session.id),
+          onRefreshFiles: () => _requestWorkspaceFiles(workspace.id),
+          onOpenFilePath: (path) => _requestWorkspaceFiles(
+            workspace.id,
+            path: path,
+          ),
+          onReadFile: (path) =>
+              _service.requestWorkspaceFileRead(workspace.id, path),
+          onInsertFilePath: _insertPathToChat,
+          onSendPhoto: () => _sendPhoto(workspace, session),
+          onSendDocument: () => _sendDocument(workspace, session),
+          onQuickAction: (prompt) => _sendQuickAction(
+            workspace,
+            session,
+            prompt,
+          ),
         );
     }
   }
@@ -275,14 +384,13 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
   }
 
   Future<void> _attachWorkspace() async {
-    final path =
-        await _promptText('Подключить папку', r'C:\Users\user\Desktop\...');
-    if (path == null || path.isEmpty) {
-      return;
-    }
-    final name =
-        path.split(RegExp(r'[\\/]')).where((part) => part.isNotEmpty).last;
-    _service.attachWorkspace(name, path);
+    setState(() {
+      _folderBrowserPath = '';
+      _folderBrowserParent = '';
+      _folderBrowserFolders = const [];
+      _mode = _WorkspacePageMode.folderBrowser;
+    });
+    _service.requestWorkspaceFolderList();
   }
 
   Future<void> _createSession(WorkspaceItem workspace) async {
@@ -338,12 +446,108 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
       _activeWorkspace = workspace;
       _activeSession = session;
       _mode = _WorkspacePageMode.manage;
+      _filesLoading = true;
     });
+    _service.requestWorkspaceFileList(workspace.id);
+  }
+
+  void _requestWorkspaceFiles(String workspaceId, {String path = ''}) {
+    setState(() {
+      _filesLoading = true;
+      _currentFilePath = path;
+      _filePreviewPath = '';
+      _filePreviewText = '';
+    });
+    _service.requestWorkspaceFileList(workspaceId, path: path);
+  }
+
+  void _insertPathToChat(String path) {
+    final current = _inputController.text.trim();
+    _inputController.text = current.isEmpty ? path : '$current\n$path';
+    _inputController.selection = TextSelection.fromPosition(
+      TextPosition(offset: _inputController.text.length),
+    );
+    setState(() => _mode = _WorkspacePageMode.chat);
+  }
+
+  void _sendQuickAction(
+    WorkspaceItem workspace,
+    WorkspaceSession session,
+    String prompt,
+  ) {
+    _service.sendSessionMessage(workspace.id, session.id, prompt);
+    setState(() {
+      _mode = _WorkspacePageMode.chat;
+      _activeEvents = [
+        ..._activeEvents,
+        {'type': 'user_message', 'text': prompt},
+      ];
+    });
+  }
+
+  Future<void> _sendPhoto(
+    WorkspaceItem workspace,
+    WorkspaceSession session,
+  ) async {
+    final picker = ImagePicker();
+    final photo = await picker.pickImage(source: ImageSource.gallery);
+    if (photo == null) {
+      return;
+    }
+    final bytes = await photo.readAsBytes();
+    _service.uploadSessionFile(
+      workspaceId: workspace.id,
+      sessionId: session.id,
+      bytes: bytes,
+      filename: photo.name,
+      mimeType: photo.mimeType ?? 'image/jpeg',
+    );
+  }
+
+  Future<void> _sendDocument(
+    WorkspaceItem workspace,
+    WorkspaceSession session,
+  ) async {
+    final result = await FilePicker.platform.pickFiles(withData: true);
+    final file = result?.files.single;
+    if (file == null) {
+      return;
+    }
+    final bytes = file.bytes ??
+        (file.path == null ? null : await File(file.path!).readAsBytes());
+    if (bytes == null || bytes.isEmpty) {
+      return;
+    }
+    _service.uploadSessionFile(
+      workspaceId: workspace.id,
+      sessionId: session.id,
+      bytes: bytes,
+      filename: file.name,
+      mimeType: _mimeTypeForName(file.name),
+    );
+  }
+
+  String _mimeTypeForName(String name) {
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.png')) {
+      return 'image/png';
+    }
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+      return 'image/jpeg';
+    }
+    if (lower.endsWith('.pdf')) {
+      return 'application/pdf';
+    }
+    if (lower.endsWith('.txt') || lower.endsWith('.md')) {
+      return 'text/plain';
+    }
+    return 'application/octet-stream';
   }
 }
 
 enum _WorkspacePageMode {
   list,
+  folderBrowser,
   detail,
   chat,
   manage,

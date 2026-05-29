@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/workspace_item.dart';
 import '../../models/workspace_session.dart';
@@ -61,6 +62,9 @@ class SessionChatView extends StatelessWidget {
                     itemCount: visibleEvents.length,
                     itemBuilder: (context, index) {
                       final event = visibleEvents[index];
+                      if (_isProcessEvent(event)) {
+                        return _ProcessEventRow(event: event);
+                      }
                       return _EventBubble(event: event);
                     },
                   ),
@@ -103,6 +107,11 @@ class SessionChatView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  static bool _isProcessEvent(Map<String, dynamic> event) {
+    final type = (event['type'] ?? '').toString();
+    return type == 'session_process_event' || type == 'runtime_task';
   }
 
   static List<Map<String, dynamic>> _mergeAssistantDeltas(
@@ -156,8 +165,69 @@ class _EventBubble extends StatelessWidget {
                 : colors.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Text(text.isEmpty ? type : text),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Flexible(
+                child: SelectableText(text.isEmpty ? type : text),
+              ),
+              const SizedBox(width: 6),
+              IconButton(
+                tooltip: 'Копировать текст',
+                visualDensity: VisualDensity.compact,
+                iconSize: 18,
+                onPressed: () {
+                  Clipboard.setData(
+                    ClipboardData(text: text.isEmpty ? type : text),
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Скопировано')),
+                  );
+                },
+                icon: const Icon(Icons.copy),
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _ProcessEventRow extends StatelessWidget {
+  const _ProcessEventRow({required this.event});
+
+  final Map<String, dynamic> event;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = (event['text'] ?? event['status'] ?? '').toString().trim();
+    if (text.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.terminal,
+            size: 14,
+            color: colors.onSurfaceVariant,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: SelectableText(
+              'Ход работы: $text',
+              style: TextStyle(
+                fontSize: 12,
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
