@@ -34,6 +34,7 @@ class MessengerPage extends StatelessWidget {
     required this.onAddContactToFamily,
     required this.onOpenDirectContact,
     required this.onOpenProjectContact,
+    required this.onOpenWorkspaces,
     required this.onOpenBridgeSettings,
     required this.onBackToContacts,
     required this.onOpenConversation,
@@ -78,6 +79,7 @@ class MessengerPage extends StatelessWidget {
   final void Function(ChatContact contact) onAddContactToFamily;
   final void Function(ChatContact contact) onOpenDirectContact;
   final void Function(ProjectContact project) onOpenProjectContact;
+  final VoidCallback onOpenWorkspaces;
   final VoidCallback onOpenBridgeSettings;
   final String? Function(String profileKey)? avatarForContact;
   final VoidCallback onBackToContacts;
@@ -115,6 +117,7 @@ class MessengerPage extends StatelessWidget {
         onAddContactToFamily: onAddContactToFamily,
         onOpenDirectContact: onOpenDirectContact,
         onOpenProjectContact: onOpenProjectContact,
+        onOpenWorkspaces: onOpenWorkspaces,
         onOpenBridgeSettings: onOpenBridgeSettings,
         onOpenConversation: onOpenConversation,
         onManageGroup: onManageGroup,
@@ -186,6 +189,7 @@ class _ContactList extends StatelessWidget {
     required this.onAddContactToFamily,
     required this.onOpenDirectContact,
     required this.onOpenProjectContact,
+    required this.onOpenWorkspaces,
     required this.onOpenBridgeSettings,
     required this.groupConversations,
     required this.groupLabel,
@@ -206,6 +210,7 @@ class _ContactList extends StatelessWidget {
   final void Function(ChatContact contact) onAddContactToFamily;
   final void Function(ChatContact contact) onOpenDirectContact;
   final void Function(ProjectContact project) onOpenProjectContact;
+  final VoidCallback onOpenWorkspaces;
   final VoidCallback onOpenBridgeSettings;
   final void Function(String conversationKey) onOpenConversation;
   final void Function(ChatConversation conv) onManageGroup;
@@ -216,8 +221,7 @@ class _ContactList extends StatelessWidget {
     if (url != null && url.isNotEmpty) {
       if (url.startsWith('http') || url.startsWith('/')) {
         return CircleAvatar(
-          backgroundImage: NetworkImage(
-              AvatarUrlResolver.resolveUrl(url)),
+          backgroundImage: NetworkImage(AvatarUrlResolver.resolveUrl(url)),
           onBackgroundImageError: (_, __) {},
         );
       }
@@ -234,8 +238,7 @@ class _ContactList extends StatelessWidget {
     if (url != null && url.isNotEmpty) {
       if (url.startsWith('http') || url.startsWith('/')) {
         return CircleAvatar(
-          backgroundImage: NetworkImage(
-              AvatarUrlResolver.resolveUrl(url)),
+          backgroundImage: NetworkImage(AvatarUrlResolver.resolveUrl(url)),
           onBackgroundImageError: (_, __) {},
         );
       }
@@ -267,6 +270,11 @@ class _ContactList extends StatelessWidget {
                   'Контакты',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                 ),
+              ),
+              IconButton(
+                tooltip: 'Рабочие пространства',
+                icon: const Icon(Icons.workspaces_outline),
+                onPressed: onOpenWorkspaces,
               ),
               IconButton(
                 tooltip: 'Обновить контакты',

@@ -494,6 +494,16 @@ class CodeWhaleBridge:
             )
             events = self.sessions.load_events(session["workspace_id"], session["id"])
             return {"type": "session_open", "session": session, "events": events}
+        if msg_type == "session_send":
+            text = str(message.get("text") or "").strip()
+            if not text:
+                raise ValueError("message text is required")
+            event = self.sessions.append_event(
+                self._workspace_id(message),
+                self._session_id(message),
+                {"type": "user_message", "text": text},
+            )
+            return {"type": "session_event", "event": event}
         if msg_type == "session_health":
             session = self.workers.health(self._workspace_id(message), self._session_id(message))
             return {"type": "session_health", "session": session}

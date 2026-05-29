@@ -28,6 +28,7 @@ import '../profile/profile_page.dart';
 import '../tasks/calendar_view.dart';
 import '../tasks/task_editor_sheet.dart';
 import '../tasks/tasks_board.dart';
+import '../workspaces/codewhale_workspaces_page.dart';
 import '../../models/call_models.dart';
 import '../../models/chat_models.dart';
 import '../../models/family_group.dart';
@@ -146,8 +147,8 @@ class _HomePageState extends State<HomePage> {
     _currentProfileDisplayName =
         prefs.getString('profile_display_name')?.trim() ?? '';
     _currentProfilePhone = prefs.getString('profile_phone')?.trim() ?? '';
-    _currentProfileAvatarUrl = prefs
-        .getString('${AppConfig.prefAvatarPrefix}${savedOwner.isNotEmpty ? savedOwner : 'default'}');
+    _currentProfileAvatarUrl = prefs.getString(
+        '${AppConfig.prefAvatarPrefix}${savedOwner.isNotEmpty ? savedOwner : 'default'}');
     final api = ApiClient(
       baseUrl: AppConfig.apiBaseUrl,
       apiKey: AppConfig.apiKey,
@@ -260,13 +261,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _goCalendarMonthPrev() {
-    setState(() =>
-        _calendarMonth = DateTime(_calendarMonth.year, _calendarMonth.month - 1));
+    setState(() => _calendarMonth =
+        DateTime(_calendarMonth.year, _calendarMonth.month - 1));
   }
 
   void _goCalendarMonthNext() {
-    setState(() =>
-        _calendarMonth = DateTime(_calendarMonth.year, _calendarMonth.month + 1));
+    setState(() => _calendarMonth =
+        DateTime(_calendarMonth.year, _calendarMonth.month + 1));
   }
 
   void _goCalendarMonthToday() {
@@ -1351,15 +1352,13 @@ class _HomePageState extends State<HomePage> {
                   GestureDetector(
                     onTap: canManage
                         ? () async {
-                            final url = await _pickAndSetGroupAvatar(
-                                store, conv);
+                            final url =
+                                await _pickAndSetGroupAvatar(store, conv);
                             if (url != null && url.isNotEmpty) {
                               setSheetState(() => avatarUrl = url);
                               setState(() {
-                                final idx = _chatConversations.indexWhere(
-                                    (c) =>
-                                        c.conversationKey ==
-                                        conv.conversationKey);
+                                final idx = _chatConversations.indexWhere((c) =>
+                                    c.conversationKey == conv.conversationKey);
                                 if (idx >= 0) {
                                   _chatConversations[idx] = ChatConversation(
                                     conversationKey: conv.conversationKey,
@@ -1377,13 +1376,12 @@ class _HomePageState extends State<HomePage> {
                       final effectiveUrl = avatarUrl;
                       return CircleAvatar(
                         radius: 36,
-                        backgroundImage: (effectiveUrl != null &&
-                                effectiveUrl.isNotEmpty)
-                            ? AvatarUrlResolver.imageProvider(effectiveUrl)
-                            : null,
+                        backgroundImage:
+                            (effectiveUrl != null && effectiveUrl.isNotEmpty)
+                                ? AvatarUrlResolver.imageProvider(effectiveUrl)
+                                : null,
                         onBackgroundImageError: (_, __) {},
-                        child: (effectiveUrl == null ||
-                                effectiveUrl.isEmpty)
+                        child: (effectiveUrl == null || effectiveUrl.isEmpty)
                             ? const Icon(Icons.camera_alt, size: 32)
                             : null,
                       );
@@ -2476,6 +2474,7 @@ class _HomePageState extends State<HomePage> {
       onAddContactToFamily: (contact) => _addContactToFamily(store, contact),
       onOpenDirectContact: (contact) => _openDirectContact(store, contact),
       onOpenProjectContact: (project) => _openProjectContact(store, project),
+      onOpenWorkspaces: _openCodeWhaleWorkspaces,
       onOpenBridgeSettings: _openBridgeSettings,
       onBackToContacts: () => setState(() => _activeConversationKey = ''),
       onOpenConversation: (conversationKey) =>
@@ -2502,6 +2501,17 @@ class _HomePageState extends State<HomePage> {
       onStartRecord: () => _startRecord(store),
       onStopRecord: () => _stopRecord(store),
       onSendText: () => _sendTextMessage(store),
+    );
+  }
+
+  void _openCodeWhaleWorkspaces() {
+    if (!mounted) {
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const CodeWhaleWorkspacesPage(),
+      ),
     );
   }
 
@@ -3810,8 +3820,7 @@ class _HomePageState extends State<HomePage> {
               child: Row(
                 children: [
                   Icon(Icons.folder_outlined,
-                      size: 18,
-                      color: Theme.of(context).colorScheme.primary),
+                      size: 18, color: Theme.of(context).colorScheme.primary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: DropdownButtonHideUnderline(

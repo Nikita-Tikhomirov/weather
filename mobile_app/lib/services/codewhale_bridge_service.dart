@@ -19,6 +19,7 @@ class CodeWhaleBridgeMessage {
     this.session,
     this.sessions = const [],
     this.events = const [],
+    this.workspaceId = '',
     this.requestId = '',
   });
 
@@ -30,6 +31,7 @@ class CodeWhaleBridgeMessage {
   final WorkspaceSession? session;
   final List<WorkspaceSession> sessions;
   final List<Map<String, dynamic>> events;
+  final String workspaceId;
   final String requestId;
 
   factory CodeWhaleBridgeMessage.fromJson(Map<String, dynamic> json) {
@@ -51,9 +53,10 @@ class CodeWhaleBridgeMessage {
           const [],
       events: (json['events'] as List<dynamic>?)
               ?.whereType<Map<String, dynamic>>()
-              .map((event) => Map<String, dynamic>.from(event))
+              .map(Map<String, dynamic>.from)
               .toList() ??
           const [],
+      workspaceId: (json['workspace_id'] ?? '').toString(),
       requestId: (json['request_id'] ?? '').toString(),
     );
   }
@@ -221,6 +224,19 @@ class CodeWhaleBridgeService {
       'type': 'session_kill',
       'workspace_id': workspaceId,
       'session_id': sessionId,
+    });
+  }
+
+  void sendSessionMessage(String workspaceId, String sessionId, String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+    _sendCommand({
+      'type': 'session_send',
+      'workspace_id': workspaceId,
+      'session_id': sessionId,
+      'text': trimmed,
     });
   }
 

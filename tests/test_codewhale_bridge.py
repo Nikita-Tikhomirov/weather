@@ -227,6 +227,41 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             self.assertEqual(created["session"]["title"], "Чат")
             self.assertEqual(len(listed["sessions"]), 1)
 
+    def test_handle_session_send_appends_user_event(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            session = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Чат",
+                }
+            )["session"]
+
+            reply = bridge.handle_message(
+                {
+                    "type": "session_send",
+                    "workspace_id": workspace["id"],
+                    "session_id": session["id"],
+                    "text": "Привет",
+                }
+            )
+            opened = bridge.handle_message(
+                {
+                    "type": "session_open",
+                    "workspace_id": workspace["id"],
+                    "session_id": session["id"],
+                }
+            )
+
+            self.assertEqual(reply["type"], "session_event")
+            self.assertEqual(reply["event"]["type"], "user_message")
+            self.assertEqual(opened["events"][-1]["text"], "Привет")
+
     def test_handle_unknown_message_returns_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             bridge = CodeWhaleBridge(Path(tmp) / "Desktop", Path(tmp) / "state")
