@@ -1,8 +1,36 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from codewhale_bridge import SessionRegistry, WorkspaceRegistry
+from codewhale_bridge import CodeWhaleWorkerManager, SessionRegistry, WorkspaceRegistry
+
+
+class _FakeProcess:
+    _next_pid = 1000
+
+    def __init__(self) -> None:
+        type(self)._next_pid += 1
+        self.pid = type(self)._next_pid
+        self.terminated = False
+        self.killed = False
+        self.returncode = None
+
+    def poll(self) -> int | None:
+        return self.returncode
+
+    def terminate(self) -> None:
+        self.terminated = True
+        self.returncode = 0
+
+    def kill(self) -> None:
+        self.killed = True
+        self.returncode = -9
+
+    def wait(self, timeout: float | None = None) -> int:
+        if self.returncode is None:
+            raise TimeoutError("still running")
+        return self.returncode
 
 
 class WorkspaceRegistryTests(unittest.TestCase):
@@ -105,6 +133,57 @@ class SessionRegistryTests(unittest.TestCase):
             loaded = SessionRegistry(state).get_session("weather", session["id"])
             self.assertEqual(loaded["status"], "running")
             self.assertEqual(loaded["worker_pid"], 1234)
+
+
+class CodeWhaleWorkerManagerTests(unittest.TestCase):
+    def test_start_worker_marks_session_running(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace = root / "Desktop" / "Weather"
+            workspace.mkdir(parents=True)
+            registry = SessionRegistry(root / "state")
+            session = registry.create_session("weather", "Worker")
+            process = _FakeProcess()
+
+            with patch("codewhale_bridge.subprocess.Popen", return_value=process) as popen:
+                manager = CodeWhaleWorkerManager(registry, root / "state")
+                started = manager.start_worker(
+                    "weather",
+                    session["id"],
+                    workspace,
+                    port=43101,
+                )
+
+            self.assertEqual(started["status"], "running")
+            self.assertEqual(started["worker_pid"], process.pid)
+            self.assertEqual(started["worker_port"], 43101)
+            self.assertEqual(popen.call_args.kwargs["cwd"], str(workspace))
+            self.assertIn("serve", popen.call_args.args[0])
+
+    def test_kill_worker_only_kills_target_process(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace = root / "Desktop" / "Weather"
+            workspace.mkdir(parents=True)
+            registry = SessionRegistry(root / "state")
+            first = registry.create_session("weather", "First")
+            second = registry.create_session("weather", "Second")
+            processes = [_FakeProcess(), _FakeProcess()]
+
+            with (
+                patch("codewhale_bridge.subprocess.Popen", side_effect=processes),
+                patch("codewhale_bridge.subprocess.run"),
+            ):
+                manager = CodeWhaleWorkerManager(registry, root / "state")
+                manager.start_worker("weather", first["id"], workspace, port=43101)
+                manager.start_worker("weather", second["id"], workspace, port=43102)
+                killed = manager.kill_worker("weather", first["id"])
+
+            self.assertEqual(killed["status"], "killed")
+            self.assertTrue(processes[0].killed)
+            self.assertFalse(processes[1].killed)
+            still_running = registry.get_session("weather", second["id"])
+            self.assertEqual(still_running["status"], "running")
 
 
 if __name__ == "__main__":

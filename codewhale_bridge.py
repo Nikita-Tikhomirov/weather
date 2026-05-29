@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import signal
+import subprocess
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -256,3 +260,169 @@ class SessionRegistry:
         if not re.fullmatch(r"[A-Za-z0-9_.-]+", key):
             raise ValueError(f"{field_name} contains unsupported characters")
         return key
+
+
+class CodeWhaleWorkerManager:
+    def __init__(
+        self,
+        sessions: SessionRegistry,
+        state_dir: Path,
+        codewhale_cmd: str = "codewhale",
+    ) -> None:
+        self.sessions = sessions
+        self.state_dir = state_dir.resolve()
+        self.codewhale_cmd = codewhale_cmd
+        self._workers: dict[tuple[str, str], subprocess.Popen] = {}
+
+    def start_worker(
+        self,
+        workspace_id: str,
+        session_id: str,
+        workspace_path: Path,
+        port: int,
+    ) -> dict[str, Any]:
+        workspace = workspace_path.resolve()
+        if not workspace.exists() or not workspace.is_dir():
+            raise ValueError("workspace path does not exist")
+
+        key = self._key(workspace_id, session_id)
+        existing = self._workers.get(key)
+        if existing is not None and existing.poll() is None:
+            return self.sessions.update_session(
+                workspace_id,
+                session_id,
+                status="running",
+                worker_pid=existing.pid,
+                worker_port=port,
+            )
+
+        env = os.environ.copy()
+        env.setdefault("PYTHONIOENCODING", "utf-8:backslashreplace")
+        command = [
+            self.codewhale_cmd,
+            "serve",
+            "--http",
+            f"127.0.0.1:{port}",
+        ]
+        logs = self._open_worker_logs(workspace_id, session_id)
+        try:
+            process = subprocess.Popen(
+                command,
+                cwd=str(workspace),
+                stdout=logs,
+                stderr=subprocess.STDOUT,
+                text=True,
+                env=env,
+                creationflags=self._creation_flags(),
+            )
+        finally:
+            logs.close()
+        self._workers[key] = process
+        session = self.sessions.update_session(
+            workspace_id,
+            session_id,
+            status="running",
+            worker_pid=process.pid,
+            worker_port=port,
+        )
+        self.sessions.append_event(
+            workspace_id,
+            session_id,
+            {
+                "type": "worker_status",
+                "status": "running",
+                "pid": process.pid,
+                "port": port,
+            },
+        )
+        return session
+
+    def stop_worker(
+        self,
+        workspace_id: str,
+        session_id: str,
+        timeout_seconds: float = 5,
+    ) -> dict[str, Any]:
+        key = self._key(workspace_id, session_id)
+        process = self._workers.get(key)
+        if process is not None and process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=timeout_seconds)
+            except Exception:
+                return self.kill_worker(workspace_id, session_id)
+        self._workers.pop(key, None)
+        self.sessions.append_event(
+            workspace_id,
+            session_id,
+            {"type": "worker_status", "status": "stopped"},
+        )
+        return self.sessions.update_session(
+            workspace_id,
+            session_id,
+            status="stopped",
+            worker_pid=None,
+            worker_port=None,
+        )
+
+    def kill_worker(self, workspace_id: str, session_id: str) -> dict[str, Any]:
+        key = self._key(workspace_id, session_id)
+        process = self._workers.pop(key, None)
+        if process is not None and process.poll() is None:
+            self._kill_process_tree(process)
+        self.sessions.append_event(
+            workspace_id,
+            session_id,
+            {"type": "worker_status", "status": "killed"},
+        )
+        return self.sessions.update_session(
+            workspace_id,
+            session_id,
+            status="killed",
+            worker_pid=None,
+            worker_port=None,
+        )
+
+    def health(self, workspace_id: str, session_id: str) -> dict[str, Any]:
+        key = self._key(workspace_id, session_id)
+        process = self._workers.get(key)
+        session = self.sessions.get_session(workspace_id, session_id)
+        if process is None:
+            return {**session, "worker_alive": False}
+        return {**session, "worker_alive": process.poll() is None}
+
+    def _open_worker_logs(self, workspace_id: str, session_id: str):
+        logs_dir = self.state_dir / "sessions" / workspace_id
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        return (logs_dir / f"{session_id}.worker.log").open("a", encoding="utf-8")
+
+    def _kill_process_tree(self, process: subprocess.Popen) -> None:
+        if sys.platform == "win32":
+            subprocess.run(
+                ["taskkill", "/T", "/F", "/PID", str(process.pid)],
+                capture_output=True,
+                timeout=10,
+                check=False,
+            )
+        else:
+            try:
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            except Exception:
+                process.kill()
+        if process.poll() is None:
+            process.kill()
+            try:
+                process.wait(timeout=5)
+            except Exception:
+                pass
+
+    def _creation_flags(self) -> int:
+        if sys.platform != "win32":
+            return 0
+        return getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+
+    def _key(self, workspace_id: str, session_id: str) -> tuple[str, str]:
+        return (
+            self.sessions._require_key(workspace_id, "workspace_id"),
+            self.sessions._require_key(session_id, "session_id"),
+        )
