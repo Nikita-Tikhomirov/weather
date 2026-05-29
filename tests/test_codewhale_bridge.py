@@ -3,7 +3,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from codewhale_bridge import CodeWhaleWorkerManager, SessionRegistry, WorkspaceRegistry
+from codewhale_bridge import (
+    CodeWhaleBridge,
+    CodeWhaleWorkerManager,
+    SessionRegistry,
+    WorkspaceRegistry,
+)
 
 
 class _FakeProcess:
@@ -184,6 +189,51 @@ class CodeWhaleWorkerManagerTests(unittest.TestCase):
             self.assertFalse(processes[1].killed)
             still_running = registry.get_session("weather", second["id"])
             self.assertEqual(still_running["status"], "running")
+
+
+class CodeWhaleBridgeTests(unittest.TestCase):
+    def test_handle_workspace_create_returns_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+
+            reply = bridge.handle_message({"type": "workspace_create", "name": "Demo"})
+
+            self.assertEqual(reply["type"], "workspace")
+            self.assertEqual(reply["workspace"]["name"], "Demo")
+            self.assertTrue(Path(reply["workspace"]["path"]).exists())
+
+    def test_handle_session_create_and_list(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+
+            created = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Чат",
+                }
+            )
+            listed = bridge.handle_message(
+                {"type": "session_list", "workspace_id": workspace["id"]}
+            )
+
+            self.assertEqual(created["type"], "session")
+            self.assertEqual(created["session"]["title"], "Чат")
+            self.assertEqual(len(listed["sessions"]), 1)
+
+    def test_handle_unknown_message_returns_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            bridge = CodeWhaleBridge(Path(tmp) / "Desktop", Path(tmp) / "state")
+
+            reply = bridge.handle_message({"type": "missing"})
+
+            self.assertEqual(reply["type"], "error")
+            self.assertIn("unsupported", reply["error"])
 
 
 if __name__ == "__main__":

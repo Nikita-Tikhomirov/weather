@@ -426,3 +426,107 @@ class CodeWhaleWorkerManager:
             self.sessions._require_key(workspace_id, "workspace_id"),
             self.sessions._require_key(session_id, "session_id"),
         )
+
+
+class CodeWhaleBridge:
+    def __init__(
+        self,
+        desktop_root: Path,
+        state_dir: Path,
+        codewhale_cmd: str = "codewhale",
+    ) -> None:
+        self.workspaces = WorkspaceRegistry(desktop_root, state_dir)
+        self.sessions = SessionRegistry(state_dir)
+        self.workers = CodeWhaleWorkerManager(
+            self.sessions,
+            state_dir,
+            codewhale_cmd=codewhale_cmd,
+        )
+        self._next_port = 43100
+
+    def handle_message(self, message: dict[str, Any]) -> dict[str, Any]:
+        request_id = message.get("request_id")
+        try:
+            reply = self._handle_message(message)
+        except Exception as exc:
+            reply = {"type": "error", "error": str(exc)}
+        if request_id is not None:
+            reply["request_id"] = request_id
+        return reply
+
+    def _handle_message(self, message: dict[str, Any]) -> dict[str, Any]:
+        msg_type = str(message.get("type") or "").strip()
+        if msg_type == "workspace_list":
+            return {
+                "type": "workspace_list",
+                "workspaces": self.workspaces.list_workspaces(),
+            }
+        if msg_type == "workspace_create":
+            workspace = self.workspaces.create_workspace(str(message.get("name") or ""))
+            return {"type": "workspace", "workspace": workspace}
+        if msg_type == "workspace_attach":
+            workspace = self.workspaces.attach_workspace(
+                str(message.get("name") or ""),
+                Path(str(message.get("path") or "")),
+            )
+            return {"type": "workspace", "workspace": workspace}
+        if msg_type == "session_list":
+            return {
+                "type": "session_list",
+                "workspace_id": self._workspace_id(message),
+                "sessions": self.sessions.list_sessions(self._workspace_id(message)),
+            }
+        if msg_type == "session_create":
+            session = self.sessions.create_session(
+                self._workspace_id(message),
+                str(message.get("title") or ""),
+            )
+            return {"type": "session", "session": session}
+        if msg_type == "session_open":
+            session = self.sessions.get_session(
+                self._workspace_id(message),
+                self._session_id(message),
+            )
+            events = self.sessions.load_events(session["workspace_id"], session["id"])
+            return {"type": "session_open", "session": session, "events": events}
+        if msg_type == "session_health":
+            session = self.workers.health(self._workspace_id(message), self._session_id(message))
+            return {"type": "session_health", "session": session}
+        if msg_type == "session_stop":
+            session = self.workers.stop_worker(
+                self._workspace_id(message),
+                self._session_id(message),
+            )
+            return {"type": "session", "session": session}
+        if msg_type == "session_kill":
+            session = self.workers.kill_worker(
+                self._workspace_id(message),
+                self._session_id(message),
+            )
+            return {"type": "session", "session": session}
+        if msg_type == "session_start":
+            workspace = self._find_workspace(self._workspace_id(message))
+            session = self.workers.start_worker(
+                workspace["id"],
+                self._session_id(message),
+                Path(workspace["path"]),
+                port=self._allocate_port(),
+            )
+            return {"type": "session", "session": session}
+        raise ValueError(f"unsupported message type: {msg_type}")
+
+    def _find_workspace(self, workspace_id: str) -> dict[str, Any]:
+        for workspace in self.workspaces.list_workspaces():
+            if workspace["id"] == workspace_id:
+                return workspace
+        raise KeyError(f"workspace not found: {workspace_id}")
+
+    def _allocate_port(self) -> int:
+        self._next_port += 1
+        return self._next_port
+
+    def _workspace_id(self, message: dict[str, Any]) -> str:
+        return str(message.get("workspace_id") or "").strip()
+
+    def _session_id(self, message: dict[str, Any]) -> str:
+        return str(message.get("session_id") or "").strip()
