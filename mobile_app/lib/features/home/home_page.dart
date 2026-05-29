@@ -189,7 +189,6 @@ class _HomePageState extends State<HomePage> {
     }
     _bindFcm(api: api, owner: owner);
     await _safeSyncFull(store, showErrors: false);
-    _loadProjects();
     await _initChat(store);
     _initShareReceiver(store);
     _chatInputCtl.addListener(() => _onChatInputChanged(store));
@@ -2270,18 +2269,6 @@ class _HomePageState extends State<HomePage> {
                   _openStickerSheet(store);
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.folder_open),
-                title: const Text('Файлы проекта'),
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  final project =
-                      _projectByConversationKey(_activeConversationKey);
-                  if (project != null) {
-                    _openProjectFileManager(project);
-                  }
-                },
-              ),
             ],
           ),
         );
@@ -2453,7 +2440,6 @@ class _HomePageState extends State<HomePage> {
     return MessengerPage(
       conversations: _chatConversations,
       contacts: _phoneContacts.isEmpty ? _chatContacts : _phoneContacts,
-      projects: _projectContacts,
       messages: messages,
       activeConversationKey: _activeConversationKey,
       owner: store.owner.value,
@@ -2473,9 +2459,7 @@ class _HomePageState extends State<HomePage> {
       onCreateGroup: () => _openCreateGroupSheet(store),
       onAddContactToFamily: (contact) => _addContactToFamily(store, contact),
       onOpenDirectContact: (contact) => _openDirectContact(store, contact),
-      onOpenProjectContact: (project) => _openProjectContact(store, project),
       onOpenWorkspaces: _openCodeWhaleWorkspaces,
-      onOpenBridgeSettings: _openBridgeSettings,
       onBackToContacts: () => setState(() => _activeConversationKey = ''),
       onOpenConversation: (conversationKey) =>
           _openConversation(store, conversationKey),

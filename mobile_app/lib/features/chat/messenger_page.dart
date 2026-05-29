@@ -4,9 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_config.dart';
 import '../../models/chat_models.dart';
-import '../../models/project_contact.dart';
 import '../../shared/utils/avatar_url_resolver.dart';
-import '../projects/project_icons.dart';
 import 'chat_messages_list.dart';
 
 class MessengerPage extends StatelessWidget {
@@ -14,7 +12,6 @@ class MessengerPage extends StatelessWidget {
     super.key,
     required this.conversations,
     required this.contacts,
-    required this.projects,
     required this.messages,
     required this.activeConversationKey,
     required this.owner,
@@ -33,9 +30,7 @@ class MessengerPage extends StatelessWidget {
     required this.onCreateGroup,
     required this.onAddContactToFamily,
     required this.onOpenDirectContact,
-    required this.onOpenProjectContact,
     required this.onOpenWorkspaces,
-    required this.onOpenBridgeSettings,
     required this.onBackToContacts,
     required this.onOpenConversation,
     required this.onOpenMessageActions,
@@ -58,7 +53,6 @@ class MessengerPage extends StatelessWidget {
 
   final List<ChatConversation> conversations;
   final List<ChatContact> contacts;
-  final List<ProjectContact> projects;
   final List<ChatMessage> messages;
   final String activeConversationKey;
   final String owner;
@@ -78,9 +72,7 @@ class MessengerPage extends StatelessWidget {
   final VoidCallback onCreateGroup;
   final void Function(ChatContact contact) onAddContactToFamily;
   final void Function(ChatContact contact) onOpenDirectContact;
-  final void Function(ProjectContact project) onOpenProjectContact;
   final VoidCallback onOpenWorkspaces;
-  final VoidCallback onOpenBridgeSettings;
   final String? Function(String profileKey)? avatarForContact;
   final VoidCallback onBackToContacts;
   final void Function(String conversationKey) onOpenConversation;
@@ -105,7 +97,6 @@ class MessengerPage extends StatelessWidget {
     if (activeConversationKey.isEmpty) {
       return _ContactList(
         contacts: contacts,
-        projects: projects,
         owner: owner,
         contactLabel: contactLabel,
         avatarForContact: avatarForContact,
@@ -116,9 +107,7 @@ class MessengerPage extends StatelessWidget {
         onCreateGroup: onCreateGroup,
         onAddContactToFamily: onAddContactToFamily,
         onOpenDirectContact: onOpenDirectContact,
-        onOpenProjectContact: onOpenProjectContact,
         onOpenWorkspaces: onOpenWorkspaces,
-        onOpenBridgeSettings: onOpenBridgeSettings,
         onOpenConversation: onOpenConversation,
         onManageGroup: onManageGroup,
       );
@@ -180,7 +169,6 @@ class MessengerPage extends StatelessWidget {
 class _ContactList extends StatelessWidget {
   const _ContactList({
     required this.contacts,
-    required this.projects,
     required this.owner,
     required this.contactLabel,
     required this.typingUsers,
@@ -188,9 +176,7 @@ class _ContactList extends StatelessWidget {
     required this.onCreateGroup,
     required this.onAddContactToFamily,
     required this.onOpenDirectContact,
-    required this.onOpenProjectContact,
     required this.onOpenWorkspaces,
-    required this.onOpenBridgeSettings,
     required this.groupConversations,
     required this.groupLabel,
     required this.onOpenConversation,
@@ -199,7 +185,6 @@ class _ContactList extends StatelessWidget {
   });
 
   final List<ChatContact> contacts;
-  final List<ProjectContact> projects;
   final String owner;
   final Map<String, Set<String>> typingUsers;
   final List<ChatConversation> groupConversations;
@@ -209,9 +194,7 @@ class _ContactList extends StatelessWidget {
   final VoidCallback onCreateGroup;
   final void Function(ChatContact contact) onAddContactToFamily;
   final void Function(ChatContact contact) onOpenDirectContact;
-  final void Function(ProjectContact project) onOpenProjectContact;
   final VoidCallback onOpenWorkspaces;
-  final VoidCallback onOpenBridgeSettings;
   final void Function(String conversationKey) onOpenConversation;
   final void Function(ChatConversation conv) onManageGroup;
   final String? Function(String profileKey)? avatarForContact;
@@ -345,45 +328,6 @@ class _ContactList extends StatelessWidget {
                     onTap: () => onOpenDirectContact(contact),
                   );
                 }),
-              if (projects.isNotEmpty) ...[
-                const Divider(height: 24),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
-                  child: Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Проекты (терминалы)',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Настроить сервер',
-                        icon: const Icon(Icons.settings, size: 20),
-                        onPressed: onOpenBridgeSettings,
-                      ),
-                    ],
-                  ),
-                ),
-                ...projects.map((project) {
-                  return ListTile(
-                    leading: CircleAvatar(
-                      child: Icon(projectIcon(project.icon)),
-                    ),
-                    title: Text(project.name),
-                    subtitle: Text(
-                      project.path,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: const Icon(Icons.terminal),
-                    onTap: () => onOpenProjectContact(project),
-                  );
-                }),
-              ],
             ],
           ),
         ),
@@ -429,7 +373,7 @@ class _ChatHeader extends StatelessWidget {
         conv.conversationKey == 'group:common' ||
         conv.conversationKey.startsWith('grp:');
     final avatarUrl = conv.avatarUrl;
-    final baseUrl = AppConfig.apiBaseUrl;
+    const baseUrl = AppConfig.apiBaseUrl;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),

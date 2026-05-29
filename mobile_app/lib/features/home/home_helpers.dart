@@ -5,8 +5,8 @@ import '../../models/chat_models.dart';
 /// These functions have no side effects and don't depend on widget state.
 /// They can be safely unit-tested in isolation.
 
-/// Checks whether a conversation key belongs to a project chat.
-bool isProjectConversation(String key) => key.startsWith('project:');
+/// Legacy project chats are retired; CodeWhale workspaces own project sessions.
+bool isProjectConversation(String key) => false;
 
 enum PendingPushAction { syncOnly, routeOpenedPush }
 
