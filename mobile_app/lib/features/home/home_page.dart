@@ -16,7 +16,6 @@ import '../../app/app_labels.dart';
 import '../../app/app_theme.dart';
 import '../../shared/utils/avatar_url_resolver.dart';
 import 'home_helpers.dart';
-import '../../domain/task_domain_service.dart';
 import '../chat/call_screen.dart';
 import '../chat/chat_photo_viewer.dart';
 import '../chat/messenger_page.dart';
@@ -35,17 +34,16 @@ import '../../models/project_contact.dart';
 import '../../models/project_file.dart';
 import '../../models/task_item.dart';
 import '../../models/task_project.dart';
-import '../../repositories/task_repository.dart';
 import '../../services/api_client.dart';
 import '../../services/call_service.dart';
 import '../../services/chat_realtime_service.dart';
 import '../../services/desktop_process_host_service.dart';
 import '../../services/desktop_theme_service.dart';
-import '../../services/local_db.dart';
 import '../../services/project_access.dart';
 import '../../services/profile_init_service.dart';
 import '../../services/project_bridge_service.dart';
 import '../../services/push_notification_handler.dart';
+import '../../services/service_locator.dart';
 import '../../services/sync_loop_service.dart';
 import '../../services/voice_recorder_service.dart';
 import '../../state/task_store.dart';
@@ -135,10 +133,8 @@ class _HomePageState extends State<HomePage> {
     _currentProfilePhone = prefs.getString('profile_phone')?.trim() ?? '';
     _currentProfileAvatarUrl = prefs.getString(
         '${AppConfig.prefAvatarPrefix}${savedOwner.isNotEmpty ? savedOwner : 'default'}');
-    final api = ApiClient(
-      baseUrl: AppConfig.apiBaseUrl,
-      apiKey: AppConfig.apiKey,
-    );
+    final locator = ServiceLocator.instance;
+    final api = locator.api;
     String? owner;
     final savedPhone = prefs.getString('profile_phone')?.trim() ?? '';
     final profileInit = ProfileInitService(
@@ -173,11 +169,7 @@ class _HomePageState extends State<HomePage> {
     _currentProfileAvatarUrl = prefs.getString(avatarKey);
     if (mounted) setState(() {});
 
-    final db = await LocalDb.open();
-    final store = TaskStore(
-      repository: TaskRepository(db: db, api: api),
-      domainService: TaskDomainService(),
-    );
+    final store = locator.taskStore;
     await store.initialize(initialOwner: owner);
     if (_isDesktopWindows) {
       await _initDesktopServices(store, owner);

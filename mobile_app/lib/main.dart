@@ -6,12 +6,15 @@ import 'package:flutter/material.dart';
 
 import 'app/family_todo_app.dart';
 import 'services/fcm_service.dart';
+import 'services/service_locator.dart';
 
 void main() {
   runZonedGuarded(
-    () {
+    () async {
       WidgetsFlutterBinding.ensureInitialized();
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+      await ServiceLocator.instance.init();
 
       FlutterError.onError = (FlutterErrorDetails details) {
         FlutterError.presentError(details);
