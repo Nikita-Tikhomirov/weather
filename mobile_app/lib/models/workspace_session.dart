@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 enum WorkspaceSessionStatus {
   idle,
   running,
@@ -41,6 +43,18 @@ String workspaceSessionStatusToString(WorkspaceSessionStatus status) {
   }
 }
 
+int? _nullableInt(Object? value) {
+  if (value == null) {
+    return null;
+  }
+  final text = value.toString();
+  if (text.isEmpty || text == 'null') {
+    return null;
+  }
+  return int.tryParse(text);
+}
+
+@immutable
 class WorkspaceSession {
   const WorkspaceSession({
     required this.id,
@@ -114,16 +128,74 @@ class WorkspaceSession {
     };
   }
 
-  bool get isRunning => status == WorkspaceSessionStatus.running;
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WorkspaceSession &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          workspaceId == other.workspaceId &&
+          title == other.title &&
+          status == other.status &&
+          workerPid == other.workerPid &&
+          workerPort == other.workerPort &&
+          provider == other.provider &&
+          model == other.model &&
+          approvalPolicy == other.approvalPolicy &&
+          sandboxMode == other.sandboxMode &&
+          autoMode == other.autoMode &&
+          createdAt == other.createdAt &&
+          updatedAt == other.updatedAt &&
+          lastEventSeq == other.lastEventSeq;
 
-  static int? _nullableInt(Object? value) {
-    if (value == null) {
-      return null;
-    }
-    final text = value.toString();
-    if (text.isEmpty || text == 'null') {
-      return null;
-    }
-    return int.tryParse(text);
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      workspaceId.hashCode ^
+      title.hashCode ^
+      status.hashCode ^
+      workerPid.hashCode ^
+      workerPort.hashCode ^
+      provider.hashCode ^
+      model.hashCode ^
+      approvalPolicy.hashCode ^
+      sandboxMode.hashCode ^
+      autoMode.hashCode ^
+      createdAt.hashCode ^
+      updatedAt.hashCode ^
+      lastEventSeq.hashCode;
+
+  WorkspaceSession copyWith({
+    String? id,
+    String? workspaceId,
+    String? title,
+    WorkspaceSessionStatus? status,
+    int? workerPid,
+    int? workerPort,
+    String? provider,
+    String? model,
+    String? approvalPolicy,
+    String? sandboxMode,
+    bool? autoMode,
+    int? createdAt,
+    int? updatedAt,
+    int? lastEventSeq,
+  }) {
+    return WorkspaceSession(
+      id: id ?? this.id,
+      workspaceId: workspaceId ?? this.workspaceId,
+      title: title ?? this.title,
+      status: status ?? this.status,
+      workerPid: workerPid ?? this.workerPid,
+      workerPort: workerPort ?? this.workerPort,
+      provider: provider ?? this.provider,
+      model: model ?? this.model,
+      approvalPolicy: approvalPolicy ?? this.approvalPolicy,
+      sandboxMode: sandboxMode ?? this.sandboxMode,
+      autoMode: autoMode ?? this.autoMode,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      lastEventSeq: lastEventSeq ?? this.lastEventSeq,
+    );
   }
 }

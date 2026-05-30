@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
+
 /// A node in a project file tree — either a directory or a file.
+@immutable
 class ProjectFileNode {
   const ProjectFileNode({
     required this.name,
@@ -37,22 +40,38 @@ class ProjectFileNode {
           'children': children.map((c) => c.toJson()).toList(),
       };
 
-  /// Human-readable size string.
-  String get sizeLabel {
-    if (isDir) return '';
-    if (size < 1024) return '$size B';
-    if (size < 1024 * 1024) return '${(size / 1024).toStringAsFixed(1)} KB';
-    return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ProjectFileNode &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          path == other.path &&
+          isDir == other.isDir &&
+          size == other.size &&
+          listEquals(children, other.children);
 
-  /// Stable sort: directories first, then alphabetical.
-  static List<ProjectFileNode> sorted(List<ProjectFileNode> nodes) {
-    final copy = List<ProjectFileNode>.from(nodes);
-    copy.sort((a, b) {
-      if (a.isDir && !b.isDir) return -1;
-      if (!a.isDir && b.isDir) return 1;
-      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-    });
-    return copy;
-  }
+  @override
+  int get hashCode => Object.hash(
+        name,
+        path,
+        isDir,
+        size,
+        Object.hashAll(children),
+      );
+
+  ProjectFileNode copyWith({
+    String? name,
+    String? path,
+    bool? isDir,
+    int? size,
+    List<ProjectFileNode>? children,
+  }) =>
+      ProjectFileNode(
+        name: name ?? this.name,
+        path: path ?? this.path,
+        isDir: isDir ?? this.isDir,
+        size: size ?? this.size,
+        children: children ?? this.children,
+      );
 }

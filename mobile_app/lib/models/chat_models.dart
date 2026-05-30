@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+
+@immutable
 class ChatConversation {
   ChatConversation({
     required this.conversationKey,
@@ -36,8 +39,45 @@ class ChatConversation {
       if (avatarUrl != null) 'avatar_url': avatarUrl,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChatConversation &&
+          runtimeType == other.runtimeType &&
+          conversationKey == other.conversationKey &&
+          kind == other.kind &&
+          title == other.title &&
+          listEquals(members, other.members) &&
+          avatarUrl == other.avatarUrl;
+
+  @override
+  int get hashCode => Object.hash(
+        conversationKey,
+        kind,
+        title,
+        Object.hashAll(members),
+        avatarUrl,
+      );
+
+  ChatConversation copyWith({
+    String? conversationKey,
+    String? kind,
+    String? title,
+    List<String>? members,
+    String? avatarUrl,
+  }) {
+    return ChatConversation(
+      conversationKey: conversationKey ?? this.conversationKey,
+      kind: kind ?? this.kind,
+      title: title ?? this.title,
+      members: members ?? this.members,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+    );
+  }
 }
 
+@immutable
 class ChatContact {
   ChatContact({
     required this.profileKey,
@@ -62,8 +102,54 @@ class ChatContact {
       avatarUrl: json['avatar_url']?.toString(),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'profile_key': profileKey,
+      'display_name': displayName,
+      'phone': phone,
+      'conversation_key': conversationKey,
+      if (avatarUrl != null) 'avatar_url': avatarUrl,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChatContact &&
+          runtimeType == other.runtimeType &&
+          profileKey == other.profileKey &&
+          displayName == other.displayName &&
+          phone == other.phone &&
+          conversationKey == other.conversationKey &&
+          avatarUrl == other.avatarUrl;
+
+  @override
+  int get hashCode =>
+      profileKey.hashCode ^
+      displayName.hashCode ^
+      phone.hashCode ^
+      conversationKey.hashCode ^
+      avatarUrl.hashCode;
+
+  ChatContact copyWith({
+    String? profileKey,
+    String? displayName,
+    String? phone,
+    String? conversationKey,
+    String? avatarUrl,
+  }) {
+    return ChatContact(
+      profileKey: profileKey ?? this.profileKey,
+      displayName: displayName ?? this.displayName,
+      phone: phone ?? this.phone,
+      conversationKey: conversationKey ?? this.conversationKey,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+    );
+  }
 }
 
+@immutable
 class ChatAttachment {
   ChatAttachment({
     required this.kind,
@@ -98,8 +184,41 @@ class ChatAttachment {
       'sort_order': sortOrder,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChatAttachment &&
+          runtimeType == other.runtimeType &&
+          kind == other.kind &&
+          assetUrl == other.assetUrl &&
+          mapEquals(imageMeta, other.imageMeta) &&
+          sortOrder == other.sortOrder;
+
+  @override
+  int get hashCode => Object.hash(
+        kind,
+        assetUrl,
+        Object.hashAll(imageMeta.entries.map((e) => Object.hash(e.key, e.value))),
+        sortOrder,
+      );
+
+  ChatAttachment copyWith({
+    String? kind,
+    String? assetUrl,
+    Map<String, dynamic>? imageMeta,
+    int? sortOrder,
+  }) {
+    return ChatAttachment(
+      kind: kind ?? this.kind,
+      assetUrl: assetUrl ?? this.assetUrl,
+      imageMeta: imageMeta ?? this.imageMeta,
+      sortOrder: sortOrder ?? this.sortOrder,
+    );
+  }
 }
 
+@immutable
 class ChatReaction {
   ChatReaction({required this.reaction, required this.count});
 
@@ -114,8 +233,30 @@ class ChatReaction {
   }
 
   Map<String, dynamic> toJson() => {'reaction': reaction, 'count': count};
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChatReaction &&
+          runtimeType == other.runtimeType &&
+          reaction == other.reaction &&
+          count == other.count;
+
+  @override
+  int get hashCode => reaction.hashCode ^ count.hashCode;
+
+  ChatReaction copyWith({
+    String? reaction,
+    int? count,
+  }) {
+    return ChatReaction(
+      reaction: reaction ?? this.reaction,
+      count: count ?? this.count,
+    );
+  }
 }
 
+@immutable
 class ChatMessage {
   ChatMessage({
     required this.id,
@@ -160,10 +301,6 @@ class ChatMessage {
 
   /// Delivery status: sending, sent, delivered, read, failed
   final String deliveryStatus;
-
-  bool get isDeleted => deletedAt != null && deletedAt!.isNotEmpty;
-
-  bool get isPending => deliveryStatus == 'sending';
 
   ChatMessage copyWith({
     String? id,
@@ -259,14 +396,61 @@ class ChatMessage {
       'created_at': createdAt,
       'edited_at': editedAt,
       'deleted_at': deletedAt,
-      'is_deleted': isDeleted,
+      'is_deleted': deletedAt != null && deletedAt!.isNotEmpty,
       'is_uploading': isUploading,
       'upload_progress': uploadProgress,
       'delivery_status': deliveryStatus,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChatMessage &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          conversationKey == other.conversationKey &&
+          senderProfile == other.senderProfile &&
+          messageType == other.messageType &&
+          text == other.text &&
+          createdAt == other.createdAt &&
+          stickerId == other.stickerId &&
+          imageUrl == other.imageUrl &&
+          mapEquals(imageMeta, other.imageMeta) &&
+          listEquals(attachments, other.attachments) &&
+          listEquals(reactions, other.reactions) &&
+          myReaction == other.myReaction &&
+          clientMessageId == other.clientMessageId &&
+          editedAt == other.editedAt &&
+          deletedAt == other.deletedAt &&
+          isUploading == other.isUploading &&
+          uploadProgress == other.uploadProgress &&
+          deliveryStatus == other.deliveryStatus;
+
+  @override
+  int get hashCode => Object.hash(
+        id,
+        conversationKey,
+        senderProfile,
+        messageType,
+        text,
+        createdAt,
+        stickerId,
+        imageUrl,
+        Object.hashAll(imageMeta.entries.map((e) => Object.hash(e.key, e.value))),
+        Object.hashAll(attachments),
+        Object.hashAll(reactions),
+        myReaction,
+        clientMessageId,
+        editedAt,
+        deletedAt,
+        isUploading,
+        uploadProgress,
+        deliveryStatus,
+      );
 }
 
+@immutable
 class StickerItem {
   StickerItem({
     required this.stickerId,
@@ -299,8 +483,37 @@ class StickerItem {
       'sort_order': sortOrder,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is StickerItem &&
+          runtimeType == other.runtimeType &&
+          stickerId == other.stickerId &&
+          title == other.title &&
+          assetUrl == other.assetUrl &&
+          sortOrder == other.sortOrder;
+
+  @override
+  int get hashCode =>
+      stickerId.hashCode ^ title.hashCode ^ assetUrl.hashCode ^ sortOrder.hashCode;
+
+  StickerItem copyWith({
+    String? stickerId,
+    String? title,
+    String? assetUrl,
+    int? sortOrder,
+  }) {
+    return StickerItem(
+      stickerId: stickerId ?? this.stickerId,
+      title: title ?? this.title,
+      assetUrl: assetUrl ?? this.assetUrl,
+      sortOrder: sortOrder ?? this.sortOrder,
+    );
+  }
 }
 
+@immutable
 class StickerPack {
   StickerPack({
     required this.packKey,
@@ -331,5 +544,33 @@ class StickerPack {
       'title': title,
       'items': items.map((item) => item.toJson()).toList(),
     };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is StickerPack &&
+          runtimeType == other.runtimeType &&
+          packKey == other.packKey &&
+          title == other.title &&
+          listEquals(items, other.items);
+
+  @override
+  int get hashCode => Object.hash(
+        packKey,
+        title,
+        Object.hashAll(items),
+      );
+
+  StickerPack copyWith({
+    String? packKey,
+    String? title,
+    List<StickerItem>? items,
+  }) {
+    return StickerPack(
+      packKey: packKey ?? this.packKey,
+      title: title ?? this.title,
+      items: items ?? this.items,
+    );
   }
 }

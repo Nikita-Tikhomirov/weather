@@ -1,5 +1,8 @@
+import 'package:flutter/foundation.dart';
+
 import 'chat_models.dart';
 
+@immutable
 class DeviceTokenRegistration {
   DeviceTokenRegistration({
     required this.shouldResetToken,
@@ -8,8 +11,36 @@ class DeviceTokenRegistration {
 
   final bool shouldResetToken;
   final String previousTokenStatus;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'should_reset_token': shouldResetToken,
+      'previous_token_status': previousTokenStatus,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DeviceTokenRegistration &&
+          runtimeType == other.runtimeType &&
+          shouldResetToken == other.shouldResetToken &&
+          previousTokenStatus == other.previousTokenStatus;
+
+  @override
+  int get hashCode => shouldResetToken.hashCode ^ previousTokenStatus.hashCode;
+
+  DeviceTokenRegistration copyWith({
+    bool? shouldResetToken,
+    String? previousTokenStatus,
+  }) =>
+      DeviceTokenRegistration(
+        shouldResetToken: shouldResetToken ?? this.shouldResetToken,
+        previousTokenStatus: previousTokenStatus ?? this.previousTokenStatus,
+      );
 }
 
+@immutable
 class PushDeviceStatus {
   PushDeviceStatus({
     required this.actorProfile,
@@ -38,8 +69,54 @@ class PushDeviceStatus {
           .toList(),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'actor_profile': actorProfile,
+      'effective_token_status': effectiveTokenStatus,
+      'active_token_count': activeTokenCount,
+      'status': status,
+      'tokens': tokens,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PushDeviceStatus &&
+          runtimeType == other.runtimeType &&
+          actorProfile == other.actorProfile &&
+          effectiveTokenStatus == other.effectiveTokenStatus &&
+          activeTokenCount == other.activeTokenCount &&
+          mapEquals(status, other.status) &&
+          listEquals(tokens, other.tokens);
+
+  @override
+  int get hashCode => Object.hash(
+        actorProfile,
+        effectiveTokenStatus,
+        activeTokenCount,
+        Object.hashAll(status.entries.map((e) => Object.hash(e.key, e.value))),
+        Object.hashAll(tokens),
+      );
+
+  PushDeviceStatus copyWith({
+    String? actorProfile,
+    String? effectiveTokenStatus,
+    int? activeTokenCount,
+    Map<String, dynamic>? status,
+    List<Map<String, dynamic>>? tokens,
+  }) =>
+      PushDeviceStatus(
+        actorProfile: actorProfile ?? this.actorProfile,
+        effectiveTokenStatus: effectiveTokenStatus ?? this.effectiveTokenStatus,
+        activeTokenCount: activeTokenCount ?? this.activeTokenCount,
+        status: status ?? this.status,
+        tokens: tokens ?? this.tokens,
+      );
 }
 
+@immutable
 class PhoneProfileSession {
   PhoneProfileSession({
     required this.profileKey,
@@ -54,4 +131,49 @@ class PhoneProfileSession {
   final String displayName;
   final String deviceId;
   final List<ChatContact> familyMembers;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'profile_key': profileKey,
+      'phone': phone,
+      'display_name': displayName,
+      'device_id': deviceId,
+      'family_members': familyMembers.map((m) => m.toJson()).toList(),
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PhoneProfileSession &&
+          runtimeType == other.runtimeType &&
+          profileKey == other.profileKey &&
+          phone == other.phone &&
+          displayName == other.displayName &&
+          deviceId == other.deviceId &&
+          listEquals(familyMembers, other.familyMembers);
+
+  @override
+  int get hashCode => Object.hash(
+        profileKey,
+        phone,
+        displayName,
+        deviceId,
+        Object.hashAll(familyMembers),
+      );
+
+  PhoneProfileSession copyWith({
+    String? profileKey,
+    String? phone,
+    String? displayName,
+    String? deviceId,
+    List<ChatContact>? familyMembers,
+  }) =>
+      PhoneProfileSession(
+        profileKey: profileKey ?? this.profileKey,
+        phone: phone ?? this.phone,
+        displayName: displayName ?? this.displayName,
+        deviceId: deviceId ?? this.deviceId,
+        familyMembers: familyMembers ?? this.familyMembers,
+      );
 }

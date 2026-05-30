@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+
+@immutable
 class PendingEvent {
   PendingEvent({
     required this.eventId,
@@ -12,6 +15,16 @@ class PendingEvent {
   final String action;
   final String payloadJson;
   final String happenedAt;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'event_id': eventId,
+      'entity': entity,
+      'action': action,
+      'payload_json': payloadJson,
+      'happened_at': happenedAt,
+    };
+  }
 
   Map<String, Object?> toDbRow() {
     return {
@@ -32,5 +45,38 @@ class PendingEvent {
       happenedAt: (row['happened_at'] ?? '').toString(),
     );
   }
-}
 
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PendingEvent &&
+          runtimeType == other.runtimeType &&
+          eventId == other.eventId &&
+          entity == other.entity &&
+          action == other.action &&
+          payloadJson == other.payloadJson &&
+          happenedAt == other.happenedAt;
+
+  @override
+  int get hashCode =>
+      eventId.hashCode ^
+      entity.hashCode ^
+      action.hashCode ^
+      payloadJson.hashCode ^
+      happenedAt.hashCode;
+
+  PendingEvent copyWith({
+    String? eventId,
+    String? entity,
+    String? action,
+    String? payloadJson,
+    String? happenedAt,
+  }) =>
+      PendingEvent(
+        eventId: eventId ?? this.eventId,
+        entity: entity ?? this.entity,
+        action: action ?? this.action,
+        payloadJson: payloadJson ?? this.payloadJson,
+        happenedAt: happenedAt ?? this.happenedAt,
+      );
+}

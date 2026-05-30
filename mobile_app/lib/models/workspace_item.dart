@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 enum WorkspaceStatus {
   available,
   missing,
@@ -31,6 +33,7 @@ String workspaceStatusToString(WorkspaceStatus status) {
   }
 }
 
+@immutable
 class WorkspaceItem {
   const WorkspaceItem({
     required this.id,
@@ -70,5 +73,42 @@ class WorkspaceItem {
     };
   }
 
-  bool get isAvailable => status == WorkspaceStatus.available;
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WorkspaceItem &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          path == other.path &&
+          status == other.status &&
+          createdAt == other.createdAt &&
+          updatedAt == other.updatedAt;
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      name.hashCode ^
+      path.hashCode ^
+      status.hashCode ^
+      createdAt.hashCode ^
+      updatedAt.hashCode;
+
+  WorkspaceItem copyWith({
+    String? id,
+    String? name,
+    String? path,
+    WorkspaceStatus? status,
+    int? createdAt,
+    int? updatedAt,
+  }) {
+    return WorkspaceItem(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      path: path ?? this.path,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 }

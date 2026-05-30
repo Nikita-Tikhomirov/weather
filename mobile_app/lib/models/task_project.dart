@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+
+@immutable
 class TaskProject {
   const TaskProject({
     required this.id,
@@ -67,4 +70,25 @@ class TaskProject {
         createdAt: createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TaskProject &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          description == other.description &&
+          ownerKey == other.ownerKey &&
+          createdAt == other.createdAt &&
+          updatedAt == other.updatedAt;
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      name.hashCode ^
+      description.hashCode ^
+      ownerKey.hashCode ^
+      createdAt.hashCode ^
+      updatedAt.hashCode;
 }

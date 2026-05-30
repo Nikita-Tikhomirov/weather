@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+
+@immutable
 class ProjectContact {
   const ProjectContact({
     required this.id,
@@ -29,6 +32,29 @@ class ProjectContact {
     };
   }
 
-  /// Chat conversation key for this project (used in messenger).
-  String get conversationKey => 'project:$id';
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ProjectContact &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          path == other.path &&
+          icon == other.icon;
+
+  @override
+  int get hashCode => id.hashCode ^ name.hashCode ^ path.hashCode ^ icon.hashCode;
+
+  ProjectContact copyWith({
+    String? id,
+    String? name,
+    String? path,
+    String? icon,
+  }) =>
+      ProjectContact(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        path: path ?? this.path,
+        icon: icon ?? this.icon,
+      );
 }

@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+
+@immutable
 class CallSession {
   CallSession({
     required this.sessionId,
@@ -14,14 +17,10 @@ class CallSession {
   final String callerProfile;
   final String calleeProfile;
   final String conversationKey;
-  final String callType; // audio | video
-  final String status; // ringing | active | ended | rejected | missed
+  final String callType;
+  final String status;
   final String createdAt;
   final String? endedAt;
-
-  bool get isIncoming => status == 'ringing';
-  bool get isActive => status == 'active';
-  bool get isEnded => status == 'ended' || status == 'rejected';
 
   factory CallSession.fromJson(Map<String, dynamic> json) {
     return CallSession(
@@ -48,8 +47,55 @@ class CallSession {
       'ended_at': endedAt,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CallSession &&
+          runtimeType == other.runtimeType &&
+          sessionId == other.sessionId &&
+          callerProfile == other.callerProfile &&
+          calleeProfile == other.calleeProfile &&
+          conversationKey == other.conversationKey &&
+          callType == other.callType &&
+          status == other.status &&
+          createdAt == other.createdAt &&
+          endedAt == other.endedAt;
+
+  @override
+  int get hashCode =>
+      sessionId.hashCode ^
+      callerProfile.hashCode ^
+      calleeProfile.hashCode ^
+      conversationKey.hashCode ^
+      callType.hashCode ^
+      status.hashCode ^
+      createdAt.hashCode ^
+      endedAt.hashCode;
+
+  CallSession copyWith({
+    String? sessionId,
+    String? callerProfile,
+    String? calleeProfile,
+    String? conversationKey,
+    String? callType,
+    String? status,
+    String? createdAt,
+    String? endedAt,
+  }) =>
+      CallSession(
+        sessionId: sessionId ?? this.sessionId,
+        callerProfile: callerProfile ?? this.callerProfile,
+        calleeProfile: calleeProfile ?? this.calleeProfile,
+        conversationKey: conversationKey ?? this.conversationKey,
+        callType: callType ?? this.callType,
+        status: status ?? this.status,
+        createdAt: createdAt ?? this.createdAt,
+        endedAt: endedAt ?? this.endedAt,
+      );
 }
 
+@immutable
 class CallSignal {
   CallSignal({
     required this.id,
@@ -60,10 +106,10 @@ class CallSignal {
   });
 
   final String id;
-  final String signalType; // offer | answer | ice_candidate | hangup
+  final String signalType;
   final String fromProfile;
-  final dynamic sdp; // Map for SDP, can be String from raw JSON
-  final dynamic candidate; // Map for ICE candidate
+  final dynamic sdp;
+  final dynamic candidate;
 
   factory CallSignal.fromJson(Map<String, dynamic> json) {
     return CallSignal(
@@ -74,8 +120,53 @@ class CallSignal {
       candidate: json['candidate'],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'signal_type': signalType,
+      'from_profile': fromProfile,
+      'sdp': sdp,
+      'candidate': candidate,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CallSignal &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          signalType == other.signalType &&
+          fromProfile == other.fromProfile &&
+          sdp == other.sdp &&
+          candidate == other.candidate;
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      signalType.hashCode ^
+      fromProfile.hashCode ^
+      sdp.hashCode ^
+      candidate.hashCode;
+
+  CallSignal copyWith({
+    String? id,
+    String? signalType,
+    String? fromProfile,
+    dynamic sdp,
+    dynamic candidate,
+  }) =>
+      CallSignal(
+        id: id ?? this.id,
+        signalType: signalType ?? this.signalType,
+        fromProfile: fromProfile ?? this.fromProfile,
+        sdp: sdp ?? this.sdp,
+        candidate: candidate ?? this.candidate,
+      );
 }
 
+@immutable
 class CallSignalsPoll {
   CallSignalsPoll({
     required this.signals,
@@ -86,4 +177,39 @@ class CallSignalsPoll {
   final List<CallSignal> signals;
   final String cursor;
   final String sessionStatus;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'signals': signals.map((s) => s.toJson()).toList(),
+      'cursor': cursor,
+      'session_status': sessionStatus,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CallSignalsPoll &&
+          runtimeType == other.runtimeType &&
+          listEquals(signals, other.signals) &&
+          cursor == other.cursor &&
+          sessionStatus == other.sessionStatus;
+
+  @override
+  int get hashCode => Object.hash(
+        Object.hashAll(signals),
+        cursor,
+        sessionStatus,
+      );
+
+  CallSignalsPoll copyWith({
+    List<CallSignal>? signals,
+    String? cursor,
+    String? sessionStatus,
+  }) =>
+      CallSignalsPoll(
+        signals: signals ?? this.signals,
+        cursor: cursor ?? this.cursor,
+        sessionStatus: sessionStatus ?? this.sessionStatus,
+      );
 }

@@ -40,6 +40,7 @@ enum Priority {
 /// ([WorkflowStatus] / [Priority]) for compile-time safety.
 /// Serialization uses `.name` which is backward compatible
 /// with the previous string-based format.
+@immutable
 class TaskItem {
   TaskItem({
     required this.id,
@@ -75,7 +76,6 @@ class TaskItem {
   final List<String> tags;
   final List<String> assignees;
   final List<int> reminderOffsetsMinutes;
-  List<String> get participants => assignees;
 
   final int durationMinutes;
   final String updatedAt;
@@ -228,49 +228,93 @@ class TaskItem {
     );
   }
 
-  static List<String> _decodeStringList(Object? raw) {
-    if (raw == null) {
-      return const [];
-    }
-    try {
-      final parsed = jsonDecode(raw.toString());
-      if (parsed is List) {
-        return parsed.map((e) => e.toString()).toList();
-      }
-    } catch (e, st) {
-      debugPrint('[task_item] _decodeStringList error: $e\n$st');
-    }
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TaskItem &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          ownerKey == other.ownerKey &&
+          isFamily == other.isFamily &&
+          title == other.title &&
+          projectId == other.projectId &&
+          groupId == other.groupId &&
+          details == other.details &&
+          dueDate == other.dueDate &&
+          time == other.time &&
+          workflowStatus == other.workflowStatus &&
+          priority == other.priority &&
+          listEquals(tags, other.tags) &&
+          listEquals(assignees, other.assignees) &&
+          listEquals(reminderOffsetsMinutes, other.reminderOffsetsMinutes) &&
+          durationMinutes == other.durationMinutes &&
+          updatedAt == other.updatedAt &&
+          version == other.version;
+
+  @override
+  int get hashCode => Object.hash(
+        id,
+        ownerKey,
+        isFamily,
+        title,
+        projectId,
+        groupId,
+        details,
+        dueDate,
+        time,
+        workflowStatus,
+        priority,
+        Object.hashAll(tags),
+        Object.hashAll(assignees),
+        Object.hashAll(reminderOffsetsMinutes),
+        durationMinutes,
+        updatedAt,
+        version,
+      );
+}
+
+List<String> _decodeStringList(Object? raw) {
+  if (raw == null) {
     return const [];
   }
+  try {
+    final parsed = jsonDecode(raw.toString());
+    if (parsed is List) {
+      return parsed.map((e) => e.toString()).toList();
+    }
+  } catch (e, st) {
+    debugPrint('[task_item] _decodeStringList error: $e\n$st');
+  }
+  return const [];
+}
 
-  static List<dynamic> _decodeDynamicList(Object? raw) {
-    if (raw == null) {
-      return const [];
-    }
-    try {
-      final parsed = jsonDecode(raw.toString());
-      if (parsed is List) {
-        return parsed;
-      }
-    } catch (e, st) {
-      debugPrint('[task_item] _decodeDynamicList error: $e\n$st');
-    }
+List<dynamic> _decodeDynamicList(Object? raw) {
+  if (raw == null) {
     return const [];
   }
-
-  static List<int> _normalizeReminderOffsets(List<dynamic> raw) {
-    const allowed = {1440, 720, 180, 120, 60, 30, 15, 5};
-    final out = <int>[];
-    for (final item in raw) {
-      final value = int.tryParse(item.toString());
-      if (value == null || !allowed.contains(value)) {
-        continue;
-      }
-      if (!out.contains(value)) {
-        out.add(value);
-      }
+  try {
+    final parsed = jsonDecode(raw.toString());
+    if (parsed is List) {
+      return parsed;
     }
-    out.sort((a, b) => b.compareTo(a));
-    return out;
+  } catch (e, st) {
+    debugPrint('[task_item] _decodeDynamicList error: $e\n$st');
   }
+  return const [];
+}
+
+List<int> _normalizeReminderOffsets(List<dynamic> raw) {
+  const allowed = {1440, 720, 180, 120, 60, 30, 15, 5};
+  final out = <int>[];
+  for (final item in raw) {
+    final value = int.tryParse(item.toString());
+    if (value == null || !allowed.contains(value)) {
+      continue;
+    }
+    if (!out.contains(value)) {
+      out.add(value);
+    }
+  }
+  out.sort((a, b) => b.compareTo(a));
+  return out;
 }

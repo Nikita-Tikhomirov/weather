@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+@immutable
 class FamilyGroup {
   const FamilyGroup({
     required this.id,
@@ -83,5 +84,27 @@ class FamilyGroup {
         ownerKey: ownerKey ?? this.ownerKey,
         createdAt: createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FamilyGroup &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          listEquals(members, other.members) &&
+          ownerKey == other.ownerKey &&
+          createdAt == other.createdAt &&
+          updatedAt == other.updatedAt;
+
+  @override
+  int get hashCode => Object.hash(
+        id,
+        name,
+        Object.hashAll(members),
+        ownerKey,
+        createdAt,
+        updatedAt,
       );
 }
