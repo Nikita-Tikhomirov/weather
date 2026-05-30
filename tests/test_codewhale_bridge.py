@@ -270,6 +270,11 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             self.assertIn("/mode agent", values)
             self.assertIn("/mode plan", values)
             self.assertIn("/mode yolo", values)
+            self.assertIn("/skill delegate", values)
+            self.assertIn("/skill v4-best-practices", values)
+            self.assertIn("/skill documents", values)
+            self.assertIn("/skill presentations", values)
+            self.assertIn("/skill spreadsheets", values)
 
     def test_handle_workspace_folder_list_browses_desktop_folders(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

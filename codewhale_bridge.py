@@ -37,6 +37,23 @@ ALLOWED_CODEWHALE_PROVIDERS = {
 }
 ALLOWED_CODEWHALE_APPROVAL_POLICIES = {"", "untrusted", "on-failure", "on-request", "never"}
 ALLOWED_CODEWHALE_SANDBOX_MODES = {"", "read-only", "workspace-write", "danger-full-access"}
+CODEWHALE_BUILTIN_SKILLS = {
+    "cost-first-hybrid": "use local Ollama first, escalate to DeepSeek",
+    "delegate": "strategic multi-step delegation via sub-agents",
+    "documents": "create/edit/inspect DOCX files",
+    "feishu": "Feishu/Lark bots, docs, sheets, bitables",
+    "mcp-builder": "build MCP servers for CodeWhale",
+    "pdf": "read/extract/split/merge PDFs",
+    "plugin-creator": "scaffold local CodeWhale plugins",
+    "presentations": "create/edit PPTX decks",
+    "skill-creator": "create or improve CodeWhale skills",
+    "skill-installer": "install community skills from GitHub",
+    "spreadsheets": "create/edit XLSX, CSV, TSV",
+    "superpowers-lite": "coding tasks: plan, draft, review, verify",
+    "v4-best-practices": "rules for DeepSeek V4 multi-step tasks",
+    "vision": "inspect screenshots via local Ollama vision",
+    "web-screenshot": "capture web pages to vision/ folder",
+}
 
 
 def _background_creation_flags() -> int:
@@ -1381,32 +1398,32 @@ class CodeWhaleBridge:
         }
 
     def _list_skill_commands(self) -> list[dict[str, str]]:
+        descriptions = dict(CODEWHALE_BUILTIN_SKILLS)
         skills_root = Path.home() / ".deepseek" / "skills"
-        if not skills_root.exists():
-            return []
-        commands: list[dict[str, str]] = []
-        for child in sorted(skills_root.iterdir(), key=lambda item: item.name.lower()):
-            if not child.is_dir():
-                continue
-            description = "Загрузить навык CodeWhale"
-            skill_md = child / "SKILL.md"
-            if skill_md.exists():
-                try:
-                    for line in skill_md.read_text(encoding="utf-8", errors="replace").splitlines():
-                        if line.lower().startswith("description:"):
-                            description = line.split(":", 1)[1].strip().strip('"')
-                            break
-                except OSError:
-                    pass
-            commands.append(
-                {
-                    "group": "Навыки",
-                    "label": child.name,
-                    "value": f"/skill {child.name}",
-                    "description": description,
-                }
-            )
-        return commands
+        if skills_root.exists():
+            for child in sorted(skills_root.iterdir(), key=lambda item: item.name.lower()):
+                if not child.is_dir():
+                    continue
+                description = descriptions.get(child.name, "Загрузить навык CodeWhale")
+                skill_md = child / "SKILL.md"
+                if skill_md.exists():
+                    try:
+                        for line in skill_md.read_text(encoding="utf-8", errors="replace").splitlines():
+                            if line.lower().startswith("description:"):
+                                description = line.split(":", 1)[1].strip().strip('"')
+                                break
+                    except OSError:
+                        pass
+                descriptions[child.name] = description
+        return [
+            {
+                "group": "Навыки",
+                "label": name,
+                "value": f"/skill {name}",
+                "description": description,
+            }
+            for name, description in sorted(descriptions.items())
+        ]
 
     def _workspace_id(self, message: dict[str, Any]) -> str:
         return str(message.get("workspace_id") or "").strip()
