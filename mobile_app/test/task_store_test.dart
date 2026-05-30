@@ -1,7 +1,11 @@
 import 'package:family_todo_mobile/domain/task_domain_service.dart';
-import 'package:family_todo_mobile/domain/task_draft.dart';
+import 'package:family_todo_mobile/contracts/task_data_source.dart';
+import 'package:family_todo_mobile/models/family_group.dart';
+import 'package:family_todo_mobile/models/pending_event.dart';
 import 'package:family_todo_mobile/models/task_item.dart';
+import 'package:family_todo_mobile/models/task_project.dart';
 import 'package:family_todo_mobile/repositories/task_repository.dart';
+import 'package:family_todo_mobile/services/api_client.dart';
 import 'package:family_todo_mobile/services/local_db.dart';
 import 'package:family_todo_mobile/state/task_store.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -83,10 +87,55 @@ class _FakeDataSource implements TaskDataSource {
     _since = cursor;
   }
 
-  @override
   Future<void> replaceTasks(List<TaskItem> items) async {
     _tasks.clear();
     _tasks.addAll(items);
+  }
+}
+
+class _FakeRepository extends TaskRepository {
+  _FakeRepository({required this.dataSource, required LocalDb db})
+      : super(
+          db: db,
+          api: ApiClient(baseUrl: 'http://localhost', apiKey: 'test-key'),
+        );
+
+  final _FakeDataSource dataSource;
+  String _actorProfile = 'nik';
+
+  @override
+  Future<void> bindActor(String actorProfile) async {
+    _actorProfile = actorProfile;
+  }
+
+  @override
+  Future<List<TaskItem>> readVisibleTasks() {
+    return dataSource.readTasks(ownerKey: _actorProfile);
+  }
+
+  @override
+  Future<List<TaskProject>> readProjects() async {
+    return const <TaskProject>[];
+  }
+
+  @override
+  Future<List<FamilyGroup>> readFamilyGroups() async {
+    return const <FamilyGroup>[];
+  }
+
+  @override
+  Future<Map<String, List<String>>> readProjectGroupMap() async {
+    return const <String, List<String>>{};
+  }
+
+  @override
+  Future<void> upsert(TaskItem task) {
+    return dataSource.upsertTask(task);
+  }
+
+  @override
+  Future<void> delete(TaskItem task) {
+    return dataSource.deleteTask(task.id);
   }
 }
 
@@ -94,7 +143,8 @@ TaskItem _task(String id,
     {String ownerKey = 'nik',
     bool isFamily = false,
     WorkflowStatus workflowStatus = WorkflowStatus.todo,
-    String dueDate = '2026-05-24'}) {
+    String dueDate = '2026-05-24',
+    List<String>? assignees}) {
   return TaskItem(
     id: id,
     ownerKey: ownerKey,
@@ -106,7 +156,7 @@ TaskItem _task(String id,
     workflowStatus: workflowStatus,
     priority: Priority.medium,
     tags: [],
-    assignees: [ownerKey],
+    assignees: assignees ?? [ownerKey],
     reminderOffsetsMinutes: [],
     durationMinutes: 0,
     updatedAt: '2026-05-24T12:00:00',
@@ -121,7 +171,10 @@ void main() {
 
     setUp(() async {
       ds = _FakeDataSource();
-      final repo = TaskRepository(db: ds as LocalDb, api: null!);
+      final repo = _FakeRepository(
+        dataSource: ds,
+        db: await LocalDb.open(),
+      );
       store = TaskStore(repository: repo, domainService: TaskDomainService());
       await store.initialize(initialOwner: 'nik');
     });
@@ -144,6 +197,7 @@ void main() {
             dueDate: todayKey,
             isFamily: true,
             ownerKey: 'family',
+            assignees: ['nik'],
             workflowStatus: WorkflowStatus.todo));
         await ds.upsertTask(_task('t4',
             dueDate: yesterdayKey,
@@ -225,8 +279,6 @@ void main() {
       test('filters tasks by search query', () async {
         await ds.upsertTask(_task('s1'));
         await ds.upsertTask(_task('s2'));
-        // Set title via upsert with different title
-        final special = _task('s3');
         final specialTitled = TaskItem(
           id: 's3',
           ownerKey: 'nik',
@@ -247,11 +299,11 @@ void main() {
         await ds.upsertTask(specialTitled);
         await store.refreshLocal();
 
-        store.searchQuery.value = 'Special';
-        // Let the filter run
-        await Future.delayed(const Duration(milliseconds: 100));
+        store.setSearchQuery('Special');
 
-        final filtered = store.allTasksView.value;
+        final filtered = store.personalByStatus.value.values
+            .expand((items) => items)
+            .toList();
         expect(filtered.length, 1);
         expect(filtered.first.title, 'Special task');
       });

@@ -261,7 +261,6 @@ class _DayCell extends StatelessWidget {
       case WorkflowStatus.in_review: return const Color(0xFFFBBF24);
       case WorkflowStatus.done: return const Color(0xFFA78BFA);
       case WorkflowStatus.archive: return const Color(0xFF9CA3AF);
-      default: return const Color(0xFF94A3B8);
     }
   }
 }

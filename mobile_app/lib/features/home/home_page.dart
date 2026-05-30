@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -42,7 +41,6 @@ import '../../services/call_service.dart';
 import '../../services/chat_realtime_service.dart';
 import '../../services/desktop_process_host_service.dart';
 import '../../services/desktop_theme_service.dart';
-import '../../services/fcm_service.dart';
 import '../../services/local_db.dart';
 import '../../services/project_access.dart';
 import '../../services/profile_init_service.dart';
@@ -4021,7 +4019,7 @@ onStopRecord: () => _voiceRecorder?.stopRecord(),
                 selectedIds: const <String>{},
                 onToggleSelect: (_) {},
                 onDrop: (item, status) async {
-                  await store.move(item, status);
+                  await store.move(item, WorkflowStatus.parse(status));
                   await _safeSyncDelta(store, showErrors: true);
                 },
                 onEdit: (task) => _openTaskEditor(store, existing: task),

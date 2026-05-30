@@ -1,15 +1,11 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/chat_models.dart';
-import '../../models/chat_snapshots.dart';
 import '../../services/api_client.dart';
 import '../../services/chat_realtime_service.dart';
 import '../../services/local_db.dart';
 import '../../state/task_store.dart';
-import 'home_helpers.dart';
 
 /// Standalone chat-initialization helper extracted from _HomePageState.
 ///

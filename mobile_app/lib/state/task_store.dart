@@ -568,7 +568,16 @@ class TaskStore {
 
   /// Returns tasks visible in kanban — user sees assigned tasks and group tasks.
   List<TaskItem> _kanbanSource() {
-    return _visibleTasks();
+    final query = searchQuery.value;
+    final tasks = _visibleTasks();
+    if (query.isEmpty) {
+      return tasks;
+    }
+    return tasks.where((task) {
+      return task.title.toLowerCase().contains(query) ||
+          task.details.toLowerCase().contains(query) ||
+          task.tags.any((tag) => tag.toLowerCase().contains(query));
+    }).toList();
   }
 
   /// Set of group IDs where the current user is a member.

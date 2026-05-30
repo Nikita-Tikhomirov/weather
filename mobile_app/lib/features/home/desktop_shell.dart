@@ -282,7 +282,7 @@ extension _DesktopShellExtension on _HomePageState {
                       selectedIds: const <String>{},
                       onToggleSelect: (_) {},
                       onDropStatus: (item, status) async {
-                        await store.move(item, status);
+                        await store.move(item, WorkflowStatus.parse(status));
                         await _safeSyncDelta(store, showErrors: true);
                       },
                       onEdit: (task) =>
@@ -319,7 +319,7 @@ extension _DesktopShellExtension on _HomePageState {
                 onDropToDay: (task, targetDay) =>
                     _moveToDate(store, task, targetDay),
                 onDropToStatus: (task, status) async {
-                  await store.move(task, status);
+                  await store.move(task, WorkflowStatus.parse(status));
                   await _safeSyncDelta(store, showErrors: true);
                 },
                 onOpenEditor: (day, task) async {

@@ -298,13 +298,4 @@ class DesktopShellWidget extends StatelessWidget {
     );
   }
 
-  // ── Extracted helper ─────────────────────────────────────────────
-
-  /// Standalone version of the original `_buildDesktopPageContent`.
-  ///
-  /// Delegates to the injected [desktopPageContentBuilder] callback so
-  /// the parent (_HomePageState) retains control over page rendering.
-  Widget _buildPageContent(TaskStore store, DateTime selectedDate) {
-    return desktopPageContentBuilder(store, selectedDate);
-  }
 }

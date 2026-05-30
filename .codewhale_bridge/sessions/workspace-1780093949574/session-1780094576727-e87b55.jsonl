@@ -1,5 +1,0 @@
-{"seq":1,"ts":1780094576983,"type":"user_message","text":"Reply exactly: OK"}
-{"seq":2,"ts":1780094583540,"type":"assistant_delta","text":"OK","final":true}
-{"seq":3,"ts":1780094942210,"type":"user_message","text":"куку"}
-{"seq":4,"ts":1780094948425,"type":"assistant_delta","text":"Куку. Чем могу помочь?","final":true}
-{"seq":5,"ts":1780095065467,"type":"worker_status","status":"killed"}

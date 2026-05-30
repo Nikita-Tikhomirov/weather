@@ -39,6 +39,22 @@ vpsauth.txt
 
 # DeepSeek bridge runtime
 .deepseek/
+.codewhale_bridge/
+
+# Local Flutter/tool shims
+.flutter
+.flutter_tool_state
+mobile_app/.flutter
+mobile_app/.flutter_tool_state
+mobile_app/android/local.properties
+
+# Local git helper scratch files
+_git_askpass.bat
+_git_push.ps1
+_terminal_test.txt
+
+# Accidental Windows path expansions
+%SystemDrive%/
 
 # Firebase service account keys (secrets)
 *-firebase-adminsdk-*.json

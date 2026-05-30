@@ -8,7 +8,6 @@ import '../models/device_snapshots.dart';
 import '../models/family_group.dart';
 import '../models/pending_event.dart';
 import '../models/sync_snapshots.dart';
-import '../models/task_item.dart';
 import '../models/task_project.dart';
 
 import 'call_api_client.dart';

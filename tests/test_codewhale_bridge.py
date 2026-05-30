@@ -243,6 +243,36 @@ class CodeWhaleWorkerManagerTests(unittest.TestCase):
             still_running = registry.get_session("weather", second["id"])
             self.assertEqual(still_running["status"], "running")
 
+    def test_kill_worker_after_restart_kills_persisted_pid_and_port_matches(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            registry = SessionRegistry(root / "state")
+            session = registry.create_session("weather", "Worker")
+            registry.update_session(
+                "weather",
+                session["id"],
+                status="running",
+                worker_pid=12345,
+                worker_port=43116,
+            )
+            manager = CodeWhaleWorkerManager(registry, root / "state")
+
+            with (
+                patch.object(manager, "_kill_pid_tree") as kill_pid_tree,
+                patch.object(
+                    manager,
+                    "_find_codewhale_process_ids",
+                    return_value=[22222, 33333],
+                ) as find_processes,
+            ):
+                killed = manager.kill_worker("weather", session["id"])
+
+            find_processes.assert_called_once_with(["serve", "--port", "43116"])
+            killed_pids = [call.args[0] for call in kill_pid_tree.call_args_list]
+            self.assertEqual(killed_pids, [12345, 22222, 33333])
+            self.assertEqual(killed["status"], "killed")
+            self.assertIsNone(killed["worker_pid"])
+
 
 class CodeWhaleBridgeTests(unittest.TestCase):
     def test_handle_workspace_create_returns_workspace(self) -> None:
@@ -854,6 +884,118 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             kill_pid_tree.assert_called_once_with(12345, force=True)
             self.assertEqual(reply["session"]["status"], "killed")
             self.assertIsNone(reply["session"]["active_pid"])
+
+    def test_session_kill_after_restart_kills_execs_by_runtime_session_id(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            session = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Чат",
+                }
+            )["session"]
+            bridge.sessions.update_session(
+                workspace["id"],
+                session["id"],
+                status="running",
+                runtime_session_id="cw-session-1",
+                active_pid=None,
+            )
+
+            with (
+                patch.object(bridge, "_kill_pid_tree") as kill_pid_tree,
+                patch.object(
+                    bridge,
+                    "_find_codewhale_process_ids",
+                    return_value=[44444, 55555],
+                ) as find_processes,
+            ):
+                reply = bridge.handle_message(
+                    {
+                        "type": "session_kill",
+                        "workspace_id": workspace["id"],
+                        "session_id": session["id"],
+                    }
+                )
+
+            find_processes.assert_called_once_with(["exec", "cw-session-1"])
+            killed_pids = [call.args[0] for call in kill_pid_tree.call_args_list]
+            self.assertEqual(killed_pids, [44444, 55555])
+            self.assertEqual(reply["session"]["status"], "killed")
+            self.assertIsNone(reply["session"]["runtime_session_id"])
+
+    def test_stream_session_message_rejects_killed_session_until_started(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            session = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Чат",
+                }
+            )["session"]
+            bridge.sessions.update_session(
+                workspace["id"],
+                session["id"],
+                status="killed",
+                runtime_session_id="cw-session-1",
+            )
+
+            with self.assertRaisesRegex(ValueError, "start a new run"):
+                list(
+                    bridge.stream_session_message(
+                        {
+                            "type": "session_send",
+                            "workspace_id": workspace["id"],
+                            "session_id": session["id"],
+                            "text": "ау",
+                        }
+                    )
+                )
+
+    def test_allocate_port_skips_ports_recorded_by_existing_sessions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            first = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "First",
+                }
+            )["session"]
+            second = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Second",
+                }
+            )["session"]
+            bridge.sessions.update_session(
+                workspace["id"],
+                first["id"],
+                worker_port=43101,
+            )
+            bridge.sessions.update_session(
+                workspace["id"],
+                second["id"],
+                worker_port=43102,
+            )
+
+            with patch.object(bridge, "_is_port_available", return_value=True):
+                self.assertEqual(bridge._allocate_port(), 43103)
 
     def test_handle_unknown_message_returns_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -8,6 +8,7 @@ import mimetypes
 import os
 import re
 import signal
+import socket
 import subprocess
 import sys
 import threading
@@ -55,6 +56,12 @@ CODEWHALE_BUILTIN_SKILLS = {
     "vision": "inspect screenshots via local Ollama vision",
     "web-screenshot": "capture web pages to vision/ folder",
 }
+CODEWHALE_PROCESS_NAMES = {
+    "cmd.exe",
+    "node.exe",
+    "codewhale.exe",
+    "codewhale-tui.exe",
+}
 
 
 def _background_creation_flags() -> int:
@@ -77,6 +84,65 @@ def _resolve_codewhale_cmd(command: str) -> str:
         if candidate.exists():
             return str(candidate)
     return command
+
+
+def _quote_powershell_string(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
+
+
+def _find_codewhale_process_ids(tokens: list[str]) -> list[int]:
+    cleaned_tokens = [str(token).strip() for token in tokens if str(token).strip()]
+    if not cleaned_tokens or sys.platform != "win32":
+        return []
+    token_array = ", ".join(_quote_powershell_string(token) for token in cleaned_tokens)
+    name_array = ", ".join(
+        _quote_powershell_string(name) for name in sorted(CODEWHALE_PROCESS_NAMES)
+    )
+    script = f"""
+$tokens = @({token_array})
+$names = @({name_array})
+Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+  Where-Object {{
+    $cmd = $_.CommandLine
+    if (-not $cmd) {{ return $false }}
+    if ($names -notcontains $_.ProcessName) {{ return $false }}
+    foreach ($token in $tokens) {{
+      if ($cmd -notlike ('*' + $token + '*')) {{ return $false }}
+    }}
+    return $true
+  }} |
+  ForEach-Object {{ $_.ProcessId }}
+"""
+    try:
+        result = subprocess.run(
+            [
+                os.path.join(
+                    os.environ.get("SystemRoot", r"C:\Windows"),
+                    "System32",
+                    "WindowsPowerShell",
+                    "v1.0",
+                    "powershell.exe",
+                ),
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                script,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except Exception:
+        return []
+    pids: list[int] = []
+    for line in result.stdout.splitlines():
+        text = line.strip()
+        if text.isdigit():
+            pids.append(int(text))
+    return pids
 
 
 def _now_ms() -> int:
@@ -586,6 +652,7 @@ class CodeWhaleWorkerManager:
         timeout_seconds: float = 5,
     ) -> dict[str, Any]:
         key = self._key(workspace_id, session_id)
+        session = self.sessions.get_session(workspace_id, session_id)
         process = self._workers.get(key)
         if process is not None and process.poll() is None:
             process.terminate()
@@ -593,6 +660,8 @@ class CodeWhaleWorkerManager:
                 process.wait(timeout=timeout_seconds)
             except Exception:
                 return self.kill_worker(workspace_id, session_id)
+        else:
+            self._kill_persisted_worker_processes(session, force=False)
         self._workers.pop(key, None)
         self.sessions.append_event(
             workspace_id,
@@ -610,9 +679,11 @@ class CodeWhaleWorkerManager:
 
     def kill_worker(self, workspace_id: str, session_id: str) -> dict[str, Any]:
         key = self._key(workspace_id, session_id)
+        session = self.sessions.get_session(workspace_id, session_id)
         process = self._workers.pop(key, None)
         if process is not None and process.poll() is None:
             self._kill_process_tree(process)
+        self._kill_persisted_worker_processes(session, force=True)
         self.sessions.append_event(
             workspace_id,
             session_id,
@@ -624,6 +695,7 @@ class CodeWhaleWorkerManager:
             status="killed",
             worker_pid=None,
             worker_port=None,
+            runtime_session_id=None,
             active_pid=None,
         )
 
@@ -632,7 +704,17 @@ class CodeWhaleWorkerManager:
         process = self._workers.get(key)
         session = self.sessions.get_session(workspace_id, session_id)
         if process is None:
-            return {**session, "worker_alive": False}
+            worker_alive = self._persisted_worker_alive(session)
+            if not worker_alive and session.get("status") == "running":
+                session = self.sessions.update_session(
+                    workspace_id,
+                    session_id,
+                    status="stopped",
+                    worker_pid=None,
+                    worker_port=None,
+                    active_pid=None,
+                )
+            return {**session, "worker_alive": worker_alive}
         return {**session, "worker_alive": process.poll() is None}
 
     def _open_worker_logs(self, workspace_id: str, session_id: str):
@@ -641,24 +723,78 @@ class CodeWhaleWorkerManager:
         return (logs_dir / f"{session_id}.worker.log").open("a", encoding="utf-8")
 
     def _kill_process_tree(self, process: subprocess.Popen) -> None:
-        if sys.platform == "win32":
-            subprocess.run(
-                ["taskkill", "/T", "/F", "/PID", str(process.pid)],
-                capture_output=True,
-                timeout=10,
-                check=False,
-            )
-        else:
-            try:
-                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-            except Exception:
-                process.kill()
+        self._kill_pid_tree(process.pid, force=True)
         if process.poll() is None:
             process.kill()
             try:
                 process.wait(timeout=5)
             except Exception:
                 pass
+
+    def _kill_persisted_worker_processes(
+        self,
+        session: dict[str, Any],
+        *,
+        force: bool,
+    ) -> None:
+        pids: list[int] = []
+        worker_pid = int(session.get("worker_pid") or 0)
+        if worker_pid:
+            pids.append(worker_pid)
+        worker_port = int(session.get("worker_port") or 0)
+        if worker_port:
+            pids.extend(
+                self._find_codewhale_process_ids(["serve", "--port", str(worker_port)])
+            )
+        seen: set[int] = set()
+        for pid in pids:
+            if pid in seen:
+                continue
+            seen.add(pid)
+            self._kill_pid_tree(pid, force=force)
+
+    def _persisted_worker_alive(self, session: dict[str, Any]) -> bool:
+        worker_pid = int(session.get("worker_pid") or 0)
+        if worker_pid and self._pid_is_alive(worker_pid):
+            return True
+        worker_port = int(session.get("worker_port") or 0)
+        if not worker_port:
+            return False
+        return bool(self._find_codewhale_process_ids(["serve", "--port", str(worker_port)]))
+
+    def _pid_is_alive(self, pid: int) -> bool:
+        if sys.platform == "win32":
+            result = subprocess.run(
+                ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+            return str(pid) in result.stdout
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            return False
+        return True
+
+    def _kill_pid_tree(self, pid: int, *, force: bool) -> None:
+        if sys.platform == "win32":
+            command = ["taskkill", "/T", "/PID", str(pid)]
+            if force:
+                command.insert(2, "/F")
+            subprocess.run(command, capture_output=True, timeout=10, check=False)
+            return
+        try:
+            os.killpg(os.getpgid(pid), signal.SIGKILL if force else signal.SIGTERM)
+        except Exception:
+            try:
+                os.kill(pid, signal.SIGKILL if force else signal.SIGTERM)
+            except Exception:
+                pass
+
+    def _find_codewhale_process_ids(self, tokens: list[str]) -> list[int]:
+        return _find_codewhale_process_ids(tokens)
 
     def _creation_flags(self) -> int:
         return _background_creation_flags()
@@ -1077,6 +1213,8 @@ class CodeWhaleBridge:
         text: str,
     ) -> Iterator[dict[str, Any]]:
         session = self.sessions.get_session(workspace_id, session_id)
+        if str(session.get("status") or "") in {"killed", "stopped"}:
+            raise ValueError("session is stopped; press start a new run or create a new session")
         workspace = self._find_workspace(workspace_id)
         runtime_session_id = str(session.get("runtime_session_id") or "").strip() or None
 
@@ -1276,7 +1414,9 @@ class CodeWhaleBridge:
     def _stop_active_exec(self, workspace_id: str, session_id: str, *, force: bool) -> None:
         key = (workspace_id, session_id)
         process = self._active_execs.pop(key, None)
+        handled_pids: set[int] = set()
         if process is not None:
+            handled_pids.add(process.pid)
             if force:
                 self.workers._kill_process_tree(process)
             else:
@@ -1291,12 +1431,19 @@ class CodeWhaleBridge:
                 status="idle",
                 active_pid=None,
             )
-            return
 
         session = self.sessions.get_session(workspace_id, session_id)
         active_pid = int(session.get("active_pid") or 0)
-        if active_pid:
+        if active_pid and active_pid not in handled_pids:
             self._kill_pid_tree(active_pid, force=force)
+            handled_pids.add(active_pid)
+        runtime_session_id = str(session.get("runtime_session_id") or "").strip()
+        if runtime_session_id:
+            for pid in self._find_codewhale_process_ids(["exec", runtime_session_id]):
+                if pid in handled_pids:
+                    continue
+                self._kill_pid_tree(pid, force=force)
+                handled_pids.add(pid)
         self.sessions.update_session(workspace_id, session_id, status="idle", active_pid=None)
 
     def _kill_pid_tree(self, pid: int, *, force: bool) -> None:
@@ -1311,6 +1458,9 @@ class CodeWhaleBridge:
         except ProcessLookupError:
             return
 
+    def _find_codewhale_process_ids(self, tokens: list[str]) -> list[int]:
+        return _find_codewhale_process_ids(tokens)
+
     def _find_workspace(self, workspace_id: str) -> dict[str, Any]:
         for workspace in self.workspaces.list_workspaces():
             if workspace["id"] == workspace_id:
@@ -1318,8 +1468,44 @@ class CodeWhaleBridge:
         raise KeyError(f"workspace not found: {workspace_id}")
 
     def _allocate_port(self) -> int:
-        self._next_port += 1
-        return self._next_port
+        used_ports = self._known_worker_ports()
+        for _ in range(300):
+            self._next_port += 1
+            if self._next_port > 43299:
+                self._next_port = 43101
+            if self._next_port in used_ports:
+                continue
+            if self._is_port_available(self._next_port):
+                return self._next_port
+
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind(("127.0.0.1", 0))
+            return int(sock.getsockname()[1])
+
+    def _known_worker_ports(self) -> set[int]:
+        ports: set[int] = set()
+        for workspace in self.workspaces.list_workspaces():
+            workspace_id = str(workspace.get("id") or "")
+            if not workspace_id:
+                continue
+            try:
+                sessions = self.sessions.list_sessions(workspace_id)
+            except Exception:
+                continue
+            for session in sessions:
+                port = int(session.get("worker_port") or 0)
+                if port:
+                    ports.add(port)
+        return ports
+
+    @staticmethod
+    def _is_port_available(port: int) -> bool:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            try:
+                sock.bind(("127.0.0.1", port))
+            except OSError:
+                return False
+        return True
 
     def _codewhale_command_catalog(self) -> list[dict[str, str]]:
         commands = [
