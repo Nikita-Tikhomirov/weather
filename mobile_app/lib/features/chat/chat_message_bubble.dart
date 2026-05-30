@@ -954,7 +954,7 @@ class _VoiceBubbleState extends State<_VoiceBubble>
 }
 
 class _WaveformPainter extends CustomPainter {
-  _WaveformPainter({
+  const _WaveformPainter({
     required this.progress,
     required this.active,
     required this.color,

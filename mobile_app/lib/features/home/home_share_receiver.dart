@@ -13,7 +13,7 @@ import 'home_helpers.dart';
 ///
 /// Previously defined as an extension on `_HomePageState`.
 class HomeShareReceiver {
-  HomeShareReceiver({
+  const HomeShareReceiver({
     required this.store,
   });
 

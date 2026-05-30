@@ -87,53 +87,58 @@ Future<void> showTaskEditorSheet({
     isScrollControlled: true,
     showDragHandle: true,
     builder: (sheetContext) {
-      return StatefulBuilder(
-        builder: (sheetContext, setModalState) {
-          final projectGroups = groupsForProject(selectedProjectId);
-          final selectedGroup = selectedGroupId.isNotEmpty
-              ? projectGroups.cast<FamilyGroup?>().firstWhere(
-                    (group) => group?.id == selectedGroupId,
-                    orElse: () => null,
-                  )
-              : null;
-          final selectedGroupMembers =
-              selectedGroup?.members.toSet() ?? const <String>{};
-          final assigneeContacts = selectedGroup != null
-              ? knownContacts
-                  .where((contact) =>
-                      selectedGroupMembers.contains(contact.profileKey))
-                  .toList()
-              : knownContacts
-                  .where((contact) => contact.profileKey.isNotEmpty)
-                  .toList();
-          final isProjectTask = selectedProjectId.isNotEmpty;
+      return Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 8,
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                existing == null ? 'Новая задача' : 'Редактирование задачи',
+                style: Theme.of(sheetContext).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              // ── Text fields manage their own state via controllers ──
+              TextField(
+                controller: titleCtl,
+                decoration: const InputDecoration(labelText: 'Название'),
+              ),
+              TextField(
+                controller: detailsCtl,
+                decoration: const InputDecoration(labelText: 'Описание'),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 8),
+              // ── StatefulBuilder only for widgets that need setModalState ──
+              StatefulBuilder(
+                builder: (_, setModalState) {
+                  final projectGroups = groupsForProject(selectedProjectId);
+                  final selectedGroup = selectedGroupId.isNotEmpty
+                      ? projectGroups.cast<FamilyGroup?>().firstWhere(
+                            (group) => group?.id == selectedGroupId,
+                            orElse: () => null,
+                          )
+                      : null;
+                  final selectedGroupMembers =
+                      selectedGroup?.members.toSet() ?? const <String>{};
+                  final assigneeContacts = selectedGroup != null
+                      ? knownContacts
+                          .where((contact) => selectedGroupMembers
+                              .contains(contact.profileKey))
+                          .toList()
+                      : knownContacts
+                          .where((contact) => contact.profileKey.isNotEmpty)
+                          .toList();
+                  final isProjectTask = selectedProjectId.isNotEmpty;
 
-          return Padding(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 8,
-              bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    existing == null ? 'Новая задача' : 'Редактирование задачи',
-                    style: Theme.of(sheetContext).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: titleCtl,
-                    decoration: const InputDecoration(labelText: 'Название'),
-                  ),
-                  TextField(
-                    controller: detailsCtl,
-                    decoration: const InputDecoration(labelText: 'Описание'),
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: 8),
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                   DropdownButtonFormField<String>(
                     // ignore: deprecated_member_use
                     value: projectList.any((p) => p.id == selectedProjectId)
@@ -293,16 +298,9 @@ Future<void> showTaskEditorSheet({
                     ],
                     onChanged: (value) =>
                         setModalState(() => status = value ?? WorkflowStatus.todo),
-                  ),
-                  TextField(
-                    controller: durationCtl,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Оценка времени (мин)',
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
+                   ),
+                   const SizedBox(height: 8),
+                   Text(
                     'Ответственные',
                     style: Theme.of(sheetContext).textTheme.titleSmall,
                   ),
@@ -358,72 +356,82 @@ Future<void> showTaskEditorSheet({
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(sheetContext),
-                          child: const Text('Отмена'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: () async {
-                            if (selectedProjectId.isEmpty) {
-                              ScaffoldMessenger.of(sheetContext).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Выберите проект'),
-                                ),
-                              );
-                              return;
-                            }
-                            final draft = TaskDraft(
-                              title: titleCtl.text.trim(),
-                              details: detailsCtl.text.trim(),
-                              dueDate: dateKey(selected),
-                              time: time,
-                              priority: priority,
-                              workflowStatus: status,
-                              isFamily: true,
-                              assignees: selectedAssignees.toList(),
-                              durationMinutes:
-                                  int.tryParse(durationCtl.text.trim()) ?? 0,
-                              reminderOffsetsMinutes:
-                                  selectedReminderOffsets.toList(),
-                              projectId: selectedProjectId,
-                              groupId: selectedGroupId,
-                            );
-                            final messenger =
-                                ScaffoldMessenger.of(sheetContext);
-                            final error = await store.saveDraft(
-                              draft: draft,
-                              existing: existing,
-                            );
-                            if (!sheetContext.mounted) {
-                              return;
-                            }
-                            if (error != null) {
-                              messenger.showSnackBar(
-                                SnackBar(content: Text(error)),
-                              );
-                              return;
-                            }
-                            Navigator.of(sheetContext).pop();
-                            await onSaved();
-                          },
-                          child: const Text('Сохранить'),
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
+              ); // end of StatefulBuilder Column
+              }, // end of StatefulBuilder builder
+            ), // end of StatefulBuilder
+            // ── Controls outside StatefulBuilder ──
+            TextField(
+              controller: durationCtl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Оценка времени (мин)',
               ),
             ),
-          );
-        },
-      );
-    },
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    child: const Text('Отмена'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () async {
+                      if (selectedProjectId.isEmpty) {
+                        ScaffoldMessenger.of(sheetContext).showSnackBar(
+                          const SnackBar(
+                            content: Text('Выберите проект'),
+                          ),
+                        );
+                        return;
+                      }
+                      final draft = TaskDraft(
+                        title: titleCtl.text.trim(),
+                        details: detailsCtl.text.trim(),
+                        dueDate: dateKey(selected),
+                        time: time,
+                        priority: priority,
+                        workflowStatus: status,
+                        isFamily: true,
+                        assignees: selectedAssignees.toList(),
+                        durationMinutes:
+                            int.tryParse(durationCtl.text.trim()) ?? 0,
+                        reminderOffsetsMinutes:
+                            selectedReminderOffsets.toList(),
+                        projectId: selectedProjectId,
+                        groupId: selectedGroupId,
+                      );
+                      final messenger =
+                          ScaffoldMessenger.of(sheetContext);
+                      final error = await store.saveDraft(
+                        draft: draft,
+                        existing: existing,
+                      );
+                      if (!sheetContext.mounted) {
+                        return;
+                      }
+                      if (error != null) {
+                        messenger.showSnackBar(
+                          SnackBar(content: Text(error)),
+                        );
+                        return;
+                      }
+                      Navigator.of(sheetContext).pop();
+                      await onSaved();
+                    },
+                    child: const Text('Сохранить'),
+                  ),
+                ),
+              ],
+            ),
+          ], // end of outer Column children
+        ), // end of outer Column
+      ), // end of SingleChildScrollView
+    ); // end of Padding
+    }, // end of showModalBottomSheet builder
   );
 }
