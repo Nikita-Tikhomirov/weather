@@ -16,6 +16,38 @@ function Write-WatchdogLog {
 }
 
 Write-WatchdogLog 'legacy project bridge watchdog is retired; CodeWhaleBridgeAtLogon owns mobile workspace sessions'
+
+# Clean up legacy scheduled task and Run registry entry so they stop spawning
+$LegacyTaskName = 'BridgeLauncherAtLogon'
+try {
+    Unregister-ScheduledTask -TaskName $LegacyTaskName -Confirm:$false -ErrorAction Stop
+    Write-WatchdogLog "removed legacy scheduled task '$LegacyTaskName'"
+} catch {
+    # Task may not exist — that's fine
+}
+
+$RunKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+try {
+    Remove-ItemProperty -Path $RunKey -Name $LegacyTaskName -ErrorAction Stop
+    Write-WatchdogLog "removed legacy Run registry entry '$LegacyTaskName'"
+} catch {
+    # Entry may not exist — that's fine
+}
+
+# Also try to clean up any stale bridge_launcher or project_bridge processes
+Get-CimInstance Win32_Process |
+    Where-Object {
+        ($_.ProcessName -like 'python*' -and $_.CommandLine -like '*bridge_launcher.py*') -or
+        ($_.ProcessName -like 'python*' -and $_.CommandLine -like '*project_bridge.py*')
+    } |
+    ForEach-Object {
+        try {
+            Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop
+            Write-WatchdogLog "stopped legacy process pid=$($_.ProcessId)"
+        } catch {
+        }
+    }
+
 exit 0
 
 $MutexName = 'Global\WeatherProjectBridgeLauncherWatchdog'

@@ -162,6 +162,12 @@ class BridgeLauncher:
         tunnel = f"{self.tunnel_host}:{self.tunnel_port}"
         env = os.environ.copy()
         env.setdefault("PYTHONIOENCODING", "utf-8:backslashreplace")
+        creationflags = 0
+        if sys.platform == "win32":
+            creationflags = (
+                getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+                | getattr(subprocess, "CREATE_NO_WINDOW", 0)
+            )
         self._bridge_process = subprocess.Popen(
             [sys.executable, str(script), "--tunnel", tunnel],
             cwd=str(self.project_root),
@@ -169,6 +175,7 @@ class BridgeLauncher:
             stderr=subprocess.STDOUT,
             text=True,
             env=env,
+            creationflags=creationflags,
         )
         print(
             f"[launcher] started project_bridge.py pid={self._bridge_process.pid}",

@@ -18,6 +18,7 @@ from typing import Any, Callable, Iterable, Iterator
 
 
 RECONNECT_DELAY_SECONDS = 5
+TUNNEL_HEARTBEAT_SECONDS = 30
 
 
 def _background_creation_flags() -> int:
@@ -101,6 +102,34 @@ class WorkspaceRegistry:
             "parent": parent,
             "folders": folders,
         }
+
+    def discover_workspaces(self) -> list[dict[str, Any]]:
+        """Scan desktop for existing CodeWhale workspace folders and auto-register them."""
+        discovered: list[dict[str, Any]] = []
+        existing_paths = {Path(item["path"]).resolve() for item in self._load()}
+
+        try:
+            for child in sorted(self.desktop_root.iterdir()):
+                if not child.is_dir() or child.name.startswith("."):
+                    continue
+                dot_dir = child / ".deepseek"
+                if not dot_dir.exists() or not dot_dir.is_dir():
+                    continue
+                resolved = child.resolve()
+                if resolved in existing_paths:
+                    continue
+                try:
+                    workspace = self._new_workspace(name=child.name, folder=resolved)
+                    items = self._load()
+                    items.append(workspace)
+                    self._save(items)
+                    discovered.append(dict(workspace))
+                except Exception:
+                    continue
+        except OSError:
+            pass
+
+        return discovered
 
     def create_workspace(self, name: str) -> dict[str, Any]:
         folder_name = _safe_folder_name(name)
@@ -721,6 +750,7 @@ class CodeWhaleBridge:
         self.exec_client = CodeWhaleExecClient(codewhale_cmd=codewhale_cmd)
         self._active_execs: dict[tuple[str, str], subprocess.Popen] = {}
         self._next_port = 43100
+        self.workspaces.discover_workspaces()
 
     def handle_message(self, message: dict[str, Any]) -> dict[str, Any]:
         request_id = message.get("request_id")
@@ -735,9 +765,17 @@ class CodeWhaleBridge:
     def _handle_message(self, message: dict[str, Any]) -> dict[str, Any]:
         msg_type = str(message.get("type") or "").strip()
         if msg_type == "workspace_list":
+            self.workspaces.discover_workspaces()
             return {
                 "type": "workspace_list",
                 "workspaces": self.workspaces.list_workspaces(),
+            }
+        if msg_type == "workspace_discover":
+            discovered = self.workspaces.discover_workspaces()
+            return {
+                "type": "workspace_list",
+                "workspaces": self.workspaces.list_workspaces(),
+                "discovered": discovered,
             }
         if msg_type == "workspace_folder_list":
             raw_path = str(message.get("path") or "").strip()
@@ -1240,6 +1278,8 @@ async def _run_tunnel_once(
         finally:
             await task
 
+    bridge.workspaces.discover_workspaces()
+
     writer.write(
         json.dumps(
             {"type": "codewhale_register", "project_id": project_id},
@@ -1252,6 +1292,17 @@ async def _run_tunnel_once(
         f"[codewhale_bridge] connected to {tunnel_host}:{tunnel_port}",
         flush=True,
     )
+
+    async def heartbeat_loop() -> None:
+        """Send periodic pings to keep the tunnel connection alive."""
+        while True:
+            await asyncio.sleep(TUNNEL_HEARTBEAT_SECONDS)
+            try:
+                await send_json({"type": "codewhale_heartbeat"})
+            except Exception:
+                break
+
+    heartbeat_task = asyncio.create_task(heartbeat_loop())
     try:
         while True:
             line = await reader.readline()
@@ -1269,6 +1320,11 @@ async def _run_tunnel_once(
             reply = bridge.handle_message(message)
             await send_json(reply)
     finally:
+        heartbeat_task.cancel()
+        try:
+            await heartbeat_task
+        except asyncio.CancelledError:
+            pass
         writer.close()
         await writer.wait_closed()
 
