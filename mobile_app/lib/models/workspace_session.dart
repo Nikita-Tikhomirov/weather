@@ -49,6 +49,11 @@ class WorkspaceSession {
     required this.status,
     this.workerPid,
     this.workerPort,
+    this.provider = '',
+    this.model = '',
+    this.approvalPolicy = '',
+    this.sandboxMode = '',
+    this.autoMode = false,
     this.createdAt = 0,
     this.updatedAt = 0,
     this.lastEventSeq = 0,
@@ -60,6 +65,11 @@ class WorkspaceSession {
   final WorkspaceSessionStatus status;
   final int? workerPid;
   final int? workerPort;
+  final String provider;
+  final String model;
+  final String approvalPolicy;
+  final String sandboxMode;
+  final bool autoMode;
   final int createdAt;
   final int updatedAt;
   final int lastEventSeq;
@@ -74,6 +84,11 @@ class WorkspaceSession {
       ),
       workerPid: _nullableInt(json['worker_pid']),
       workerPort: _nullableInt(json['worker_port']),
+      provider: (json['provider'] ?? '').toString(),
+      model: (json['model'] ?? '').toString(),
+      approvalPolicy: (json['approval_policy'] ?? '').toString(),
+      sandboxMode: (json['sandbox_mode'] ?? '').toString(),
+      autoMode: json['auto_mode'] == true,
       createdAt: int.tryParse((json['created_at'] ?? 0).toString()) ?? 0,
       updatedAt: int.tryParse((json['updated_at'] ?? 0).toString()) ?? 0,
       lastEventSeq: int.tryParse((json['last_event_seq'] ?? 0).toString()) ?? 0,
@@ -88,6 +103,11 @@ class WorkspaceSession {
       'status': workspaceSessionStatusToString(status),
       'worker_pid': workerPid,
       'worker_port': workerPort,
+      'provider': provider,
+      'model': model,
+      'approval_policy': approvalPolicy,
+      'sandbox_mode': sandboxMode,
+      'auto_mode': autoMode,
       'created_at': createdAt,
       'updated_at': updatedAt,
       'last_event_seq': lastEventSeq,

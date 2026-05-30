@@ -170,7 +170,8 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
         });
         _statusText = 'Файл прикреплен';
         var promptPrefix =
-            _pendingUploadPromptsByName.remove(message.filename) ??
+            _pendingUploadPromptsByName.remove(message.originalName) ??
+                _pendingUploadPromptsByName.remove(message.filename) ??
                 _pendingUploadPromptsByName.remove(message.filePath) ??
                 '';
         if (promptPrefix.isEmpty && _pendingUploadPromptsByName.length == 1) {
@@ -398,6 +399,28 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
             session,
             command,
           ),
+          onUpdateSettings: ({
+            String? provider,
+            String? model,
+            String? approvalPolicy,
+            String? sandboxMode,
+            bool? autoMode,
+          }) {
+            final nextProvider = provider ?? session.provider;
+            final nextModel = model ?? session.model;
+            final nextApprovalPolicy = approvalPolicy ?? session.approvalPolicy;
+            final nextSandboxMode = sandboxMode ?? session.sandboxMode;
+            final nextAutoMode = autoMode ?? session.autoMode;
+            _service.updateSessionSettings(
+              workspaceId: workspace.id,
+              sessionId: session.id,
+              provider: nextProvider,
+              model: nextModel,
+              approvalPolicy: nextApprovalPolicy,
+              sandboxMode: nextSandboxMode,
+              autoMode: nextAutoMode,
+            );
+          },
         );
     }
   }

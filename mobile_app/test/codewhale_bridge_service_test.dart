@@ -183,6 +183,15 @@ void main() {
     service.createWorkspace('Новый проект');
     service.createSession('weather', title: 'Чат 1');
     service.killSession('weather', 'session-1');
+    service.updateSessionSettings(
+      workspaceId: 'weather',
+      sessionId: 'session-1',
+      provider: 'deepseek',
+      model: 'deepseek-v4-flash',
+      approvalPolicy: 'never',
+      sandboxMode: 'workspace-write',
+      autoMode: true,
+    );
     service.pollSessionTask('weather', 'session-1', 'task-1');
     service.uploadSessionFile(
       workspaceId: 'weather',
@@ -205,6 +214,14 @@ void main() {
     expect(received.any((row) => row['type'] == 'workspace_create'), isTrue);
     expect(received.any((row) => row['type'] == 'session_create'), isTrue);
     expect(received.any((row) => row['type'] == 'session_kill'), isTrue);
+    final settings = received.firstWhere(
+      (row) => row['type'] == 'session_update_settings',
+    );
+    expect(settings['provider'], 'deepseek');
+    expect(settings['model'], 'deepseek-v4-flash');
+    expect(settings['approval_policy'], 'never');
+    expect(settings['sandbox_mode'], 'workspace-write');
+    expect(settings['auto_mode'], isTrue);
     expect(received.any((row) => row['type'] == 'session_task_poll'), isTrue);
     expect(received.any((row) => row['type'] == 'session_upload_file'), isTrue);
 

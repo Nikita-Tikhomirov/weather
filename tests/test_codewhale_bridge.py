@@ -154,6 +154,29 @@ class SessionRegistryTests(unittest.TestCase):
             self.assertEqual(loaded["status"], "running")
             self.assertEqual(loaded["worker_pid"], 1234)
 
+    def test_update_session_settings_survives_restart(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp) / "state"
+            registry = SessionRegistry(state)
+            session = registry.create_session("weather", "Modes")
+
+            registry.update_session(
+                "weather",
+                session["id"],
+                provider="deepseek",
+                model="deepseek-v4-flash",
+                approval_policy="never",
+                sandbox_mode="workspace-write",
+                auto_mode=True,
+            )
+
+            loaded = SessionRegistry(state).get_session("weather", session["id"])
+            self.assertEqual(loaded["provider"], "deepseek")
+            self.assertEqual(loaded["model"], "deepseek-v4-flash")
+            self.assertEqual(loaded["approval_policy"], "never")
+            self.assertEqual(loaded["sandbox_mode"], "workspace-write")
+            self.assertTrue(loaded["auto_mode"])
+
 
 class CodeWhaleWorkerManagerTests(unittest.TestCase):
     def test_start_worker_marks_session_running(self) -> None:
@@ -240,6 +263,11 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             values = {item["value"] for item in reply["commands"]}
             self.assertIn("/help", values)
             self.assertIn("/skill", values)
+            self.assertIn("/lang ru", values)
+            self.assertIn("/model", values)
+            self.assertIn("/mode agent", values)
+            self.assertIn("/mode plan", values)
+            self.assertIn("/mode yolo", values)
 
     def test_handle_workspace_folder_list_browses_desktop_folders(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -543,6 +571,11 @@ class CodeWhaleBridgeTests(unittest.TestCase):
                 Path(workspace["path"]),
                 "Привет",
                 session_id=None,
+                provider="",
+                model="",
+                approval_policy="",
+                sandbox_mode="",
+                auto_mode=False,
                 on_process_start=bridge._remember_exec_process,
                 on_process_end=bridge._forget_exec_process,
                 process_key=(workspace["id"], session["id"]),
@@ -608,6 +641,55 @@ class CodeWhaleBridgeTests(unittest.TestCase):
                 )
 
             self.assertEqual(stream_prompt.call_args.kwargs["session_id"], "cw-session-1")
+
+    def test_stream_session_message_passes_saved_exec_settings(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            session = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Чат",
+                }
+            )["session"]
+            bridge.handle_message(
+                {
+                    "type": "session_update_settings",
+                    "workspace_id": workspace["id"],
+                    "session_id": session["id"],
+                    "provider": "deepseek",
+                    "model": "deepseek-v4-flash",
+                    "approval_policy": "never",
+                    "sandbox_mode": "workspace-write",
+                    "auto_mode": True,
+                }
+            )
+
+            with patch.object(
+                bridge.exec_client,
+                "stream_prompt",
+                return_value=iter([{"type": "content", "content": "OK"}, {"type": "done"}]),
+            ) as stream_prompt:
+                list(
+                    bridge.stream_session_message(
+                        {
+                            "type": "session_send",
+                            "workspace_id": workspace["id"],
+                            "session_id": session["id"],
+                            "text": "Продолжи",
+                        }
+                    )
+                )
+
+            self.assertEqual(stream_prompt.call_args.kwargs["provider"], "deepseek")
+            self.assertEqual(stream_prompt.call_args.kwargs["model"], "deepseek-v4-flash")
+            self.assertEqual(stream_prompt.call_args.kwargs["approval_policy"], "never")
+            self.assertEqual(stream_prompt.call_args.kwargs["sandbox_mode"], "workspace-write")
+            self.assertTrue(stream_prompt.call_args.kwargs["auto_mode"])
 
     def test_stream_session_message_marks_session_idle_after_exec_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -761,6 +843,50 @@ class CodeWhaleExecClientTests(unittest.TestCase):
         list(client.stream_prompt(Path("C:/work"), "Привет"))
 
         self.assertEqual(captured["kwargs"]["creationflags"], _background_creation_flags())
+
+    def test_stream_prompt_adds_codewhale_mode_flags(self) -> None:
+        process = _FakeProcess()
+        process.stdout = iter(['{"type":"done"}\n'])
+        process.returncode = 0
+        captured = {}
+
+        def fake_popen(command, **kwargs):
+            captured["command"] = command
+            return process
+
+        client = CodeWhaleExecClient(codewhale_cmd="codewhale", popen=fake_popen)
+
+        list(
+            client.stream_prompt(
+                Path("C:/work"),
+                "Привет",
+                provider="deepseek",
+                model="deepseek-v4-flash",
+                approval_policy="never",
+                sandbox_mode="workspace-write",
+                auto_mode=True,
+            )
+        )
+
+        self.assertEqual(
+            captured["command"],
+            [
+                "codewhale",
+                "--provider",
+                "deepseek",
+                "--model",
+                "deepseek-v4-flash",
+                "--approval-policy",
+                "never",
+                "--sandbox-mode",
+                "workspace-write",
+                "exec",
+                "--output-format",
+                "stream-json",
+                "--auto",
+                "Привет",
+            ],
+        )
 
 
 class _FakeHttpResponse:

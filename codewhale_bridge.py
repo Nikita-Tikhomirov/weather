@@ -19,6 +19,24 @@ from typing import Any, Callable, Iterable, Iterator
 
 RECONNECT_DELAY_SECONDS = 5
 TUNNEL_HEARTBEAT_SECONDS = 30
+ALLOWED_CODEWHALE_PROVIDERS = {
+    "",
+    "deepseek",
+    "nvidia-nim",
+    "openai",
+    "atlascloud",
+    "wanjie-ark",
+    "openrouter",
+    "novita",
+    "fireworks",
+    "moonshot",
+    "sglang",
+    "vllm",
+    "ollama",
+    "xiaomi",
+}
+ALLOWED_CODEWHALE_APPROVAL_POLICIES = {"", "untrusted", "on-failure", "on-request", "never"}
+ALLOWED_CODEWHALE_SANDBOX_MODES = {"", "read-only", "workspace-write", "danger-full-access"}
 
 
 def _background_creation_flags() -> int:
@@ -204,6 +222,7 @@ class WorkspaceRegistry:
         return {
             "path": target.relative_to(base).as_posix(),
             "name": target.name,
+            "original_name": filename,
             "size": len(data),
             "mime_type": mime_type or "application/octet-stream",
         }
@@ -312,6 +331,11 @@ class SessionRegistry:
             "worker_port": None,
             "runtime_session_id": None,
             "active_pid": None,
+            "provider": "",
+            "model": "",
+            "approval_policy": "",
+            "sandbox_mode": "",
+            "auto_mode": False,
             "created_at": created_at,
             "updated_at": created_at,
             "last_event_seq": 0,
@@ -354,6 +378,11 @@ class SessionRegistry:
             "worker_port",
             "runtime_session_id",
             "active_pid",
+            "provider",
+            "model",
+            "approval_policy",
+            "sandbox_mode",
+            "auto_mode",
             "last_event_seq",
         }
         for key, value in patch.items():
@@ -436,7 +465,13 @@ class SessionRegistry:
             data = json.load(file)
         if not isinstance(data, dict):
             raise ValueError(f"session metadata must be a JSON object: {path}")
-        return dict(data)
+        session = dict(data)
+        session.setdefault("provider", "")
+        session.setdefault("model", "")
+        session.setdefault("approval_policy", "")
+        session.setdefault("sandbox_mode", "")
+        session.setdefault("auto_mode", False)
+        return session
 
     def _require_key(self, value: str, field_name: str) -> str:
         key = value.strip()
@@ -677,16 +712,33 @@ class CodeWhaleExecClient:
         prompt: str,
         *,
         session_id: str | None = None,
+        provider: str = "",
+        model: str = "",
+        approval_policy: str = "",
+        sandbox_mode: str = "",
+        auto_mode: bool = False,
         on_process_start: Callable[[tuple[str, str], subprocess.Popen], None] | None = None,
         on_process_end: Callable[[tuple[str, str]], None] | None = None,
         process_key: tuple[str, str] | None = None,
     ) -> Iterator[dict[str, Any]]:
         command = [
             self.codewhale_cmd,
+        ]
+        if provider.strip():
+            command.extend(["--provider", provider.strip()])
+        if model.strip():
+            command.extend(["--model", model.strip()])
+        if approval_policy.strip():
+            command.extend(["--approval-policy", approval_policy.strip()])
+        if sandbox_mode.strip():
+            command.extend(["--sandbox-mode", sandbox_mode.strip()])
+        command.extend([
             "exec",
             "--output-format",
             "stream-json",
-        ]
+        ])
+        if auto_mode:
+            command.append("--auto")
         if session_id:
             command.extend(["--resume", session_id])
         command.append(prompt)
@@ -828,6 +880,15 @@ class CodeWhaleBridge:
             )
             events = self.sessions.load_events(session["workspace_id"], session["id"])
             return {"type": "session_open", "session": session, "events": events}
+        if msg_type == "session_update_settings":
+            workspace_id = self._workspace_id(message)
+            session_id = self._session_id(message)
+            session = self.sessions.update_session(
+                workspace_id,
+                session_id,
+                **self._session_settings_patch(message),
+            )
+            return {"type": "session", "session": session}
         if msg_type == "session_send":
             text = str(message.get("text") or "").strip()
             if not text:
@@ -892,6 +953,7 @@ class CodeWhaleBridge:
                     "text": text,
                     "path": upload["path"],
                     "filename": upload["name"],
+                    "original_name": upload["original_name"],
                     "mime_type": upload["mime_type"],
                     "size": upload["size"],
                 },
@@ -1001,6 +1063,11 @@ class CodeWhaleBridge:
                 Path(workspace["path"]),
                 text,
                 session_id=runtime_session_id,
+                provider=str(session.get("provider") or ""),
+                model=str(session.get("model") or ""),
+                approval_policy=str(session.get("approval_policy") or ""),
+                sandbox_mode=str(session.get("sandbox_mode") or ""),
+                auto_mode=bool(session.get("auto_mode")),
                 on_process_start=self._remember_exec_process,
                 on_process_end=self._forget_exec_process,
                 process_key=(workspace_id, session_id),
@@ -1232,6 +1299,48 @@ class CodeWhaleBridge:
             },
             {
                 "group": "Сессия",
+                "label": "Язык",
+                "value": "/lang",
+                "description": "Показать текущий язык сессии",
+            },
+            {
+                "group": "Сессия",
+                "label": "Русский язык",
+                "value": "/lang ru",
+                "description": "Переключить ответы сессии на русский",
+            },
+            {
+                "group": "Сессия",
+                "label": "Модель",
+                "value": "/model",
+                "description": "Показать текущую модель",
+            },
+            {
+                "group": "Сессия",
+                "label": "Текущий режим",
+                "value": "/mode",
+                "description": "Показать текущий режим CodeWhale",
+            },
+            {
+                "group": "Режимы",
+                "label": "Agent",
+                "value": "/mode agent",
+                "description": "Переключить сессию в agent mode",
+            },
+            {
+                "group": "Режимы",
+                "label": "Plan",
+                "value": "/mode plan",
+                "description": "Переключить сессию в plan mode",
+            },
+            {
+                "group": "Режимы",
+                "label": "YOLO",
+                "value": "/mode yolo",
+                "description": "Переключить сессию в yolo mode",
+            },
+            {
+                "group": "Сессия",
                 "label": "Сжать контекст",
                 "value": "/compact",
                 "description": "Сжать длинный контекст текущего диалога",
@@ -1251,6 +1360,25 @@ class CodeWhaleBridge:
         ]
         commands.extend(self._list_skill_commands())
         return commands
+
+    def _session_settings_patch(self, message: dict[str, Any]) -> dict[str, Any]:
+        provider = str(message.get("provider") or "").strip()
+        approval_policy = str(message.get("approval_policy") or "").strip()
+        sandbox_mode = str(message.get("sandbox_mode") or "").strip()
+        model = str(message.get("model") or "").strip()
+        if provider not in ALLOWED_CODEWHALE_PROVIDERS:
+            raise ValueError(f"unsupported provider: {provider}")
+        if approval_policy not in ALLOWED_CODEWHALE_APPROVAL_POLICIES:
+            raise ValueError(f"unsupported approval policy: {approval_policy}")
+        if sandbox_mode not in ALLOWED_CODEWHALE_SANDBOX_MODES:
+            raise ValueError(f"unsupported sandbox mode: {sandbox_mode}")
+        return {
+            "provider": provider,
+            "model": model,
+            "approval_policy": approval_policy,
+            "sandbox_mode": sandbox_mode,
+            "auto_mode": bool(message.get("auto_mode")),
+        }
 
     def _list_skill_commands(self) -> list[dict[str, str]]:
         skills_root = Path.home() / ".deepseek" / "skills"

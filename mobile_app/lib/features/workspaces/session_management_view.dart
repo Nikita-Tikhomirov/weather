@@ -27,6 +27,7 @@ class SessionManagementView extends StatelessWidget {
     required this.onSendPhoto,
     required this.onSendDocument,
     required this.onRunCommand,
+    required this.onUpdateSettings,
   });
 
   final WorkspaceItem workspace;
@@ -48,6 +49,13 @@ class SessionManagementView extends StatelessWidget {
   final VoidCallback onSendPhoto;
   final VoidCallback onSendDocument;
   final void Function(String command) onRunCommand;
+  final void Function({
+    String? provider,
+    String? model,
+    String? approvalPolicy,
+    String? sandboxMode,
+    bool? autoMode,
+  }) onUpdateSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -122,6 +130,11 @@ class SessionManagementView extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 20),
+                _SessionModeControls(
+                  session: session,
+                  onUpdateSettings: onUpdateSettings,
                 ),
               ],
             ),
@@ -321,6 +334,150 @@ class _SessionFilesTab extends StatelessWidget {
       return '';
     }
     return trimmed.substring(0, index);
+  }
+}
+
+class _SessionModeControls extends StatelessWidget {
+  const _SessionModeControls({
+    required this.session,
+    required this.onUpdateSettings,
+  });
+
+  static const _providers = [
+    '',
+    'deepseek',
+    'openrouter',
+    'openai',
+    'nvidia-nim',
+    'ollama',
+    'moonshot',
+    'xiaomi',
+  ];
+  static const _models = [
+    '',
+    'deepseek-v4-pro',
+    'deepseek-v4-flash',
+    'deepseek-coder:1.3b',
+    'kimi-k2.6',
+  ];
+  static const _approvalPolicies = [
+    '',
+    'on-request',
+    'on-failure',
+    'never',
+    'untrusted',
+  ];
+  static const _sandboxModes = [
+    '',
+    'read-only',
+    'workspace-write',
+    'danger-full-access',
+  ];
+
+  final WorkspaceSession session;
+  final void Function({
+    String? provider,
+    String? model,
+    String? approvalPolicy,
+    String? sandboxMode,
+    bool? autoMode,
+  }) onUpdateSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Режимы CodeWhale',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 12),
+        _ModeDropdown(
+          label: 'Провайдер',
+          value: _valueOrDefault(session.provider, _providers),
+          values: _providers,
+          onChanged: (value) => onUpdateSettings(provider: value),
+        ),
+        const SizedBox(height: 10),
+        _ModeDropdown(
+          label: 'Модель',
+          value: _valueOrDefault(session.model, _models),
+          values: _models,
+          onChanged: (value) => onUpdateSettings(model: value),
+        ),
+        const SizedBox(height: 10),
+        _ModeDropdown(
+          label: 'Подтверждения',
+          value: _valueOrDefault(session.approvalPolicy, _approvalPolicies),
+          values: _approvalPolicies,
+          onChanged: (value) => onUpdateSettings(approvalPolicy: value),
+        ),
+        const SizedBox(height: 10),
+        _ModeDropdown(
+          label: 'Sandbox',
+          value: _valueOrDefault(session.sandboxMode, _sandboxModes),
+          values: _sandboxModes,
+          onChanged: (value) => onUpdateSettings(sandboxMode: value),
+        ),
+        Tooltip(
+          message: 'Автоматически выполнять инструменты',
+          child: SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Авто-режим инструментов'),
+            subtitle: const Text('Передает --auto в CodeWhale exec'),
+            value: session.autoMode,
+            onChanged: (value) => onUpdateSettings(autoMode: value),
+            secondary: const Icon(Icons.auto_fix_high),
+            dense: true,
+            controlAffinity: ListTileControlAffinity.trailing,
+            shape: const RoundedRectangleBorder(),
+            tileColor: Colors.transparent,
+            hoverColor: Colors.transparent,
+            selectedTileColor: Colors.transparent,
+            enableFeedback: true,
+          ),
+        ),
+      ],
+    );
+  }
+
+  static String _valueOrDefault(String value, List<String> values) {
+    return values.contains(value) ? value : '';
+  }
+}
+
+class _ModeDropdown extends StatelessWidget {
+  const _ModeDropdown({
+    required this.label,
+    required this.value,
+    required this.values,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String value;
+  final List<String> values;
+  final void Function(String value) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      initialValue: value,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        isDense: true,
+      ),
+      items: [
+        for (final item in values)
+          DropdownMenuItem(
+            value: item,
+            child: Text(item.isEmpty ? 'по умолчанию' : item),
+          ),
+      ],
+      onChanged: (value) => onChanged(value ?? ''),
+    );
   }
 }
 

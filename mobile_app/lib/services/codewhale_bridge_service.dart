@@ -28,6 +28,7 @@ class CodeWhaleBridgeMessage {
     this.filePath = '',
     this.fileText = '',
     this.filename = '',
+    this.originalName = '',
     this.mimeType = '',
     this.fileSize = 0,
     this.workspaceId = '',
@@ -54,6 +55,7 @@ class CodeWhaleBridgeMessage {
   final String filePath;
   final String fileText;
   final String filename;
+  final String originalName;
   final String mimeType;
   final int fileSize;
   final String workspaceId;
@@ -105,6 +107,7 @@ class CodeWhaleBridgeMessage {
       filePath: (json['path'] ?? '').toString(),
       fileText: (json['text'] ?? '').toString(),
       filename: (json['name'] ?? json['filename'] ?? '').toString(),
+      originalName: (json['original_name'] ?? '').toString(),
       mimeType: (json['mime_type'] ?? '').toString(),
       fileSize: int.tryParse((json['size'] ?? 0).toString()) ?? 0,
       workspaceId: (json['workspace_id'] ?? '').toString(),
@@ -312,6 +315,27 @@ class CodeWhaleBridgeService {
       'type': 'session_kill',
       'workspace_id': workspaceId,
       'session_id': sessionId,
+    });
+  }
+
+  void updateSessionSettings({
+    required String workspaceId,
+    required String sessionId,
+    String provider = '',
+    String model = '',
+    String approvalPolicy = '',
+    String sandboxMode = '',
+    bool autoMode = false,
+  }) {
+    _sendCommand({
+      'type': 'session_update_settings',
+      'workspace_id': workspaceId,
+      'session_id': sessionId,
+      'provider': provider.trim(),
+      'model': model.trim(),
+      'approval_policy': approvalPolicy.trim(),
+      'sandbox_mode': sandboxMode.trim(),
+      'auto_mode': autoMode,
     });
   }
 

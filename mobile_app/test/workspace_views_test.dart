@@ -130,11 +130,26 @@ void main() {
     var openedPath = '';
     var insertedPath = '';
     var command = '';
+    var selectedProvider = '';
+    var selectedModel = '';
+    var selectedApprovalPolicy = '';
+    var selectedSandboxMode = '';
+    var selectedAutoMode = false;
 
     await tester.pumpWidget(_testApp(
       home: SessionManagementView(
         workspace: workspace,
-        session: session,
+        session: const WorkspaceSession(
+          id: 'session-1',
+          workspaceId: 'weather',
+          title: 'Починить мост',
+          status: WorkspaceSessionStatus.running,
+          provider: 'deepseek',
+          model: 'deepseek-v4-pro',
+          approvalPolicy: 'on-request',
+          sandboxMode: 'workspace-write',
+          autoMode: false,
+        ),
         files: const [
           ProjectFileNode(
             name: 'README.md',
@@ -166,6 +181,29 @@ void main() {
         onSendPhoto: () {},
         onSendDocument: () {},
         onRunCommand: (value) => command = value,
+        onUpdateSettings: ({
+          String? provider,
+          String? model,
+          String? approvalPolicy,
+          String? sandboxMode,
+          bool? autoMode,
+        }) {
+          if (provider != null) {
+            selectedProvider = provider;
+          }
+          if (model != null) {
+            selectedModel = model;
+          }
+          if (approvalPolicy != null) {
+            selectedApprovalPolicy = approvalPolicy;
+          }
+          if (sandboxMode != null) {
+            selectedSandboxMode = sandboxMode;
+          }
+          if (autoMode != null) {
+            selectedAutoMode = autoMode;
+          }
+        },
       ),
     ));
 
@@ -177,6 +215,37 @@ void main() {
     expect(stopped, isTrue);
     expect(killed, isTrue);
     expect(restarted, isTrue);
+
+    await tester.drag(find.byType(ListView).first, const Offset(0, -420));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('deepseek'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('openrouter').last);
+    await tester.pumpAndSettle();
+    expect(selectedProvider, 'openrouter');
+
+    await tester.tap(find.text('deepseek-v4-pro'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('deepseek-v4-flash').last);
+    await tester.pumpAndSettle();
+    expect(selectedModel, 'deepseek-v4-flash');
+
+    await tester.tap(find.text('on-request'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('never').last);
+    await tester.pumpAndSettle();
+    expect(selectedApprovalPolicy, 'never');
+
+    await tester.tap(find.text('workspace-write'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('danger-full-access').last);
+    await tester.pumpAndSettle();
+    expect(selectedSandboxMode, 'danger-full-access');
+
+    await tester.tap(find.byTooltip('Автоматически выполнять инструменты'));
+    await tester.pumpAndSettle();
+    expect(selectedAutoMode, isTrue);
 
     await tester.tap(find.text('Файлы'));
     await tester.pumpAndSettle();
