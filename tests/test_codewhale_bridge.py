@@ -1,6 +1,8 @@
 import json
 import base64
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -648,6 +650,89 @@ class CodeWhaleBridgeTests(unittest.TestCase):
                 )
 
             self.assertEqual(stream_prompt.call_args.kwargs["session_id"], "cw-session-1")
+
+    def test_stream_session_message_serializes_concurrent_sends_to_reuse_runtime_session(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            session = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Чат",
+                }
+            )["session"]
+            first_started = threading.Event()
+            release_first = threading.Event()
+            calls: list[tuple[str, str | None]] = []
+            calls_lock = threading.Lock()
+            errors: list[BaseException] = []
+
+            def stream_prompt(path, prompt, **kwargs):
+                del path
+                with calls_lock:
+                    calls.append((prompt, kwargs["session_id"]))
+                if prompt == "/skill delegate":
+                    first_started.set()
+                    if not release_first.wait(timeout=5):
+                        raise TimeoutError("first stream was not released")
+                    yield {"type": "session_capture", "content": "cw-session-1"}
+                    yield {
+                        "type": "metadata",
+                        "meta": {
+                            "session_id": "cw-session-1",
+                            "status": "completed",
+                        },
+                    }
+                    yield {"type": "done"}
+                    return
+                yield {"type": "content", "content": "second"}
+                yield {"type": "done"}
+
+            def collect(text: str) -> None:
+                try:
+                    list(
+                        bridge.stream_session_message(
+                            {
+                                "type": "session_send",
+                                "workspace_id": workspace["id"],
+                                "session_id": session["id"],
+                                "text": text,
+                            }
+                        )
+                    )
+                except BaseException as exc:
+                    errors.append(exc)
+
+            with patch.object(bridge.exec_client, "stream_prompt", stream_prompt):
+                first = threading.Thread(target=collect, args=("/skill delegate",))
+                second = threading.Thread(
+                    target=collect,
+                    args=("/skill v4-best-practices",),
+                )
+                first.start()
+                self.assertTrue(first_started.wait(timeout=5))
+                second.start()
+                time.sleep(0.1)
+                release_first.set()
+                first.join(timeout=5)
+                second.join(timeout=5)
+
+            self.assertFalse(first.is_alive())
+            self.assertFalse(second.is_alive())
+            self.assertEqual(errors, [])
+            self.assertEqual(
+                calls,
+                [
+                    ("/skill delegate", None),
+                    ("/skill v4-best-practices", "cw-session-1"),
+                ],
+            )
 
     def test_stream_session_message_passes_saved_exec_settings(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

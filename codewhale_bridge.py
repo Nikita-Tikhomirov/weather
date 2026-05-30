@@ -10,6 +10,7 @@ import re
 import signal
 import subprocess
 import sys
+import threading
 import time
 import urllib.request
 import uuid
@@ -818,6 +819,8 @@ class CodeWhaleBridge:
         self.runtime = CodeWhaleRuntimeClient()
         self.exec_client = CodeWhaleExecClient(codewhale_cmd=codewhale_cmd)
         self._active_execs: dict[tuple[str, str], subprocess.Popen] = {}
+        self._session_stream_locks: dict[tuple[str, str], threading.Lock] = {}
+        self._session_stream_locks_guard = threading.Lock()
         self._next_port = 43100
         self.workspaces.discover_workspaces()
 
@@ -1058,6 +1061,21 @@ class CodeWhaleBridge:
             raise ValueError("message text is required")
         workspace_id = self._workspace_id(message)
         session_id = self._session_id(message)
+        with self._session_stream_lock(workspace_id, session_id):
+            yield from self._stream_session_message_locked(
+                message,
+                workspace_id,
+                session_id,
+                text,
+            )
+
+    def _stream_session_message_locked(
+        self,
+        message: dict[str, Any],
+        workspace_id: str,
+        session_id: str,
+        text: str,
+    ) -> Iterator[dict[str, Any]]:
         session = self.sessions.get_session(workspace_id, session_id)
         workspace = self._find_workspace(workspace_id)
         runtime_session_id = str(session.get("runtime_session_id") or "").strip() or None
@@ -1198,6 +1216,15 @@ class CodeWhaleBridge:
             "status": final_status,
             "runtime_session_id": runtime_session_id or "",
         }
+
+    def _session_stream_lock(self, workspace_id: str, session_id: str) -> threading.Lock:
+        key = (workspace_id, session_id)
+        with self._session_stream_locks_guard:
+            lock = self._session_stream_locks.get(key)
+            if lock is None:
+                lock = threading.Lock()
+                self._session_stream_locks[key] = lock
+            return lock
 
     @staticmethod
     def _process_event_text(item: dict[str, Any]) -> str:
