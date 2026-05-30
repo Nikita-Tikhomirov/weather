@@ -23,27 +23,13 @@ if (-not $CreatedNew) {
 }
 
 function Get-CodeWhaleBridgeProcess {
-    # Fast path: check running processes first
-    $fast = Get-Process -Name 'python*' -ErrorAction SilentlyContinue |
-        Where-Object {
-            try {
-                $cmd = $_.MainModule.FileName
-                return $cmd -like '*python*'
-            } catch {
-                return $false
-            }
-        }
-
-    # Fallback: check via CIM for full command line match
-    $cim = Get-CimInstance Win32_Process |
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
         Where-Object {
             $_.ProcessName -like 'python*' -and
             $_.CommandLine -like '*codewhale_bridge.py*' -and
             $_.CommandLine -like "*$Tunnel*"
         } |
         Select-Object -First 1
-
-    return $cim
 }
 
 try {
