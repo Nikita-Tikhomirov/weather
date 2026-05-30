@@ -106,15 +106,8 @@ void main() {
 
     // ── Priority ──
 
-    test('rejects invalid priority', () {
-      final draft = validDraft().copyWith(priority: 'extreme');
-      expect(
-          service.validateDraft(
-              draft: draft,
-              actorProfile: 'nik',
-              projectGroupMembers: const {'group-1': ['nik']}),
-          isNotNull);
-    });
+    // Invalid priority is now prevented at compile time by the enum.
+    // This test is no longer needed — Priority enum ensures only valid values.
 
     test('accepts all valid priorities', () {
       for (final p in TaskDomainService.allowedPriority) {
