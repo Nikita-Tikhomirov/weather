@@ -129,7 +129,7 @@ void main() {
     var restarted = false;
     var openedPath = '';
     var insertedPath = '';
-    var command = '';
+    final commands = <String>[];
     var selectedProvider = '';
     var selectedModel = '';
     var selectedApprovalPolicy = '';
@@ -169,6 +169,18 @@ void main() {
             'value': '/skill vision',
             'description': 'Проверка изображений',
           },
+          {
+            'group': 'Навыки',
+            'label': 'web-screenshot',
+            'value': '/skill web-screenshot',
+            'description': 'Скриншоты сайтов',
+          },
+          {
+            'group': 'Сессия',
+            'label': 'Статус',
+            'value': '/status',
+            'description': 'Проверить статус',
+          },
         ],
         onBack: () {},
         onStop: () => stopped = true,
@@ -180,7 +192,7 @@ void main() {
         onInsertFilePath: (path) => insertedPath = path,
         onSendPhoto: () {},
         onSendDocument: () {},
-        onRunCommand: (value) => command = value,
+        onRunCommand: commands.add,
         onUpdateSettings: ({
           String? provider,
           String? model,
@@ -254,8 +266,17 @@ void main() {
 
     await tester.tap(find.text('Команды'));
     await tester.pumpAndSettle();
+    expect(find.text('Скиллы'), findsOneWidget);
+    expect(find.text('Статус'), findsOneWidget);
+    expect(find.text('vision'), findsNothing);
+
+    await tester.tap(find.text('Скиллы'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('vision'));
-    expect(command, '/skill vision');
+    await tester.tap(find.text('web-screenshot'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Запустить выбранные'));
+    expect(commands, ['/skill vision', '/skill web-screenshot']);
     expect(openedPath, isEmpty);
   });
 

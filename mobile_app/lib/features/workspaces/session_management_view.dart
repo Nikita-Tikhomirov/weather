@@ -482,7 +482,7 @@ class _ModeDropdown extends StatelessWidget {
   }
 }
 
-class _CodeWhaleCommandsList extends StatelessWidget {
+class _CodeWhaleCommandsList extends StatefulWidget {
   const _CodeWhaleCommandsList({
     required this.commands,
     required this.onRunCommand,
@@ -492,18 +492,38 @@ class _CodeWhaleCommandsList extends StatelessWidget {
   final void Function(String command) onRunCommand;
 
   @override
+  State<_CodeWhaleCommandsList> createState() => _CodeWhaleCommandsListState();
+}
+
+class _CodeWhaleCommandsListState extends State<_CodeWhaleCommandsList> {
+  final Set<String> _selectedSkills = <String>{};
+
+  @override
   Widget build(BuildContext context) {
-    if (commands.isEmpty) {
+    if (widget.commands.isEmpty) {
       return const Center(child: Text('Команды CodeWhale загружаются...'));
     }
+    final skillCommands = widget.commands.where(_isSkillCommand).toList();
+    final otherCommands = widget.commands.where((item) {
+      return !_isSkillCommand(item);
+    }).toList();
     final groups = <String, List<Map<String, dynamic>>>{};
-    for (final command in commands) {
+    for (final command in otherCommands) {
       final group = (command['group'] ?? 'Команды').toString();
       groups.putIfAbsent(group, () => []).add(command);
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (skillCommands.isNotEmpty) ...[
+          _SkillsMultiSelect(
+            commands: skillCommands,
+            selectedValues: _selectedSkills,
+            onChanged: _toggleSkill,
+            onRunSelected: _runSelectedSkills,
+          ),
+          const SizedBox(height: 12),
+        ],
         for (final entry in groups.entries) ...[
           Padding(
             padding: const EdgeInsets.only(top: 12, bottom: 4),
@@ -519,11 +539,99 @@ class _CodeWhaleCommandsList extends StatelessWidget {
                   Text((command['label'] ?? command['value'] ?? '').toString()),
               subtitle: Text((command['description'] ?? '').toString()),
               trailing: Text((command['value'] ?? '').toString()),
-              onTap: () => onRunCommand((command['value'] ?? '').toString()),
+              onTap: () =>
+                  widget.onRunCommand((command['value'] ?? '').toString()),
             ),
         ],
       ],
     );
+  }
+
+  bool _isSkillCommand(Map<String, dynamic> command) {
+    final value = (command['value'] ?? '').toString();
+    final group = (command['group'] ?? '').toString().toLowerCase();
+    return value.startsWith('/skill') || group == 'навыки';
+  }
+
+  void _toggleSkill(String value, bool selected) {
+    setState(() {
+      if (selected) {
+        _selectedSkills.add(value);
+      } else {
+        _selectedSkills.remove(value);
+      }
+    });
+  }
+
+  void _runSelectedSkills() {
+    final selected = widget.commands.where((command) {
+      return _selectedSkills.contains((command['value'] ?? '').toString());
+    }).toList();
+    for (final command in selected) {
+      widget.onRunCommand((command['value'] ?? '').toString());
+    }
+    setState(_selectedSkills.clear);
+  }
+}
+
+class _SkillsMultiSelect extends StatelessWidget {
+  const _SkillsMultiSelect({
+    required this.commands,
+    required this.selectedValues,
+    required this.onChanged,
+    required this.onRunSelected,
+  });
+
+  final List<Map<String, dynamic>> commands;
+  final Set<String> selectedValues;
+  final void Function(String value, bool selected) onChanged;
+  final VoidCallback onRunSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExpansionTile(
+      leading: const Icon(Icons.extension_outlined),
+      title: const Text('Скиллы'),
+      subtitle: Text(_subtitle),
+      childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+      children: [
+        for (final command in commands)
+          CheckboxListTile(
+            dense: true,
+            value: selectedValues.contains(_valueOf(command)),
+            title: Text(_labelOf(command)),
+            subtitle: Text(_descriptionOf(command)),
+            onChanged: (value) => onChanged(_valueOf(command), value == true),
+          ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton.icon(
+            onPressed: selectedValues.isEmpty ? null : onRunSelected,
+            icon: const Icon(Icons.playlist_play),
+            label: const Text('Запустить выбранные'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String get _subtitle {
+    if (selectedValues.isEmpty) {
+      return 'Выбери один или несколько навыков';
+    }
+    return 'Выбрано: ${selectedValues.length}';
+  }
+
+  String _valueOf(Map<String, dynamic> command) {
+    return (command['value'] ?? '').toString();
+  }
+
+  String _labelOf(Map<String, dynamic> command) {
+    return (command['label'] ?? command['value'] ?? '').toString();
+  }
+
+  String _descriptionOf(Map<String, dynamic> command) {
+    return (command['description'] ?? '').toString();
   }
 }
 
