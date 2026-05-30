@@ -13,8 +13,10 @@ from codewhale_bridge import (
     SessionRegistry,
     WorkspaceRegistry,
     _background_creation_flags,
+    _is_tunnel_control_message,
     _parse_tunnel,
     _resolve_codewhale_cmd,
+    _tunnel_registration_message,
 )
 
 
@@ -774,6 +776,21 @@ class CodeWhaleBridgeTests(unittest.TestCase):
 
 
 class CodeWhaleBridgeCliTests(unittest.TestCase):
+    def test_tunnel_registration_message_supports_new_and_legacy_channels(self) -> None:
+        self.assertEqual(
+            _tunnel_registration_message("codewhale", legacy=False),
+            {"type": "codewhale_register", "project_id": "codewhale"},
+        )
+        self.assertEqual(
+            _tunnel_registration_message("codewhale", legacy=True),
+            {"type": "register", "project_id": "codewhale"},
+        )
+
+    def test_tunnel_control_messages_include_legacy_mobile_attach(self) -> None:
+        self.assertTrue(_is_tunnel_control_message({"type": "codewhale_mobile_attached"}))
+        self.assertTrue(_is_tunnel_control_message({"type": "mobile_attached"}))
+        self.assertFalse(_is_tunnel_control_message({"type": "workspace_list"}))
+
     def test_parse_tunnel(self) -> None:
         self.assertEqual(_parse_tunnel("31.129.97.211:9877"), ("31.129.97.211", 9877))
 

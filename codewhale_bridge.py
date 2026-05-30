@@ -1422,18 +1422,63 @@ def _parse_tunnel(value: str) -> tuple[str, int]:
     return host, int(port_text)
 
 
+def _tunnel_registration_message(project_id: str, *, legacy: bool) -> dict[str, str]:
+    return {
+        "type": "register" if legacy else "codewhale_register",
+        "project_id": project_id,
+    }
+
+
+def _is_tunnel_control_message(message: dict[str, Any]) -> bool:
+    return str(message.get("type") or "") in {
+        "codewhale_mobile_attached",
+        "mobile_attached",
+    }
+
+
 async def run_tunnel_client(
     bridge: CodeWhaleBridge,
     tunnel_host: str,
     tunnel_port: int,
     project_id: str = "codewhale",
+    *,
+    legacy: bool = False,
 ) -> None:
     while True:
         try:
-            await _run_tunnel_once(bridge, tunnel_host, tunnel_port, project_id)
+            await _run_tunnel_once(
+                bridge,
+                tunnel_host,
+                tunnel_port,
+                project_id,
+                legacy=legacy,
+            )
         except Exception as exc:
             print(f"[codewhale_bridge] tunnel error: {exc}", flush=True)
         await asyncio.sleep(RECONNECT_DELAY_SECONDS)
+
+
+async def run_tunnel_clients(
+    bridge: CodeWhaleBridge,
+    tunnel_host: str,
+    tunnel_port: int,
+    project_id: str,
+) -> None:
+    await asyncio.gather(
+        run_tunnel_client(
+            bridge,
+            tunnel_host,
+            tunnel_port,
+            project_id=project_id,
+        ),
+        run_tunnel_client(
+            bridge,
+            tunnel_host,
+            tunnel_port,
+            project_id=project_id,
+            legacy=True,
+        ),
+    )
 
 
 async def _run_tunnel_once(
@@ -1441,6 +1486,8 @@ async def _run_tunnel_once(
     tunnel_host: str,
     tunnel_port: int,
     project_id: str,
+    *,
+    legacy: bool = False,
 ) -> None:
     reader, writer = await asyncio.open_connection(tunnel_host, tunnel_port)
     write_lock = asyncio.Lock()
@@ -1485,7 +1532,7 @@ async def _run_tunnel_once(
 
     writer.write(
         json.dumps(
-            {"type": "codewhale_register", "project_id": project_id},
+            _tunnel_registration_message(project_id, legacy=legacy),
             ensure_ascii=False,
         ).encode("utf-8")
         + b"\n"
@@ -1515,7 +1562,7 @@ async def _run_tunnel_once(
                 message = json.loads(line.decode("utf-8", "replace").strip())
             except json.JSONDecodeError:
                 continue
-            if message.get("type") == "codewhale_mobile_attached":
+            if _is_tunnel_control_message(message):
                 continue
             if message.get("type") == "session_send":
                 asyncio.create_task(stream_session(message))
@@ -1543,7 +1590,7 @@ def main() -> None:
     tunnel_host, tunnel_port = _parse_tunnel(args.tunnel)
     bridge = CodeWhaleBridge(Path(args.desktop), Path(args.state_dir))
     asyncio.run(
-        run_tunnel_client(
+        run_tunnel_clients(
             bridge,
             tunnel_host,
             tunnel_port,
