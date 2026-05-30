@@ -23,11 +23,15 @@ if (-not $CreatedNew) {
 }
 
 function Get-CodeWhaleBridgeProcess {
+    $escapedProjectRoot = [Regex]::Escape($ProjectRoot)
     Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
         Where-Object {
             $_.ProcessName -like 'python*' -and
             $_.CommandLine -like '*codewhale_bridge.py*' -and
-            $_.CommandLine -like "*$Tunnel*"
+            (
+                $_.CommandLine -like "*$Tunnel*" -or
+                $_.CommandLine -match $escapedProjectRoot
+            )
         } |
         Select-Object -First 1
 }
@@ -38,7 +42,17 @@ try {
             $bridge = Get-CodeWhaleBridgeProcess
             if (-not $bridge) {
                 Write-WatchdogLog 'codewhale_bridge process missing; starting'
-                powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$BridgeScript"
+                Start-Process `
+                    -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" `
+                    -ArgumentList @(
+                        '-NoProfile',
+                        '-NonInteractive',
+                        '-ExecutionPolicy', 'Bypass',
+                        '-WindowStyle', 'Hidden',
+                        '-File', $BridgeScript
+                    ) `
+                    -WindowStyle Hidden `
+                    -WorkingDirectory $ProjectRoot
             }
         } catch {
             Write-WatchdogLog "watchdog error: $($_.Exception.Message)"

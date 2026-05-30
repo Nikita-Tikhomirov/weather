@@ -29,9 +29,11 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
   final Map<String, Timer> _taskPollers = {};
   List<WorkspaceItem> _workspaces = const [];
   List<Map<String, dynamic>> _folderBrowserFolders = const [];
+  List<Map<String, dynamic>> _codeWhaleCommands = const [];
   final Map<String, List<WorkspaceSession>> _sessionsByWorkspace = {};
   List<Map<String, dynamic>> _activeEvents = const [];
   List<ProjectFileNode> _workspaceFiles = const [];
+  final Map<String, String> _pendingUploadPromptsByName = {};
   String _folderBrowserPath = '';
   String _folderBrowserParent = '';
   String _currentFilePath = '';
@@ -78,6 +80,10 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
       _connected = connected;
       _statusText = status;
     });
+    if (connected) {
+      _service.requestWorkspaceList();
+      _service.requestCodeWhaleCommands();
+    }
   }
 
   void _handleMessage(CodeWhaleBridgeMessage message) {
@@ -97,6 +103,9 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
         _folderBrowserPath = message.folderPath;
         _folderBrowserParent = message.folderParent;
         _folderBrowserFolders = message.folders;
+      }
+      if (message.type == 'codewhale_command_list') {
+        _codeWhaleCommands = message.commands;
       }
       if (message.type == 'workspace_file_list') {
         _filesLoading = false;
@@ -160,6 +169,23 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
           'size': message.fileSize,
         });
         _statusText = 'Файл прикреплен';
+        var promptPrefix =
+            _pendingUploadPromptsByName.remove(message.filename) ??
+                _pendingUploadPromptsByName.remove(message.filePath) ??
+                '';
+        if (promptPrefix.isEmpty && _pendingUploadPromptsByName.length == 1) {
+          final originalName = _pendingUploadPromptsByName.keys.single;
+          promptPrefix = _pendingUploadPromptsByName.remove(originalName) ?? '';
+        }
+        final workspace = _activeWorkspace;
+        final session = _activeSession;
+        if (promptPrefix.isNotEmpty && workspace != null && session != null) {
+          _sendQuickAction(
+            workspace,
+            session,
+            '$promptPrefix: ${message.filePath}',
+          );
+        }
       }
       if (message.type == 'session_stream_done') {
         _statusText = 'CodeWhale готов';
@@ -352,6 +378,7 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
           isFilesLoading: _filesLoading,
           filePreviewPath: _filePreviewPath,
           filePreviewText: _filePreviewText,
+          commands: _codeWhaleCommands,
           onBack: () => setState(() => _mode = _WorkspacePageMode.chat),
           onStop: () => _service.stopSession(workspace.id, session.id),
           onKill: () => _service.killSession(workspace.id, session.id),
@@ -366,10 +393,10 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
           onInsertFilePath: _insertPathToChat,
           onSendPhoto: () => _sendPhoto(workspace, session),
           onSendDocument: () => _sendDocument(workspace, session),
-          onQuickAction: (prompt) => _sendQuickAction(
+          onRunCommand: (command) => _sendQuickAction(
             workspace,
             session,
-            prompt,
+            command,
           ),
         );
     }
@@ -449,6 +476,7 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
       _filesLoading = true;
     });
     _service.requestWorkspaceFileList(workspace.id);
+    _service.requestCodeWhaleCommands();
   }
 
   void _requestWorkspaceFiles(String workspaceId, {String path = ''}) {
@@ -502,6 +530,8 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
       filename: photo.name,
       mimeType: photo.mimeType ?? 'image/jpeg',
     );
+    _pendingUploadPromptsByName[photo.name] =
+        'Проанализируй прикрепленное изображение';
   }
 
   Future<void> _sendDocument(
@@ -525,6 +555,8 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
       filename: file.name,
       mimeType: _mimeTypeForName(file.name),
     );
+    _pendingUploadPromptsByName[file.name] =
+        'Проанализируй прикрепленный документ';
   }
 
   String _mimeTypeForName(String name) {

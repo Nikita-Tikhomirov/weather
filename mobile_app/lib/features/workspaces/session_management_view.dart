@@ -19,13 +19,14 @@ class SessionManagementView extends StatelessWidget {
     required this.isFilesLoading,
     required this.filePreviewPath,
     required this.filePreviewText,
+    required this.commands,
     required this.onRefreshFiles,
     required this.onOpenFilePath,
     required this.onReadFile,
     required this.onInsertFilePath,
     required this.onSendPhoto,
     required this.onSendDocument,
-    required this.onQuickAction,
+    required this.onRunCommand,
   });
 
   final WorkspaceItem workspace;
@@ -39,13 +40,14 @@ class SessionManagementView extends StatelessWidget {
   final bool isFilesLoading;
   final String filePreviewPath;
   final String filePreviewText;
+  final List<Map<String, dynamic>> commands;
   final VoidCallback onRefreshFiles;
   final void Function(String path) onOpenFilePath;
   final void Function(String path) onReadFile;
   final void Function(String path) onInsertFilePath;
   final VoidCallback onSendPhoto;
   final VoidCallback onSendDocument;
-  final void Function(String prompt) onQuickAction;
+  final void Function(String command) onRunCommand;
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +66,7 @@ class SessionManagementView extends StatelessWidget {
             tabs: [
               Tab(icon: Icon(Icons.tune), text: 'Сессия'),
               Tab(icon: Icon(Icons.folder_open), text: 'Файлы'),
-              Tab(icon: Icon(Icons.auto_fix_high), text: 'Действия'),
+              Tab(icon: Icon(Icons.terminal), text: 'Команды'),
             ],
           ),
         ),
@@ -154,32 +156,9 @@ class SessionManagementView extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 20),
-                _QuickActionTile(
-                  icon: Icons.task_alt,
-                  title: 'Составь план',
-                  prompt: 'Составь короткий план работы по текущей задаче.',
-                  onQuickAction: onQuickAction,
-                ),
-                _QuickActionTile(
-                  icon: Icons.terminal,
-                  title: 'Проверь проект',
-                  prompt:
-                      'Проверь проект: git status, релевантные тесты, ошибки сборки. Показывай ход работы.',
-                  onQuickAction: onQuickAction,
-                ),
-                _QuickActionTile(
-                  icon: Icons.rate_review_outlined,
-                  title: 'Ревью изменений',
-                  prompt:
-                      'Сделай ревью текущих изменений. Сначала bugs/risks, потом короткий итог.',
-                  onQuickAction: onQuickAction,
-                ),
-                _QuickActionTile(
-                  icon: Icons.science_outlined,
-                  title: 'Запусти тесты',
-                  prompt:
-                      'Запусти релевантные проверки и тесты для текущего проекта, покажи результат.',
-                  onQuickAction: onQuickAction,
+                _CodeWhaleCommandsList(
+                  commands: commands,
+                  onRunCommand: onRunCommand,
                 ),
               ],
             ),
@@ -345,26 +324,47 @@ class _SessionFilesTab extends StatelessWidget {
   }
 }
 
-class _QuickActionTile extends StatelessWidget {
-  const _QuickActionTile({
-    required this.icon,
-    required this.title,
-    required this.prompt,
-    required this.onQuickAction,
+class _CodeWhaleCommandsList extends StatelessWidget {
+  const _CodeWhaleCommandsList({
+    required this.commands,
+    required this.onRunCommand,
   });
 
-  final IconData icon;
-  final String title;
-  final String prompt;
-  final void Function(String prompt) onQuickAction;
+  final List<Map<String, dynamic>> commands;
+  final void Function(String command) onRunCommand;
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon),
-      title: Text(title),
-      trailing: const Icon(Icons.send),
-      onTap: () => onQuickAction(prompt),
+    if (commands.isEmpty) {
+      return const Center(child: Text('Команды CodeWhale загружаются...'));
+    }
+    final groups = <String, List<Map<String, dynamic>>>{};
+    for (final command in commands) {
+      final group = (command['group'] ?? 'Команды').toString();
+      groups.putIfAbsent(group, () => []).add(command);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final entry in groups.entries) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 4),
+            child: Text(
+              entry.key,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          for (final command in entry.value)
+            ListTile(
+              leading: const Icon(Icons.chevron_right),
+              title:
+                  Text((command['label'] ?? command['value'] ?? '').toString()),
+              subtitle: Text((command['description'] ?? '').toString()),
+              trailing: Text((command['value'] ?? '').toString()),
+              onTap: () => onRunCommand((command['value'] ?? '').toString()),
+            ),
+        ],
+      ],
     );
   }
 }

@@ -102,6 +102,23 @@ void main() {
     expect(content.fileText, 'hello');
   });
 
+  test('codewhale command list parses bridge payload', () {
+    final message = CodeWhaleBridgeMessage.fromJson({
+      'type': 'codewhale_command_list',
+      'commands': [
+        {
+          'group': 'Навыки',
+          'label': 'vision',
+          'value': '/skill vision',
+          'description': 'vision helper',
+        },
+      ],
+    });
+
+    expect(message.commands.single['label'], 'vision');
+    expect(message.commands.single['value'], '/skill vision');
+  });
+
   test('connect registers as codewhale mobile client', () async {
     final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
     final received = <Map<String, dynamic>>[];
@@ -160,6 +177,7 @@ void main() {
     await connected.future.timeout(const Duration(seconds: 2));
     service.requestWorkspaceList();
     service.requestWorkspaceFolderList();
+    service.requestCodeWhaleCommands();
     service.requestWorkspaceFileList('weather');
     service.requestWorkspaceFileRead('weather', 'README.md');
     service.createWorkspace('Новый проект');
@@ -178,6 +196,10 @@ void main() {
     expect(received.map((row) => row['type']), contains('workspace_list'));
     expect(
         received.map((row) => row['type']), contains('workspace_folder_list'));
+    expect(
+      received.map((row) => row['type']),
+      contains('codewhale_command_list'),
+    );
     expect(received.any((row) => row['type'] == 'workspace_file_list'), isTrue);
     expect(received.any((row) => row['type'] == 'workspace_file_read'), isTrue);
     expect(received.any((row) => row['type'] == 'workspace_create'), isTrue);

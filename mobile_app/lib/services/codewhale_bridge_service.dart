@@ -20,6 +20,7 @@ class CodeWhaleBridgeMessage {
     this.session,
     this.sessions = const [],
     this.events = const [],
+    this.commands = const [],
     this.files = const [],
     this.folders = const [],
     this.folderPath = '',
@@ -45,6 +46,7 @@ class CodeWhaleBridgeMessage {
   final WorkspaceSession? session;
   final List<WorkspaceSession> sessions;
   final List<Map<String, dynamic>> events;
+  final List<Map<String, dynamic>> commands;
   final List<ProjectFileNode> files;
   final List<Map<String, dynamic>> folders;
   final String folderPath;
@@ -79,6 +81,11 @@ class CodeWhaleBridgeMessage {
               .toList() ??
           const [],
       events: (json['events'] as List<dynamic>?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(Map<String, dynamic>.from)
+              .toList() ??
+          const [],
+      commands: (json['commands'] as List<dynamic>?)
               ?.whereType<Map<String, dynamic>>()
               .map(Map<String, dynamic>.from)
               .toList() ??
@@ -137,9 +144,11 @@ class CodeWhaleBridgeService {
   final void Function(bool connected, String status) onStatusChange;
 
   Socket? _socket;
+  Timer? _reconnectTimer;
   bool _running = false;
   bool _disposed = false;
   bool _connecting = false;
+  int _reconnectAttempts = 0;
   final BytesBuilder _buffer = BytesBuilder(copy: false);
   final List<String> _pendingMessages = <String>[];
 
@@ -188,6 +197,7 @@ class CodeWhaleBridgeService {
           }
           onStatusChange(false, 'Ошибка соединения CodeWhale: $error');
           _cleanup();
+          _scheduleReconnect();
         },
         onDone: () {
           if (_disposed) {
@@ -196,9 +206,11 @@ class CodeWhaleBridgeService {
           }
           onStatusChange(false, 'Соединение CodeWhale закрыто');
           _cleanup();
+          _scheduleReconnect();
         },
       );
 
+      _reconnectAttempts = 0;
       _sendRaw('${jsonEncode({
             'type': 'codewhale_connect',
             'project_id': 'codewhale',
@@ -209,10 +221,15 @@ class CodeWhaleBridgeService {
       _connecting = false;
       if (!_disposed) {
         onStatusChange(false, 'Не удалось подключиться к CodeWhale: $e');
+        _scheduleReconnect();
       }
       _cleanup();
       return false;
     }
+  }
+
+  void requestCodeWhaleCommands() {
+    _sendCommand({'type': 'codewhale_command_list'});
   }
 
   void requestWorkspaceList() {
@@ -429,8 +446,23 @@ class CodeWhaleBridgeService {
     _socket = null;
   }
 
+  void _scheduleReconnect() {
+    if (_disposed || _connecting || _running || _reconnectTimer != null) {
+      return;
+    }
+    final delaySeconds = _reconnectAttempts < 6 ? 2 + _reconnectAttempts : 10;
+    _reconnectAttempts += 1;
+    _reconnectTimer = Timer(Duration(seconds: delaySeconds), () {
+      _reconnectTimer = null;
+      if (!_disposed && !_running) {
+        unawaited(connect());
+      }
+    });
+  }
+
   void dispose() {
     _disposed = true;
+    _reconnectTimer?.cancel();
     _pendingMessages.clear();
     _cleanup();
   }

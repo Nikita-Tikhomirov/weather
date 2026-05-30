@@ -2,15 +2,19 @@ $ErrorActionPreference = 'Stop'
 
 $ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $WatchdogScript = Join-Path $ProjectRoot 'codewhale_bridge_watchdog.ps1'
+$WatchdogLauncher = Join-Path $ProjectRoot 'codewhale_bridge_watchdog.vbs'
 $TaskName = 'CodeWhaleBridgeAtLogon'
 
 if (-not (Test-Path -LiteralPath $WatchdogScript)) {
     throw "Watchdog script not found: $WatchdogScript"
 }
+if (-not (Test-Path -LiteralPath $WatchdogLauncher)) {
+    throw "Watchdog launcher not found: $WatchdogLauncher"
+}
 
 $action = New-ScheduledTaskAction `
-    -Execute 'powershell.exe' `
-    -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$WatchdogScript`""
+    -Execute 'wscript.exe' `
+    -Argument "//B //Nologo `"$WatchdogLauncher`""
 
 $triggers = @(
     (New-ScheduledTaskTrigger -AtLogOn),
@@ -38,7 +42,7 @@ try {
         -Description 'Keeps CodeWhale mobile workspace bridge available after reboot and crashes.' `
         -Force | Out-Null
 } catch {
-    $taskCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$WatchdogScript`""
+    $taskCommand = "wscript.exe //B //Nologo `"$WatchdogLauncher`""
     & cmd.exe /c "schtasks.exe /Create /TN `"$TaskName`" /SC ONLOGON /TR `"$taskCommand`" /F >nul 2>nul"
 }
 
@@ -53,12 +57,12 @@ if (-not $registeredTask) {
     @"
 @echo off
 cd /d "$ProjectRoot"
-powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$WatchdogScript"
+wscript.exe //B //Nologo "$WatchdogLauncher"
 "@ | Set-Content -Path $startupCmd -Encoding ascii
 }
 
 $runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
-$runCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$WatchdogScript`""
+$runCommand = "wscript.exe //B //Nologo `"$WatchdogLauncher`""
 try {
     New-Item -Path $runKey -Force | Out-Null
     New-ItemProperty `
@@ -93,8 +97,8 @@ try {
         Select-Object -First 1
     if (-not $watchdog) {
         Start-Process `
-            -FilePath 'powershell.exe' `
-            -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', $WatchdogScript) `
+            -FilePath 'wscript.exe' `
+            -ArgumentList @('//B', '//Nologo', $WatchdogLauncher) `
             -WindowStyle Hidden
     }
 }

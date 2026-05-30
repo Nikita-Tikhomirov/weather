@@ -764,6 +764,11 @@ class CodeWhaleBridge:
 
     def _handle_message(self, message: dict[str, Any]) -> dict[str, Any]:
         msg_type = str(message.get("type") or "").strip()
+        if msg_type == "codewhale_command_list":
+            return {
+                "type": "codewhale_command_list",
+                "commands": self._codewhale_command_catalog(),
+            }
         if msg_type == "workspace_list":
             self.workspaces.discover_workspaces()
             return {
@@ -1204,6 +1209,76 @@ class CodeWhaleBridge:
     def _allocate_port(self) -> int:
         self._next_port += 1
         return self._next_port
+
+    def _codewhale_command_catalog(self) -> list[dict[str, str]]:
+        commands = [
+            {
+                "group": "Сессия",
+                "label": "Помощь",
+                "value": "/help",
+                "description": "Показать встроенную справку CodeWhale",
+            },
+            {
+                "group": "Сессия",
+                "label": "Статус",
+                "value": "/status",
+                "description": "Состояние сессии, workspace и git",
+            },
+            {
+                "group": "Сессия",
+                "label": "Стоимость",
+                "value": "/cost",
+                "description": "Показать расход токенов",
+            },
+            {
+                "group": "Сессия",
+                "label": "Сжать контекст",
+                "value": "/compact",
+                "description": "Сжать длинный контекст текущего диалога",
+            },
+            {
+                "group": "Сессия",
+                "label": "Версия",
+                "value": "/version",
+                "description": "Показать версию CodeWhale",
+            },
+            {
+                "group": "Навыки",
+                "label": "Список навыков",
+                "value": "/skill",
+                "description": "Показать все доступные навыки",
+            },
+        ]
+        commands.extend(self._list_skill_commands())
+        return commands
+
+    def _list_skill_commands(self) -> list[dict[str, str]]:
+        skills_root = Path.home() / ".deepseek" / "skills"
+        if not skills_root.exists():
+            return []
+        commands: list[dict[str, str]] = []
+        for child in sorted(skills_root.iterdir(), key=lambda item: item.name.lower()):
+            if not child.is_dir():
+                continue
+            description = "Загрузить навык CodeWhale"
+            skill_md = child / "SKILL.md"
+            if skill_md.exists():
+                try:
+                    for line in skill_md.read_text(encoding="utf-8", errors="replace").splitlines():
+                        if line.lower().startswith("description:"):
+                            description = line.split(":", 1)[1].strip().strip('"')
+                            break
+                except OSError:
+                    pass
+            commands.append(
+                {
+                    "group": "Навыки",
+                    "label": child.name,
+                    "value": f"/skill {child.name}",
+                    "description": description,
+                }
+            )
+        return commands
 
     def _workspace_id(self, message: dict[str, Any]) -> str:
         return str(message.get("workspace_id") or "").strip()

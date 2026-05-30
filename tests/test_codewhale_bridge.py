@@ -229,6 +229,18 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             self.assertEqual(reply["workspace"]["name"], "Demo")
             self.assertTrue(Path(reply["workspace"]["path"]).exists())
 
+    def test_handle_codewhale_command_list_includes_skills(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+
+            reply = bridge.handle_message({"type": "codewhale_command_list"})
+
+            self.assertEqual(reply["type"], "codewhale_command_list")
+            values = {item["value"] for item in reply["commands"]}
+            self.assertIn("/help", values)
+            self.assertIn("/skill", values)
+
     def test_handle_workspace_folder_list_browses_desktop_folders(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

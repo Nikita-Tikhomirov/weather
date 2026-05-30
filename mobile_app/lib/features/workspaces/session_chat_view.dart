@@ -80,6 +80,7 @@ class SessionChatView extends StatelessWidget {
                       controller: inputController,
                       minLines: 1,
                       maxLines: 4,
+                      keyboardType: TextInputType.multiline,
                       textInputAction: TextInputAction.newline,
                       decoration: const InputDecoration(
                         hintText: 'Сообщение',

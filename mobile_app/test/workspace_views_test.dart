@@ -129,7 +129,7 @@ void main() {
     var restarted = false;
     var openedPath = '';
     var insertedPath = '';
-    var quickAction = '';
+    var command = '';
 
     await tester.pumpWidget(_testApp(
       home: SessionManagementView(
@@ -147,6 +147,14 @@ void main() {
         isFilesLoading: false,
         filePreviewPath: '',
         filePreviewText: '',
+        commands: const [
+          {
+            'group': 'Навыки',
+            'label': 'vision',
+            'value': '/skill vision',
+            'description': 'Проверка изображений',
+          },
+        ],
         onBack: () {},
         onStop: () => stopped = true,
         onKill: () => killed = true,
@@ -157,7 +165,7 @@ void main() {
         onInsertFilePath: (path) => insertedPath = path,
         onSendPhoto: () {},
         onSendDocument: () {},
-        onQuickAction: (prompt) => quickAction = prompt,
+        onRunCommand: (value) => command = value,
       ),
     ));
 
@@ -175,10 +183,10 @@ void main() {
     await tester.tap(find.byTooltip('Путь в чат'));
     expect(insertedPath, 'README.md');
 
-    await tester.tap(find.text('Действия'));
+    await tester.tap(find.text('Команды'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Составь план'));
-    expect(quickAction, isNotEmpty);
+    await tester.tap(find.text('vision'));
+    expect(command, '/skill vision');
     expect(openedPath, isEmpty);
   });
 
