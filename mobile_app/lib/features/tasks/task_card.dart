@@ -27,22 +27,22 @@ class TaskCard extends StatelessWidget {
   final Future<void> Function() onDelete;
   final Future<void> Function() onDoneToggle;
 
-  static Color _statusColor(String status) {
+  static Color _statusColor(WorkflowStatus status) {
     switch (status) {
-      case 'todo':
+      case WorkflowStatus.todo:
         return const Color(0xFF3B82F6);
-      case 'in_progress':
+      case WorkflowStatus.in_progress:
         return const Color(0xFFF59E0B);
-      case 'in_review':
+      case WorkflowStatus.in_review:
         return const Color(0xFF8B5CF6);
-      case 'done':
+      case WorkflowStatus.done:
         return const Color(0xFF10B981);
-      default:
+      case WorkflowStatus.archive:
         return const Color(0xFF6B7280);
     }
   }
 
-  static Widget _statusChip(String status, String label) {
+  static Widget _statusChip(WorkflowStatus status, String label) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
@@ -204,7 +204,7 @@ class TaskCard extends StatelessWidget {
                       tooltip: 'Выполнить/отменить',
                       iconSize: 20,
                       icon: Icon(
-                        item.workflowStatus == 'done'
+                        item.workflowStatus == WorkflowStatus.done
                             ? Icons.undo
                             : Icons.check_circle,
                         color: statusColor,

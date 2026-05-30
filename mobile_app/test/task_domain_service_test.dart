@@ -11,8 +11,8 @@ void main() {
         details: 'В 19:30',
         dueDate: '2026-05-24',
         time: '19:30',
-        priority: 'medium',
-        workflowStatus: 'todo',
+        priority: Priority.medium,
+        workflowStatus: WorkflowStatus.todo,
         isFamily: false,
         assignees: [],
         durationMinutes: 0,
@@ -88,15 +88,8 @@ void main() {
 
     // ── Workflow status ──
 
-    test('rejects invalid workflow status', () {
-      final draft = validDraft().copyWith(workflowStatus: 'unknown');
-      expect(
-          service.validateDraft(
-              draft: draft,
-              actorProfile: 'nik',
-              projectGroupMembers: const {'group-1': ['nik']}),
-          isNotNull);
-    });
+    // Invalid workflow status is now prevented at compile time by the enum.
+    // This test is no longer needed — WorkflowStatus enum ensures only valid values.
 
     test('accepts all valid workflow statuses', () {
       for (final status in TaskDomainService.allowedStatuses) {
@@ -295,7 +288,7 @@ void main() {
 
       expect(task.title, 'Кормить крыс');
       expect(task.ownerKey, 'nik');
-      expect(task.workflowStatus, 'todo');
+      expect(task.workflowStatus, WorkflowStatus.todo);
       expect(task.updatedAt, now.toIso8601String());
       expect(task.version, 1);
       expect(task.id, startsWith('m-'));
@@ -369,8 +362,8 @@ void main() {
         details: '',
         dueDate: '2026-05-24',
         time: '19:30',
-        workflowStatus: 'todo',
-        priority: 'medium',
+        workflowStatus: WorkflowStatus.todo,
+        priority: Priority.medium,
         tags: const [],
         assignees: assignees,
         reminderOffsetsMinutes: const [],

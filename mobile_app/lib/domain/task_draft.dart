@@ -1,3 +1,5 @@
+import '../models/task_item.dart';
+
 class TaskDraft {
   const TaskDraft({
     required this.title,
@@ -18,8 +20,8 @@ class TaskDraft {
   final String details;
   final String dueDate;
   final String time;
-  final String priority;
-  final String workflowStatus;
+  final Priority priority;
+  final WorkflowStatus workflowStatus;
   final bool isFamily;
   final List<String> assignees;
   final int durationMinutes;
@@ -32,8 +34,8 @@ class TaskDraft {
     String? details,
     String? dueDate,
     String? time,
-    String? priority,
-    String? workflowStatus,
+    Priority? priority,
+    WorkflowStatus? workflowStatus,
     bool? isFamily,
     List<String>? assignees,
     int? durationMinutes,

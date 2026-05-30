@@ -2,14 +2,8 @@ import '../models/task_item.dart';
 import 'task_draft.dart';
 
 class TaskDomainService {
-  static const Set<String> allowedStatuses = {
-    'todo',
-    'in_progress',
-    'in_review',
-    'done',
-    'archive',
-  };
-  static const Set<String> allowedPriority = {'low', 'medium', 'high'};
+  static const Set<WorkflowStatus> allowedStatuses = WorkflowStatus.values.toSet();
+  static const Set<Priority> allowedPriority = Priority.values.toSet();
   static const Set<int> allowedReminderOffsets = {
     1440,
     720,
@@ -83,36 +77,21 @@ class TaskDomainService {
     required Set<String> actorGroupIds,
     String currentProjectId = '',
   }) {
-    // 1) Project filter active — only show matching project tasks
     if (currentProjectId.isNotEmpty) {
-      if (task.projectId != currentProjectId) {
-        return false;
-      }
-      // Within the project, actor must be assignee or group member
-      if (task.assignees.contains(actorProfile)) {
-        return true;
-      }
+      if (task.projectId != currentProjectId) return false;
+      if (task.assignees.contains(actorProfile)) return true;
       if (task.groupId.isNotEmpty && actorGroupIds.contains(task.groupId)) {
         return true;
       }
       return false;
     }
 
-    // 2) No project filter — show personal tasks (owned/assigned) and
-    //    project tasks where actor participates (assignee or group member).
-    //    Tasks without projectId are personal and visible only to assignee/owner.
+    if (task.assignees.contains(actorProfile)) return true;
 
-    // Actor is direct assignee — always visible
-    if (task.assignees.contains(actorProfile)) {
-      return true;
-    }
-
-    // Task belongs to a group — visible if actor is in that group
     if (task.groupId.isNotEmpty && actorGroupIds.contains(task.groupId)) {
       return true;
     }
 
-    // Task without project/group and actor is not assignee — hidden
     return false;
   }
 

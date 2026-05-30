@@ -403,7 +403,7 @@ class TaskStore {
     return null;
   }
 
-  Future<void> move(TaskItem item, String nextStatus) async {
+  Future<void> move(TaskItem item, WorkflowStatus nextStatus) async {
     if (item.workflowStatus == nextStatus) {
       return;
     }
@@ -432,7 +432,10 @@ class TaskStore {
   }
 
   Future<void> toggleDone(TaskItem item) async {
-    await move(item, item.workflowStatus == 'done' ? 'todo' : 'done');
+    final nextStatus = item.workflowStatus == WorkflowStatus.done
+        ? WorkflowStatus.todo
+        : WorkflowStatus.done;
+    await move(item, nextStatus);
   }
 
   Future<void> delete(TaskItem item) async {
@@ -525,13 +528,13 @@ class TaskStore {
     final today =
         visibleTasks.where((task) => task.dueDate == dateKey).toList();
     final doneToday =
-        today.where((task) => task.workflowStatus == 'done').length;
+        today.where((task) => task.workflowStatus == WorkflowStatus.done).length;
     final familyToday = today.where((task) => task.isFamily).length;
     final overdue = visibleTasks
         .where(
           (task) =>
               task.dueDate.compareTo(dateKey) < 0 &&
-              task.workflowStatus != 'done',
+              task.workflowStatus != WorkflowStatus.done,
         )
         .length;
     final upcoming = visibleTasks.toList()
@@ -618,18 +621,18 @@ class TaskStore {
     }
 
     personalByStatus.value = <String, List<TaskItem>>{
-      'todo':
-          kanbanTasks.where((task) => task.workflowStatus == 'todo').toList(),
-      'in_progress': kanbanTasks
-          .where((task) => task.workflowStatus == 'in_progress')
+      WorkflowStatus.todo.name:
+          kanbanTasks.where((task) => task.workflowStatus == WorkflowStatus.todo).toList(),
+      WorkflowStatus.in_progress.name: kanbanTasks
+          .where((task) => task.workflowStatus == WorkflowStatus.in_progress)
           .toList(),
-      'in_review': kanbanTasks
-          .where((task) => task.workflowStatus == 'in_review')
+      WorkflowStatus.in_review.name: kanbanTasks
+          .where((task) => task.workflowStatus == WorkflowStatus.in_review)
           .toList(),
-      'done':
-          kanbanTasks.where((task) => task.workflowStatus == 'done').toList(),
-      'archive': kanbanTasks
-          .where((task) => task.workflowStatus == 'archive')
+      WorkflowStatus.done.name:
+          kanbanTasks.where((task) => task.workflowStatus == WorkflowStatus.done).toList(),
+      WorkflowStatus.archive.name: kanbanTasks
+          .where((task) => task.workflowStatus == WorkflowStatus.archive)
           .toList(),
     };
   }

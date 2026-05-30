@@ -22,7 +22,7 @@ class KanbanColumnStyle {
   final Color borderColor;
   final Color dropColor;
 
-  static KanbanColumnStyle resolve(ThemeData theme, String status) {
+  static KanbanColumnStyle resolve(ThemeData theme, WorkflowStatus status) {
     final accent = _statusAccent(status);
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
@@ -55,20 +55,18 @@ class KanbanColumnStyle {
     );
   }
 
-  static Color _statusAccent(String status) {
+  static Color _statusAccent(WorkflowStatus status) {
     switch (status) {
-      case 'todo':
+      case WorkflowStatus.todo:
         return const Color(0xFF38BDF8);
-      case 'in_progress':
+      case WorkflowStatus.in_progress:
         return const Color(0xFF34D399);
-      case 'in_review':
+      case WorkflowStatus.in_review:
         return const Color(0xFFFBBF24);
-      case 'done':
+      case WorkflowStatus.done:
         return const Color(0xFFA78BFA);
-      case 'archive':
+      case WorkflowStatus.archive:
         return const Color(0xFF9CA3AF);
-      default:
-        return const Color(0xFF94A3B8);
     }
   }
 }
@@ -169,7 +167,8 @@ class _KanbanColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = KanbanColumnStyle.resolve(Theme.of(context), status);
+    final style = KanbanColumnStyle.resolve(
+        Theme.of(context), WorkflowStatus.parse(status));
 
     return Container(
       margin: margin,

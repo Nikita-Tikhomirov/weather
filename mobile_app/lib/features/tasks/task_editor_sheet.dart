@@ -44,8 +44,8 @@ Future<void> showTaskEditorSheet({
       ? store.selectedDate.value
       : DateTime.tryParse(existing.dueDate) ?? store.selectedDate.value;
   String time = existing?.time ?? '19:00';
-  String priority = existing?.priority ?? 'medium';
-  String status = existing?.workflowStatus ?? 'todo';
+  Priority priority = existing?.priority ?? Priority.medium;
+  WorkflowStatus status = existing?.workflowStatus ?? WorkflowStatus.todo;
   String selectedProjectId =
       existing?.projectId ?? store.currentProjectId.value;
   String selectedGroupId = existing?.groupId ?? '';
@@ -256,43 +256,43 @@ Future<void> showTaskEditorSheet({
                       ),
                     ],
                   ),
-                  DropdownButtonFormField<String>(
+                  DropdownButtonFormField<Priority>(
                     // ignore: deprecated_member_use
                     value: priority,
                     decoration: const InputDecoration(labelText: 'Приоритет'),
                     items: const [
-                      DropdownMenuItem(value: 'low', child: Text('Низкий')),
-                      DropdownMenuItem(value: 'medium', child: Text('Средний')),
-                      DropdownMenuItem(value: 'high', child: Text('Высокий')),
+                      DropdownMenuItem(value: Priority.low, child: Text('Низкий')),
+                      DropdownMenuItem(value: Priority.medium, child: Text('Средний')),
+                      DropdownMenuItem(value: Priority.high, child: Text('Высокий')),
                     ],
                     onChanged: (value) =>
-                        setModalState(() => priority = value ?? 'medium'),
+                        setModalState(() => priority = value ?? Priority.medium),
                   ),
-                  DropdownButtonFormField<String>(
+                  DropdownButtonFormField<WorkflowStatus>(
                     // ignore: deprecated_member_use
                     value: status,
                     decoration: const InputDecoration(labelText: 'Статус'),
                     items: const [
                       DropdownMenuItem(
-                        value: 'todo',
+                        value: WorkflowStatus.todo,
                         child: Text('К выполнению'),
                       ),
                       DropdownMenuItem(
-                        value: 'in_progress',
+                        value: WorkflowStatus.in_progress,
                         child: Text('В работе'),
                       ),
                       DropdownMenuItem(
-                        value: 'in_review',
+                        value: WorkflowStatus.in_review,
                         child: Text('На проверке'),
                       ),
-                      DropdownMenuItem(value: 'done', child: Text('Выполнено')),
+                      DropdownMenuItem(value: WorkflowStatus.done, child: Text('Выполнено')),
                       DropdownMenuItem(
-                        value: 'archive',
+                        value: WorkflowStatus.archive,
                         child: Text('Архив'),
                       ),
                     ],
                     onChanged: (value) =>
-                        setModalState(() => status = value ?? 'todo'),
+                        setModalState(() => status = value ?? WorkflowStatus.todo),
                   ),
                   TextField(
                     controller: durationCtl,

@@ -254,13 +254,13 @@ class _DayCell extends StatelessWidget {
     );
   }
 
-  static Color _statusDot(String status) {
+  static Color _statusDot(WorkflowStatus status) {
     switch (status) {
-      case 'todo': return const Color(0xFF38BDF8);
-      case 'in_progress': return const Color(0xFF34D399);
-      case 'in_review': return const Color(0xFFFBBF24);
-      case 'done': return const Color(0xFFA78BFA);
-      case 'archive': return const Color(0xFF9CA3AF);
+      case WorkflowStatus.todo: return const Color(0xFF38BDF8);
+      case WorkflowStatus.in_progress: return const Color(0xFF34D399);
+      case WorkflowStatus.in_review: return const Color(0xFFFBBF24);
+      case WorkflowStatus.done: return const Color(0xFFA78BFA);
+      case WorkflowStatus.archive: return const Color(0xFF9CA3AF);
       default: return const Color(0xFF94A3B8);
     }
   }

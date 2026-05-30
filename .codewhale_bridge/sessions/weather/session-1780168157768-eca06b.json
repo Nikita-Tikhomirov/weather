@@ -4,15 +4,15 @@
   "title": "Технический долг",
   "status": "running",
   "worker_pid": 14112,
-  "worker_port": 43102,
+  "worker_port": 43103,
   "runtime_session_id": "7d7feeef-3a42-49f2-9daa-01dec199e582",
-  "active_pid": 16768,
+  "active_pid": 19544,
   "provider": "deepseek",
   "model": "deepseek-v4-pro",
   "approval_policy": "never",
   "sandbox_mode": "danger-full-access",
   "auto_mode": true,
   "created_at": 1780168157768,
-  "updated_at": 1780170051767,
-  "last_event_seq": 285
+  "updated_at": 1780171470504,
+  "last_event_seq": 452
 }

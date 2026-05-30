@@ -167,7 +167,7 @@ class _FakeSyncApi implements SyncApi {
 TaskItem _makeTask(String id,
     {String ownerKey = 'nik',
     bool isFamily = false,
-    String workflowStatus = 'todo'}) {
+    WorkflowStatus workflowStatus = WorkflowStatus.todo}) {
   return TaskItem(
     id: id,
     ownerKey: ownerKey,
@@ -177,7 +177,7 @@ TaskItem _makeTask(String id,
     dueDate: '2026-01-01',
     time: '12:00',
     workflowStatus: workflowStatus,
-    priority: 'medium',
+    priority: Priority.medium,
     tags: [],
     assignees: [],
     reminderOffsetsMinutes: [],

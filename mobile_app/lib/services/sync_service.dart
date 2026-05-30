@@ -33,7 +33,7 @@ class SyncService {
             'details': task.details,
             'due_date': task.dueDate,
             'time': task.time,
-            'workflow_status': task.workflowStatus,
+            'workflow_status': task.workflowStatus.name,
             'assignees': task.assignees,
             'participants': task.assignees,
             'reminder_offsets_minutes': task.reminderOffsetsMinutes,

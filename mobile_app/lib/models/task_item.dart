@@ -2,6 +2,44 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+/// Workflow status of a task.
+enum WorkflowStatus {
+  todo,
+  in_progress,
+  in_review,
+  done,
+  archive;
+
+  static WorkflowStatus parse(String? value) {
+    if (value == null || value.isEmpty) return WorkflowStatus.todo;
+    return WorkflowStatus.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => WorkflowStatus.todo,
+    );
+  }
+}
+
+/// Task priority level.
+enum Priority {
+  low,
+  medium,
+  high;
+
+  static Priority parse(String? value) {
+    if (value == null || value.isEmpty) return Priority.medium;
+    return Priority.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => Priority.medium,
+    );
+  }
+}
+
+/// A single task item used throughout the app.
+///
+/// Fields [workflowStatus] and [priority] are typed enums
+/// ([WorkflowStatus] / [Priority]) for compile-time safety.
+/// Serialization uses `.name` which is backward compatible
+/// with the previous string-based format.
 class TaskItem {
   TaskItem({
     required this.id,
@@ -32,8 +70,8 @@ class TaskItem {
   final String details;
   final String dueDate;
   final String time;
-  final String workflowStatus;
-  final String priority;
+  final WorkflowStatus workflowStatus;
+  final Priority priority;
   final List<String> tags;
   final List<String> assignees;
   final List<int> reminderOffsetsMinutes;
@@ -54,8 +92,10 @@ class TaskItem {
       details: (json['details'] ?? '').toString(),
       dueDate: (json['due_date'] ?? '').toString(),
       time: (json['time'] ?? '').toString(),
-      workflowStatus: (json['workflow_status'] ?? 'todo').toString(),
-      priority: (json['priority'] ?? 'medium').toString(),
+      workflowStatus: WorkflowStatus.parse(
+        (json['workflow_status'] ?? '').toString(),
+      ),
+      priority: Priority.parse((json['priority'] ?? '').toString()),
       tags: (json['tags'] is List)
           ? (json['tags'] as List).map((v) => v.toString()).toList()
           : const [],
@@ -87,8 +127,8 @@ class TaskItem {
       'details': details,
       'due_date': dueDate,
       'time': time,
-      'workflow_status': workflowStatus,
-      'priority': priority,
+      'workflow_status': workflowStatus.name,
+      'priority': priority.name,
       'tags': tags,
       'assignees': assignees,
       'participants': assignees,
@@ -110,8 +150,8 @@ class TaskItem {
       'details': details,
       'due_date': dueDate,
       'time': time,
-      'workflow_status': workflowStatus,
-      'priority': priority,
+      'workflow_status': workflowStatus.name,
+      'priority': priority.name,
       'tags_json': jsonEncode(tags),
       'participants_json': jsonEncode(assignees),
       'reminder_offsets_json': jsonEncode(reminderOffsetsMinutes),
@@ -132,8 +172,10 @@ class TaskItem {
       details: (row['details'] ?? '').toString(),
       dueDate: (row['due_date'] ?? '').toString(),
       time: (row['time'] ?? '').toString(),
-      workflowStatus: (row['workflow_status'] ?? 'todo').toString(),
-      priority: (row['priority'] ?? 'medium').toString(),
+      workflowStatus: WorkflowStatus.parse(
+        (row['workflow_status'] ?? '').toString(),
+      ),
+      priority: Priority.parse((row['priority'] ?? '').toString()),
       tags: _decodeStringList(row['tags_json']),
       assignees: _decodeStringList(row['participants_json']),
       reminderOffsetsMinutes: _normalizeReminderOffsets(
@@ -155,8 +197,8 @@ class TaskItem {
     String? details,
     String? dueDate,
     String? time,
-    String? workflowStatus,
-    String? priority,
+    WorkflowStatus? workflowStatus,
+    Priority? priority,
     List<String>? tags,
     List<String>? assignees,
     List<int>? reminderOffsetsMinutes,

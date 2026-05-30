@@ -1,10 +1,11 @@
 import 'package:family_todo_mobile/app/app_theme.dart';
 import 'package:family_todo_mobile/features/tasks/tasks_board.dart';
+import 'package:family_todo_mobile/models/task_item.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  const statuses = ['todo', 'in_progress', 'in_review', 'done'];
+  const statuses = [WorkflowStatus.todo, WorkflowStatus.in_progress, WorkflowStatus.in_review, WorkflowStatus.done];
 
   double contrastRatio(Color a, Color b) {
     final l1 = a.computeLuminance();

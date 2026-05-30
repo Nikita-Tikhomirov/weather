@@ -24,6 +24,8 @@ void main() {
       final task = TaskItem.fromJson(json);
       expect(task.assignees, ['nik', 'misha']);
       expect(task.participants, ['nik', 'misha']);
+      expect(task.workflowStatus, WorkflowStatus.todo);
+      expect(task.priority, Priority.medium);
     });
 
     test('fromJson falls back to participants field', () {
@@ -59,8 +61,8 @@ void main() {
         details: '',
         dueDate: '2025-01-01',
         time: '12:00',
-        workflowStatus: 'todo',
-        priority: 'medium',
+        workflowStatus: WorkflowStatus.todo,
+        priority: Priority.medium,
         tags: [],
         assignees: ['nik'],
         reminderOffsetsMinutes: [30],
@@ -73,6 +75,8 @@ void main() {
       expect(json['participants'], ['nik']);
       expect(json['project_id'], 'project-1');
       expect(json['group_id'], 'group-1');
+      expect(json['workflow_status'], 'todo');
+      expect(json['priority'], 'medium');
     });
 
     test('toDbRow includes project and group assignment', () {
@@ -86,8 +90,8 @@ void main() {
         details: '',
         dueDate: '2025-01-01',
         time: '12:00',
-        workflowStatus: 'todo',
-        priority: 'medium',
+        workflowStatus: WorkflowStatus.todo,
+        priority: Priority.medium,
         tags: [],
         assignees: ['nik'],
         reminderOffsetsMinutes: [30],
@@ -109,8 +113,8 @@ void main() {
         details: '',
         dueDate: '2025-01-01',
         time: '12:00',
-        workflowStatus: 'todo',
-        priority: 'medium',
+        workflowStatus: WorkflowStatus.todo,
+        priority: Priority.medium,
         tags: [],
         assignees: ['nik'],
         reminderOffsetsMinutes: [30],
@@ -135,8 +139,8 @@ void main() {
         details: '',
         dueDate: '2025-01-01',
         time: '12:00',
-        workflowStatus: 'todo',
-        priority: 'medium',
+        workflowStatus: WorkflowStatus.todo,
+        priority: Priority.medium,
         tags: [],
         assignees: ['nik', 'misha'],
         reminderOffsetsMinutes: [],
