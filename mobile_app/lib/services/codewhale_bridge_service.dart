@@ -189,7 +189,6 @@ class CodeWhaleBridgeService {
       );
       _running = true;
       _connecting = false;
-      onStatusChange(true, 'Подключено к CodeWhale');
 
       _socket!.listen(
         _onData,
@@ -219,6 +218,7 @@ class CodeWhaleBridgeService {
             'project_id': 'codewhale',
           })}\n');
       _flushPending();
+      onStatusChange(true, 'Подключено к CodeWhale');
       return true;
     } catch (e) {
       _connecting = false;
