@@ -15,11 +15,10 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
   Future<ChatBootstrapSnapshot> chatBootstrap({
     required String actorProfile,
   }) async {
-    final response = await getWithFallback(
+    final body = await getJsonWithFallback(
       paths: const ['/chat/bootstrap'],
       query: {'actor_profile': actorProfile},
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
 
     final contacts = (body['contacts'] as List? ?? const [])
         .whereType<Map>()
@@ -52,7 +51,7 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
     required String deviceId,
     String displayName = '',
   }) async {
-    final response = await postWithFallback(
+    final body = await postJsonWithFallback(
       paths: const ['/auth/device-start'],
       body: jsonEncode({
         'phone': phone,
@@ -61,7 +60,6 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
         'platform': 'android',
       }),
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     final user = Map<String, dynamic>.from((body['user'] as Map?) ?? const {});
     final members = (body['family_members'] as List? ?? const [])
         .whereType<Map>()
@@ -81,11 +79,10 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
     required String actorProfile,
     required List<String> phones,
   }) async {
-    final response = await postWithFallback(
+    final body = await postJsonWithFallback(
       paths: const ['/contacts/resolve'],
       body: jsonEncode({'actor_profile': actorProfile, 'phones': phones}),
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return (body['contacts'] as List? ?? const [])
         .whereType<Map>()
         .map((row) => ChatContact.fromJson(Map<String, dynamic>.from(row)))
@@ -96,11 +93,10 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
   Future<List<ChatContact>> familyMembers({
     required String actorProfile,
   }) async {
-    final response = await getWithFallback(
+    final body = await getJsonWithFallback(
       paths: const ['/family/members'],
       query: {'actor_profile': actorProfile},
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return (body['members'] as List? ?? const [])
         .whereType<Map>()
         .map((row) => ChatContact.fromJson(Map<String, dynamic>.from(row)))
@@ -112,11 +108,10 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
     required String actorProfile,
     required List<String> profiles,
   }) async {
-    final response = await postWithFallback(
+    final body = await postJsonWithFallback(
       paths: const ['/family/members/add'],
       body: jsonEncode({'actor_profile': actorProfile, 'profiles': profiles}),
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return (body['members'] as List? ?? const [])
         .whereType<Map>()
         .map((row) => ChatContact.fromJson(Map<String, dynamic>.from(row)))
@@ -139,11 +134,10 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
       query['cursor'] = cursor;
     }
 
-    final response = await getWithFallback(
+    final body = await getJsonWithFallback(
       paths: const ['/chat/messages'],
       query: query,
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
 
     final messages = (body['messages'] as List? ?? const [])
         .whereType<Map>()
@@ -187,12 +181,10 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
       if (clientMessageId != null && clientMessageId.isNotEmpty)
         'client_message_id': clientMessageId,
     };
-
-    final response = await postWithFallback(
+    final body = await postJsonWithFallback(
       paths: const ['/chat/messages/send'],
       body: jsonEncode(payload),
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return ChatMessage.fromJson(
       Map<String, dynamic>.from((body['message'] as Map?) ?? const {}),
     );
@@ -204,7 +196,7 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
     required String title,
     required List<String> memberProfiles,
   }) async {
-    final response = await postWithFallback(
+    final body = await postJsonWithFallback(
       paths: const ['/chat/conversations'],
       body: jsonEncode({
         'actor_profile': actorProfile,
@@ -212,7 +204,6 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
         'member_profiles': memberProfiles,
       }),
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return ChatConversation.fromJson(
       Map<String, dynamic>.from((body['conversation'] as Map?) ?? const {}),
     );
@@ -224,7 +215,7 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
     required String messageId,
     required String reaction,
   }) async {
-    final response = await postWithFallback(
+    final body = await postJsonWithFallback(
       paths: const ['/chat/messages/reaction'],
       body: jsonEncode({
         'actor_profile': actorProfile,
@@ -232,7 +223,6 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
         'reaction': reaction,
       }),
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return ChatMessage.fromJson(
       Map<String, dynamic>.from((body['message'] as Map?) ?? const {}),
     );
@@ -244,7 +234,7 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
     required String messageId,
     required String text,
   }) async {
-    final response = await postWithFallback(
+    final body = await postJsonWithFallback(
       paths: const ['/chat/messages/edit'],
       body: jsonEncode({
         'actor_profile': actorProfile,
@@ -252,7 +242,6 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
         'text': text,
       }),
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return ChatMessage.fromJson(
       Map<String, dynamic>.from((body['message'] as Map?) ?? const {}),
     );
@@ -263,14 +252,13 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
     required String actorProfile,
     required String messageId,
   }) async {
-    final response = await postWithFallback(
+    final body = await postJsonWithFallback(
       paths: const ['/chat/messages/delete'],
       body: jsonEncode({
         'actor_profile': actorProfile,
         'message_id': messageId,
       }),
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return ChatMessage.fromJson(
       Map<String, dynamic>.from((body['message'] as Map?) ?? const {}),
     );
@@ -511,9 +499,7 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
 
   @override
   Future<List<StickerPack>> chatStickerPacks() async {
-    final response =
-        await getWithFallback(paths: const ['/chat/stickers/packs']);
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final body = await getJsonWithFallback(paths: const ['/chat/stickers/packs']);
     return (body['sticker_packs'] as List? ?? const [])
         .whereType<Map>()
         .map((row) => StickerPack.fromJson(Map<String, dynamic>.from(row)))

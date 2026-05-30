@@ -76,11 +76,10 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
             '/sync/pull/',
             '/sync/pull',
           ];
-    final response = await getWithFallback(
+    final body = await getJsonWithFallback(
       paths: paths,
       query: query,
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     final tasks = (body['tasks'] as List? ?? const [])
         .whereType<Map>()
         .map((row) => TaskItem.fromJson(Map<String, dynamic>.from(row)))
@@ -155,7 +154,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
       'last_error': lastError,
       if (deviceId != null && deviceId.isNotEmpty) 'device_id': deviceId,
     };
-    final response = await postWithFallback(
+    final body = await postJsonWithFallback(
       paths: const [
         '/devices_register.php',
         '/devices_register.php/',
@@ -164,7 +163,6 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
       ],
       body: jsonEncode(payload),
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return DeviceTokenRegistration(
       shouldResetToken: body['should_reset_token'] == true,
       previousTokenStatus: (body['previous_token_status'] ?? '').toString(),
@@ -207,13 +205,11 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
   Future<PushDeviceStatus> pushDeviceStatus({
     required String actorProfile,
   }) async {
-    final response = await getWithFallback(
+    final body = await getJsonWithFallback(
       paths: const ['/push/device_status', '/push_device_status.php'],
       query: {'actor_profile': actorProfile},
     );
-    return PushDeviceStatus.fromJson(
-      jsonDecode(response.body) as Map<String, dynamic>,
-    );
+    return PushDeviceStatus.fromJson(body);
   }
 
   @override
@@ -238,11 +234,10 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
   Future<List<TaskProject>> listProjects({
     required String actorProfile,
   }) async {
-    final response = await getWithFallback(
+    final body = await getJsonWithFallback(
       paths: const ['/projects', '/projects.php'],
       query: {'actor_profile': actorProfile},
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return (body['projects'] as List? ?? const [])
         .whereType<Map>()
         .map((row) => TaskProject.fromJson(Map<String, dynamic>.from(row)))
@@ -254,7 +249,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
     required String name,
     String description = '',
   }) async {
-    final response = await postWithFallback(
+    final body = await postJsonWithFallback(
       paths: const ['/projects/create', '/projects_create.php'],
       body: jsonEncode({
         'actor_profile': actorProfile,
@@ -262,7 +257,6 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
         'description': description,
       }),
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return TaskProject.fromJson(
       Map<String, dynamic>.from(body['project'] as Map),
     );
@@ -315,11 +309,10 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
   Future<List<FamilyGroup>> listFamilyGroups({
     required String actorProfile,
   }) async {
-    final response = await getWithFallback(
+    final body = await getJsonWithFallback(
       paths: const ['/family-groups', '/family_groups.php'],
       query: {'actor_profile': actorProfile},
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return (body['groups'] as List? ?? const [])
         .whereType<Map>()
         .map((row) => FamilyGroup.fromJson(Map<String, dynamic>.from(row)))
@@ -329,11 +322,10 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
   Future<Map<String, List<String>>> listProjectGroupMap({
     required String actorProfile,
   }) async {
-    final response = await getWithFallback(
+    final body = await getJsonWithFallback(
       paths: const ['/family-groups', '/family_groups.php'],
       query: {'actor_profile': actorProfile},
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return _decodeProjectGroupMap(body['project_groups']);
   }
 
@@ -342,7 +334,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
     required String name,
     required List<String> members,
   }) async {
-    final response = await postWithFallback(
+    final body = await postJsonWithFallback(
       paths: const ['/family-groups/create', '/family_groups_create.php'],
       body: jsonEncode({
         'actor_profile': actorProfile,
@@ -350,7 +342,6 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
         'members': members,
       }),
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return FamilyGroup.fromJson(
       Map<String, dynamic>.from(body['group'] as Map),
     );

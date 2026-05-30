@@ -220,6 +220,7 @@ class FcmService {
     _onOpenSub = null;
     _localOpenSub?.cancel();
     _localOpenSub = null;
+    _notificationOpenEvents.close();
   }
 
   // ────────────────────────────────────────────────────────────

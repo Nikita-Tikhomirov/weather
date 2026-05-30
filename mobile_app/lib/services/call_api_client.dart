@@ -14,7 +14,7 @@ class CallApiClient extends HttpApiClient implements CallApi {
     String callType = 'audio',
     String? calleeProfile,
   }) async {
-    final response = await postWithFallback(
+    final body = await postJsonWithFallback(
       paths: const ['/call/initiate'],
       body: jsonEncode({
         'actor_profile': actorProfile,
@@ -23,7 +23,6 @@ class CallApiClient extends HttpApiClient implements CallApi {
         if (calleeProfile != null) 'callee_profile': calleeProfile,
       }),
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return CallSession.fromJson(
       Map<String, dynamic>.from((body['session'] as Map?) ?? const {}),
     );
@@ -34,14 +33,13 @@ class CallApiClient extends HttpApiClient implements CallApi {
     required String actorProfile,
     required String sessionId,
   }) async {
-    final response = await postWithFallback(
+    final body = await postJsonWithFallback(
       paths: const ['/call/accept'],
       body: jsonEncode({
         'actor_profile': actorProfile,
         'session_id': sessionId,
       }),
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return CallSession.fromJson(
       Map<String, dynamic>.from((body['session'] as Map?) ?? const {}),
     );
@@ -52,14 +50,13 @@ class CallApiClient extends HttpApiClient implements CallApi {
     required String actorProfile,
     required String sessionId,
   }) async {
-    final response = await postWithFallback(
+    final body = await postJsonWithFallback(
       paths: const ['/call/reject'],
       body: jsonEncode({
         'actor_profile': actorProfile,
         'session_id': sessionId,
       }),
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return CallSession.fromJson(
       Map<String, dynamic>.from((body['session'] as Map?) ?? const {}),
     );
@@ -70,14 +67,13 @@ class CallApiClient extends HttpApiClient implements CallApi {
     required String actorProfile,
     required String sessionId,
   }) async {
-    final response = await postWithFallback(
+    final body = await postJsonWithFallback(
       paths: const ['/call/end'],
       body: jsonEncode({
         'actor_profile': actorProfile,
         'session_id': sessionId,
       }),
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return CallSession.fromJson(
       Map<String, dynamic>.from((body['session'] as Map?) ?? const {}),
     );
@@ -116,11 +112,10 @@ class CallApiClient extends HttpApiClient implements CallApi {
       'session_id': sessionId,
       if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
     };
-    final response = await getWithFallback(
+    final body = await getJsonWithFallback(
       paths: const ['/call/signals'],
       query: query,
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     final signals = (body['signals'] as List? ?? const [])
         .whereType<Map>()
         .map((row) => CallSignal.fromJson(Map<String, dynamic>.from(row)))
@@ -136,11 +131,10 @@ class CallApiClient extends HttpApiClient implements CallApi {
   Future<CallSession?> callCheckIncoming({
     required String actorProfile,
   }) async {
-    final response = await getWithFallback(
+    final body = await getJsonWithFallback(
       paths: const ['/call/incoming'],
       query: {'actor_profile': actorProfile},
     );
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     final incoming = body['incoming_call'];
     if (incoming == null) return null;
     return CallSession.fromJson(Map<String, dynamic>.from(incoming as Map));
