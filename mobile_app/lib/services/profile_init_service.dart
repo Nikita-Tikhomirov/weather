@@ -1,11 +1,25 @@
-part of 'home_page.dart';
+import 'dart:math';
 
-// ───────────────────────────────────────────────────────────────
-// Profile / device initialization extracted from _HomePageState.
-// ───────────────────────────────────────────────────────────────
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-extension _ProfileInitExtension on _HomePageState {
-  Future<String> _ensureDeviceId(SharedPreferences prefs) async {
+import '../services/api_client.dart';
+
+/// Standalone profile-initialization service extracted from _HomePageState.
+///
+/// Manages device-id generation, profile restoration by phone,
+/// and the first-run profile prompt dialog.
+class ProfileInitService {
+  ProfileInitService({
+    required this.api,
+    this.onProfileChanged,
+  });
+
+  final ApiClient api;
+  final void Function(String displayName, String phone)? onProfileChanged;
+
+  /// Ensure a persistent device-id exists in SharedPreferences.
+  static Future<String> ensureDeviceId(SharedPreferences prefs) async {
     final saved = prefs.getString('device_id')?.trim() ?? '';
     if (saved.isNotEmpty) {
       return saved;
@@ -16,43 +30,48 @@ extension _ProfileInitExtension on _HomePageState {
     return value;
   }
 
-  Future<String> _restoreProfileByPhone(
-    ApiClient api,
+  /// Restore profile by phone number using the device-start API.
+  Future<String> restoreProfileByPhone(
     SharedPreferences prefs,
     String phone,
+    String displayName,
   ) async {
-    final deviceId = await _ensureDeviceId(prefs);
+    final deviceId = await ensureDeviceId(prefs);
     final session = await api.deviceStart(
       phone: phone,
       deviceId: deviceId,
-      displayName: _currentProfileDisplayName,
+      displayName: displayName,
     );
     await prefs.setString('actor_profile', session.profileKey);
     await prefs.setString('profile_phone', session.phone);
     await prefs.setString('profile_display_name', session.displayName);
-    _currentProfileDisplayName = session.displayName;
-    _currentProfilePhone = session.phone;
+    onProfileChanged?.call(session.displayName, session.phone);
     return session.profileKey;
   }
 
-  Future<String?> _promptForInitialProfile(ApiClient api) async {
+  /// Show the first-run profile prompt dialog.
+  /// Returns the selected profile key, or null if cancelled.
+  static Future<String?> promptForInitialProfile(
+    BuildContext context,
+    ApiClient api,
+    void Function(String displayName, String phone) onProfileChanged,
+  ) async {
     await WidgetsBinding.instance.endOfFrame;
-    if (!mounted) {
-      return null;
-    }
+    if (!context.mounted) return null;
+
     final prefs = await SharedPreferences.getInstance();
-    if (!mounted) {
-      return null;
-    }
+    if (!context.mounted) return null;
+
     final phoneCtl = TextEditingController();
     final nameCtl = TextEditingController();
     String errorText = '';
+
     return showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (ctx, setDialogState) {
             return AlertDialog(
               title: const Text('Вход по номеру телефона'),
               content: Column(
@@ -74,7 +93,8 @@ extension _ProfileInitExtension on _HomePageState {
                   ),
                   if (errorText.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    Text(errorText, style: const TextStyle(color: Colors.red)),
+                    Text(errorText,
+                        style: const TextStyle(color: Colors.red)),
                   ],
                 ],
               ),
@@ -82,24 +102,18 @@ extension _ProfileInitExtension on _HomePageState {
                 FilledButton(
                   onPressed: () async {
                     try {
-                      final deviceId = await _ensureDeviceId(prefs);
+                      final deviceId = await ensureDeviceId(prefs);
                       final session = await api.deviceStart(
                         phone: phoneCtl.text,
                         deviceId: deviceId,
                         displayName: nameCtl.text,
                       );
                       await prefs.setString(
-                        'actor_profile',
-                        session.profileKey,
-                      );
+                          'actor_profile', session.profileKey);
                       await prefs.setString('profile_phone', session.phone);
                       await prefs.setString(
-                        'profile_display_name',
-                        session.displayName,
-                      );
-                      if (mounted) {
-                        _setProfileInfo(session.displayName, session.phone);
-                      }
+                          'profile_display_name', session.displayName);
+                      onProfileChanged(session.displayName, session.phone);
                       if (dialogContext.mounted) {
                         Navigator.of(dialogContext).pop(session.profileKey);
                       }
@@ -116,6 +130,4 @@ extension _ProfileInitExtension on _HomePageState {
       },
     );
   }
-
-
 }

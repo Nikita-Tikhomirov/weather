@@ -45,17 +45,16 @@ import '../../services/desktop_theme_service.dart';
 import '../../services/fcm_service.dart';
 import '../../services/local_db.dart';
 import '../../services/project_access.dart';
+import '../../services/profile_init_service.dart';
 import '../../services/project_bridge_service.dart';
+import '../../services/push_notification_handler.dart';
+import '../../services/sync_loop_service.dart';
+import '../../services/voice_recorder_service.dart';
 import '../../state/task_store.dart';
 
 part 'desktop_shell.dart';
-part 'push_handler.dart';
 part 'share_receiver.dart';
-part 'profile_init.dart';
-part 'sync_loops.dart';
-part 'chat_init.dart';
 part 'projects_data.dart';
-part 'calls_voice.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -73,18 +72,14 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   TaskStore? _store;
-  FcmService? _fcm;
   DesktopThemeService? _desktopThemeService;
   DesktopProcessHostService? _desktopProcessHostService;
-  Timer? _deltaSyncTimer;
-  Timer? _fullSyncTimer;
-  Timer? _retryTimer;
-  Timer? _incomingCallPollTimer;
+  SyncLoopService? _syncLoops;
+  PushNotificationHandler? _pushHandler;
+  VoiceRecorderService? _voiceRecorder;
   bool _desktopLogExpanded = false;
   DateTime _desktopMonth = DateTime(DateTime.now().year, DateTime.now().month);
   DateTime _calendarMonth = DateTime(DateTime.now().year, DateTime.now().month);
-  final ValueNotifier<String> _fcmDiagnostics =
-      ValueNotifier('FCM: not initialized');
   final TextEditingController _chatInputCtl = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
   ChatRealtimeService? _chatRealtime;
@@ -119,13 +114,6 @@ class _HomePageState extends State<HomePage> {
   String? _currentProfileAvatarUrl;
   final Map<String, String> _profileAvatarUrls = <String, String>{};
   ChatMessage? _replyToMessage;
-  bool _isRecording = false;
-  String? _voicePath;
-  Timer? _voiceTimer;
-  int _voiceSec = 0;
-  Map<String, dynamic>? _pendingPushData;
-  bool _pendingPushWasOpened = false;
-  String _lastProcessedPushEventId = '';
   bool _pushAlreadyRouted = false;
 
   /// Conversation key -> set of profiles currently typing
@@ -155,19 +143,28 @@ class _HomePageState extends State<HomePage> {
     );
     String? owner;
     final savedPhone = prefs.getString('profile_phone')?.trim() ?? '';
+    final profileInit = ProfileInitService(
+      api: api,
+      onProfileChanged: (displayName, phone) {
+        _setProfileInfo(displayName, phone);
+      },
+    );
     if (savedPhone.isNotEmpty) {
       try {
-        owner = await _restoreProfileByPhone(api, prefs, savedPhone);
+        owner = await profileInit.restoreProfileByPhone(
+            prefs, savedPhone, _currentProfileDisplayName);
       } catch (e, st) {
         debugPrint('[home] restore profile by phone error: $e\n$st');
         owner = savedOwner.isNotEmpty
             ? savedOwner
-            : await _promptForInitialProfile(api);
+            : await ProfileInitService.promptForInitialProfile(
+                context, api, _setProfileInfo);
       }
     } else if (savedOwner.isNotEmpty) {
       owner = savedOwner;
     } else {
-      owner = await _promptForInitialProfile(api);
+      owner = await ProfileInitService.promptForInitialProfile(
+          context, api, _setProfileInfo);
     }
     if (!mounted || owner == null || owner.isEmpty) {
       return;
@@ -187,19 +184,69 @@ class _HomePageState extends State<HomePage> {
     if (_isDesktopWindows) {
       await _initDesktopServices(store, owner);
     }
-    _bindFcm(api: api, owner: owner);
+    _pushHandler = PushNotificationHandler(
+      api: api,
+      owner: owner,
+      onDiagnosticsChanged: (_) {},
+      onShowDiagnosticsDialog: () => _showFcmDiagnosticsDialog(),
+      onNavigateToTasks: () => store.setPage(1),
+      onNavigateToMessenger: () => store.setPage(4),
+      onOpenConversation: (key) async {
+        _pushAlreadyRouted = true;
+        store.setPage(4);
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        if (mounted) {
+          await _openConversation(store, key);
+        }
+      },
+      onIncomingCall: (session) {
+        _callService?.notifyIncomingCall(session);
+      },
+      onSyncDelta: ({required bool showErrors}) =>
+          _safeSyncDelta(store, showErrors: showErrors),
+      onRefreshActiveConversation:
+          ({required bool useNetwork, required bool quiet}) =>
+              _refreshActiveConversation(store,
+                  useNetwork: useNetwork, quiet: quiet),
+      getActiveConversationKey: () => _activeConversationKey,
+      getIsProjectConversation: (key) => isProjectConversation(key),
+      getPageIndex: () => store.pageIndex.value,
+      shouldSuppressChatNotification: (conversationKey) {
+        final canonical = canonicalConversationKey(conversationKey);
+        return store.pageIndex.value == 4 &&
+            _activeConversationKey == canonical;
+      },
+    )..bindFcm();
     await _safeSyncFull(store, showErrors: false);
     await _initChat(store);
     _initShareReceiver(store);
     _chatInputCtl.addListener(() => _onChatInputChanged(store));
-    _startSyncLoops(store);
+    _syncLoops = SyncLoopService(
+      store: store,
+      callService: _callService,
+      onRetryPendingMessages: (s) => _retryPendingMessages(s),
+    )..start();
     if (!mounted) {
       store.dispose();
       return;
     }
     setState(() => _store = store);
 
-    await _processPendingPush(store);
+    _voiceRecorder = VoiceRecorderService(
+      store: store,
+      onRecordingChanged: (_) {
+        if (mounted) setState(() {});
+      },
+      onShowSnackBar: (msg) {
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(msg)));
+        }
+      },
+      getActiveConversationKey: () => _activeConversationKey,
+    );
+
+    await _pushHandler?.processPendingPush();
   }
 
   Future<void> _initDesktopServices(TaskStore store, String owner) async {
@@ -370,23 +417,6 @@ class _HomePageState extends State<HomePage> {
       _projectFilesLoading = false;
     });
     _fileSheetSetState?.call(() {});
-  }
-
-  // Thin wrappers used by calls_voice.dart
-
-  void _setRecording(bool recording) {
-    setState(() {
-      _isRecording = recording;
-      _voiceSec = 0;
-    });
-  }
-
-  void _stopRecordingState() {
-    setState(() => _isRecording = false);
-  }
-
-  void _incrementVoiceSec() {
-    if (_isRecording) setState(() => _voiceSec++);
   }
 
   // ── Existing methods ─────────────────────────────────────────
@@ -787,6 +817,188 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // ── Chat init methods (moved from chat_init.dart part file) ──
+
+  Future<void> _refreshChatBootstrap(TaskStore store) async {
+    try {
+      final bootstrap = await store.repository.api.chatBootstrap(
+        actorProfile: store.owner.value,
+      );
+      await store.repository.db.replaceConversations(bootstrap.conversations);
+      await store.repository.db.replaceStickerPacks(bootstrap.stickerPacks);
+
+      await _restoreLocalGroupAvatars(store, bootstrap.conversations);
+
+      final mergedConversations =
+          await store.repository.db.readConversations();
+
+      final contacts = bootstrap.contacts;
+      if (mounted) {
+        await _saveAvatarUrlsFromContacts(contacts);
+        await _loadProfileAvatars([
+          ...contacts.map((item) => item.profileKey),
+          ...mergedConversations.expand((item) => item.members),
+        ]);
+        _setChatBootstrapState(
+          contacts,
+          mergedConversations,
+          bootstrap.stickerPacks,
+        );
+      }
+    } catch (e, st) {
+      debugPrint('[chat] bootstrap refresh error: $e\n$st');
+    }
+  }
+
+  Future<void> _refreshMessengerContacts(TaskStore store) async {
+    await _refreshChatBootstrap(store);
+    await _loadPhoneContacts(store);
+  }
+
+  Future<void> _restoreLocalGroupAvatars(
+    TaskStore store,
+    List<ChatConversation> serverConversations,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final conv in serverConversations) {
+      final key = 'group_avatar_${conv.conversationKey}';
+      final savedUrl = prefs.getString(key);
+      if (savedUrl != null && savedUrl.isNotEmpty) {
+        await store.repository.db.upsertConversation(
+          ChatConversation(
+            conversationKey: conv.conversationKey,
+            kind: conv.kind,
+            title: conv.title,
+            members: conv.members,
+            avatarUrl: savedUrl,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeLocalConversation(
+    TaskStore store,
+    String conversationKey,
+  ) async {
+    final key = conversationKey.trim();
+    if (key.isEmpty) return;
+    await store.repository.db.deleteConversation(key);
+    if (!mounted) return;
+    _removeConversationState(key);
+  }
+
+  Future<void> _initChat(TaskStore store) async {
+    final api = store.repository.api;
+    final db = store.repository.db;
+    final actor = store.owner.value;
+
+    final pushConversationKey =
+        _pushAlreadyRouted ? _activeConversationKey : '';
+
+    _setChatLoading(true);
+    _chatMessagesByConversation.clear();
+    _chatOlderCursors.clear();
+    _chatOlderLoading.clear();
+    _chatOlderExhausted.clear();
+    if (!_pushAlreadyRouted) {
+      _setActiveConversation('');
+    }
+
+    try {
+      final bootstrap = await api.chatBootstrap(actorProfile: actor);
+      await db.replaceConversations(bootstrap.conversations);
+      await db.replaceStickerPacks(bootstrap.stickerPacks);
+
+      await _restoreLocalGroupAvatars(store, bootstrap.conversations);
+
+      final conversations = await db.readConversations();
+      final stickerPacks = await db.readStickerPacks();
+
+      if (!mounted) return;
+      await _saveAvatarUrlsFromContacts(bootstrap.contacts);
+      await _loadProfileAvatars([
+        ...bootstrap.contacts.map((item) => item.profileKey),
+        ...conversations.expand((item) => item.members),
+      ]);
+
+      List<ChatConversation> finalConversations = conversations;
+      if (pushConversationKey.isNotEmpty &&
+          !finalConversations
+              .any((c) => c.conversationKey == pushConversationKey) &&
+          !isProjectConversation(pushConversationKey)) {
+        finalConversations = [
+          ...finalConversations,
+          ChatConversation(
+            conversationKey: pushConversationKey,
+            kind: 'direct',
+            title: '',
+            members: pushConversationKey.startsWith('dm:')
+                ? pushConversationKey.split(':').skip(1).toList()
+                : [store.owner.value],
+          ),
+        ];
+      }
+
+      _setChatInitState(
+        bootstrap.contacts,
+        finalConversations,
+        stickerPacks,
+        !_pushAlreadyRouted,
+      );
+
+      await _loadPhoneContacts(store);
+      await _chatRealtime?.stop();
+      _chatRealtime = ChatRealtimeService(
+        api: api,
+        actorProfile: actor,
+        activeConversationKey: () => _activeConversationKey,
+        shouldPoll: () =>
+            mounted &&
+            _store?.pageIndex.value == 4 &&
+            !isProjectConversation(_activeConversationKey),
+        onMessagesUpdated: (conversationKey) async {
+          await _refreshConversation(
+            store,
+            conversationKey,
+            useNetwork: true,
+            quiet: true,
+          );
+        },
+      )..start();
+
+      _replaceCallService(api: api, actorProfile: actor);
+
+      if (pushConversationKey.isNotEmpty && mounted) {
+        await _refreshConversation(
+          store,
+          pushConversationKey,
+          useNetwork: true,
+          quiet: true,
+        );
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      for (final contact in [..._chatContacts, ..._familyMembers]) {
+        if (_profileAvatarUrls.containsKey(contact.profileKey)) continue;
+        final avatar = prefs.getString('avatar_${contact.profileKey}');
+        if (avatar != null && avatar.isNotEmpty) {
+          _profileAvatarUrls[contact.profileKey] = avatar;
+        }
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Чат недоступен: $error')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        _setChatLoading(false);
+      }
+    }
+  }
+
   Future<void> _loadPhoneContacts(TaskStore store) async {
     try {
       final status =
@@ -824,6 +1036,48 @@ class _HomePageState extends State<HomePage> {
         setState(() {
           _phoneContacts = _chatContacts;
         });
+      }
+    }
+  }
+
+  void _replaceCallService({
+    required ApiClient api,
+    required String actorProfile,
+  }) {
+    _callService?.dispose();
+    _callService = CallService(api: api, actorProfile: actorProfile)
+      ..onIncomingCall = _handleIncomingCall
+      ..onCallEnded = () => _notifyCallEnded();
+    // Update the sync loop service's call service reference
+    if (_syncLoops != null) {
+      _syncLoops!.callService = _callService;
+    }
+  }
+
+  Future<void> _safeSyncDelta(
+    TaskStore store, {
+    required bool showErrors,
+  }) async {
+    try {
+      await store.syncDelta();
+    } catch (error) {
+      if (showErrors && mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Ошибка синхронизации: $error')));
+      }
+    }
+  }
+
+  Future<void> _safeSyncFull(
+    TaskStore store, {
+    required bool showErrors,
+  }) async {
+    try {
+      await store.syncFull();
+    } catch (error) {
+      if (showErrors && mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Ошибка синхронизации: $error')));
       }
     }
   }
@@ -2447,7 +2701,7 @@ class _HomePageState extends State<HomePage> {
       chatInputController: _chatInputCtl,
       replyToMessage: _replyToMessage,
       editingMessageId: _editingMessageId,
-      isRecording: _isRecording,
+      isRecording: _voiceRecorder?.isRecording ?? false,
       conversationLabel: _conversationLabel,
       contactLabel: contactLabel,
       chatMessageText: _chatMessageText,
@@ -2482,8 +2736,8 @@ class _HomePageState extends State<HomePage> {
       onCallTap: () => _startCallOutgoing(callType: 'audio'),
       onVideoCallTap: () => _startCallOutgoing(callType: 'video'),
       typingUsers: _typingUsers,
-      onStartRecord: () => _startRecord(store),
-      onStopRecord: () => _stopRecord(store),
+onStartRecord: () => _voiceRecorder?.startRecord(),
+onStopRecord: () => _voiceRecorder?.stopRecord(),
       onSendText: () => _sendTextMessage(store),
     );
   }
@@ -3938,17 +4192,59 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _showFcmDiagnosticsDialog() {
+    final diagnostics = _pushHandler?.diagnostics;
+    if (diagnostics == null) return;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return ValueListenableBuilder<String>(
+          valueListenable: diagnostics,
+          builder: (context, text, _) {
+            return AlertDialog(
+              title: const Text('FCM диагностика'),
+              content: SingleChildScrollView(
+                child: SelectableText(text),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () async {
+                    diagnostics.value = 'FCM: обновляю диагностику...';
+                    await _pushHandler?.refreshDiagnostics();
+                  },
+                  child: const Text('Обновить'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    diagnostics.value = 'FCM: сбрасываю токен...';
+                    await _pushHandler
+                        ?.refreshDiagnostics(forceResetToken: true);
+                  },
+                  child: const Text('Сбросить токен'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Закрыть'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _chatRealtime?.stop();
     _callService?.dispose();
     _chatInputCtl.dispose();
-    _fcm?.dispose();
-    _cancelSyncLoops();
+    _pushHandler?.dispose();
+    _syncLoops?.dispose();
+    _voiceRecorder?.dispose();
     unawaited(_desktopProcessHostService?.stopAll());
     _desktopThemeService?.state.dispose();
     _store?.dispose();
-    _fcmDiagnostics.dispose();
     super.dispose();
   }
 }
