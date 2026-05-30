@@ -170,6 +170,11 @@ jobs:
         env:
           API_BASE_URL: http://31.129.97.211
           API_KEY: ${{ secrets.TODO_BACKEND_API_KEY }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
           BUILD_NUMBER: ${{ github.run_number }}
           APP_VERSION: 0.1.8
         shell: bash
@@ -184,6 +189,11 @@ jobs:
             --build-name="$APP_VERSION" \
             --dart-define=API_BASE_URL="$API_BASE_URL" \
             --dart-define=API_KEY="${API_KEY:-dev-local-key}" \
+            --dart-define=FIREBASE_APP_ID="${FIREBASE_APP_ID:-1:223906415067:android:68a62bb31cc4471895a7fe}" \
+            --dart-define=FIREBASE_PROJECT_ID="${FIREBASE_PROJECT_ID:-famillytodo-2758f}" \
+            --dart-define=FIREBASE_MESSAGING_SENDER_ID="${FIREBASE_MESSAGING_SENDER_ID:-223906415067}" \
+            --dart-define=FIREBASE_API_KEY="${FIREBASE_API_KEY:-AIzaSyBtO5Nbcb91lk3WViNIHzwYX_5yazfG6K8}" \
+            --dart-define=FIREBASE_STORAGE_BUCKET="${FIREBASE_STORAGE_BUCKET:-famillytodo-2758f.firebasestorage.app}" \
             --dart-define=APP_VERSION="$APP_VERSION" \
             2>&1 | tee /tmp/family_todo_mobile/flutter_build.log
           BUILD_EXIT=$?

@@ -17,7 +17,12 @@ flutter create --platforms=windows .
 flutter pub get
 flutter build windows --release ^
   --dart-define=API_BASE_URL=https://familly.nikportfolio.ru/backend_api/public ^
-  --dart-define=API_KEY=YOUR_API_KEY
+  --dart-define=API_KEY=YOUR_API_KEY ^
+  --dart-define=FIREBASE_APP_ID=YOUR_FIREBASE_APP_ID ^
+  --dart-define=FIREBASE_PROJECT_ID=YOUR_FIREBASE_PROJECT_ID ^
+  --dart-define=FIREBASE_MESSAGING_SENDER_ID=YOUR_FIREBASE_SENDER_ID ^
+  --dart-define=FIREBASE_API_KEY=YOUR_FIREBASE_API_KEY ^
+  --dart-define=FIREBASE_STORAGE_BUCKET=YOUR_FIREBASE_STORAGE_BUCKET
 ```
 
 Output executable:
@@ -52,5 +57,10 @@ Last CI trigger: 2026-04-22
 flutter pub get
 flutter run \
   --dart-define=API_BASE_URL=https://familly.nikportfolio.ru/backend_api/public \
-  --dart-define=API_KEY=YOUR_API_KEY
+  --dart-define=API_KEY=YOUR_API_KEY \
+  --dart-define=FIREBASE_APP_ID=YOUR_FIREBASE_APP_ID \
+  --dart-define=FIREBASE_PROJECT_ID=YOUR_FIREBASE_PROJECT_ID \
+  --dart-define=FIREBASE_MESSAGING_SENDER_ID=YOUR_FIREBASE_SENDER_ID \
+  --dart-define=FIREBASE_API_KEY=YOUR_FIREBASE_API_KEY \
+  --dart-define=FIREBASE_STORAGE_BUCKET=YOUR_FIREBASE_STORAGE_BUCKET
 ```

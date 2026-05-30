@@ -838,16 +838,11 @@ Map<String, dynamic>? _decodeNotificationPayload(String? payload) {
 
 FirebaseOptions _firebaseOptionsForCurrentPlatform() {
   if (Platform.isAndroid) {
-    const appId = String.fromEnvironment('FIREBASE_APP_ID',
-        defaultValue: '1:223906415067:android:68a62bb31cc4471895a7fe');
-    const projectId = String.fromEnvironment('FIREBASE_PROJECT_ID',
-        defaultValue: 'famillytodo-2758f');
-    const senderId = String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID',
-        defaultValue: '223906415067');
-    const apiKey = String.fromEnvironment('FIREBASE_API_KEY',
-        defaultValue: 'AIzaSyBtO5Nbcb91lk3WViNIHzwYX_5yazfG6K8');
-    const storageBucket = String.fromEnvironment('FIREBASE_STORAGE_BUCKET',
-        defaultValue: 'famillytodo-2758f.firebasestorage.app');
+    const appId = String.fromEnvironment('FIREBASE_APP_ID');
+    const projectId = String.fromEnvironment('FIREBASE_PROJECT_ID');
+    const senderId = String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID');
+    const apiKey = String.fromEnvironment('FIREBASE_API_KEY');
+    const storageBucket = String.fromEnvironment('FIREBASE_STORAGE_BUCKET');
     return const FirebaseOptions(
       apiKey: apiKey, appId: appId, messagingSenderId: senderId,
       projectId: projectId, storageBucket: storageBucket,
