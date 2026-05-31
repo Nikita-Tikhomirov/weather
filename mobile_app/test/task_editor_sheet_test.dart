@@ -1,5 +1,4 @@
 import 'package:family_todo_mobile/features/tasks/task_editor_sheet.dart';
-import 'package:family_todo_mobile/models/chat_models.dart';
 import 'package:family_todo_mobile/models/family_group.dart';
 import 'package:family_todo_mobile/models/task_item.dart';
 import 'package:family_todo_mobile/models/task_project.dart';
@@ -61,6 +60,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
           home: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
@@ -94,6 +94,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
           home: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
@@ -132,6 +133,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
           home: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
@@ -183,6 +185,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
           home: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(

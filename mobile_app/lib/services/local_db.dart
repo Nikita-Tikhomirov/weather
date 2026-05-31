@@ -398,38 +398,6 @@ class LocalDb implements TaskDataSource {
     }
   }
 
-  static List<String> _decodeStringList(String raw) {
-    if (raw.isEmpty) {
-      return const [];
-    }
-    final decoded = jsonDecode(raw);
-    if (decoded is! List) {
-      return const [];
-    }
-    return decoded.map((item) => item.toString()).toList();
-  }
-
-  static Map<String, dynamic> _decodeMap(String raw) {
-    if (raw.isEmpty) {
-      return const {};
-    }
-    final decoded = jsonDecode(raw);
-    if (decoded is! Map) {
-      return const {};
-    }
-    return decoded.cast<String, dynamic>();
-  }
-
-  static List<dynamic> _decodeDynamicList(Object? raw) {
-    if (raw == null || raw.toString().isEmpty) {
-      return const [];
-    }
-    final decoded = jsonDecode(raw.toString());
-    if (decoded is! List) {
-      return const [];
-    }
-    return decoded;
-  }
 }
 
 /// Chat-related operations exposed as extension methods on [LocalDb].

@@ -1,3 +1,5 @@
+// ignore_for_file: invalid_use_of_protected_member
+
 part of 'home_page.dart';
 
 // ───────────────────────────────────────────────────────────────
@@ -77,10 +79,12 @@ extension _ChatSection on _HomePageState {
     if (message.isDeleted) {
       return 'Сообщение удалено';
     }
-    if (message.messageType == 'image' || message.messageType == 'image_group') {
+    if (message.messageType == 'image' ||
+        message.messageType == 'image_group') {
       return message.text.isNotEmpty ? message.text : 'Фото';
     }
-    if (message.messageType == 'video' || message.messageType == 'video_group') {
+    if (message.messageType == 'video' ||
+        message.messageType == 'video_group') {
       return message.text.isNotEmpty ? message.text : 'Видео';
     }
     if (message.messageType == 'audio') {
@@ -99,7 +103,8 @@ extension _ChatSection on _HomePageState {
     if (message.messageType != 'sticker') {
       return '';
     }
-    if (message.attachments.isNotEmpty && message.attachments.first.assetUrl.trim().isNotEmpty) {
+    if (message.attachments.isNotEmpty &&
+        message.attachments.first.assetUrl.trim().isNotEmpty) {
       final raw = message.attachments.first.assetUrl.trim();
       return raw.startsWith('http') ? raw : AvatarUrlResolver.resolveUrl(raw);
     }
@@ -110,7 +115,8 @@ extension _ChatSection on _HomePageState {
     if (message.messageType != 'image' && message.messageType != 'voice') {
       return '';
     }
-    if (message.attachments.isNotEmpty && message.attachments.first.assetUrl.trim().isNotEmpty) {
+    if (message.attachments.isNotEmpty &&
+        message.attachments.first.assetUrl.trim().isNotEmpty) {
       final raw = message.attachments.first.assetUrl.trim();
       return raw.startsWith('http') ? raw : AvatarUrlResolver.resolveUrl(raw);
     }

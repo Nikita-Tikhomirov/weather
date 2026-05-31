@@ -8,6 +8,7 @@ void main() {
     testWidgets('renders month header and today button', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
           home: Scaffold(
             body: CalendarView(
               monthDate: DateTime(2026, 5),
@@ -55,6 +56,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
           home: Scaffold(
             body: SizedBox(
               height: 1200,
@@ -86,6 +88,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
           home: Scaffold(
             body: CalendarView(
               monthDate: DateTime(2026, 5),
@@ -114,6 +117,7 @@ void main() {
     testWidgets('highlights selected date', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
           home: Scaffold(
             body: SizedBox(
               height: 1200,

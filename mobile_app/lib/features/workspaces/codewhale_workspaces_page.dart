@@ -23,7 +23,8 @@ class CodeWhaleWorkspacesPage extends StatefulWidget {
       _CodeWhaleWorkspacesPageState();
 }
 
-class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
+class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
+    with WidgetsBindingObserver {
   late final CodeWhaleBridgeService _service;
   final TextEditingController _inputController = TextEditingController();
   final Map<String, Timer> _taskPollers = {};
@@ -49,6 +50,7 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _service = CodeWhaleBridgeService(
       onMessage: _handleMessage,
       onStatusChange: _handleStatus,
@@ -58,6 +60,7 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _service.dispose();
     for (final timer in _taskPollers.values) {
       timer.cancel();
@@ -65,6 +68,14 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
     _taskPollers.clear();
     _inputController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_connect());
+      _resyncActiveSession();
+    }
   }
 
   Future<void> _connect() async {
@@ -83,6 +94,19 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
     if (connected) {
       _service.requestWorkspaceList();
       _service.requestCodeWhaleCommands();
+      _resyncActiveSession();
+    }
+  }
+
+  void _resyncActiveSession() {
+    final workspace = _activeWorkspace;
+    if (workspace == null) {
+      return;
+    }
+    _service.requestSessionList(workspace.id);
+    final session = _activeSession;
+    if (session != null) {
+      _service.openSession(workspace.id, session.id);
     }
   }
 
@@ -357,6 +381,8 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
           onBack: () => setState(() => _mode = _WorkspacePageMode.detail),
           onOpenManagement: () =>
               setState(() => _mode = _WorkspacePageMode.manage),
+          onSendPhoto: () => _sendPhoto(workspace, session),
+          onSendDocument: () => _sendDocument(workspace, session),
           onSend: (text) {
             _service.sendSessionMessage(workspace.id, session.id, text);
             setState(() {
@@ -545,6 +571,13 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
     if (photo == null) {
       return;
     }
+    final caption = await _promptText(
+      'Комментарий к фото',
+      'Пусто = только сохранить',
+    );
+    if (caption == null) {
+      return;
+    }
     final bytes = await photo.readAsBytes();
     _service.uploadSessionFile(
       workspaceId: workspace.id,
@@ -552,9 +585,12 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
       bytes: bytes,
       filename: photo.name,
       mimeType: photo.mimeType ?? 'image/jpeg',
+      caption: caption,
     );
-    _pendingUploadPromptsByName[photo.name] =
-        'Проанализируй прикрепленное изображение';
+    if (caption.isNotEmpty) {
+      _pendingUploadPromptsByName[photo.name] = caption;
+    }
+    setState(() => _mode = _WorkspacePageMode.chat);
   }
 
   Future<void> _sendDocument(
@@ -571,15 +607,25 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage> {
     if (bytes == null || bytes.isEmpty) {
       return;
     }
+    final caption = await _promptText(
+      'Комментарий к документу',
+      'Пусто = только сохранить',
+    );
+    if (caption == null) {
+      return;
+    }
     _service.uploadSessionFile(
       workspaceId: workspace.id,
       sessionId: session.id,
       bytes: bytes,
       filename: file.name,
       mimeType: _mimeTypeForName(file.name),
+      caption: caption,
     );
-    _pendingUploadPromptsByName[file.name] =
-        'Проанализируй прикрепленный документ';
+    if (caption.isNotEmpty) {
+      _pendingUploadPromptsByName[file.name] = caption;
+    }
+    setState(() => _mode = _WorkspacePageMode.chat);
   }
 
   String _mimeTypeForName(String name) {

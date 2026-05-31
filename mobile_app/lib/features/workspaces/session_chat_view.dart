@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import '../../models/workspace_item.dart';
 import '../../models/workspace_session.dart';
 
-class SessionChatView extends StatelessWidget {
+class SessionChatView extends StatefulWidget {
   const SessionChatView({
     super.key,
     required this.workspace,
@@ -14,6 +14,8 @@ class SessionChatView extends StatelessWidget {
     required this.onBack,
     required this.onOpenManagement,
     required this.onSend,
+    this.onSendPhoto,
+    this.onSendDocument,
   });
 
   final WorkspaceItem workspace;
@@ -23,23 +25,53 @@ class SessionChatView extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onOpenManagement;
   final void Function(String text) onSend;
+  final VoidCallback? onSendPhoto;
+  final VoidCallback? onSendDocument;
+
+  @override
+  State<SessionChatView> createState() => _SessionChatViewState();
+}
+
+class _SessionChatViewState extends State<SessionChatView> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleScrollToLatest();
+  }
+
+  @override
+  void didUpdateWidget(SessionChatView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_eventTailSignature(oldWidget.events) !=
+        _eventTailSignature(widget.events)) {
+      _scheduleScrollToLatest();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final visibleEvents = _mergeAssistantDeltas(events);
+    final visibleEvents = _mergeAssistantDeltas(widget.events);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           tooltip: 'Назад',
           icon: const Icon(Icons.arrow_back),
-          onPressed: onBack,
+          onPressed: widget.onBack,
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(session.title),
+            Text(widget.session.title),
             Text(
-              workspace.name,
+              widget.workspace.name,
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -48,7 +80,7 @@ class SessionChatView extends StatelessWidget {
           IconButton(
             tooltip: 'Управление сессией',
             icon: const Icon(Icons.tune),
-            onPressed: onOpenManagement,
+            onPressed: widget.onOpenManagement,
           ),
         ],
       ),
@@ -58,6 +90,7 @@ class SessionChatView extends StatelessWidget {
             child: visibleEvents.isEmpty
                 ? const Center(child: Text('История сессии пуста'))
                 : ListView.builder(
+                    controller: _scrollController,
                     padding: const EdgeInsets.all(12),
                     itemCount: visibleEvents.length,
                     itemBuilder: (context, index) {
@@ -75,9 +108,21 @@ class SessionChatView extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
               child: Row(
                 children: [
+                  if (widget.onSendPhoto != null)
+                    IconButton(
+                      tooltip: 'Прикрепить фото',
+                      icon: const Icon(Icons.image_outlined),
+                      onPressed: widget.onSendPhoto,
+                    ),
+                  if (widget.onSendDocument != null)
+                    IconButton(
+                      tooltip: 'Прикрепить документ',
+                      icon: const Icon(Icons.attach_file),
+                      onPressed: widget.onSendDocument,
+                    ),
                   Expanded(
                     child: TextField(
-                      controller: inputController,
+                      controller: widget.inputController,
                       minLines: 1,
                       maxLines: 4,
                       keyboardType: TextInputType.multiline,
@@ -93,12 +138,12 @@ class SessionChatView extends StatelessWidget {
                     tooltip: 'Отправить',
                     icon: const Icon(Icons.send),
                     onPressed: () {
-                      final text = inputController.text.trim();
+                      final text = widget.inputController.text.trim();
                       if (text.isEmpty) {
                         return;
                       }
-                      inputController.clear();
-                      onSend(text);
+                      widget.inputController.clear();
+                      widget.onSend(text);
                     },
                   ),
                 ],
@@ -108,6 +153,27 @@ class SessionChatView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _scheduleScrollToLatest() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) {
+        return;
+      }
+      final maxExtent = _scrollController.position.maxScrollExtent;
+      if (maxExtent <= 0) {
+        return;
+      }
+      _scrollController.jumpTo(maxExtent);
+    });
+  }
+
+  static String _eventTailSignature(List<Map<String, dynamic>> events) {
+    if (events.isEmpty) {
+      return 'empty';
+    }
+    final last = events.last;
+    return '${events.length}|${last['type']}|${last['text']}|${last['status']}';
   }
 
   static bool _isProcessEvent(Map<String, dynamic> event) {

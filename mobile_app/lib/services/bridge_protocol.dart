@@ -1,4 +1,3 @@
-import '../models/project_contact.dart';
 import '../models/project_file.dart';
 
 /// Message received from the project bridge server.

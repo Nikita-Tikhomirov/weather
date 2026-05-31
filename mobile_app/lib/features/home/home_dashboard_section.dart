@@ -165,35 +165,4 @@ extension _DashboardSection on _HomePageState {
       ],
     );
   }
-
-  void openDayTasksScreen(
-      TaskStore store, DateTime day, List<TaskItem> dayTasks) {
-    store.setSelectedDate(day);
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => DayTasksPage(
-          day: day,
-          tasks: dayTasks,
-          labelFor: _profileLabel,
-          onEdit: (task) async {
-            Navigator.of(context).pop();
-            _openTaskEditor(store, existing: task);
-          },
-          onDelete: (task) async {
-            final navigator = Navigator.of(context);
-            await store.delete(task);
-            await _safeSyncDelta(store, showErrors: true);
-            if (mounted) {
-              navigator.pop();
-            }
-          },
-          onAddForDate: (date) async {
-            store.setSelectedDate(date);
-            Navigator.of(context).pop();
-            await _openTaskEditor(store);
-          },
-        ),
-      ),
-    );
-  }
 }

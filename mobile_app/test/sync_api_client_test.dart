@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:family_todo_mobile/services/api_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-dynamic? safeDecode(String source) {
+dynamic safeDecode(String source) {
   if (source.isEmpty) return null;
   try {
     return jsonDecode(source);

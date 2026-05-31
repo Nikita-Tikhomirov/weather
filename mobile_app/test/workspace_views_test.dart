@@ -309,6 +309,81 @@ void main() {
     await tester.enterText(find.byType(TextField), 'новый запрос');
     await tester.tap(find.byTooltip('Отправить'));
     expect(sent, 'новый запрос');
+
+    controller.dispose();
+  });
+
+  testWidgets('session chat scrolls to latest event on open and update',
+      (tester) async {
+    final controller = TextEditingController();
+
+    List<Map<String, dynamic>> events(int count) {
+      return [
+        for (var index = 0; index < count; index++)
+          {'type': 'user_message', 'text': 'message-$index'},
+      ];
+    }
+
+    await tester.pumpWidget(_testApp(
+      home: SessionChatView(
+        workspace: workspace,
+        session: session,
+        events: events(80),
+        inputController: controller,
+        onBack: () {},
+        onOpenManagement: () {},
+        onSend: (_) {},
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('message-79'), findsOneWidget);
+    expect(find.text('message-0'), findsNothing);
+
+    await tester.pumpWidget(_testApp(
+      home: SessionChatView(
+        workspace: workspace,
+        session: session,
+        events: events(81),
+        inputController: controller,
+        onBack: () {},
+        onOpenManagement: () {},
+        onSend: (_) {},
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('message-80'), findsOneWidget);
+    controller.dispose();
+  });
+
+  testWidgets('session chat exposes photo and document attachment actions',
+      (tester) async {
+    var photoRequested = false;
+    var documentRequested = false;
+    final controller = TextEditingController();
+
+    await tester.pumpWidget(_testApp(
+      home: SessionChatView(
+        workspace: workspace,
+        session: session,
+        events: const [],
+        inputController: controller,
+        onBack: () {},
+        onOpenManagement: () {},
+        onSend: (_) {},
+        onSendPhoto: () => photoRequested = true,
+        onSendDocument: () => documentRequested = true,
+      ),
+    ));
+
+    await tester.tap(find.byTooltip('Прикрепить фото'));
+    await tester.tap(find.byTooltip('Прикрепить документ'));
+
+    expect(photoRequested, isTrue);
+    expect(documentRequested, isTrue);
+
+    controller.dispose();
   });
 
   testWidgets('session chat merges consecutive assistant deltas',
