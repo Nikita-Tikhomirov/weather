@@ -101,6 +101,80 @@ final class ChatRepository
         ];
     }
 
+    public function syncFamilyGroupConversation(
+        string $groupId,
+        string $title,
+        string $owner,
+        array $members,
+    ): array {
+        $id = trim($groupId);
+        if ($id === '') {
+            throw new InvalidArgumentException('group_id is required');
+        }
+
+        $owner = $this->resolveLegacyProfile($owner);
+        $this->ensureActor($owner);
+        $profiles = [$owner];
+        foreach ($members as $member) {
+            $profile = $this->resolveLegacyProfile(trim((string) $member));
+            if ($profile === '') {
+                continue;
+            }
+            $this->ensureActor($profile);
+            if (!in_array($profile, $profiles, true)) {
+                $profiles[] = $profile;
+            }
+        }
+
+        $now = $this->nowIso();
+        $key = 'grp:family:'.$id;
+        $name = trim($title) !== '' ? trim($title) : 'Group';
+        $conversation = DB::table('chat_conversations')
+            ->where('conversation_key', $key)
+            ->first();
+
+        if ($conversation === null) {
+            DB::table('chat_conversations')->insert([
+                'conversation_key' => $key,
+                'kind' => 'group',
+                'title' => $name,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        } else {
+            DB::table('chat_conversations')
+                ->where('id', (int) $conversation->id)
+                ->update([
+                    'kind' => 'group',
+                    'title' => $name,
+                    'updated_at' => $now,
+                ]);
+        }
+
+        $conversationId = (int) DB::table('chat_conversations')
+            ->where('conversation_key', $key)
+            ->value('id');
+
+        DB::table('chat_conversation_members')
+            ->where('conversation_id', $conversationId)
+            ->whereNotIn('profile_key', $profiles)
+            ->delete();
+
+        foreach ($profiles as $profile) {
+            DB::table('chat_conversation_members')->updateOrInsert(
+                ['conversation_id' => $conversationId, 'profile_key' => $profile],
+                ['joined_at' => $now],
+            );
+        }
+
+        return [
+            'conversation_key' => $key,
+            'kind' => 'group',
+            'title' => $name,
+            'members' => $profiles,
+        ];
+    }
+
     public function stickerPacks(): array
     {
         $this->ensureDefaultStickerPacks();

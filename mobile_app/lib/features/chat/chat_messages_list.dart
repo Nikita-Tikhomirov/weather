@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/chat_models.dart';
 import 'chat_message_bubble.dart';
+import 'chat_scroll_policy.dart';
 
 class ChatMessagesList extends StatefulWidget {
   const ChatMessagesList({
@@ -54,7 +55,9 @@ class ChatMessagesListState extends State<ChatMessagesList> {
   void initState() {
     super.initState();
     _controller.addListener(_maybeLoadOlder);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _scrollToBottom(animated: false),
+    );
   }
 
   @override
@@ -64,7 +67,23 @@ class ChatMessagesListState extends State<ChatMessagesList> {
         oldWidget.messages.isEmpty ? '' : oldWidget.messages.last.id;
     final newLast = widget.messages.isEmpty ? '' : widget.messages.last.id;
     if (oldLast != newLast) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      final newest = widget.messages.isEmpty ? null : widget.messages.last;
+      final wasNearBottom = !_controller.hasClients ||
+          ChatScrollPolicy.isNearBottom(
+            pixels: _controller.position.pixels,
+            maxExtent: _controller.position.maxScrollExtent,
+          );
+      final shouldScroll = oldWidget.messages.isEmpty ||
+          (newest != null &&
+              ChatScrollPolicy.shouldAutoScrollOnNewLastMessage(
+                wasNearBottom: wasNearBottom,
+                newestFromOwner: newest.senderProfile == widget.owner,
+              ));
+      if (shouldScroll) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _scrollToBottom(animated: oldWidget.messages.isNotEmpty),
+        );
+      }
       return;
     }
 
@@ -76,12 +95,14 @@ class ChatMessagesListState extends State<ChatMessagesList> {
         if (!_controller.hasClients) {
           return;
         }
-        final delta = _controller.position.maxScrollExtent - oldMax;
-        final nextOffset = (oldOffset + delta).clamp(
-          _controller.position.minScrollExtent,
-          _controller.position.maxScrollExtent,
+        final nextOffset = ChatScrollPolicy.offsetAfterPrepend(
+          oldMaxExtent: oldMax,
+          oldOffset: oldOffset,
+          newMaxExtent: _controller.position.maxScrollExtent,
+          minExtent: _controller.position.minScrollExtent,
+          maxExtent: _controller.position.maxScrollExtent,
         );
-        _controller.jumpTo(nextOffset.toDouble());
+        _controller.jumpTo(nextOffset);
       });
     }
   }
@@ -105,24 +126,20 @@ class ChatMessagesListState extends State<ChatMessagesList> {
     }
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({required bool animated}) {
     if (!_controller.hasClients) {
       return;
     }
-    void jump() {
-      if (!_controller.hasClients) {
-        return;
-      }
-      _controller.animateTo(
-        _controller.position.maxScrollExtent + 96,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOut,
-      );
+    final target = _controller.position.maxScrollExtent;
+    if (!animated) {
+      _controller.jumpTo(target);
+      return;
     }
-
-    jump();
-    Future<void>.delayed(const Duration(milliseconds: 300), jump);
-    Future<void>.delayed(const Duration(milliseconds: 900), jump);
+    _controller.animateTo(
+      target,
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+    );
   }
 
   void scrollToMessage(String messageId) {

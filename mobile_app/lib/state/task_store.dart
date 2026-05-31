@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../domain/task_domain_service.dart';
@@ -8,6 +10,7 @@ import '../models/task_project.dart';
 import '../repositories/task_repository.dart';
 import '../services/desktop_process_host_service.dart';
 import '../services/local_db.dart';
+import '../services/project_selection_storage.dart';
 import 'desktop_state.dart';
 
 class DashboardVm {
@@ -68,10 +71,16 @@ class _UndoRestoreTasks extends _UndoAction {
 }
 
 class TaskStore {
-  TaskStore({required this.repository, required this.domainService});
+  TaskStore({
+    required this.repository,
+    required this.domainService,
+    ProjectSelectionStorage? projectSelectionStorage,
+  }) : projectSelectionStorage = projectSelectionStorage ??
+            const SharedPreferencesProjectSelectionStorage();
 
   final TaskRepository repository;
   final TaskDomainService domainService;
+  final ProjectSelectionStorage projectSelectionStorage;
   final List<TaskItem> _allTasks = <TaskItem>[];
 
   _UndoAction? _lastUndoAction;
@@ -145,6 +154,7 @@ class TaskStore {
     await repository.bindActor(initialOwner);
     await refreshLocal();
     await refreshProjectsAndGroups();
+    await _restoreLastProjectSelection();
     loading.value = false;
   }
 
@@ -162,6 +172,7 @@ class TaskStore {
     await repository.bindActor(profile);
     await refreshLocal();
     await refreshProjectsAndGroups();
+    await _restoreLastProjectSelection();
     loading.value = false;
   }
 
@@ -233,18 +244,61 @@ class TaskStore {
       projects.value = projList;
       familyGroups.value = grpList;
       projectGroupMap.value = pgMap;
-      // Keep current project valid
-      if (currentProjectId.value.isNotEmpty &&
-          !projList.any((p) => p.id == currentProjectId.value)) {
-        currentProjectId.value = '';
-      }
+      await _ensureValidProjectSelection(projList);
     } catch (_) {}
   }
 
   void setCurrentProject(String projectId) {
     if (currentProjectId.value == projectId) return;
     currentProjectId.value = projectId;
+    if (projectId.trim().isEmpty) {
+      unawaited(projectSelectionStorage.clearLastProjectId(owner.value));
+    } else {
+      unawaited(
+        projectSelectionStorage.saveLastProjectId(owner.value, projectId),
+      );
+    }
     _recomputeAllSlices();
+  }
+
+  Future<void> _restoreLastProjectSelection() async {
+    await _ensureValidProjectSelection(projects.value);
+  }
+
+  Future<void> _ensureValidProjectSelection(
+    List<TaskProject> projectList,
+  ) async {
+    if (projectList.isEmpty) {
+      if (currentProjectId.value.isNotEmpty) {
+        currentProjectId.value = '';
+        _recomputeAllSlices();
+      }
+      await projectSelectionStorage.clearLastProjectId(owner.value);
+      return;
+    }
+
+    final currentId = currentProjectId.value;
+    if (currentId.isNotEmpty &&
+        projectList.any((project) => project.id == currentId)) {
+      return;
+    }
+
+    final savedProjectId =
+        await projectSelectionStorage.readLastProjectId(owner.value);
+    final savedExists = savedProjectId.isNotEmpty &&
+        projectList.any((project) => project.id == savedProjectId);
+    final nextProjectId = savedExists ? savedProjectId : projectList.first.id;
+
+    if (currentProjectId.value != nextProjectId) {
+      currentProjectId.value = nextProjectId;
+      _recomputeAllSlices();
+    }
+    if (savedProjectId != nextProjectId) {
+      await projectSelectionStorage.saveLastProjectId(
+        owner.value,
+        nextProjectId,
+      );
+    }
   }
 
   Future<String> createProject(String name, String description) async {
@@ -528,8 +582,9 @@ class TaskStore {
     final visibleTasks = _visibleTasks();
     final today =
         visibleTasks.where((task) => task.dueDate == dateKey).toList();
-    final doneToday =
-        today.where((task) => task.workflowStatus == WorkflowStatus.done).length;
+    final doneToday = today
+        .where((task) => task.workflowStatus == WorkflowStatus.done)
+        .length;
     final familyToday = today.where((task) => task.isFamily).length;
     final overdue = visibleTasks
         .where(
@@ -631,16 +686,18 @@ class TaskStore {
     }
 
     personalByStatus.value = <String, List<TaskItem>>{
-      WorkflowStatus.todo.name:
-          kanbanTasks.where((task) => task.workflowStatus == WorkflowStatus.todo).toList(),
+      WorkflowStatus.todo.name: kanbanTasks
+          .where((task) => task.workflowStatus == WorkflowStatus.todo)
+          .toList(),
       WorkflowStatus.in_progress.name: kanbanTasks
           .where((task) => task.workflowStatus == WorkflowStatus.in_progress)
           .toList(),
       WorkflowStatus.in_review.name: kanbanTasks
           .where((task) => task.workflowStatus == WorkflowStatus.in_review)
           .toList(),
-      WorkflowStatus.done.name:
-          kanbanTasks.where((task) => task.workflowStatus == WorkflowStatus.done).toList(),
+      WorkflowStatus.done.name: kanbanTasks
+          .where((task) => task.workflowStatus == WorkflowStatus.done)
+          .toList(),
       WorkflowStatus.archive.name: kanbanTasks
           .where((task) => task.workflowStatus == WorkflowStatus.archive)
           .toList(),

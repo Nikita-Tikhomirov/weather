@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Chat\ChatRepository;
 use App\Domain\Sync\ActorProfileGuard;
 use App\Domain\Sync\SyncRepository;
 use Illuminate\Http\JsonResponse;
@@ -13,6 +14,7 @@ class ProjectGroupController extends Controller
 {
     public function __construct(
         private readonly SyncRepository $repo,
+        private readonly ChatRepository $chat,
     ) {}
     public function listProjects(Request $request): JsonResponse
     {
@@ -59,7 +61,10 @@ class ProjectGroupController extends Controller
     {
         try {
             $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
-            $name = trim((string)$request->input('name', ''));
+            $name = trim((string)$request->input('name', (string)($group['name'] ?? '')));
+            if ($name === '') {
+                throw new InvalidArgumentException('name is required');
+            }
             if ($name === '') {
                 throw new InvalidArgumentException('name is required');
             }
@@ -219,6 +224,7 @@ class ProjectGroupController extends Controller
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
+            $this->chat->syncFamilyGroupConversation($id, $name, $actor, $members);
 
             return $this->json(200, [
                 'ok' => true,
@@ -259,18 +265,21 @@ class ProjectGroupController extends Controller
             $name = trim((string)$request->input('name', ''));
             $members = $request->input('members', null);
             $now = $this->repo->nowIso();
+            $nextMembers = is_array($members)
+                ? array_map('strval', $members)
+                : array_map('strval', $group['members'] ?? []);
 
             $record = [
                 'id' => $id,
                 'name' => $name,
+                'members' => $nextMembers,
                 'owner_key' => $actor,
+                'created_at' => (string)($group['created_at'] ?? $now),
+                'updated_at' => $now,
             ];
 
-            if (is_array($members)) {
-                $record['members'] = $members;
-            }
-
             $this->repo->upsertFamilyGroupRecord($record);
+            $this->chat->syncFamilyGroupConversation($id, $name, $actor, $nextMembers);
 
             return $this->json(200, ['ok' => true]);
         } catch (InvalidArgumentException $e) {

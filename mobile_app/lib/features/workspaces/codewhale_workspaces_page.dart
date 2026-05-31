@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/project_file.dart';
 import '../../models/workspace_item.dart';
@@ -14,6 +15,7 @@ import 'session_management_view.dart';
 import 'workspace_folder_browser_view.dart';
 import 'workspace_detail_view.dart';
 import 'workspace_list_view.dart';
+import 'workspace_restore_policy.dart';
 
 class CodeWhaleWorkspacesPage extends StatefulWidget {
   const CodeWhaleWorkspacesPage({super.key});
@@ -46,6 +48,14 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
   bool _connected = false;
   bool _filesLoading = false;
   String _statusText = 'Подключение к CodeWhale...';
+  bool _restoreWorkspaceAttempted = false;
+  String _pendingRestoreSessionWorkspaceId = '';
+
+  static const String _lastWorkspaceIdKey = 'codewhale_last_workspace_id';
+
+  static String _lastSessionIdKey(String workspaceId) {
+    return 'codewhale_last_session_$workspaceId';
+  }
 
   @override
   void initState() {
@@ -110,10 +120,96 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
     }
   }
 
+  Future<void> _saveLastWorkspaceId(String workspaceId) async {
+    if (workspaceId.trim().isEmpty) {
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastWorkspaceIdKey, workspaceId);
+  }
+
+  Future<void> _saveLastSessionId(
+    String workspaceId,
+    String sessionId,
+  ) async {
+    if (workspaceId.trim().isEmpty || sessionId.trim().isEmpty) {
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastSessionIdKey(workspaceId), sessionId);
+    await prefs.setString(_lastWorkspaceIdKey, workspaceId);
+  }
+
+  Future<void> _restoreLastWorkspaceFromList() async {
+    if (_restoreWorkspaceAttempted ||
+        _activeWorkspace != null ||
+        _workspaces.isEmpty) {
+      return;
+    }
+    _restoreWorkspaceAttempted = true;
+
+    final prefs = await SharedPreferences.getInstance();
+    final savedWorkspaceId = prefs.getString(_lastWorkspaceIdKey)?.trim() ?? '';
+    final workspace = workspaceToRestore(
+      workspaces: _workspaces,
+      savedWorkspaceId: savedWorkspaceId,
+      activeWorkspace: _activeWorkspace,
+    );
+    if (workspace == null) {
+      if (savedWorkspaceId.isNotEmpty) {
+        await prefs.remove(_lastWorkspaceIdKey);
+      }
+      return;
+    }
+    if (!mounted || _activeWorkspace != null) {
+      return;
+    }
+
+    setState(() {
+      _activeWorkspace = workspace;
+      _activeSession = null;
+      _activeEvents = const [];
+      _pendingRestoreSessionWorkspaceId = workspace.id;
+      _mode = _WorkspacePageMode.detail;
+    });
+    _service.requestSessionList(workspace.id);
+  }
+
+  Future<void> _restoreLastSessionFromList(String workspaceId) async {
+    if (_pendingRestoreSessionWorkspaceId != workspaceId ||
+        _activeSession != null) {
+      return;
+    }
+    _pendingRestoreSessionWorkspaceId = '';
+
+    final prefs = await SharedPreferences.getInstance();
+    final savedSessionId =
+        prefs.getString(_lastSessionIdKey(workspaceId))?.trim() ?? '';
+    final session = workspaceSessionToRestore(
+      sessions: _sessionsByWorkspace[workspaceId] ?? const [],
+      savedSessionId: savedSessionId,
+      activeSession: _activeSession,
+    );
+    if (session == null) {
+      if (savedSessionId.isNotEmpty) {
+        await prefs.remove(_lastSessionIdKey(workspaceId));
+      }
+      return;
+    }
+
+    final workspace = _activeWorkspace;
+    if (!mounted || workspace == null || workspace.id != workspaceId) {
+      return;
+    }
+    _openSession(workspace, session);
+  }
+
   void _handleMessage(CodeWhaleBridgeMessage message) {
     if (!mounted) {
       return;
     }
+    var shouldRestoreWorkspace = false;
+    var sessionWorkspaceToRestore = '';
     setState(() {
       if (message.isError) {
         _statusText =
@@ -122,6 +218,7 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
       }
       if (message.workspaces.isNotEmpty || message.type == 'workspace_list') {
         _workspaces = message.workspaces;
+        shouldRestoreWorkspace = true;
       }
       if (message.type == 'workspace_folder_list') {
         _folderBrowserPath = message.folderPath;
@@ -154,6 +251,9 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
                 : message.sessions.first.workspaceId);
         if (workspaceId.isNotEmpty) {
           _sessionsByWorkspace[workspaceId] = message.sessions;
+          if (_pendingRestoreSessionWorkspaceId == workspaceId) {
+            sessionWorkspaceToRestore = workspaceId;
+          }
         }
       }
       final session = message.session;
@@ -228,6 +328,12 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
         _handleSessionTask(message);
       }
     });
+    if (shouldRestoreWorkspace) {
+      unawaited(_restoreLastWorkspaceFromList());
+    }
+    if (sessionWorkspaceToRestore.isNotEmpty) {
+      unawaited(_restoreLastSessionFromList(sessionWorkspaceToRestore));
+    }
   }
 
   void _handleSessionTask(CodeWhaleBridgeMessage message) {
@@ -504,8 +610,12 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
   void _openWorkspace(WorkspaceItem workspace) {
     setState(() {
       _activeWorkspace = workspace;
+      _activeSession = null;
+      _activeEvents = const [];
+      _pendingRestoreSessionWorkspaceId = '';
       _mode = _WorkspacePageMode.detail;
     });
+    unawaited(_saveLastWorkspaceId(workspace.id));
     _service.requestSessionList(workspace.id);
   }
 
@@ -513,7 +623,9 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
     setState(() {
       _activeWorkspace = workspace;
       _activeSession = session;
+      _pendingRestoreSessionWorkspaceId = '';
     });
+    unawaited(_saveLastSessionId(workspace.id, session.id));
     _service.openSession(workspace.id, session.id);
   }
 
@@ -523,7 +635,9 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
       _activeSession = session;
       _mode = _WorkspacePageMode.manage;
       _filesLoading = true;
+      _pendingRestoreSessionWorkspaceId = '';
     });
+    unawaited(_saveLastSessionId(workspace.id, session.id));
     _service.requestWorkspaceFileList(workspace.id);
     _service.requestCodeWhaleCommands();
   }

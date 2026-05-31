@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -45,7 +47,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   @override
   void dispose() {
-    _controller?.dispose();
+    final controller = _controller;
+    _controller = null;
+    if (controller != null) {
+      unawaited(controller.pause());
+      unawaited(controller.dispose());
+    }
     super.dispose();
   }
 
@@ -80,7 +87,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       );
     }
     if (!_ready || _controller == null) {
-      return const Center(child: CircularProgressIndicator(color: Colors.white));
+      return const Center(
+          child: CircularProgressIndicator(color: Colors.white));
     }
     return Column(
       children: [
@@ -116,6 +124,7 @@ class VideoThumbnail extends StatefulWidget {
 class _VideoThumbnailState extends State<VideoThumbnail> {
   VideoPlayerController? _ctrl;
   bool _ready = false;
+  bool _disposed = false;
 
   @override
   void initState() {
@@ -130,25 +139,39 @@ class _VideoThumbnailState extends State<VideoThumbnail> {
     }
     final uri = Uri.tryParse(widget.url);
     if (uri == null) return;
+    VideoPlayerController? ctrl;
     try {
-      final ctrl = VideoPlayerController.networkUrl(uri);
+      ctrl = VideoPlayerController.networkUrl(uri);
+      _ctrl = ctrl;
       await ctrl.initialize();
+      await ctrl.setVolume(0);
       await ctrl.seekTo(const Duration(seconds: 1));
-      await ctrl.play();
-      await Future.delayed(const Duration(milliseconds: 300));
       await ctrl.pause();
-      if (mounted) {
-        _ctrl = ctrl;
+      if (mounted && !_disposed) {
         setState(() => _ready = true);
+        return;
       }
+      await ctrl.dispose();
     } catch (e, st) {
       debugPrint('[chat] video thumbnail error: $e\n$st');
+      if (_ctrl == ctrl) {
+        _ctrl = null;
+      }
+      if (!_disposed) {
+        await ctrl?.dispose();
+      }
     }
   }
 
   @override
   void dispose() {
-    _ctrl?.dispose();
+    _disposed = true;
+    final ctrl = _ctrl;
+    _ctrl = null;
+    if (ctrl != null) {
+      unawaited(ctrl.pause());
+      unawaited(ctrl.dispose());
+    }
     super.dispose();
   }
 
@@ -289,10 +312,8 @@ class _VideoControlsState extends State<VideoControls> {
                         activeColor: Colors.white,
                         inactiveColor: Colors.white30,
                         onChanged: (v) {
-                          final ms =
-                              (v * duration.inMilliseconds).round();
-                          widget.controller
-                              .seekTo(Duration(milliseconds: ms));
+                          final ms = (v * duration.inMilliseconds).round();
+                          widget.controller.seekTo(Duration(milliseconds: ms));
                         },
                       ),
                     ),

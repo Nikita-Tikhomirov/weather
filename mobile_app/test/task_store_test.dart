@@ -9,6 +9,7 @@ import 'package:family_todo_mobile/models/task_project.dart';
 import 'package:family_todo_mobile/repositories/task_repository.dart';
 import 'package:family_todo_mobile/services/api_client.dart';
 import 'package:family_todo_mobile/services/local_db.dart';
+import 'package:family_todo_mobile/services/project_selection_storage.dart';
 import 'package:family_todo_mobile/state/task_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -34,9 +35,7 @@ class _FakeDataSource implements TaskDataSource {
   Future<List<TaskItem>> readTasks(
       {String? ownerKey, bool includeAll = false}) async {
     if (includeAll) return _tasks.toList();
-    return _tasks
-        .where((t) => t.ownerKey == ownerKey || t.isFamily)
-        .toList();
+    return _tasks.where((t) => t.ownerKey == ownerKey || t.isFamily).toList();
   }
 
   @override
@@ -105,6 +104,10 @@ class _FakeRepository extends TaskRepository {
 
   final _FakeDataSource dataSource;
   String _actorProfile = 'nik';
+  List<TaskProject> fakeProjects = const <TaskProject>[];
+  List<FamilyGroup> fakeGroups = const <FamilyGroup>[];
+  Map<String, List<String>> fakeProjectGroupMap =
+      const <String, List<String>>{};
 
   @override
   Future<void> bindActor(String actorProfile) async {
@@ -118,17 +121,17 @@ class _FakeRepository extends TaskRepository {
 
   @override
   Future<List<TaskProject>> readProjects() async {
-    return const <TaskProject>[];
+    return fakeProjects;
   }
 
   @override
   Future<List<FamilyGroup>> readFamilyGroups() async {
-    return const <FamilyGroup>[];
+    return fakeGroups;
   }
 
   @override
   Future<Map<String, List<String>>> readProjectGroupMap() async {
-    return const <String, List<String>>{};
+    return fakeProjectGroupMap;
   }
 
   @override
@@ -139,6 +142,25 @@ class _FakeRepository extends TaskRepository {
   @override
   Future<void> delete(TaskItem task) {
     return dataSource.deleteTask(task.id);
+  }
+}
+
+class _MemoryProjectSelectionStorage implements ProjectSelectionStorage {
+  final Map<String, String> values = <String, String>{};
+
+  @override
+  Future<String> readLastProjectId(String ownerKey) async {
+    return values[ownerKey] ?? '';
+  }
+
+  @override
+  Future<void> saveLastProjectId(String ownerKey, String projectId) async {
+    values[ownerKey] = projectId;
+  }
+
+  @override
+  Future<void> clearLastProjectId(String ownerKey) async {
+    values.remove(ownerKey);
   }
 }
 
@@ -184,7 +206,11 @@ void main() {
         dataSource: ds,
         db: repoDb,
       );
-      store = TaskStore(repository: repo, domainService: TaskDomainService());
+      store = TaskStore(
+        repository: repo,
+        domainService: TaskDomainService(),
+        projectSelectionStorage: _MemoryProjectSelectionStorage(),
+      );
       await store.initialize(initialOwner: 'nik');
     });
 
@@ -200,15 +226,14 @@ void main() {
         final today = DateTime.now();
         final todayKey =
             '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-        final yesterday =
-            DateTime.now().subtract(const Duration(days: 1));
+        final yesterday = DateTime.now().subtract(const Duration(days: 1));
         final yesterdayKey =
             '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
 
-        await ds.upsertTask(
-            _task('t1', dueDate: todayKey, workflowStatus: WorkflowStatus.done));
-        await ds.upsertTask(
-            _task('t2', dueDate: todayKey, workflowStatus: WorkflowStatus.todo));
+        await ds.upsertTask(_task('t1',
+            dueDate: todayKey, workflowStatus: WorkflowStatus.done));
+        await ds.upsertTask(_task('t2',
+            dueDate: todayKey, workflowStatus: WorkflowStatus.todo));
         await ds.upsertTask(_task('t3',
             dueDate: todayKey,
             isFamily: true,
@@ -216,8 +241,7 @@ void main() {
             assignees: ['nik'],
             workflowStatus: WorkflowStatus.todo));
         await ds.upsertTask(_task('t4',
-            dueDate: yesterdayKey,
-            workflowStatus: WorkflowStatus.todo));
+            dueDate: yesterdayKey, workflowStatus: WorkflowStatus.todo));
 
         await store.refreshLocal();
 
@@ -232,12 +256,10 @@ void main() {
 
     group('kanban grouping', () {
       test('groups tasks by workflow status', () async {
-        await ds.upsertTask(
-            _task('k1', workflowStatus: WorkflowStatus.todo));
+        await ds.upsertTask(_task('k1', workflowStatus: WorkflowStatus.todo));
         await ds.upsertTask(
             _task('k2', workflowStatus: WorkflowStatus.in_progress));
-        await ds.upsertTask(
-            _task('k3', workflowStatus: WorkflowStatus.done));
+        await ds.upsertTask(_task('k3', workflowStatus: WorkflowStatus.done));
 
         await store.refreshLocal();
 
@@ -322,6 +344,88 @@ void main() {
             .toList();
         expect(filtered.length, 1);
         expect(filtered.first.title, 'Special task');
+      });
+    });
+
+    group('project selection persistence', () {
+      TaskProject project(String id) {
+        return TaskProject(
+          id: id,
+          name: 'Project $id',
+          description: '',
+          ownerKey: 'nik',
+          createdAt: '2026-05-31T12:00:00',
+          updatedAt: '2026-05-31T12:00:00',
+        );
+      }
+
+      test('restores last valid project on initialize', () async {
+        final storage = _MemoryProjectSelectionStorage();
+        await storage.saveLastProjectId('nik', 'project-2');
+        final repo = _FakeRepository(dataSource: ds, db: repoDb)
+          ..fakeProjects = [project('project-1'), project('project-2')];
+        final localStore = TaskStore(
+          repository: repo,
+          domainService: TaskDomainService(),
+          projectSelectionStorage: storage,
+        );
+
+        await localStore.initialize(initialOwner: 'nik');
+
+        expect(localStore.currentProjectId.value, 'project-2');
+        localStore.dispose();
+      });
+
+      test('falls back to first project when saved project is stale', () async {
+        final storage = _MemoryProjectSelectionStorage();
+        await storage.saveLastProjectId('nik', 'missing-project');
+        final repo = _FakeRepository(dataSource: ds, db: repoDb)
+          ..fakeProjects = [project('project-1')];
+        final localStore = TaskStore(
+          repository: repo,
+          domainService: TaskDomainService(),
+          projectSelectionStorage: storage,
+        );
+
+        await localStore.initialize(initialOwner: 'nik');
+
+        expect(localStore.currentProjectId.value, 'project-1');
+        expect(await storage.readLastProjectId('nik'), 'project-1');
+        localStore.dispose();
+      });
+
+      test('selects first project when no saved project exists', () async {
+        final storage = _MemoryProjectSelectionStorage();
+        final repo = _FakeRepository(dataSource: ds, db: repoDb)
+          ..fakeProjects = [project('project-1'), project('project-2')];
+        final localStore = TaskStore(
+          repository: repo,
+          domainService: TaskDomainService(),
+          projectSelectionStorage: storage,
+        );
+
+        await localStore.initialize(initialOwner: 'nik');
+
+        expect(localStore.currentProjectId.value, 'project-1');
+        expect(await storage.readLastProjectId('nik'), 'project-1');
+        localStore.dispose();
+      });
+
+      test('setCurrentProject saves selected project', () async {
+        final storage = _MemoryProjectSelectionStorage();
+        final repo = _FakeRepository(dataSource: ds, db: repoDb)
+          ..fakeProjects = [project('project-1')];
+        final localStore = TaskStore(
+          repository: repo,
+          domainService: TaskDomainService(),
+          projectSelectionStorage: storage,
+        );
+        await localStore.initialize(initialOwner: 'nik');
+
+        localStore.setCurrentProject('project-1');
+
+        expect(await storage.readLastProjectId('nik'), 'project-1');
+        localStore.dispose();
       });
     });
   });

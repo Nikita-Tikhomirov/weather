@@ -58,6 +58,7 @@ class CallService {
   Timer? _disconnectTimer;
   final List<RTCIceCandidate> _pendingRemoteCandidates = <RTCIceCandidate>[];
   bool _hasRemoteDescription = false;
+  bool _disposed = false;
 
   CallState _state = CallState.idle;
   CallState get state => _state;
@@ -68,6 +69,9 @@ class CallService {
 
   final _remoteStreamController = StreamController<MediaStream?>.broadcast();
   Stream<MediaStream?> get onRemoteStream => _remoteStreamController.stream;
+
+  final _localStreamController = StreamController<MediaStream?>.broadcast();
+  Stream<MediaStream?> get onLocalStream => _localStreamController.stream;
 
   final _errorController = StreamController<String>.broadcast();
   Stream<String> get onError => _errorController.stream;
@@ -211,9 +215,11 @@ class CallService {
   }
 
   void dispose() {
-    _cleanup();
+    _disposed = true;
+    unawaited(_cleanup(notifyStreams: false));
     _stateController.close();
     _remoteStreamController.close();
+    _localStreamController.close();
     _errorController.close();
   }
 
@@ -232,7 +238,9 @@ class CallService {
 
     _pc!.onTrack = (event) {
       if (event.streams.isEmpty) return;
-      _remoteStreamController.add(event.streams.first);
+      if (!_disposed && !_remoteStreamController.isClosed) {
+        _remoteStreamController.add(event.streams.first);
+      }
     };
 
     _pc!.onConnectionState = (state) {
@@ -289,6 +297,15 @@ class CallService {
         rethrow;
       }
     }
+    if (_disposed) {
+      _localStream?.getTracks().forEach((track) => track.stop());
+      _localStream?.dispose();
+      _localStream = null;
+      return;
+    }
+    if (!_localStreamController.isClosed) {
+      _localStreamController.add(_localStream);
+    }
     await _addLocalTracks();
   }
 
@@ -312,6 +329,10 @@ class CallService {
 
   Future<void> setSpeakerOn(bool enabled) async {
     await Helper.setSpeakerphoneOn(enabled);
+  }
+
+  Future<void> preferHeadsetOrBluetooth() async {
+    await Helper.setSpeakerphoneOnButPreferBluetooth();
   }
 
   void _startSignalPolling() {
@@ -447,10 +468,11 @@ class CallService {
   void _setState(CallState newState) {
     if (_state == newState) return;
     _state = newState;
+    if (_stateController.isClosed) return;
     _stateController.add(newState);
   }
 
-  Future<void> _cleanup() async {
+  Future<void> _cleanup({bool notifyStreams = true}) async {
     _signalPoller?.cancel();
     _signalPoller = null;
     _ringingTimer?.cancel();
@@ -471,7 +493,14 @@ class CallService {
       _pc = null;
     }
 
-    _remoteStreamController.add(null);
+    if (notifyStreams && !_disposed) {
+      if (!_remoteStreamController.isClosed) {
+        _remoteStreamController.add(null);
+      }
+      if (!_localStreamController.isClosed) {
+        _localStreamController.add(null);
+      }
+    }
     _sessionId = null;
     _signalCursor = '0';
   }

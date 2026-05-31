@@ -29,15 +29,25 @@ class CallScreen extends StatefulWidget {
 class _CallScreenState extends State<CallScreen> {
   StreamSubscription<CallState>? _stateSub;
   StreamSubscription<MediaStream?>? _remoteStreamSub;
+  StreamSubscription<MediaStream?>? _localStreamSub;
   final RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
+  final RTCVideoRenderer _localRenderer = RTCVideoRenderer();
   CallState _currentState = CallState.calling;
   MediaStream? _remoteStream;
+  MediaStream? _localStream;
   Duration _duration = Duration.zero;
   Timer? _durationTimer;
   bool _remoteRendererReady = false;
+  bool _localRendererReady = false;
   bool _isMuted = false;
   bool _isSpeakerOn = false;
+  bool _isHeadsetPreferred = false;
   bool _speakerPreferenceApplied = false;
+  Offset? _localPreviewOffset;
+
+  static const Size _localPreviewSize = Size(118, 158);
+  static const double _localPreviewMargin = 16;
+  static const double _controlsReservedHeight = 164;
 
   @override
   void initState() {
@@ -45,6 +55,7 @@ class _CallScreenState extends State<CallScreen> {
     _currentState = widget.isIncoming ? CallState.ringing : CallState.calling;
     _isSpeakerOn = widget.session.callType == 'video';
     _initializeRemoteRenderer();
+    _initializeLocalRenderer();
 
     _stateSub = widget.callService.onStateChange.listen((state) {
       if (!mounted) return;
@@ -66,7 +77,7 @@ class _CallScreenState extends State<CallScreen> {
         }
       });
       if (shouldApplySpeakerPreference) {
-        widget.callService.setSpeakerOn(_isSpeakerOn);
+        unawaited(_applyAudioRoute());
       }
     });
 
@@ -76,6 +87,14 @@ class _CallScreenState extends State<CallScreen> {
         _remoteRenderer.srcObject = stream;
       }
       setState(() => _remoteStream = stream);
+    });
+
+    _localStreamSub = widget.callService.onLocalStream.listen((stream) {
+      if (!mounted) return;
+      if (_localRendererReady) {
+        _localRenderer.srcObject = stream;
+      }
+      setState(() => _localStream = stream);
     });
 
     if (widget.isIncoming) {
@@ -106,6 +125,16 @@ class _CallScreenState extends State<CallScreen> {
     setState(() => _remoteRendererReady = true);
   }
 
+  Future<void> _initializeLocalRenderer() async {
+    await _localRenderer.initialize();
+    if (!mounted) {
+      await _localRenderer.dispose();
+      return;
+    }
+    _localRenderer.srcObject = _localStream;
+    setState(() => _localRendererReady = true);
+  }
+
   void _startDuration() {
     _duration = Duration.zero;
     _durationTimer?.cancel();
@@ -125,9 +154,99 @@ class _CallScreenState extends State<CallScreen> {
   void dispose() {
     _stateSub?.cancel();
     _remoteStreamSub?.cancel();
+    _localStreamSub?.cancel();
     _durationTimer?.cancel();
     _remoteRenderer.dispose();
+    _localRenderer.dispose();
     super.dispose();
+  }
+
+  Future<void> _applyAudioRoute() {
+    if (_isHeadsetPreferred) {
+      return widget.callService.preferHeadsetOrBluetooth();
+    }
+    return widget.callService.setSpeakerOn(_isSpeakerOn);
+  }
+
+  Offset _clampLocalPreviewOffset(
+    Offset raw,
+    BoxConstraints constraints,
+  ) {
+    final maxX =
+        (constraints.maxWidth - _localPreviewSize.width - _localPreviewMargin)
+            .clamp(_localPreviewMargin, double.infinity)
+            .toDouble();
+    final maxY = (constraints.maxHeight -
+            _localPreviewSize.height -
+            _controlsReservedHeight)
+        .clamp(_localPreviewMargin, double.infinity)
+        .toDouble();
+    return Offset(
+      raw.dx.clamp(_localPreviewMargin, maxX).toDouble(),
+      raw.dy.clamp(_localPreviewMargin, maxY).toDouble(),
+    );
+  }
+
+  Widget _buildLocalPreviewOverlay() {
+    if (widget.session.callType != 'video' ||
+        !_localRendererReady ||
+        _localStream == null) {
+      return const SizedBox.shrink();
+    }
+    return Positioned.fill(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final fallback = Offset(
+            constraints.maxWidth -
+                _localPreviewSize.width -
+                _localPreviewMargin,
+            constraints.maxHeight -
+                _localPreviewSize.height -
+                _controlsReservedHeight,
+          );
+          final offset = _clampLocalPreviewOffset(
+            _localPreviewOffset ?? fallback,
+            constraints,
+          );
+          return Stack(
+            children: [
+              Positioned(
+                left: offset.dx,
+                top: offset.dy,
+                width: _localPreviewSize.width,
+                height: _localPreviewSize.height,
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    setState(() {
+                      _localPreviewOffset = _clampLocalPreviewOffset(
+                        offset + details.delta,
+                        constraints,
+                      );
+                    });
+                  },
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white70, width: 1),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(13),
+                      child: RTCVideoView(
+                        _localRenderer,
+                        mirror: true,
+                        objectFit:
+                            RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -192,6 +311,8 @@ class _CallScreenState extends State<CallScreen> {
               ],
             ),
           ),
+
+          _buildLocalPreviewOverlay(),
 
           // Action buttons
           Positioned(
@@ -259,10 +380,24 @@ class _CallScreenState extends State<CallScreen> {
             label: _isMuted ? 'Вкл. микро' : 'Микрофон',
             onTap: () {
               setState(() => _isMuted = !_isMuted);
-              widget.callService.setMicrophoneMuted(_isMuted);
+              unawaited(widget.callService.setMicrophoneMuted(_isMuted));
             },
           ),
-          const SizedBox(width: 24),
+          const SizedBox(width: 16),
+          // Headset / Bluetooth
+          _CallButton(
+            icon: Icons.headset_mic,
+            color: _isHeadsetPreferred ? Colors.white : Colors.white38,
+            label: 'Гарнитура',
+            onTap: () {
+              setState(() {
+                _isHeadsetPreferred = true;
+                _isSpeakerOn = false;
+              });
+              unawaited(widget.callService.preferHeadsetOrBluetooth());
+            },
+          ),
+          const SizedBox(width: 16),
           // End call
           _CallButton(
             icon: Icons.call_end,
@@ -273,15 +408,20 @@ class _CallScreenState extends State<CallScreen> {
             },
             size: 64,
           ),
-          const SizedBox(width: 24),
+          const SizedBox(width: 16),
           // Speaker
           _CallButton(
             icon: _isSpeakerOn ? Icons.volume_up : Icons.volume_down,
-            color: Colors.white38,
+            color: _isSpeakerOn ? Colors.white : Colors.white38,
             label: 'Динамик',
             onTap: () {
-              setState(() => _isSpeakerOn = !_isSpeakerOn);
-              widget.callService.setSpeakerOn(_isSpeakerOn);
+              setState(() {
+                _isSpeakerOn = !_isSpeakerOn;
+                if (_isSpeakerOn) {
+                  _isHeadsetPreferred = false;
+                }
+              });
+              unawaited(widget.callService.setSpeakerOn(_isSpeakerOn));
             },
           ),
         ],
@@ -307,30 +447,37 @@ class _CallButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        GestureDetector(
-          onTap: onTap,
-          child: Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
+    return SizedBox(
+      width: size < 68 ? 68 : size,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: onTap,
+            child: Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: Colors.white, size: size * 0.5),
             ),
-            child: Icon(icon, color: Colors.white, size: size * 0.5),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.7),
-            fontSize: 12,
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 12,
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
