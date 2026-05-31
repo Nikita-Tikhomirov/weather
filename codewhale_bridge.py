@@ -21,6 +21,7 @@ from typing import Any, Callable, Iterable, Iterator
 
 RECONNECT_DELAY_SECONDS = 5
 TUNNEL_HEARTBEAT_SECONDS = 30
+MAX_TUNNEL_LINE_BYTES = 32 * 1024 * 1024
 ALLOWED_CODEWHALE_PROVIDERS = {
     "",
     "deepseek",
@@ -1719,7 +1720,11 @@ async def _run_tunnel_once(
     *,
     legacy: bool = False,
 ) -> None:
-    reader, writer = await asyncio.open_connection(tunnel_host, tunnel_port)
+    reader, writer = await asyncio.open_connection(
+        tunnel_host,
+        tunnel_port,
+        limit=MAX_TUNNEL_LINE_BYTES,
+    )
     write_lock = asyncio.Lock()
 
     async def send_json(payload: dict[str, Any]) -> None:

@@ -1,3 +1,4 @@
+import asyncio
 import json
 import base64
 import tempfile
@@ -16,6 +17,7 @@ from codewhale_bridge import (
     WorkspaceRegistry,
     _background_creation_flags,
     _is_tunnel_control_message,
+    _run_tunnel_once,
     _parse_tunnel,
     _resolve_codewhale_cmd,
     _tunnel_registration_message,
@@ -1029,6 +1031,74 @@ class CodeWhaleBridgeCliTests(unittest.TestCase):
     def test_parse_tunnel_rejects_invalid_value(self) -> None:
         with self.assertRaises(ValueError):
             _parse_tunnel("31.129.97.211")
+
+
+class CodeWhaleBridgeTunnelClientTests(unittest.IsolatedAsyncioTestCase):
+    async def test_tunnel_client_processes_large_session_upload_line(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            session = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Чат",
+                }
+            )["session"]
+
+            data = b"x" * (96 * 1024)
+            payload = {
+                "type": "session_upload_file",
+                "workspace_id": workspace["id"],
+                "session_id": session["id"],
+                "filename": "large-photo.jpg",
+                "mime_type": "image/jpeg",
+                "data_base64": base64.b64encode(data).decode("ascii"),
+                "caption": "проверь",
+            }
+            replies: list[dict[str, object]] = []
+
+            async def handle_client(
+                reader: asyncio.StreamReader,
+                writer: asyncio.StreamWriter,
+            ) -> None:
+                await reader.readline()
+                writer.write(json.dumps(payload).encode("utf-8") + b"\n")
+                await writer.drain()
+                reply_line = await asyncio.wait_for(reader.readline(), timeout=5)
+                replies.append(json.loads(reply_line.decode("utf-8")))
+                writer.close()
+                await writer.wait_closed()
+
+            server = await asyncio.start_server(
+                handle_client,
+                "127.0.0.1",
+                0,
+                limit=32 * 1024 * 1024,
+            )
+            port = server.sockets[0].getsockname()[1]
+            try:
+                await _run_tunnel_once(
+                    bridge,
+                    "127.0.0.1",
+                    port,
+                    "codewhale",
+                    legacy=False,
+                )
+            finally:
+                server.close()
+                await server.wait_closed()
+
+            self.assertEqual(replies[0]["type"], "session_file_uploaded")
+            uploaded_path = str(replies[0]["path"])
+            self.assertTrue(uploaded_path.startswith("vision/"))
+            self.assertEqual((Path(workspace["path"]) / uploaded_path).read_bytes(), data)
+            events = bridge.sessions.load_events(workspace["id"], session["id"])
+            self.assertEqual(events[-1]["type"], "file_attachment")
+            self.assertIn("проверь", events[-1]["text"])
 
 
 class CodeWhaleRuntimeClientTests(unittest.TestCase):
