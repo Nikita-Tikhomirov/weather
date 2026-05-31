@@ -17,8 +17,7 @@ extension _DesktopShellExtension on _HomePageState {
     return ValueListenableBuilder<Map<String, String>>(
       valueListenable: store.desktopThemeTokens,
       builder: (context, tokens, _) {
-        final bgApp =
-            colorFromToken(tokens, 'bg_app', const Color(0xFFF1F5F9));
+        final bgApp = colorFromToken(tokens, 'bg_app', const Color(0xFFF1F5F9));
         final bgPanel =
             colorFromToken(tokens, 'bg_panel', const Color(0xFFFFFFFF));
         final textPrimary =
@@ -59,8 +58,7 @@ extension _DesktopShellExtension on _HomePageState {
                             return SegmentedButton<int>(
                               showSelectedIcon: false,
                               segments: const [
-                                ButtonSegment(
-                                    value: 0, label: Text('Задачи')),
+                                ButtonSegment(value: 0, label: Text('Задачи')),
                                 ButtonSegment(
                                     value: 1, label: Text('Календарь')),
                                 ButtonSegment(
@@ -97,16 +95,12 @@ extension _DesktopShellExtension on _HomePageState {
                             return ValueListenableBuilder<String>(
                               valueListenable: store.themeScheme,
                               builder: (context, scheme, ___) {
-                                final safeScheme =
-                                    schemes.contains(scheme) &&
-                                            schemes.isNotEmpty
-                                        ? scheme
-                                        : (schemes.isEmpty
-                                            ? ''
-                                            : schemes.first);
+                                final safeScheme = schemes.contains(scheme) &&
+                                        schemes.isNotEmpty
+                                    ? scheme
+                                    : (schemes.isEmpty ? '' : schemes.first);
                                 return DropdownButton<String>(
-                                  value:
-                                      safeScheme.isEmpty ? null : safeScheme,
+                                  value: safeScheme.isEmpty ? null : safeScheme,
                                   hint: const Text('Тема'),
                                   onChanged: (value) {
                                     if (value != null) {
@@ -115,8 +109,7 @@ extension _DesktopShellExtension on _HomePageState {
                                   },
                                   items: schemes
                                       .map(
-                                        (item) =>
-                                            DropdownMenuItem<String>(
+                                        (item) => DropdownMenuItem<String>(
                                           value: item,
                                           child: Text(item),
                                         ),
@@ -131,8 +124,8 @@ extension _DesktopShellExtension on _HomePageState {
                         ValueListenableBuilder<DesktopHostState>(
                           valueListenable: store.voiceHostState,
                           builder: (context, voiceState, __) {
-                            final enabled = voiceState.status ==
-                                DesktopHostStatus.running;
+                            final enabled =
+                                voiceState.status == DesktopHostStatus.running;
                             return Row(
                               children: [
                                 const Text('Голос'),
@@ -169,8 +162,7 @@ extension _DesktopShellExtension on _HomePageState {
                               tooltip: 'Отменить',
                               onPressed: canUndo
                                   ? () async {
-                                      final ok =
-                                          await store.undoLastAction();
+                                      final ok = await store.undoLastAction();
                                       if (ok) {
                                         await _safeSyncDelta(
                                           store,
@@ -186,20 +178,26 @@ extension _DesktopShellExtension on _HomePageState {
                       ],
                     ),
                   ),
+                  ActiveCallBanner(
+                    session: _activeCallSession,
+                    state: _activeCallState,
+                    owner: owner,
+                    profileLabel: _profileLabel,
+                    onOpen: _openActiveCallScreen,
+                    onAccept: _acceptActiveCallFromBanner,
+                    onEnd: _endActiveCallFromBanner,
+                  ),
                   Expanded(
                     child: loading
-                        ? const Center(
-                            child: CircularProgressIndicator())
-                        : _buildDesktopPageContent(
-                            store, selectedDate),
+                        ? const Center(child: CircularProgressIndicator())
+                        : _buildDesktopPageContent(store, selectedDate),
                   ),
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 220),
                     height: _desktopLogExpanded ? 150 : 44,
                     decoration: BoxDecoration(
                       color: bgPanel,
-                      border: Border(
-                          top: BorderSide(color: border)),
+                      border: Border(top: BorderSide(color: border)),
                     ),
                     child: Column(
                       children: [
@@ -214,8 +212,7 @@ extension _DesktopShellExtension on _HomePageState {
                               children: [
                                 Icon(
                                   _desktopLogExpanded
-                                      ? Icons
-                                          .keyboard_arrow_down
+                                      ? Icons.keyboard_arrow_down
                                       : Icons.keyboard_arrow_up,
                                 ),
                                 const SizedBox(width: 8),
@@ -226,24 +223,17 @@ extension _DesktopShellExtension on _HomePageState {
                         ),
                         if (_desktopLogExpanded)
                           Expanded(
-                            child:
-                                ValueListenableBuilder<List<String>>(
-                              valueListenable:
-                                  store.desktopLogEntries,
+                            child: ValueListenableBuilder<List<String>>(
+                              valueListenable: store.desktopLogEntries,
                               builder: (context, logs, __) {
                                 return ListView.builder(
                                   reverse: true,
-                                  padding:
-                                      const EdgeInsets.symmetric(
+                                  padding: const EdgeInsets.symmetric(
                                     horizontal: 12,
                                   ),
                                   itemCount: logs.length,
-                                  itemBuilder:
-                                      (context, index) {
-                                    return Text(logs[
-                                        logs.length -
-                                            1 -
-                                            index]);
+                                  itemBuilder: (context, index) {
+                                    return Text(logs[logs.length - 1 - index]);
                                   },
                                 );
                               },
@@ -261,8 +251,7 @@ extension _DesktopShellExtension on _HomePageState {
     );
   }
 
-  Widget _buildDesktopPageContent(
-      TaskStore store, DateTime selectedDate) {
+  Widget _buildDesktopPageContent(TaskStore store, DateTime selectedDate) {
     return ValueListenableBuilder<int>(
       valueListenable: store.pageIndex,
       builder: (context, page, _) {
@@ -271,8 +260,7 @@ extension _DesktopShellExtension on _HomePageState {
             children: [
               buildProjectSelector(store),
               Expanded(
-                child: ValueListenableBuilder<
-                    Map<String, List<TaskItem>>>(
+                child: ValueListenableBuilder<Map<String, List<TaskItem>>>(
                   valueListenable: store.personalByStatus,
                   builder: (context, byStatus, __) {
                     return DesktopTasksBoard(
@@ -285,8 +273,7 @@ extension _DesktopShellExtension on _HomePageState {
                         await store.move(item, WorkflowStatus.parse(status));
                         await _safeSyncDelta(store, showErrors: true);
                       },
-                      onEdit: (task) =>
-                          _openTaskEditor(store, existing: task),
+                      onEdit: (task) => _openTaskEditor(store, existing: task),
                       onDelete: (task) async {
                         await store.delete(task);
                         await _safeSyncDelta(store, showErrors: true);
@@ -314,8 +301,7 @@ extension _DesktopShellExtension on _HomePageState {
                 onGoPrevMonth: _goDesktopMonthPrev,
                 onGoNextMonth: _goDesktopMonthNext,
                 onGoToday: _goDesktopMonthToday,
-                onSelectDate: (date) =>
-                    store.setSelectedDate(date),
+                onSelectDate: (date) => store.setSelectedDate(date),
                 onDropToDay: (task, targetDay) =>
                     _moveToDate(store, task, targetDay),
                 onDropToStatus: (task, status) async {

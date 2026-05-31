@@ -16,6 +16,7 @@ import '../../app/app_labels.dart';
 import '../../app/app_theme.dart';
 import '../../shared/utils/avatar_url_resolver.dart';
 import 'home_helpers.dart';
+import '../chat/active_call_banner.dart';
 import '../chat/call_screen.dart';
 import '../chat/chat_photo_viewer.dart';
 import '../chat/messenger_page.dart';
@@ -87,8 +88,11 @@ class _HomePageState extends State<HomePage> {
   StreamSubscription<CallState>? _callStateSub;
   CallSession? _activeCallSession;
   CallSession? _pendingIncomingCallSession;
+  CallSession? _pendingCallScreenSession;
   CallState _activeCallState = CallState.idle;
+  bool _pendingCallScreenIsIncoming = true;
   bool _callScreenOpen = false;
+  bool _callScreenOpenScheduled = false;
   bool _chatLoading = false;
   String? _editingMessageId;
   List<ChatContact> _chatContacts = const <ChatContact>[];
@@ -230,6 +234,7 @@ class _HomePageState extends State<HomePage> {
       return;
     }
     setState(() => _store = store);
+    _flushPendingCallScreenOpen();
 
     _voiceRecorder = VoiceRecorderService(
       store: store,
@@ -342,6 +347,7 @@ class _HomePageState extends State<HomePage> {
       _activeCallState = CallState.ended;
       _activeCallSession = null;
       _pendingIncomingCallSession = null;
+      _pendingCallScreenSession = null;
     });
   }
 
@@ -1073,6 +1079,7 @@ class _HomePageState extends State<HomePage> {
       if (state == CallState.idle || state == CallState.ended) {
         _activeCallSession = null;
         _pendingIncomingCallSession = null;
+        _pendingCallScreenSession = null;
       } else {
         _activeCallSession = session;
       }
@@ -2666,7 +2673,7 @@ class _HomePageState extends State<HomePage> {
       _activeCallSession = session;
       _activeCallState = CallState.ringing;
     });
-    _openCallScreen(session: session, isIncoming: true);
+    _scheduleOpenCallScreen(session: session, isIncoming: true);
   }
 
   void _openActiveCallScreen() {
@@ -2676,11 +2683,49 @@ class _HomePageState extends State<HomePage> {
     _openCallScreen(session: session, isIncoming: isIncoming);
   }
 
+  void _flushPendingCallScreenOpen() {
+    final session = _pendingCallScreenSession;
+    if (session == null || _store == null) return;
+    _scheduleOpenCallScreen(
+      session: session,
+      isIncoming: _pendingCallScreenIsIncoming,
+    );
+  }
+
+  void _scheduleOpenCallScreen({
+    required CallSession session,
+    required bool isIncoming,
+  }) {
+    _pendingCallScreenSession = session;
+    _pendingCallScreenIsIncoming = isIncoming;
+    if (_callScreenOpen || _callScreenOpenScheduled) return;
+
+    _callScreenOpenScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _callScreenOpenScheduled = false;
+      if (!mounted) return;
+      final pending = _pendingCallScreenSession;
+      if (pending == null) return;
+      if (_store == null || _callService == null) {
+        return;
+      }
+      final pendingIsIncoming = _pendingCallScreenIsIncoming;
+      _pendingCallScreenSession = null;
+      _openCallScreen(session: pending, isIncoming: pendingIsIncoming);
+    });
+  }
+
   void _openCallScreen({
     required CallSession session,
     required bool isIncoming,
   }) {
     if (!mounted || _callService == null || _callScreenOpen) return;
+    if (_store == null) {
+      _pendingCallScreenSession = session;
+      _pendingCallScreenIsIncoming = isIncoming;
+      return;
+    }
+    _pendingCallScreenSession = null;
     _callScreenOpen = true;
     final actor = _store?.owner.value ?? '';
     final peerProfile = session.callerProfile == actor
@@ -3900,27 +3945,29 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ],
                   ),
-                  body: loading
-                      ? const Center(child: CircularProgressIndicator())
-                      : Column(
-                          children: [
-                            Expanded(
-                              child: ValueListenableBuilder<int>(
-                                valueListenable: store.pageIndex,
-                                builder: (context, page, ____) {
-                                  if (page == 0) {
-                                    return buildTasksPage(store);
-                                  }
-                                  if (page == 1) {
-                                    return buildCalendarPage(store);
-                                  }
-                                  return buildMessengerPage(store,
-                                      compact: true);
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
+                  body: ActiveCallOverlay(
+                    session: _activeCallSession,
+                    state: _activeCallState,
+                    owner: owner,
+                    profileLabel: _profileLabel,
+                    onOpen: _openActiveCallScreen,
+                    onAccept: _acceptActiveCallFromBanner,
+                    onEnd: _endActiveCallFromBanner,
+                    child: loading
+                        ? const Center(child: CircularProgressIndicator())
+                        : ValueListenableBuilder<int>(
+                            valueListenable: store.pageIndex,
+                            builder: (context, page, ____) {
+                              if (page == 0) {
+                                return buildTasksPage(store);
+                              }
+                              if (page == 1) {
+                                return buildCalendarPage(store);
+                              }
+                              return buildMessengerPage(store, compact: true);
+                            },
+                          ),
+                  ),
                   floatingActionButton: buildFloatingActionButton(store),
                   bottomNavigationBar: buildNavigationBar(store),
                 );
