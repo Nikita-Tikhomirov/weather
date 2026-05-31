@@ -51,6 +51,8 @@ class CallService {
 
   RTCPeerConnection? _pc;
   MediaStream? _localStream;
+  MediaStream? _remoteStream;
+  CallSession? _currentSession;
   String? _sessionId;
   String _signalCursor = '0';
   Timer? _signalPoller;
@@ -63,6 +65,9 @@ class CallService {
   CallState _state = CallState.idle;
   CallState get state => _state;
   String? get sessionId => _sessionId;
+  CallSession? get currentSession => _currentSession;
+  MediaStream? get localStream => _localStream;
+  MediaStream? get remoteStream => _remoteStream;
 
   final _stateController = StreamController<CallState>.broadcast();
   Stream<CallState> get onStateChange => _stateController.stream;
@@ -101,6 +106,10 @@ class CallService {
       );
 
       _sessionId = session.sessionId;
+      _currentSession = session;
+      if (!_stateController.isClosed) {
+        _stateController.add(_state);
+      }
 
       // Create peer connection and local stream
       await _createPeerConnection();
@@ -144,10 +153,14 @@ class CallService {
     _sessionId = sessionId;
 
     try {
-      await api.callAccept(
+      final session = await api.callAccept(
         actorProfile: actorProfile,
         sessionId: sessionId,
       );
+      _currentSession = session;
+      if (!_stateController.isClosed) {
+        _stateController.add(_state);
+      }
 
       await _createPeerConnection();
       await _openLocalMedia(callType: callType);
@@ -201,6 +214,7 @@ class CallService {
   void notifyIncomingCall(CallSession session) {
     if (_state != CallState.idle && _state != CallState.ended) return;
     _sessionId = session.sessionId;
+    _currentSession = session;
     _state = CallState.ringing;
     _stateController.add(_state);
     onIncomingCall?.call(session);
@@ -238,8 +252,9 @@ class CallService {
 
     _pc!.onTrack = (event) {
       if (event.streams.isEmpty) return;
+      _remoteStream = event.streams.first;
       if (!_disposed && !_remoteStreamController.isClosed) {
-        _remoteStreamController.add(event.streams.first);
+        _remoteStreamController.add(_remoteStream);
       }
     };
 
@@ -502,6 +517,8 @@ class CallService {
       }
     }
     _sessionId = null;
+    _currentSession = null;
+    _remoteStream = null;
     _signalCursor = '0';
   }
 }

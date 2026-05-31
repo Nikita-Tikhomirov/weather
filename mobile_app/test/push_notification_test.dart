@@ -313,6 +313,19 @@ void main() {
         PendingPushAction.syncOnly,
       );
     });
+
+    test('surfaces passive incoming call payload', () {
+      final data = {
+        'type': 'call_incoming',
+        'session_id': 'call-123',
+        'conversation_key': 'dm:u_001:u_042',
+      };
+
+      expect(
+        classifyPendingPush(data: data, wasOpenedByUser: false),
+        PendingPushAction.routeOpenedPush,
+      );
+    });
   });
 
   // ── Canonical DM key normalization ─────────────────────────────

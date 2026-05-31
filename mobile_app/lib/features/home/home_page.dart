@@ -84,6 +84,11 @@ class _HomePageState extends State<HomePage> {
   final ImagePicker _imagePicker = ImagePicker();
   ChatRealtimeService? _chatRealtime;
   CallService? _callService;
+  StreamSubscription<CallState>? _callStateSub;
+  CallSession? _activeCallSession;
+  CallSession? _pendingIncomingCallSession;
+  CallState _activeCallState = CallState.idle;
+  bool _callScreenOpen = false;
   bool _chatLoading = false;
   String? _editingMessageId;
   List<ChatContact> _chatContacts = const <ChatContact>[];
@@ -194,14 +199,14 @@ class _HomePageState extends State<HomePage> {
         }
       },
       onIncomingCall: (session) {
-        _callService?.notifyIncomingCall(session);
+        _receiveIncomingCall(session);
       },
       onSyncDelta: ({required bool showErrors}) =>
           _safeSyncDelta(store, showErrors: showErrors),
-      onRefreshActiveConversation:
-          ({required bool useNetwork, required bool quiet}) =>
-              _refreshActiveConversation(store,
-                  useNetwork: useNetwork, quiet: quiet),
+      onRefreshActiveConversation: (
+              {required bool useNetwork, required bool quiet}) =>
+          _refreshActiveConversation(store,
+              useNetwork: useNetwork, quiet: quiet),
       getActiveConversationKey: () => _activeConversationKey,
       getIsProjectConversation: (key) => isProjectConversation(key),
       getPageIndex: () => store.pageIndex.value,
@@ -332,7 +337,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _notifyCallEnded() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {
+      _activeCallState = CallState.ended;
+      _activeCallSession = null;
+      _pendingIncomingCallSession = null;
+    });
   }
 
   // Thin wrappers used by chat_init.dart
@@ -823,8 +833,7 @@ class _HomePageState extends State<HomePage> {
 
       await _restoreLocalGroupAvatars(store, bootstrap.conversations);
 
-      final mergedConversations =
-          await store.repository.db.readConversations();
+      final mergedConversations = await store.repository.db.readConversations();
 
       final contacts = bootstrap.contacts;
       if (mounted) {
@@ -1038,14 +1047,36 @@ class _HomePageState extends State<HomePage> {
     required ApiClient api,
     required String actorProfile,
   }) {
+    _callStateSub?.cancel();
+    _callStateSub = null;
     _callService?.dispose();
     _callService = CallService(api: api, actorProfile: actorProfile)
       ..onIncomingCall = _handleIncomingCall
       ..onCallEnded = () => _notifyCallEnded();
+    _callStateSub = _callService!.onStateChange.listen(_handleCallStateChanged);
     // Update the sync loop service's call service reference
     if (_syncLoops != null) {
       _syncLoops!.callService = _callService;
     }
+    final pending = _pendingIncomingCallSession;
+    if (pending != null) {
+      _pendingIncomingCallSession = null;
+      _callService!.notifyIncomingCall(pending);
+    }
+  }
+
+  void _handleCallStateChanged(CallState state) {
+    final session = _callService?.currentSession ?? _activeCallSession;
+    if (!mounted) return;
+    setState(() {
+      _activeCallState = state;
+      if (state == CallState.idle || state == CallState.ended) {
+        _activeCallSession = null;
+        _pendingIncomingCallSession = null;
+      } else {
+        _activeCallSession = session;
+      }
+    });
   }
 
   Future<void> _safeSyncDelta(
@@ -1056,8 +1087,8 @@ class _HomePageState extends State<HomePage> {
       await store.syncDelta();
     } catch (error) {
       if (showErrors && mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Ошибка синхронизации: $error')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ошибка синхронизации: $error')));
       }
     }
   }
@@ -1070,8 +1101,8 @@ class _HomePageState extends State<HomePage> {
       await store.syncFull();
     } catch (error) {
       if (showErrors && mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Ошибка синхронизации: $error')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ошибка синхронизации: $error')));
       }
     }
   }
@@ -2604,23 +2635,101 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _receiveIncomingCall(CallSession session) {
+    if (!mounted) {
+      _pendingIncomingCallSession = session;
+      return;
+    }
+
+    final service = _callService;
+    if (service != null &&
+        service.state != CallState.idle &&
+        service.state != CallState.ended) {
+      return;
+    }
+
+    setState(() {
+      _activeCallSession = session;
+      _activeCallState = CallState.ringing;
+    });
+
+    if (service == null) {
+      _pendingIncomingCallSession = session;
+      return;
+    }
+    service.notifyIncomingCall(session);
+  }
+
   void _handleIncomingCall(CallSession session) {
     if (!mounted) return;
-    final peerLabel = _profileLabel(session.callerProfile);
-    Navigator.of(context).push(
+    setState(() {
+      _activeCallSession = session;
+      _activeCallState = CallState.ringing;
+    });
+    _openCallScreen(session: session, isIncoming: true);
+  }
+
+  void _openActiveCallScreen() {
+    final session = _activeCallSession ?? _callService?.currentSession;
+    if (session == null) return;
+    final isIncoming = session.callerProfile != _store?.owner.value;
+    _openCallScreen(session: session, isIncoming: isIncoming);
+  }
+
+  void _openCallScreen({
+    required CallSession session,
+    required bool isIncoming,
+  }) {
+    if (!mounted || _callService == null || _callScreenOpen) return;
+    _callScreenOpen = true;
+    final actor = _store?.owner.value ?? '';
+    final peerProfile = session.callerProfile == actor
+        ? session.calleeProfile
+        : session.callerProfile;
+    final peerLabel = _profileLabel(peerProfile);
+    Navigator.of(context)
+        .push(
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (_) => CallScreen(
           callService: _callService!,
           session: session,
-          isIncoming: true,
+          isIncoming: isIncoming,
           peerLabel: peerLabel,
           onCallFinished: () {
-            if (mounted) Navigator.of(context).pop();
+            _callScreenOpen = false;
+            if (mounted && Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
           },
         ),
       ),
-    );
+    )
+        .whenComplete(() {
+      _callScreenOpen = false;
+    });
+  }
+
+  void _acceptActiveCallFromBanner() {
+    final session = _activeCallSession;
+    if (session == null || _callService == null) return;
+    unawaited(_callService!.acceptCall(
+      session.sessionId,
+      callType: session.callType,
+    ));
+    _openCallScreen(session: session, isIncoming: true);
+  }
+
+  void _endActiveCallFromBanner() {
+    final session = _activeCallSession;
+    final service = _callService;
+    if (session == null || service == null) return;
+    if (_activeCallState == CallState.ringing &&
+        session.calleeProfile == _store?.owner.value) {
+      unawaited(service.rejectCall(session.sessionId));
+    } else {
+      unawaited(service.endCall());
+    }
   }
 
   void _startCallOutgoing({String callType = 'audio'}) {
@@ -2655,24 +2764,12 @@ class _HomePageState extends State<HomePage> {
       createdAt: DateTime.now().toIso8601String(),
     );
 
-    final peerLabel = _profileLabel(peerProfile);
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => CallScreen(
-          callService: _callService!,
-          session: session,
-          isIncoming: false,
-          peerLabel: peerLabel,
-          onCallFinished: () {
-            if (mounted) Navigator.of(context).pop();
-          },
-        ),
-      ),
-    );
+    setState(() {
+      _activeCallSession = session;
+      _activeCallState = CallState.calling;
+    });
+    _openCallScreen(session: session, isIncoming: false);
   }
-
 
   void _openCodeWhaleWorkspaces() {
     if (!mounted) {
@@ -3834,6 +3931,7 @@ class _HomePageState extends State<HomePage> {
       },
     );
   }
+
   void _openDayTasksScreen(
       TaskStore store, DateTime day, List<TaskItem> dayTasks) {
     store.setSelectedDate(day);
@@ -3890,8 +3988,8 @@ class _HomePageState extends State<HomePage> {
                 TextButton(
                   onPressed: () async {
                     diagnostics.value = 'FCM: сбрасываю токен...';
-                    await _pushHandler
-                        ?.refreshDiagnostics(forceResetToken: true);
+                    await _pushHandler?.refreshDiagnostics(
+                        forceResetToken: true);
                   },
                   child: const Text('Сбросить токен'),
                 ),
@@ -3910,6 +4008,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _chatRealtime?.stop();
+    _callStateSub?.cancel();
     _callService?.dispose();
     _chatInputCtl.dispose();
     _pushHandler?.dispose();

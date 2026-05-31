@@ -18,12 +18,23 @@ bool isChatMessageData(Map<String, dynamic> data) {
       (data['conversation_key'] ?? '').toString().trim().isNotEmpty;
 }
 
+/// Returns true when a push payload represents a concrete incoming call.
+bool isIncomingCallData(Map<String, dynamic> data) {
+  final pushType = (data['type'] ?? data['entity'] ?? '').toString().trim();
+  return pushType == 'call_incoming' &&
+      (data['session_id'] ?? '').toString().trim().isNotEmpty;
+}
+
 /// Pending payloads saved from an explicit notification tap must keep routing
-/// after app init; passive background deliveries should only refresh data.
+/// after app init; passive background deliveries should only refresh data,
+/// except calls, which must always surface while the ringing window is alive.
 PendingPushAction pendingPushAction({
   required Map<String, dynamic> data,
   required bool wasOpenedByUser,
 }) {
+  if (isIncomingCallData(data)) {
+    return PendingPushAction.routeOpenedPush;
+  }
   if (!wasOpenedByUser || data.isEmpty) {
     return PendingPushAction.syncOnly;
   }

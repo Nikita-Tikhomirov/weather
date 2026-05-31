@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -56,15 +57,16 @@ class PushNotificationHandler {
   final Future<void> Function(String conversationKey)? onOpenConversation;
   final void Function(CallSession session)? onIncomingCall;
   final Future<void> Function({required bool showErrors})? onSyncDelta;
-  final Future<void> Function(
-      {required bool useNetwork, required bool quiet})? onRefreshActiveConversation;
+  final Future<void> Function({required bool useNetwork, required bool quiet})?
+      onRefreshActiveConversation;
   final String Function()? getActiveConversationKey;
   final bool Function(String conversationKey)? getIsProjectConversation;
   final int Function()? getPageIndex;
   final bool Function(String conversationKey)? shouldSuppressChatNotification;
 
   FcmService? _fcm;
-  final ValueNotifier<String> diagnostics = ValueNotifier('FCM: not initialized');
+  final ValueNotifier<String> diagnostics =
+      ValueNotifier('FCM: not initialized');
 
   // Pending push that arrived before init completed.
   Map<String, dynamic>? pendingPushData;
@@ -131,8 +133,7 @@ class PushNotificationHandler {
           final raw = await file.readAsString();
           if (raw.isNotEmpty) {
             try {
-              final decoded =
-                  Map<String, dynamic>.from(jsonDecode(raw) as Map);
+              final decoded = Map<String, dynamic>.from(jsonDecode(raw) as Map);
               pending = decoded;
               pendingWasOpened = false;
               await file.delete();
@@ -161,11 +162,12 @@ class PushNotificationHandler {
     pendingPushData = null;
     pendingPushWasOpened = false;
 
-    if (pendingPushAction(
-          data: pending,
-          wasOpenedByUser: pendingWasOpened,
-        ) ==
-        PendingPushAction.routeOpenedPush) {
+    if (_isIncomingCallPush(pending) ||
+        pendingPushAction(
+              data: pending,
+              wasOpenedByUser: pendingWasOpened,
+            ) ==
+            PendingPushAction.routeOpenedPush) {
       await handleOpenedPush(pending);
     } else {
       _lastProcessedPushEventId = eventId;
@@ -191,11 +193,32 @@ class PushNotificationHandler {
       return;
     }
     _lastProcessedPushEventId = eventId;
-    await onSyncDelta?.call(showErrors: false);
 
     final pushType = (data['type'] ?? data['entity'] ?? '').toString();
-    final conversationKey =
-        (data['conversation_key'] ?? '').toString().trim();
+    final conversationKey = (data['conversation_key'] ?? '').toString().trim();
+
+    // Incoming calls must surface immediately; sync can catch up in background.
+    if (pushType == 'call_incoming') {
+      unawaited(onSyncDelta?.call(showErrors: false) ?? Future<void>.value());
+      final sessionId = (data['session_id'] ?? '').toString();
+      final callType = (data['call_type'] ?? 'audio').toString();
+      final callerProfile = (data['caller_profile'] ?? '').toString();
+      if (sessionId.isNotEmpty) {
+        final session = CallSession(
+          sessionId: sessionId,
+          callerProfile: callerProfile,
+          calleeProfile: owner,
+          conversationKey: conversationKey,
+          callType: callType,
+          status: 'ringing',
+          createdAt: DateTime.now().toIso8601String(),
+        );
+        onIncomingCall?.call(session);
+      }
+      return;
+    }
+
+    await onSyncDelta?.call(showErrors: false);
 
     // Task-related notifications → go to tasks tab
     if (pushType == 'task_reminder' ||
@@ -215,26 +238,6 @@ class PushNotificationHandler {
           '[FCM push] routing to messenger -> _openConversation($conversationKey)');
       onNavigateToMessenger?.call();
       await onOpenConversation?.call(conversationKey);
-      return;
-    }
-
-    // Incoming call → show call screen
-    if (pushType == 'call_incoming') {
-      final sessionId = (data['session_id'] ?? '').toString();
-      final callType = (data['call_type'] ?? 'audio').toString();
-      final callerProfile = (data['caller_profile'] ?? '').toString();
-      if (sessionId.isNotEmpty) {
-        final session = CallSession(
-          sessionId: sessionId,
-          callerProfile: callerProfile,
-          calleeProfile: owner,
-          conversationKey: conversationKey,
-          callType: callType,
-          status: 'ringing',
-          createdAt: DateTime.now().toIso8601String(),
-        );
-        onIncomingCall?.call(session);
-      }
       return;
     }
 
@@ -258,5 +261,11 @@ class PushNotificationHandler {
   void dispose() {
     _fcm?.dispose();
     _fcm = null;
+  }
+
+  bool _isIncomingCallPush(Map<String, dynamic> data) {
+    final pushType = (data['type'] ?? data['entity'] ?? '').toString().trim();
+    return pushType == 'call_incoming' &&
+        (data['session_id'] ?? '').toString().trim().isNotEmpty;
   }
 }

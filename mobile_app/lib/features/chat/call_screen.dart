@@ -30,11 +30,13 @@ class _CallScreenState extends State<CallScreen> {
   StreamSubscription<CallState>? _stateSub;
   StreamSubscription<MediaStream?>? _remoteStreamSub;
   StreamSubscription<MediaStream?>? _localStreamSub;
+  StreamSubscription<String>? _errorSub;
   final RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
   final RTCVideoRenderer _localRenderer = RTCVideoRenderer();
   CallState _currentState = CallState.calling;
   MediaStream? _remoteStream;
   MediaStream? _localStream;
+  String _errorText = '';
   Duration _duration = Duration.zero;
   Timer? _durationTimer;
   bool _remoteRendererReady = false;
@@ -52,7 +54,12 @@ class _CallScreenState extends State<CallScreen> {
   @override
   void initState() {
     super.initState();
-    _currentState = widget.isIncoming ? CallState.ringing : CallState.calling;
+    final serviceState = widget.callService.state;
+    _currentState = serviceState == CallState.idle
+        ? (widget.isIncoming ? CallState.ringing : CallState.calling)
+        : serviceState;
+    _remoteStream = widget.callService.remoteStream;
+    _localStream = widget.callService.localStream;
     _isSpeakerOn = widget.session.callType == 'video';
     _initializeRemoteRenderer();
     _initializeLocalRenderer();
@@ -97,9 +104,12 @@ class _CallScreenState extends State<CallScreen> {
       setState(() => _localStream = stream);
     });
 
-    if (widget.isIncoming) {
-      // Wait a frame then show ringing
-    } else {
+    _errorSub = widget.callService.onError.listen((message) {
+      if (!mounted) return;
+      setState(() => _errorText = message);
+    });
+
+    if (!widget.isIncoming && widget.callService.sessionId == null) {
       // Outgoing call — start now
       _startCall();
     }
@@ -155,6 +165,7 @@ class _CallScreenState extends State<CallScreen> {
     _stateSub?.cancel();
     _remoteStreamSub?.cancel();
     _localStreamSub?.cancel();
+    _errorSub?.cancel();
     _durationTimer?.cancel();
     _remoteRenderer.dispose();
     _localRenderer.dispose();
@@ -305,6 +316,20 @@ class _CallScreenState extends State<CallScreen> {
                       color: Colors.white.withValues(alpha: 0.7),
                       fontSize: 18,
                       fontFamily: 'monospace',
+                    ),
+                  ),
+                ],
+                if (_errorText.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      _errorText,
+                      style: const TextStyle(
+                        color: Color(0xFFFFC4C4),
+                        fontSize: 13,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
                 ],

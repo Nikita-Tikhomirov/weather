@@ -10,7 +10,8 @@ import 'package:flutter/services.dart';
 import '../app/app_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../features/home/home_helpers.dart' show isChatMessageData;
+import '../features/home/home_helpers.dart'
+    show isChatMessageData, isIncomingCallData;
 import 'api_client.dart';
 
 part 'fcm_messaging.dart';
@@ -154,7 +155,9 @@ class FcmService {
     await _ensureNotificationChannel();
 
     final permission = await messaging.requestPermission(
-      alert: true, badge: true, sound: true,
+      alert: true,
+      badge: true,
+      sound: true,
     );
     _updateDiagnostics('permission:${permission.authorizationStatus.name}');
 
@@ -172,7 +175,10 @@ class FcmService {
 
     // 3. Process any pending push payloads (launch / temp file).
     await _processLaunchPayloads(
-      messaging, capturedMsg, capturedLaunch, prefsPayload,
+      messaging,
+      capturedMsg,
+      capturedLaunch,
+      prefsPayload,
     );
   }
 
@@ -206,29 +212,34 @@ class FcmService {
       token = await FirebaseMessaging.instance.getToken();
       if (token != null && token.isNotEmpty) _playServicesState = 'available';
     } catch (error) {
-      _lastTokenError = _mergeErrors(_lastTokenError, 'manual_get_token:$error');
+      _lastTokenError =
+          _mergeErrors(_lastTokenError, 'manual_get_token:$error');
     }
 
-    _updateDiagnostics(forceResetToken ? 'manual:reset_done' : 'manual:refresh', token: token);
+    _updateDiagnostics(forceResetToken ? 'manual:reset_done' : 'manual:refresh',
+        token: token);
 
     try {
       final server = await api.pushDeviceStatus(actorProfile: actorProfile);
       await _recoverIfServerRejectedToken(token, serverStatus: server);
       final firstToken = server.tokens.isNotEmpty ? server.tokens.first : null;
       _diagnosticsText = [
-        _diagnosticsText, '',
+        _diagnosticsText,
+        '',
         'server_effective=${server.effectiveTokenStatus.isEmpty ? 'unknown' : server.effectiveTokenStatus}',
         'server_active_tokens=${server.activeTokenCount}',
         if (server.status.isNotEmpty)
           'server_status=${server.status['token_status'] ?? ''} updated=${server.status['updated_at'] ?? ''}',
         if (firstToken != null)
           'server_last_token=${firstToken['token_status'] ?? ''} active=${firstToken['is_active'] ?? false} seen=${firstToken['last_seen_at'] ?? ''}',
-        if (firstToken != null && (firstToken['last_error'] ?? '').toString().isNotEmpty)
+        if (firstToken != null &&
+            (firstToken['last_error'] ?? '').toString().isNotEmpty)
           'server_error=${firstToken['last_error']}',
       ].join('\n');
       onDiagnosticsChanged(_diagnosticsText);
     } catch (error) {
-      _diagnosticsText = [_diagnosticsText, '', 'server_status_error=$error'].join('\n');
+      _diagnosticsText =
+          [_diagnosticsText, '', 'server_status_error=$error'].join('\n');
       onDiagnosticsChanged(_diagnosticsText);
     }
 

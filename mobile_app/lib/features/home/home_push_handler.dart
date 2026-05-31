@@ -56,15 +56,14 @@ class HomePushHandler {
     // Check temp file for payload saved by background handler
     if (pending == null) {
       try {
-        final file = File(
-            '${Directory.systemTemp.path}/family_todo_pending_push.json');
+        final file =
+            File('${Directory.systemTemp.path}/family_todo_pending_push.json');
         // ignore: avoid_slow_async_io
         if (await file.exists()) {
           final raw = await file.readAsString();
           if (raw.isNotEmpty) {
             try {
-              final decoded =
-                  Map<String, dynamic>.from(jsonDecode(raw) as Map);
+              final decoded = Map<String, dynamic>.from(jsonDecode(raw) as Map);
               pending = decoded;
               pendingWasOpened = false;
               await file.delete();
@@ -125,11 +124,32 @@ class HomePushHandler {
       return;
     }
     lastProcessedPushEventId = eventId;
-    await onSyncDelta?.call(showErrors: false);
 
     final pushType = (data['type'] ?? data['entity'] ?? '').toString();
-    final conversationKey =
-        (data['conversation_key'] ?? '').toString().trim();
+    final conversationKey = (data['conversation_key'] ?? '').toString().trim();
+
+    if (pushType == 'call_incoming') {
+      unawaited(onSyncDelta?.call(showErrors: false) ?? Future<void>.value());
+      final sessionId = (data['session_id'] ?? '').toString();
+      final callType = (data['call_type'] ?? 'audio').toString();
+      final callerProfile = (data['caller_profile'] ?? '').toString();
+      if (sessionId.isNotEmpty) {
+        final session = CallSession(
+          sessionId: sessionId,
+          callerProfile: callerProfile,
+          calleeProfile: owner,
+          conversationKey: conversationKey,
+          callType: callType,
+          status: 'ringing',
+          createdAt: DateTime.now().toIso8601String(),
+        );
+        callService?.notifyIncomingCall(session);
+        onIncomingCall?.call(session);
+      }
+      return;
+    }
+
+    await onSyncDelta?.call(showErrors: false);
 
     // Task-related notifications → go to tasks tab
     if (pushType == 'task_reminder' ||
@@ -151,27 +171,6 @@ class HomePushHandler {
       store.setPage(4);
       await _waitForMessengerTab();
       await onNavigateToChat?.call(conversationKey);
-      return;
-    }
-
-    // Incoming call → show call screen
-    if (pushType == 'call_incoming') {
-      final sessionId = (data['session_id'] ?? '').toString();
-      final callType = (data['call_type'] ?? 'audio').toString();
-      final callerProfile = (data['caller_profile'] ?? '').toString();
-      if (sessionId.isNotEmpty) {
-        final session = CallSession(
-          sessionId: sessionId,
-          callerProfile: callerProfile,
-          calleeProfile: owner,
-          conversationKey: conversationKey,
-          callType: callType,
-          status: 'ringing',
-          createdAt: DateTime.now().toIso8601String(),
-        );
-        callService?.notifyIncomingCall(session);
-        onIncomingCall?.call(session);
-      }
       return;
     }
 
