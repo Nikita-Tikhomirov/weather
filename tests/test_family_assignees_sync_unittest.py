@@ -11,10 +11,12 @@ class FamilyAssigneesSyncTests(unittest.TestCase):
         self._orig_family_tasks_path = ft.FAMILY_TASKS_PATH
         self._orig_backend_url = ft.BACKEND_URL
         self._orig_backend_pull_snapshot = ft._backend_pull_snapshot
+        self._orig_push_snapshot_event = ft._push_snapshot_event
         self.tmp = tempfile.TemporaryDirectory()
         ft.DATA_DIR = Path(self.tmp.name) / "family_data_test"
         ft.FAMILY_TASKS_PATH = ft.DATA_DIR / "family_tasks.json"
         ft.BACKEND_URL = "https://example.test"
+        ft._push_snapshot_event = lambda *_args, **_kwargs: True
         ft.bootstrap_data()
 
     def tearDown(self) -> None:
@@ -22,6 +24,7 @@ class FamilyAssigneesSyncTests(unittest.TestCase):
         ft.FAMILY_TASKS_PATH = self._orig_family_tasks_path
         ft.BACKEND_URL = self._orig_backend_url
         ft._backend_pull_snapshot = self._orig_backend_pull_snapshot
+        ft._push_snapshot_event = self._orig_push_snapshot_event
         self.tmp.cleanup()
 
     def test_create_family_task_persists_assignees_and_legacy_participants(self) -> None:

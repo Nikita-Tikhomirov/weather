@@ -8,15 +8,18 @@ import family_todo as ft
 class TaskContractRoundTripTests(unittest.TestCase):
     def setUp(self) -> None:
         self._orig_data_dir = ft.DATA_DIR
+        self._orig_family_tasks_path = ft.FAMILY_TASKS_PATH
         self._orig_backend_url = ft.BACKEND_URL
         self._orig_backend_pull_snapshot = ft._backend_pull_snapshot
         self.tmp = tempfile.TemporaryDirectory()
         ft.DATA_DIR = Path(self.tmp.name) / "family_data_test"
+        ft.FAMILY_TASKS_PATH = ft.DATA_DIR / "family_tasks.json"
         ft.BACKEND_URL = "https://example.test"
         ft.bootstrap_data()
 
     def tearDown(self) -> None:
         ft.DATA_DIR = self._orig_data_dir
+        ft.FAMILY_TASKS_PATH = self._orig_family_tasks_path
         ft.BACKEND_URL = self._orig_backend_url
         ft._backend_pull_snapshot = self._orig_backend_pull_snapshot
         self.tmp.cleanup()

@@ -84,9 +84,11 @@ class SyncStabilityTests(unittest.TestCase):
         self.assertIn("routing_contract", source)
 
     def test_mobile_api_prefers_changes_endpoint_for_delta_mode(self) -> None:
-        source = Path("mobile_app/lib/services/api_client.dart").read_text(encoding="utf-8")
-        self.assertIn("/sync_changes.php", source)
-        self.assertIn("/sync/changes", source)
+        facade_source = Path("mobile_app/lib/services/api_client.dart").read_text(encoding="utf-8")
+        sync_source = Path("mobile_app/lib/services/sync_api_client.dart").read_text(encoding="utf-8")
+        self.assertIn("SyncApiClient", facade_source)
+        self.assertIn("/sync_changes.php", sync_source)
+        self.assertIn("/sync/changes", sync_source)
 
     def test_backend_sync_push_processes_telegram_and_disables_push(self) -> None:
         source = Path("backend_api/public/index.php").read_text(encoding="utf-8")

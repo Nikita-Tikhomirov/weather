@@ -13,15 +13,30 @@ def _silent(*_args, **_kwargs) -> None:
 class FamilyTodoTests(unittest.TestCase):
     def setUp(self) -> None:
         self._orig_data_dir = ft.DATA_DIR
+        self._orig_family_tasks_path = ft.FAMILY_TASKS_PATH
+        self._orig_backend_url = ft.BACKEND_URL
+        self._orig_push_snapshot_event = ft._push_snapshot_event
+        self._orig_log_event = ft.log_event
+        self._orig_log_exception = ft.log_exception
         self._orig_speak = ft.speak
         self.tmp = tempfile.TemporaryDirectory()
         ft.DATA_DIR = Path(self.tmp.name) / "family_data_test"
+        ft.FAMILY_TASKS_PATH = ft.DATA_DIR / "family_tasks.json"
+        ft.BACKEND_URL = ""
+        ft._push_snapshot_event = lambda *_args, **_kwargs: True
+        ft.log_event = _silent
+        ft.log_exception = _silent
         ft.speak = _silent
         ft.bootstrap_data()
         self.person = ft.PEOPLE[0]
 
     def tearDown(self) -> None:
         ft.DATA_DIR = self._orig_data_dir
+        ft.FAMILY_TASKS_PATH = self._orig_family_tasks_path
+        ft.BACKEND_URL = self._orig_backend_url
+        ft._push_snapshot_event = self._orig_push_snapshot_event
+        ft.log_event = self._orig_log_event
+        ft.log_exception = self._orig_log_exception
         ft.speak = self._orig_speak
         self.tmp.cleanup()
 
