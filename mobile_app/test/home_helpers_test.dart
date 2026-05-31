@@ -209,6 +209,44 @@ void main() {
     });
   });
 
+  group('primaryChatMediaUrl', () {
+    test('uses voice imageUrl when server returns legacy voice payload', () {
+      final message = ChatMessage(
+        id: 'voice-1',
+        conversationKey: 'dm:nik:misha',
+        senderProfile: 'nik',
+        messageType: 'voice',
+        text: 'Голосовое сообщение',
+        imageUrl: '/chat/media/voice-1',
+        createdAt: '2026-05-31T12:00:00',
+      );
+
+      expect(primaryChatMediaUrl(message), '/chat/media/voice-1');
+    });
+
+    test('prefers attachment URL over legacy imageUrl', () {
+      final message = ChatMessage(
+        id: 'voice-2',
+        conversationKey: 'dm:nik:misha',
+        senderProfile: 'nik',
+        messageType: 'voice',
+        text: 'Голосовое сообщение',
+        imageUrl: '/chat/media/legacy',
+        createdAt: '2026-05-31T12:00:00',
+        attachments: [
+          ChatAttachment(
+            kind: 'voice',
+            assetUrl: '/chat/media/attached',
+            imageMeta: const {'duration_ms': 1200},
+            sortOrder: 0,
+          ),
+        ],
+      );
+
+      expect(primaryChatMediaUrl(message), '/chat/media/attached');
+    });
+  });
+
   group('guessMimeType', () {
     test('recognizes common image types', () {
       expect(guessMimeType('photo.jpg'), 'image/jpeg');

@@ -89,12 +89,13 @@ class IncomingCallPrompt extends StatelessWidget {
     final peerProfile = session.callerProfile == owner
         ? session.calleeProfile
         : session.callerProfile;
-    final callKind =
-        session.callType == 'video' ? 'видеозвонок' : 'аудиозвонок';
+    final isVideo = session.callType == 'video';
+    final callKind = isVideo ? 'видеозвонок' : 'аудиозвонок';
+    final backgroundColor = isVideo ? Colors.black : const Color(0xFF0D47A1);
     final theme = Theme.of(context);
 
     return Material(
-      color: Colors.black,
+      color: backgroundColor,
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),

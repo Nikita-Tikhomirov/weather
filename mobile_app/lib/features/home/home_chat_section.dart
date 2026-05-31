@@ -103,21 +103,21 @@ extension _ChatSection on _HomePageState {
     if (message.messageType != 'sticker') {
       return '';
     }
-    if (message.attachments.isNotEmpty &&
-        message.attachments.first.assetUrl.trim().isNotEmpty) {
-      final raw = message.attachments.first.assetUrl.trim();
+    final raw = primaryChatMediaUrl(message);
+    if (raw.isNotEmpty) {
       return raw.startsWith('http') ? raw : AvatarUrlResolver.resolveUrl(raw);
     }
     return '';
   }
 
   String chatImageUrl(ChatMessage message) {
-    if (message.messageType != 'image' && message.messageType != 'voice') {
+    if (message.messageType != 'image' &&
+        message.messageType != 'voice' &&
+        message.messageType != 'audio') {
       return '';
     }
-    if (message.attachments.isNotEmpty &&
-        message.attachments.first.assetUrl.trim().isNotEmpty) {
-      final raw = message.attachments.first.assetUrl.trim();
+    final raw = primaryChatMediaUrl(message);
+    if (raw.isNotEmpty) {
       return raw.startsWith('http') ? raw : AvatarUrlResolver.resolveUrl(raw);
     }
     return '';

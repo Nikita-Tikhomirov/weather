@@ -244,6 +244,7 @@ class _HomePageState extends State<HomePage> {
         }
       },
       getActiveConversationKey: () => _activeConversationKey,
+      onVoiceMessageSent: _appendSentChatMessage,
     );
 
     await _pushHandler?.processPendingPush();
@@ -1137,6 +1138,31 @@ class _HomePageState extends State<HomePage> {
       }
     }
     if (mounted) setState(() {});
+  }
+
+  void _appendSentChatMessage(ChatMessage message) {
+    if (!mounted) return;
+    final conversationKey = canonicalConversationKey(message.conversationKey);
+    final current = List<ChatMessage>.from(
+      _chatMessagesByConversation[conversationKey] ?? const <ChatMessage>[],
+    );
+    current.removeWhere((item) =>
+        item.id == message.id ||
+        (message.clientMessageId != null &&
+            message.clientMessageId!.isNotEmpty &&
+            item.clientMessageId == message.clientMessageId));
+    current.add(message);
+    current.sort((a, b) {
+      final byCreated = a.createdAt.compareTo(b.createdAt);
+      return byCreated != 0 ? byCreated : a.id.compareTo(b.id);
+    });
+    setState(() {
+      _chatMessagesByConversation[conversationKey] = current;
+      if (_activeConversationKey.isNotEmpty &&
+          canonicalConversationKey(_activeConversationKey) == conversationKey) {
+        _activeConversationKey = conversationKey;
+      }
+    });
   }
 
   /// Mark locally-cached messages as delivered when they appear in a server pull
@@ -2713,11 +2739,19 @@ class _HomePageState extends State<HomePage> {
   void _acceptActiveCallFromBanner() {
     final session = _activeCallSession;
     if (session == null || _callService == null) return;
-    unawaited(_callService!.acceptCall(
-      session.sessionId,
-      callType: session.callType,
-    ));
     _openCallScreen(session: session, isIncoming: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final service = _callService;
+      if (!mounted ||
+          service == null ||
+          service.sessionId != session.sessionId) {
+        return;
+      }
+      unawaited(service.acceptCall(
+        session.sessionId,
+        callType: session.callType,
+      ));
+    });
   }
 
   void _endActiveCallFromBanner() {

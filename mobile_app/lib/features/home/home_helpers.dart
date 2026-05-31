@@ -96,6 +96,20 @@ String chatMessageText(ChatMessage message) {
   return message.text;
 }
 
+/// Returns the first playable media URL for chat media messages.
+///
+/// Voice messages can arrive from older server payloads as `image_url` and
+/// newer payloads as attachments, so consumers must check both shapes.
+String primaryChatMediaUrl(ChatMessage message) {
+  if (message.attachments.isNotEmpty) {
+    final raw = message.attachments.first.assetUrl.trim();
+    if (raw.isNotEmpty) {
+      return raw;
+    }
+  }
+  return (message.imageUrl ?? '').trim();
+}
+
 /// Normalises a conversation key by stripping trailing metadata.
 String canonicalConversationKey(String key) {
   final trimmed = key.trim();

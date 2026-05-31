@@ -83,4 +83,35 @@ void main() {
     expect(find.text('Календарь'), findsOneWidget);
     expect(find.text('Входящий видеозвонок'), findsNothing);
   });
+
+  testWidgets('uses a non-black prompt for incoming audio calls',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ActiveCallOverlay(
+            session: session(callType: 'audio'),
+            state: CallState.ringing,
+            owner: owner,
+            profileLabel: (profile) => 'User $profile',
+            onOpen: () {},
+            onAccept: () {},
+            onEnd: () {},
+            child: const Center(child: Text('Задачи')),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Входящий аудиозвонок'), findsOneWidget);
+    final material = tester.widget<Material>(
+      find
+          .descendant(
+            of: find.byType(IncomingCallPrompt),
+            matching: find.byType(Material),
+          )
+          .first,
+    );
+    expect(material.color, isNot(Colors.black));
+  });
 }

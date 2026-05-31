@@ -148,8 +148,7 @@ class CallService {
   Future<void> acceptCall(String sessionId, {String callType = 'audio'}) async {
     if (_state != CallState.ringing && _state != CallState.idle) return;
 
-    _state = CallState.connected;
-    _stateController.add(_state);
+    _setState(CallState.calling);
     _sessionId = sessionId;
 
     try {
@@ -352,6 +351,7 @@ class CallService {
 
   void _startSignalPolling() {
     _signalPoller?.cancel();
+    unawaited(_pollSignals());
     _signalPoller = Timer.periodic(const Duration(milliseconds: 800), (_) {
       _pollSignals();
     });
