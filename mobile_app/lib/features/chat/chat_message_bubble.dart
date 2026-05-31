@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +8,8 @@ import 'package:video_player/video_player.dart';
 
 import '../../models/chat_models.dart';
 import '../../shared/utils/avatar_url_resolver.dart';
+import 'chat_voice_bubble.dart';
+import 'chat_media_bubble.dart';
 
 class ChatMessageBubble extends StatelessWidget {
   const ChatMessageBubble({
@@ -125,7 +127,7 @@ class ChatMessageBubble extends StatelessWidget {
     }
     if (deleted) {
       return const Text(
-        'Сообщение удалено',
+        'РЎРѕРѕР±С‰РµРЅРёРµ СѓРґР°Р»РµРЅРѕ',
         style: TextStyle(fontStyle: FontStyle.italic, color: Color(0xFF9CA3AF)),
       );
     }
@@ -263,7 +265,7 @@ class ChatMessageBubble extends StatelessWidget {
         message.messageType == 'image_group') {
       final urls = _messageImageUrls();
       if (urls.isEmpty) {
-        return Text(text.isEmpty ? 'Изображение' : text);
+        return Text(text.isEmpty ? 'РР·РѕР±СЂР°Р¶РµРЅРёРµ' : text);
       }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -373,7 +375,7 @@ class ChatMessageBubble extends StatelessWidget {
   }
 
   Widget _buildVoiceBubble(BuildContext context) {
-    return _VoiceBubble(
+    return VoiceBubble(
       url: _bubbleAssetUrl(imageUrl),
       durationMs: (message.imageMeta['duration_ms'] as int?) ?? 0,
       mine: mine,
@@ -409,7 +411,7 @@ class ChatMessageBubble extends StatelessWidget {
                 final url = _bubbleAssetUrl(urls[i]);
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => _VideoPlayerScreen(url: url),
+                    builder: (_) => VideoPlayerScreen(url: url),
                   ),
                 );
               },
@@ -421,7 +423,7 @@ class ChatMessageBubble extends StatelessWidget {
                     child: SizedBox(
                       width: compact ? 260 : 420,
                       height: compact ? 180 : 280,
-                      child: _VideoThumbnail(
+                      child: VideoThumbnail(
                         url: _bubbleAssetUrl(urls[i]),
                         thumbnailUrl: thumbUrl != null ? _bubbleAssetUrl(thumbUrl) : null,
                       ),
@@ -457,7 +459,7 @@ class ChatMessageBubble extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final ext = fileName.contains('.') ? fileName.split('.').last : '';
     final icon = _iconForExtension(ext);
-    final displayName = fileName.isNotEmpty ? fileName : 'Документ';
+    final displayName = fileName.isNotEmpty ? fileName : 'Р”РѕРєСѓРјРµРЅС‚';
     final sizeText = _formatFileSize(
       message.attachments.isNotEmpty
           ? (message.attachments.first.imageMeta['size_bytes'] as int?) ?? 0
@@ -568,24 +570,24 @@ class ChatMessageBubble extends StatelessWidget {
 
   static String _formatFileSize(int bytes) {
     if (bytes <= 0) return '';
-    if (bytes < 1024) return '$bytes Б';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} КБ';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} МБ';
+    if (bytes < 1024) return '$bytes Р‘';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} РљР‘';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} РњР‘';
   }
 
   /// Map progress to a user-friendly phase label.
   static String _uploadPhaseLabel(double progress, bool isVideo) {
     if (!isVideo) {
-      if (progress < 0.5) return 'Загрузка...';
-      if (progress < 0.9) return 'Отправка...';
-      return 'Завершение...';
+      if (progress < 0.5) return 'Р—Р°РіСЂСѓР·РєР°...';
+      if (progress < 0.9) return 'РћС‚РїСЂР°РІРєР°...';
+      return 'Р—Р°РІРµСЂС€РµРЅРёРµ...';
     }
-    // Video has phases: compress → read → upload → finalize
-    if (progress < 0.01) return 'Подготовка...';
-    if (progress < 0.25) return 'Сжатие...';
-    if (progress < 0.30) return 'Чтение...';
-    if (progress < 0.98) return 'Загрузка...';
-    return 'Завершение...';
+    // Video has phases: compress в†’ read в†’ upload в†’ finalize
+    if (progress < 0.01) return 'РџРѕРґРіРѕС‚РѕРІРєР°...';
+    if (progress < 0.25) return 'РЎР¶Р°С‚РёРµ...';
+    if (progress < 0.30) return 'Р§С‚РµРЅРёРµ...';
+    if (progress < 0.98) return 'Р—Р°РіСЂСѓР·РєР°...';
+    return 'Р—Р°РІРµСЂС€РµРЅРёРµ...';
   }
 
   Widget _buildAudioBubble(BuildContext context) {
@@ -612,7 +614,7 @@ class ChatMessageBubble extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                text.isNotEmpty ? text : 'Аудио',
+                text.isNotEmpty ? text : 'РђСѓРґРёРѕ',
                 style: TextStyle(
                   fontSize: 14,
                   color: mine ? cs.onPrimaryContainer : cs.onSurface,
@@ -771,7 +773,7 @@ class ChatMessageBubble extends StatelessWidget {
   String _messageFooter() {
     final formatted = _formatIsoDate(message.createdAt);
     if ((message.editedAt ?? '').isNotEmpty) {
-      return '$formatted · изменено';
+      return '$formatted В· РёР·РјРµРЅРµРЅРѕ';
     }
     // Show delivery status for own messages
     if (mine) {
@@ -781,23 +783,23 @@ class ChatMessageBubble extends StatelessWidget {
     return formatted;
   }
 
-  /// Преобразует ISO-8601 строку в человекочитаемый формат: «21 мая 15:30»
+  /// РџСЂРµРѕР±СЂР°Р·СѓРµС‚ ISO-8601 СЃС‚СЂРѕРєСѓ РІ С‡РµР»РѕРІРµРєРѕС‡РёС‚Р°РµРјС‹Р№ С„РѕСЂРјР°С‚: В«21 РјР°СЏ 15:30В»
   static String _formatIsoDate(String iso) {
     try {
       final dt = DateTime.parse(iso).toLocal();
       const months = [
-        'янв',
-        'фев',
-        'мар',
-        'апр',
-        'мая',
-        'июн',
-        'июл',
-        'авг',
-        'сен',
-        'окт',
-        'ноя',
-        'дек',
+        'СЏРЅРІ',
+        'С„РµРІ',
+        'РјР°СЂ',
+        'Р°РїСЂ',
+        'РјР°СЏ',
+        'РёСЋРЅ',
+        'РёСЋР»',
+        'Р°РІРі',
+        'СЃРµРЅ',
+        'РѕРєС‚',
+        'РЅРѕСЏ',
+        'РґРµРє',
       ];
       final day = dt.day;
       final month = months[dt.month - 1];
@@ -813,513 +815,17 @@ class ChatMessageBubble extends StatelessWidget {
   String _deliveryStatusIcon() {
     switch (message.deliveryStatus) {
       case 'sending':
-        return '⏳';
+        return 'вЏі';
       case 'sent':
-        return '✓';
+        return 'вњ“';
       case 'delivered':
-        return '✓✓';
+        return 'вњ“вњ“';
       case 'read':
-        return '✓✓';
+        return 'вњ“вњ“';
       case 'failed':
-        return '❌';
+        return 'вќЊ';
       default:
         return '';
     }
-  }
-}
-
-class _VoiceBubble extends StatefulWidget {
-  const _VoiceBubble({
-    required this.url,
-    required this.durationMs,
-    required this.mine,
-  });
-
-  final String url;
-  final int durationMs;
-  final bool mine;
-
-  @override
-  State<_VoiceBubble> createState() => _VoiceBubbleState();
-}
-
-class _VoiceBubbleState extends State<_VoiceBubble>
-    with SingleTickerProviderStateMixin {
-  bool _playing = false;
-  late AnimationController _animCtrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _animCtrl = AnimationController(
-      vsync: this,
-      duration: Duration(
-          milliseconds: widget.durationMs > 0 ? widget.durationMs : 3000),
-    );
-    _animCtrl.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        setState(() => _playing = false);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _animCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _togglePlay() async {
-    if (widget.url.trim().isEmpty) {
-      return;
-    }
-    final nextPlaying = !_playing;
-    setState(() => _playing = nextPlaying);
-    try {
-      if (nextPlaying) {
-        if (_animCtrl.value >= 1.0) {
-          _animCtrl.value = 0.0;
-        }
-        _animCtrl.forward();
-        await const MethodChannel('family_todo_mobile/voice')
-            .invokeMethod('playVoice', {'url': widget.url});
-      } else {
-        _animCtrl.stop();
-        await const MethodChannel('family_todo_mobile/voice')
-            .invokeMethod('pauseVoice');
-      }
-    } catch (e, st) {
-      debugPrint('[chat] voice playback error: $e\n$st');
-      if (mounted) {
-        setState(() => _playing = false);
-      }
-      _animCtrl.stop();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final d = Duration(milliseconds: widget.durationMs);
-    final timeStr = widget.durationMs > 0
-        ? '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}'
-        : '0:00';
-    final fg = widget.mine ? cs.onPrimaryContainer : cs.onSurfaceVariant;
-
-    return Container(
-      width: MediaQuery.sizeOf(context).width < 380 ? 228 : 292,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: widget.mine ? cs.primaryContainer : cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: [
-          IconButton.filled(
-            visualDensity: VisualDensity.compact,
-            tooltip: _playing ? 'Пауза' : 'Воспроизвести',
-            onPressed: _togglePlay,
-            icon: Icon(_playing ? Icons.pause : Icons.play_arrow),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: AnimatedBuilder(
-              animation: _animCtrl,
-              builder: (context, child) {
-                return CustomPaint(
-                  size: const Size(double.infinity, 38),
-                  painter: _WaveformPainter(
-                    progress: _animCtrl.value,
-                    active: _playing,
-                    color: fg,
-                    inactiveColor: fg.withValues(alpha: 0.28),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            timeStr,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: widget.mine ? cs.onPrimaryContainer : cs.onSurface,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WaveformPainter extends CustomPainter {
-  const _WaveformPainter({
-    required this.progress,
-    required this.active,
-    required this.color,
-    required this.inactiveColor,
-  });
-
-  final double progress;
-  final bool active;
-  final Color color;
-  final Color inactiveColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const count = 34;
-    final slot = size.width / count;
-    final activePaint = Paint()..color = color;
-    final idlePaint = Paint()..color = inactiveColor;
-    for (var i = 0; i < count; i++) {
-      final seed = ((i * 37) % 13) / 12.0;
-      final pulse = active ? ((progress * 2 + i / count) % 1.0) : 0.0;
-      final wave = active ? (pulse < 0.5 ? pulse * 2 : (1 - pulse) * 2) : 0.0;
-      final h = 7 + (size.height - 8) * (0.25 + seed * 0.45 + wave * 0.30);
-      final x = i * slot + slot * 0.35;
-      final top = (size.height - h) / 2;
-      final rect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(x, top, slot * 0.42, h),
-        const Radius.circular(3),
-      );
-      canvas.drawRRect(rect, i / count <= progress ? activePaint : idlePaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _WaveformPainter oldDelegate) {
-    return oldDelegate.progress != progress ||
-        oldDelegate.active != active ||
-        oldDelegate.color != color ||
-        oldDelegate.inactiveColor != inactiveColor;
-  }
-}
-
-/// Full-screen video player for in-app playback.
-class _VideoPlayerScreen extends StatefulWidget {
-  const _VideoPlayerScreen({required this.url});
-
-  final String url;
-
-  @override
-  State<_VideoPlayerScreen> createState() => _VideoPlayerScreenState();
-}
-
-class _VideoPlayerScreenState extends State<_VideoPlayerScreen> {
-  final _ctrlKey = GlobalKey<_VideoControlsState>();
-  VideoPlayerController? _controller;
-  bool _ready = false;
-  bool _hasError = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _initPlayer();
-  }
-
-  Future<void> _initPlayer() async {
-    final uri = Uri.tryParse(widget.url);
-    if (uri == null) {
-      setState(() => _hasError = true);
-      return;
-    }
-    try {
-      final ctrl = VideoPlayerController.networkUrl(uri);
-      _controller = ctrl;
-      await ctrl.initialize();
-      if (mounted) {
-        setState(() => _ready = true);
-        ctrl.play();
-      }
-    } catch (e, st) {
-      debugPrint('[chat] video init error: $e\n$st');
-      if (mounted) setState(() => _hasError = true);
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: _buildBody(),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_hasError) {
-      return const Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.error_outline, color: Colors.white, size: 48),
-          SizedBox(height: 12),
-          Text('Не удалось загрузить видео',
-              style: TextStyle(color: Colors.white, fontSize: 16)),
-        ],
-      );
-    }
-    if (!_ready || _controller == null) {
-      return const Center(child: CircularProgressIndicator(color: Colors.white));
-    }
-    return Column(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: () => _ctrlKey.currentState?.toggleVisibility(),
-            child: Stack(
-              fit: StackFit.expand,
-              alignment: Alignment.center,
-              children: [
-                VideoPlayer(_controller!),
-                _VideoControls(key: _ctrlKey, controller: _controller!),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Loads the first frame of a video as thumbnail, falls back to videocam icon.
-class _VideoThumbnail extends StatefulWidget {
-  const _VideoThumbnail({required this.url, this.thumbnailUrl});
-
-  final String url;
-  final String? thumbnailUrl;
-
-  @override
-  State<_VideoThumbnail> createState() => _VideoThumbnailState();
-}
-
-class _VideoThumbnailState extends State<_VideoThumbnail> {
-  VideoPlayerController? _ctrl;
-  bool _ready = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _init();
-  }
-
-  Future<void> _init() async {
-    // Prefer dedicated thumbnail URL
-    if (widget.thumbnailUrl != null && widget.thumbnailUrl!.isNotEmpty) {
-      setState(() => _ready = true);
-      return;
-    }
-    // Otherwise seek to first frame
-    final uri = Uri.tryParse(widget.url);
-    if (uri == null) return;
-    try {
-      final ctrl = VideoPlayerController.networkUrl(uri);
-      await ctrl.initialize();
-      await ctrl.seekTo(const Duration(seconds: 1));
-      await ctrl.play();
-      // Wait one frame then pause
-      await Future.delayed(const Duration(milliseconds: 300));
-      await ctrl.pause();
-      if (mounted) {
-        _ctrl = ctrl;
-        setState(() => _ready = true);
-      }
-    } catch (e, st) {
-      debugPrint('[chat] video thumbnail error: $e\n$st');
-      // keep showing placeholder
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Dedicated thumbnail URL
-    if (widget.thumbnailUrl != null && widget.thumbnailUrl!.isNotEmpty) {
-      return Image.network(
-        widget.thumbnailUrl!,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _placeholder(),
-      );
-    }
-    // VideoPlayer thumbnail
-    if (_ready && _ctrl != null && _ctrl!.value.isInitialized) {
-      return ClipRRect(
-        child: FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width: _ctrl!.value.size.width,
-            height: _ctrl!.value.size.height,
-            child: VideoPlayer(_ctrl!),
-          ),
-        ),
-      );
-    }
-    return _placeholder();
-  }
-
-  Widget _placeholder() {
-    return Container(
-      color: const Color(0xFF374151),
-      child: const Center(
-        child: Icon(Icons.videocam, size: 56, color: Color(0xFF6B7280)),
-      ),
-    );
-  }
-}
-
-/// Play/pause + progress controls at bottom, full width.
-class _VideoControls extends StatefulWidget {
-  const _VideoControls({super.key, required this.controller});
-
-  final VideoPlayerController controller;
-
-  @override
-  State<_VideoControls> createState() => _VideoControlsState();
-}
-
-class _VideoControlsState extends State<_VideoControls> {
-  bool _showControls = true;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_onPlaybackUpdate);
-  }
-
-  void _onPlaybackUpdate() {
-    if (mounted) setState(() {});
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_onPlaybackUpdate);
-    super.dispose();
-  }
-
-  void toggleVisibility() {
-    setState(() => _showControls = !_showControls);
-  }
-
-  void _togglePlay() {
-    setState(() {
-      if (widget.controller.value.isPlaying) {
-        widget.controller.pause();
-      } else {
-        widget.controller.play();
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final value = widget.controller.value;
-    final isPlaying = value.isPlaying;
-    final position = value.position;
-    final duration = value.duration;
-    final progress = duration.inMilliseconds > 0
-        ? position.inMilliseconds / duration.inMilliseconds
-        : 0.0;
-
-    final posStr =
-        '${position.inMinutes}:${(position.inSeconds % 60).toString().padLeft(2, '0')}';
-    final durStr =
-        '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}';
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Center play/pause
-        Center(
-          child: AnimatedOpacity(
-            opacity: _showControls ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 300),
-            child: IconButton(
-              icon: Icon(
-                isPlaying ? Icons.pause_circle : Icons.play_circle,
-                color: Colors.white,
-                size: 64,
-              ),
-              onPressed: _togglePlay,
-            ),
-          ),
-        ),
-        // Bottom bar
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: AnimatedOpacity(
-            opacity: _showControls ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 300),
-            child: Container(
-              color: Colors.black54,
-              padding: const EdgeInsets.only(bottom: 8, top: 4),
-              child: SafeArea(
-                top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SliderTheme(
-                      data: const SliderThemeData(
-                        trackHeight: 4,
-                        thumbShape:
-                            RoundSliderThumbShape(enabledThumbRadius: 8),
-                        overlayShape:
-                            RoundSliderOverlayShape(overlayRadius: 16),
-                      ),
-                      child: Slider(
-                        value: progress.clamp(0.0, 1.0),
-                        activeColor: Colors.white,
-                        inactiveColor: Colors.white30,
-                        onChanged: (v) {
-                          final ms =
-                              (v * duration.inMilliseconds).round();
-                          widget.controller
-                              .seekTo(Duration(milliseconds: ms));
-                        },
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(posStr,
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 13)),
-                          Text(durStr,
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 13)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
   }
 }

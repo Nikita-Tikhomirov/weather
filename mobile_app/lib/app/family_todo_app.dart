@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/app_localizations.dart';
 import '../features/home/home_page.dart';
 import 'app_theme.dart';
 
@@ -43,6 +45,17 @@ class _FamilyTodoAppState extends State<FamilyTodoApp> {
       title: 'Задачи',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(option),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('ru'),
+        Locale('en'),
+      ],
+      locale: const Locale('ru'),
       home: HomePage(
         selectedThemeKey: option.key,
         onThemeChanged: _setTheme,
