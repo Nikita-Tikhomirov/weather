@@ -7,6 +7,7 @@ import '../models/task_item.dart';
 import '../models/task_project.dart';
 import '../repositories/task_repository.dart';
 import '../services/desktop_process_host_service.dart';
+import '../services/local_db.dart';
 import 'desktop_state.dart';
 
 class DashboardVm {

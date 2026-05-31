@@ -33,23 +33,25 @@ void main() {
             errorDetails.exceptionAsString().isNotEmpty
                 ? errorDetails.exceptionAsString()
                 : 'Something went wrong';
-        return Material(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.warning_amber_rounded, size: 48,
-                      color: Colors.orange),
-                  const SizedBox(height: 12),
-                  Text('Something went wrong',
-                      style: Theme.of(ErrorWidget._context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  Text(message,
-                      style: Theme.of(ErrorWidget._context).textTheme.bodySmall,
-                      textAlign: TextAlign.center),
-                ],
+        return Builder(
+          builder: (context) => Material(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, size: 48,
+                        color: Colors.orange),
+                    const SizedBox(height: 12),
+                    Text('Something went wrong',
+                        style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    Text(message,
+                        style: Theme.of(context).textTheme.bodySmall,
+                        textAlign: TextAlign.center),
+                  ],
+                ),
               ),
             ),
           ),

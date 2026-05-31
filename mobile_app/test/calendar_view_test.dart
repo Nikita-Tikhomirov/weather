@@ -5,29 +5,31 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('CalendarView', () {
-    testWidgets('renders month and day labels', (tester) async {
+    testWidgets('renders month header and today button', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: CalendarView(
-              month: DateTime(2026, 5),
-              tasks: const [],
+              monthDate: DateTime(2026, 5),
+              allTasks: const [],
               selectedDate: DateTime(2026, 5, 31),
+              labelFor: (String p) => p,
               onMonthPrev: () {},
               onMonthNext: () {},
-              onMonthToday: () {},
-              onDayTap: (_) {},
-              onDateSelected: (_) {},
+              onGoToday: () {},
+              onDayTap: (DateTime date, List<TaskItem> tasks) {},
+              onEdit: (TaskItem t) async {},
+              onDelete: (TaskItem t) async {},
+              onAddForDate: (DateTime d) async {},
             ),
           ),
         ),
       );
 
-      // Month header
+      // Month header contains year
       expect(find.textContaining('2026'), findsOneWidget);
-      // Day-of-week headers
-      expect(find.text('Пн'), findsOneWidget);
-      expect(find.text('Вт'), findsOneWidget);
+      // Today button
+      expect(find.text('Сегодня'), findsOneWidget);
     });
 
     testWidgets('shows tasks on their dates', (tester) async {
@@ -35,17 +37,18 @@ void main() {
         TaskItem(
           id: '1',
           ownerKey: 'test_user',
+          isFamily: false,
           title: 'Task on 15th',
+          details: '',
           dueDate: '2026-05-15',
           time: '10:00',
           workflowStatus: WorkflowStatus.todo,
           priority: Priority.high,
           tags: const [],
-          participants: const [],
+          assignees: const [],
+          reminderOffsetsMinutes: const [],
           durationMinutes: 0,
-          sortOrder: 0,
-          createdAt: DateTime(2026, 5, 1),
-          updatedAt: DateTime(2026, 5, 1),
+          updatedAt: '2026-05-01T00:00:00',
           version: 1,
         ),
       ];
@@ -54,14 +57,17 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: CalendarView(
-              month: DateTime(2026, 5),
-              tasks: tasks,
+              monthDate: DateTime(2026, 5),
+              allTasks: tasks,
               selectedDate: DateTime(2026, 5, 15),
+              labelFor: (String p) => p,
               onMonthPrev: () {},
               onMonthNext: () {},
-              onMonthToday: () {},
-              onDayTap: (_) {},
-              onDateSelected: (_) {},
+              onGoToday: () {},
+              onDayTap: (DateTime date, List<TaskItem> tasks) {},
+              onEdit: (TaskItem t) async {},
+              onDelete: (TaskItem t) async {},
+              onAddForDate: (DateTime d) async {},
             ),
           ),
         ),
@@ -78,14 +84,17 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: CalendarView(
-              month: DateTime(2026, 5),
-              tasks: const [],
+              monthDate: DateTime(2026, 5),
+              allTasks: const [],
               selectedDate: DateTime(2026, 5, 31),
+              labelFor: (String p) => p,
               onMonthPrev: () => prevCalled = true,
               onMonthNext: () => nextCalled = true,
-              onMonthToday: () {},
-              onDayTap: (_) {},
-              onDateSelected: (_) {},
+              onGoToday: () {},
+              onDayTap: (DateTime date, List<TaskItem> tasks) {},
+              onEdit: (TaskItem t) async {},
+              onDelete: (TaskItem t) async {},
+              onAddForDate: (DateTime d) async {},
             ),
           ),
         ),
@@ -103,14 +112,17 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: CalendarView(
-              month: DateTime(2026, 5),
-              tasks: const [],
+              monthDate: DateTime(2026, 5),
+              allTasks: const [],
               selectedDate: DateTime(2026, 5, 15),
+              labelFor: (String p) => p,
               onMonthPrev: () {},
               onMonthNext: () {},
-              onMonthToday: () {},
-              onDayTap: (_) {},
-              onDateSelected: (_) {},
+              onGoToday: () {},
+              onDayTap: (DateTime date, List<TaskItem> tasks) {},
+              onEdit: (TaskItem t) async {},
+              onDelete: (TaskItem t) async {},
+              onAddForDate: (DateTime d) async {},
             ),
           ),
         ),

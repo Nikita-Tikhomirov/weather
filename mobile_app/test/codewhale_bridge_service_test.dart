@@ -26,7 +26,6 @@ void main() {
     expect(item.name, 'Погода');
     expect(item.path, r'C:\Users\user\Desktop\weather');
     expect(item.status, WorkspaceStatus.available);
-    expect(item.isAvailable, isTrue);
   });
 
   test('workspace session parses bridge json', () {

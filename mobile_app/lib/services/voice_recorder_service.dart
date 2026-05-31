@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
+import '../services/local_db.dart';
 import '../state/task_store.dart';
 
 /// Standalone voice recording service extracted from _HomePageState.

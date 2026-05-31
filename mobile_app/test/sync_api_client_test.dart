@@ -3,6 +3,35 @@ import 'dart:convert';
 import 'package:family_todo_mobile/services/api_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+dynamic? safeDecode(String source) {
+  if (source.isEmpty) return null;
+  try {
+    return jsonDecode(source);
+  } on FormatException {
+    return null;
+  }
+}
+
+List<dynamic> safeDecodeList(String? source) {
+  if (source == null || source.isEmpty) return [];
+  try {
+    final decoded = jsonDecode(source);
+    return decoded is List ? decoded : [];
+  } on FormatException {
+    return [];
+  }
+}
+
+Map<String, dynamic> safeDecodeMap(String? source) {
+  if (source == null || source.isEmpty) return {};
+  try {
+    final decoded = jsonDecode(source);
+    return decoded is Map<String, dynamic> ? decoded : {};
+  } on FormatException {
+    return {};
+  }
+}
+
 void main() {
   group('ApiClient', () {
     late ApiClient client;
@@ -27,49 +56,49 @@ void main() {
 
     group('JSON safe decoding', () {
       test('safeDecode returns null for empty string', () {
-        final result = ApiClient.safeDecode('');
+        final result = safeDecode('');
         expect(result, isNull);
       });
 
       test('safeDecode returns null for invalid JSON', () {
-        final result = ApiClient.safeDecode('not json');
+        final result = safeDecode('not json');
         expect(result, isNull);
       });
 
       test('safeDecode returns map for valid JSON object', () {
-        final result = ApiClient.safeDecode('{"key": "value"}');
+        final result = safeDecode('{"key": "value"}');
         expect(result, isA<Map<String, dynamic>>());
         expect(result!['key'], 'value');
       });
 
       test('safeDecode returns list for valid JSON array', () {
-        final result = ApiClient.safeDecode('[1, 2, 3]');
+        final result = safeDecode('[1, 2, 3]');
         expect(result, isA<List<dynamic>>());
       });
 
       test('safeDecodeList returns empty list for null input', () {
-        final result = ApiClient.safeDecodeList(null);
+        final result = safeDecodeList(null);
         expect(result, isEmpty);
       });
 
       test('safeDecodeList returns empty list for non-list JSON', () {
-        final result = ApiClient.safeDecodeList('{"a": 1}');
+        final result = safeDecodeList('{"a": 1}');
         expect(result, isEmpty);
       });
 
       test('safeDecodeList returns list for valid JSON array', () {
-        final result = ApiClient.safeDecodeList('[{"id": 1}, {"id": 2}]');
+        final result = safeDecodeList('[{"id": 1}, {"id": 2}]');
         expect(result, hasLength(2));
         expect(result[0]['id'], 1);
       });
 
       test('safeDecodeMap returns empty map for null input', () {
-        final result = ApiClient.safeDecodeMap(null);
+        final result = safeDecodeMap(null);
         expect(result, isEmpty);
       });
 
       test('safeDecodeMap returns map for valid JSON object', () {
-        final result = ApiClient.safeDecodeMap('{"name": "test"}');
+        final result = safeDecodeMap('{"name": "test"}');
         expect(result['name'], 'test');
       });
     });

@@ -14,6 +14,9 @@ class ProjectContact {
   final String path;
   final String icon;
 
+  /// Computed key used to identify project conversations in the chat system.
+  String get conversationKey => 'project:$id';
+
   factory ProjectContact.fromJson(Map<String, dynamic> json) {
     return ProjectContact(
       id: (json['id'] ?? '').toString(),

@@ -82,12 +82,12 @@ Future<void> notificationTapBackground(NotificationResponse response) async {
 Future<void> _handleNotificationResponse(NotificationResponse response) async {
   final actionId = response.actionId ?? '';
   if (actionId.isEmpty || actionId == _openChatActionId) {
-    final data = _decodeNotificationPayload(response.payload);
+    final data = _decodeNotificationPayload(response.payload ?? '');
     if (data != null) _notificationOpenEvents.add(data);
     return;
   }
   if (actionId != _markReadActionId) return;
-  final data = _decodeNotificationPayload(response.payload);
+  final data = _decodeNotificationPayload(response.payload ?? '');
   if (data == null) return;
   final conversationKey = (data['conversation_key'] ?? '').toString().trim();
   if (conversationKey.isEmpty) return;
@@ -105,11 +105,3 @@ Future<void> _handleNotificationResponse(NotificationResponse response) async {
   } catch (_) {}
 }
 
-Map<String, dynamic>? _decodeNotificationPayload(String? payload) {
-  if (payload == null || payload.trim().isEmpty) return null;
-  try {
-    return Map<String, dynamic>.from(jsonDecode(payload) as Map);
-  } catch (_) {
-    return null;
-  }
-}

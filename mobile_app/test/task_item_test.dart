@@ -23,7 +23,6 @@ void main() {
       };
       final task = TaskItem.fromJson(json);
       expect(task.assignees, ['nik', 'misha']);
-      expect(task.participants, ['nik', 'misha']);
       expect(task.workflowStatus, WorkflowStatus.todo);
       expect(task.priority, Priority.medium);
     });

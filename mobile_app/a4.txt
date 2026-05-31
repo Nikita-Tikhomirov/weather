@@ -1,0 +1,568 @@
+Analyzing mobile_app...                                         
+
+   info - Missing a required trailing comma - lib\features\chat\chat_media_bubble.dart:78:66 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_media_bubble.dart:306:70 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_media_bubble.dart:306:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_media_bubble.dart:309:70 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_media_bubble.dart:309:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_message_bubble.dart:96:48 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_message_bubble.dart:112:27 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_message_bubble.dart:298:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_message_bubble.dart:312:59 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_message_bubble.dart:318:63 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_message_bubble.dart:338:78 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_message_bubble.dart:350:73 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_message_bubble.dart:444:78 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_voice_bubble.dart:34:73 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:63:68 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:65:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:67:72 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:83:72 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:85:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:192:63 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:194:48 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:202:57 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:246:51 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:265:45 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell_widget.dart:109:68 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell_widget.dart:111:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell_widget.dart:114:62 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell_widget.dart:130:72 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell_widget.dart:132:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell_widget.dart:230:63 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell_widget.dart:239:57 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell_widget.dart:283:51 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_calls_voice.dart:79:67 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_chat_init.dart:46:29 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_chat_init.dart:48:60 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_chat_init.dart:52:53 - require_trailing_commas
+warning - The member 'setState' can only be used within instance members of subclasses of 'State' - lib\features\home\home_chat_section.dart:46:31 - invalid_use_of_protected_member
+warning - The member 'setState' can only be used within instance members of subclasses of 'State' - lib\features\home\home_chat_section.dart:56:27 - invalid_use_of_protected_member
+warning - The member 'setState' can only be used within instance members of subclasses of 'State' - lib\features\home\home_chat_section.dart:58:9 - invalid_use_of_protected_member
+   info - Missing a required trailing comma - lib\features\home\home_dashboard_section.dart:66:77 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_dashboard_section.dart:74:74 - require_trailing_commas
+warning - The declaration 'openDayTasksScreen' isn't referenced - lib\features\home\home_dashboard_section.dart:169:8 - unused_element
+   info - Missing a required trailing comma - lib\features\home\home_dashboard_section.dart:170:61 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:139:89 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\home\home_page.dart:146:25 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:153:58 - require_trailing_commas
+   info - Don't use 'BuildContext's across async gaps - lib\features\home\home_page.dart:159:17 - use_build_context_synchronously
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:159:46 - require_trailing_commas
+   info - Don't use 'BuildContext's across async gaps - lib\features\home\home_page.dart:165:11 - use_build_context_synchronously
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:165:40 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\home\home_page.dart:185:32 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:204:55 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\home\home_page.dart:206:33 - unnecessary_lambdas
+   info - Closure should be a tearoff - lib\features\home\home_page.dart:221:31 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:287:78 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:292:78 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:305:64 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:310:64 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:496:69 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:608:63 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:631:46 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:775:10 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\home\home_page.dart:1044:23 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1336:37 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1337:19 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1369:40 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1578:45 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1608:78 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1641:66 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1740:58 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1743:72 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1775:10 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1781:45 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1925:18 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1977:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2186:10 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2217:33 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2238:74 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2248:60 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2272:106 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2272:107 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2362:74 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2430:58 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2485:71 - require_trailing_commas
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\features\home\home_page.dart:2640:18 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2758:8 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2892:74 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2904:67 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2925:58 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2925:59 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2935:72 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2971:8 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3006:10 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3019:8 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3095:14 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3110:10 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3118:10 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3169:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3224:12 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3468:5 - require_trailing_commas
+  error - The method '_chatImageUrl' isn't defined for the type '_HomePageState' - lib\features\home\home_page.dart:3518:20 - undefined_method
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3598:16 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3609:14 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3655:54 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3821:52 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3838:61 - require_trailing_commas
+   info - Don't use 'BuildContext's across async gaps - lib\features\home\home_profile_init.dart:68:7 - use_build_context_synchronously
+   info - Missing a required trailing comma - lib\features\home\home_profile_init.dart:96:66 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_profile_init.dart:111:62 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_profile_init.dart:113:57 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_profile_init.dart:115:70 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\home\home_projects_data.dart:103:16 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\home\home_projects_data.dart:117:27 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_projects_data.dart:122:23 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_projects_data.dart:127:23 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_projects_data.dart:132:23 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_projects_data.dart:137:23 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_projects_data.dart:142:25 - require_trailing_commas
+  error - The getter 'conversationKey' isn't defined for the type 'ProjectContact' - lib\features\home\home_projects_data.dart:158:37 - undefined_getter
+   info - Closure should be a tearoff - lib\features\home\home_projects_data.dart:223:32 - unnecessary_lambdas
+  error - The getter 'conversationKey' isn't defined for the type 'ProjectContact' - lib\features\home\home_projects_data.dart:274:21 - undefined_getter
+   info - Missing a required trailing comma - lib\features\home\home_projects_data.dart:318:41 - require_trailing_commas
+   info - The import of 'package:flutter/foundation.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/widgets.dart' - lib\features\home\home_push_handler.dart:5:8 - unnecessary_import
+   info - Missing a required trailing comma - lib\features\home\home_push_handler.dart:60:73 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_push_handler.dart:92:110 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_push_handler.dart:149:81 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_push_handler.dart:203:95 - require_trailing_commas
+   info - The import of 'package:flutter/foundation.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' - lib\features\home\home_share_receiver.dart:3:8 - unnecessary_import
+   info - Don't use 'BuildContext's across async gaps - lib\features\home\home_share_receiver.dart:65:9 - use_build_context_synchronously
+   info - Missing a required trailing comma - lib\features\home\home_share_receiver.dart:124:16 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_share_receiver.dart:156:16 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_share_receiver.dart:180:42 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\projects_data.dart:9:46 - require_trailing_commas
+  error - The getter 'conversationKey' isn't defined for the type 'ProjectContact' - lib\features\home\projects_data.dart:26:36 - undefined_getter
+   info - Closure should be a tearoff - lib\features\home\projects_data.dart:89:50 - unnecessary_lambdas
+  error - The getter 'conversationKey' isn't defined for the type 'ProjectContact' - lib\features\home\projects_data.dart:150:21 - undefined_getter
+   info - Missing a required trailing comma - lib\features\home\share_receiver.dart:94:16 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\share_receiver.dart:126:16 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\share_receiver.dart:150:42 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\family_group_edit_sheet.dart:122:73 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\family_group_edit_sheet.dart:130:78 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\family_group_edit_sheet.dart:137:63 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\family_group_edit_sheet.dart:140:74 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\family_group_edit_sheet.dart:150:94 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_chat_view.dart:364:40 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_edit_sheet.dart:106:77 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_edit_sheet.dart:134:102 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_file_browser.dart:143:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_file_browser.dart:178:52 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_file_browser.dart:186:76 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_file_browser.dart:186:77 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_file_browser.dart:190:77 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_file_browser.dart:190:78 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_file_browser.dart:200:67 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_file_browser.dart:200:68 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\projects_and_groups_screen.dart:164:65 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\projects_and_groups_screen.dart:179:62 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\projects_and_groups_screen.dart:181:64 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\tasks\calendar_view.dart:401:69 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\tasks\task_card.dart:90:52 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\tasks\task_card.dart:165:76 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\tasks\task_card.dart:212:34 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\tasks\task_card.dart:218:66 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\tasks\task_card.dart:219:34 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\tasks\task_editor_sheet.dart:132:60 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\tasks\tasks_board.dart:171:56 - require_trailing_commas
+   info - Missing a required trailing comma - lib\main.dart:44:43 - require_trailing_commas
+  error - The getter '_context' isn't defined for the type 'ErrorWidget' - lib\main.dart:47:51 - undefined_getter
+   info - Missing a required trailing comma - lib\main.dart:47:82 - require_trailing_commas
+  error - The getter '_context' isn't defined for the type 'ErrorWidget' - lib\main.dart:50:51 - undefined_getter
+   info - Missing a required trailing comma - lib\main.dart:51:50 - require_trailing_commas
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\call_models.dart:5:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\call_models.dart:100:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\call_models.dart:171:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_models.dart:5:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_models.dart:82:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_models.dart:154:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_models.dart:223:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_models.dart:261:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_models.dart:458:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_models.dart:521:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_snapshots.dart:7:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_snapshots.dart:62:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_snapshots.dart:110:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\device_snapshots.dart:7:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\device_snapshots.dart:45:3 - prefer_const_constructors_in_immutables
+   info - Closure should be a tearoff - lib\models\device_snapshots.dart:68:16 - unnecessary_lambdas
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\device_snapshots.dart:121:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\pending_event.dart:5:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\sync_snapshots.dart:9:3 - prefer_const_constructors_in_immutables
+   info - The constant name 'in_progress' isn't a lowerCamelCase identifier - lib\models\task_item.dart:8:3 - constant_identifier_names
+   info - The constant name 'in_review' isn't a lowerCamelCase identifier - lib\models\task_item.dart:9:3 - constant_identifier_names
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\task_item.dart:45:3 - prefer_const_constructors_in_immutables
+   info - Missing a required trailing comma - lib\repositories\task_repository.dart:37:75 - require_trailing_commas
+   info - Missing a required trailing comma - lib\repositories\task_repository.dart:51:64 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\bridge_connection.dart:261:78 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\bridge_connection.dart:285:75 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\bridge_connection.dart:290:79 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\bridge_connection.dart:317:75 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\bridge_connection.dart:322:79 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\bridge_connection.dart:402:69 - require_trailing_commas
+warning - Unused import: '../models/project_contact.dart' - lib\services\bridge_protocol.dart:1:8 - unused_import
+   info - Missing a required trailing comma - lib\services\chat_api_client.dart:358:73 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\chat_api_client.dart:388:74 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_diagnostics.dart:14:69 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_diagnostics.dart:56:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_diagnostics.dart:100:57 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_diagnostics.dart:118:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_diagnostics.dart:125:21 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:7:26 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:17:54 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:39:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:55:41 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:60:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:66:34 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:76:34 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:85:26 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:106:51 - require_trailing_commas
+  error - The argument type 'String?' can't be assigned to the parameter type 'String'.  - lib\services\fcm_messaging.dart:132:40 - argument_type_not_assignable
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:144:73 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:156:34 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:165:41 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:171:26 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:196:45 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:203:26 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:205:25 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:214:26 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:220:34 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:260:25 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:268:23 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:270:55 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:285:39 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:302:28 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:310:51 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:313:28 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:340:26 - require_trailing_commas
+   info - Statements in an if should be enclosed in a block - lib\services\fcm_messaging.dart:349:41 - curly_braces_in_flow_control_structures
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:361:44 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:365:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:368:37 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:393:44 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:400:44 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:404:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:411:37 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:429:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:447:39 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_notifications.dart:19:69 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_notifications.dart:21:70 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_notifications.dart:65:63 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_notifications.dart:67:64 - require_trailing_commas
+  error - The argument type 'String?' can't be assigned to the parameter type 'String'.  - lib\services\fcm_notifications.dart:85:45 - argument_type_not_assignable
+  error - The argument type 'String?' can't be assigned to the parameter type 'String'.  - lib\services\fcm_notifications.dart:90:43 - argument_type_not_assignable
+warning - The declaration '_decodeNotificationPayload' isn't referenced - lib\services\fcm_notifications.dart:108:23 - unused_element
+  error - The name '_decodeNotificationPayload' is already defined - lib\services\fcm_notifications.dart:108:23 - duplicate_definition
+  error - Missing concrete implementations of 'TaskDataSource.deleteTask', 'TaskDataSource.mergeFamilyTasks', 'TaskDataSource.mergePersonalTasks', 'TaskDataSource.putPending', and 8 more - lib\services\local_db.dart:21:7 - non_abstract_class_inherits_abstract_member
+warning - The declaration '_decodeStringList' isn't referenced - lib\services\local_db.dart:270:23 - unused_element
+warning - The declaration '_decodeMap' isn't referenced - lib\services\local_db.dart:281:31 - unused_element
+warning - The declaration '_decodeDynamicList' isn't referenced - lib\services\local_db.dart:292:24 - unused_element
+   info - Missing a required trailing comma - lib\services\local_db.dart:405:65 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:407:63 - require_trailing_commas
+  error - The argument type 'Object' can't be assigned to the parameter type 'String'.  - lib\services\local_db.dart:436:30 - argument_type_not_assignable
+  error - The argument type 'Object' can't be assigned to the parameter type 'String'.  - lib\services\local_db.dart:438:30 - argument_type_not_assignable
+   info - Missing a required trailing comma - lib\services\local_db.dart:483:14 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:579:36 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:593:41 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:595:49 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:599:31 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:614:36 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:619:24 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:629:41 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:631:47 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:649:36 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:660:59 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:667:46 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:671:33 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:679:57 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:752:27 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:774:47 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:781:27 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:821:23 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:860:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\profile_init_service.dart:97:66 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\profile_init_service.dart:112:62 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\profile_init_service.dart:115:70 - require_trailing_commas
+   info - Dangling library doc comment - lib\services\project_bridge_service.dart:1:1 - dangling_library_doc_comments
+   info - Missing a required trailing comma - lib\services\push_notification_handler.dart:60:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\push_notification_handler.dart:95:95 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\push_notification_handler.dart:160:105 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\push_notification_handler.dart:215:83 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\voice_recorder_service.dart:86:67 - require_trailing_commas
+  error - The method 'upsertMessages' isn't defined for the type 'LocalDb' - lib\services\voice_recorder_service.dart:98:16 - undefined_method
+  error - The method 'upsertProjectLocal' isn't defined for the type 'LocalDb' - lib\state\task_store.dart:272:25 - undefined_method
+  error - The method 'setProjectGroupsLocal' isn't defined for the type 'LocalDb' - lib\state\task_store.dart:273:25 - undefined_method
+   info - Missing a required trailing comma - lib\state\task_store.dart:279:72 - require_trailing_commas
+  error - The method 'upsertProjectLocal' isn't defined for the type 'LocalDb' - lib\state\task_store.dart:289:25 - undefined_method
+   info - Missing a required trailing comma - lib\state\task_store.dart:296:6 - require_trailing_commas
+  error - The method 'setProjectGroupsLocal' isn't defined for the type 'LocalDb' - lib\state\task_store.dart:298:25 - undefined_method
+  error - The method 'deleteProjectLocal' isn't defined for the type 'LocalDb' - lib\state\task_store.dart:310:25 - undefined_method
+  error - The method 'upsertFamilyGroupLocal' isn't defined for the type 'LocalDb' - lib\state\task_store.dart:320:25 - undefined_method
+   info - Missing a required trailing comma - lib\state\task_store.dart:326:51 - require_trailing_commas
+  error - The method 'upsertFamilyGroupLocal' isn't defined for the type 'LocalDb' - lib\state\task_store.dart:337:25 - undefined_method
+  error - The method 'deleteFamilyGroupLocal' isn't defined for the type 'LocalDb' - lib\state\task_store.dart:355:25 - undefined_method
+   info - Missing a required trailing comma - lib\state\task_store.dart:514:69 - require_trailing_commas
+   info - Missing a required trailing comma - lib\state\task_store.dart:657:73 - require_trailing_commas
+  error - The named parameter 'allTasks' is required, but there's no corresponding argument - test\calendar_view_test.dart:12:19 - missing_required_argument
+  error - The named parameter 'labelFor' is required, but there's no corresponding argument - test\calendar_view_test.dart:12:19 - missing_required_argument
+  error - The named parameter 'monthDate' is required, but there's no corresponding argument - test\calendar_view_test.dart:12:19 - missing_required_argument
+  error - The named parameter 'onAddForDate' is required, but there's no corresponding argument - test\calendar_view_test.dart:12:19 - missing_required_argument
+  error - The named parameter 'onDelete' is required, but there's no corresponding argument - test\calendar_view_test.dart:12:19 - missing_required_argument
+  error - The named parameter 'onEdit' is required, but there's no corresponding argument - test\calendar_view_test.dart:12:19 - missing_required_argument
+  error - The named parameter 'onGoToday' is required, but there's no corresponding argument - test\calendar_view_test.dart:12:19 - missing_required_argument
+  error - The named parameter 'month' isn't defined - test\calendar_view_test.dart:13:15 - undefined_named_parameter
+  error - The named parameter 'tasks' isn't defined - test\calendar_view_test.dart:14:15 - undefined_named_parameter
+  error - The named parameter 'onMonthToday' isn't defined - test\calendar_view_test.dart:18:15 - undefined_named_parameter
+  error - The argument type 'void Function(DateTime)' can't be assigned to the parameter type 'void Function(DateTime, List<TaskItem>)'.  - test\calendar_view_test.dart:19:25 - argument_type_not_assignable
+  error - The named parameter 'onDateSelected' isn't defined - test\calendar_view_test.dart:20:15 - undefined_named_parameter
+  error - The named parameter 'assignees' is required, but there's no corresponding argument - test\calendar_view_test.dart:35:9 - missing_required_argument
+  error - The named parameter 'details' is required, but there's no corresponding argument - test\calendar_view_test.dart:35:9 - missing_required_argument
+  error - The named parameter 'isFamily' is required, but there's no corresponding argument - test\calendar_view_test.dart:35:9 - missing_required_argument
+  error - The named parameter 'reminderOffsetsMinutes' is required, but there's no corresponding argument - test\calendar_view_test.dart:35:9 - missing_required_argument
+  error - The named parameter 'participants' isn't defined - test\calendar_view_test.dart:44:11 - undefined_named_parameter
+  error - The named parameter 'sortOrder' isn't defined - test\calendar_view_test.dart:46:11 - undefined_named_parameter
+  error - The named parameter 'createdAt' isn't defined - test\calendar_view_test.dart:47:11 - undefined_named_parameter
+  error - The argument type 'DateTime' can't be assigned to the parameter type 'String'.  - test\calendar_view_test.dart:48:22 - argument_type_not_assignable
+  error - The named parameter 'allTasks' is required, but there's no corresponding argument - test\calendar_view_test.dart:56:19 - missing_required_argument
+  error - The named parameter 'labelFor' is required, but there's no corresponding argument - test\calendar_view_test.dart:56:19 - missing_required_argument
+  error - The named parameter 'monthDate' is required, but there's no corresponding argument - test\calendar_view_test.dart:56:19 - missing_required_argument
+  error - The named parameter 'onAddForDate' is required, but there's no corresponding argument - test\calendar_view_test.dart:56:19 - missing_required_argument
+  error - The named parameter 'onDelete' is required, but there's no corresponding argument - test\calendar_view_test.dart:56:19 - missing_required_argument
+  error - The named parameter 'onEdit' is required, but there's no corresponding argument - test\calendar_view_test.dart:56:19 - missing_required_argument
+  error - The named parameter 'onGoToday' is required, but there's no corresponding argument - test\calendar_view_test.dart:56:19 - missing_required_argument
+  error - The named parameter 'month' isn't defined - test\calendar_view_test.dart:57:15 - undefined_named_parameter
+  error - The named parameter 'tasks' isn't defined - test\calendar_view_test.dart:58:15 - undefined_named_parameter
+  error - The named parameter 'onMonthToday' isn't defined - test\calendar_view_test.dart:62:15 - undefined_named_parameter
+  error - The argument type 'void Function(DateTime)' can't be assigned to the parameter type 'void Function(DateTime, List<TaskItem>)'.  - test\calendar_view_test.dart:63:25 - argument_type_not_assignable
+  error - The named parameter 'onDateSelected' isn't defined - test\calendar_view_test.dart:64:15 - undefined_named_parameter
+  error - The named parameter 'allTasks' is required, but there's no corresponding argument - test\calendar_view_test.dart:80:19 - missing_required_argument
+  error - The named parameter 'labelFor' is required, but there's no corresponding argument - test\calendar_view_test.dart:80:19 - missing_required_argument
+  error - The named parameter 'monthDate' is required, but there's no corresponding argument - test\calendar_view_test.dart:80:19 - missing_required_argument
+  error - The named parameter 'onAddForDate' is required, but there's no corresponding argument - test\calendar_view_test.dart:80:19 - missing_required_argument
+  error - The named parameter 'onDelete' is required, but there's no corresponding argument - test\calendar_view_test.dart:80:19 - missing_required_argument
+  error - The named parameter 'onEdit' is required, but there's no corresponding argument - test\calendar_view_test.dart:80:19 - missing_required_argument
+  error - The named parameter 'onGoToday' is required, but there's no corresponding argument - test\calendar_view_test.dart:80:19 - missing_required_argument
+  error - The named parameter 'month' isn't defined - test\calendar_view_test.dart:81:15 - undefined_named_parameter
+  error - The named parameter 'tasks' isn't defined - test\calendar_view_test.dart:82:15 - undefined_named_parameter
+  error - The named parameter 'onMonthToday' isn't defined - test\calendar_view_test.dart:86:15 - undefined_named_parameter
+  error - The argument type 'void Function(DateTime)' can't be assigned to the parameter type 'void Function(DateTime, List<TaskItem>)'.  - test\calendar_view_test.dart:87:25 - argument_type_not_assignable
+  error - The named parameter 'onDateSelected' isn't defined - test\calendar_view_test.dart:88:15 - undefined_named_parameter
+  error - The named parameter 'allTasks' is required, but there's no corresponding argument - test\calendar_view_test.dart:105:19 - missing_required_argument
+  error - The named parameter 'labelFor' is required, but there's no corresponding argument - test\calendar_view_test.dart:105:19 - missing_required_argument
+  error - The named parameter 'monthDate' is required, but there's no corresponding argument - test\calendar_view_test.dart:105:19 - missing_required_argument
+  error - The named parameter 'onAddForDate' is required, but there's no corresponding argument - test\calendar_view_test.dart:105:19 - missing_required_argument
+  error - The named parameter 'onDelete' is required, but there's no corresponding argument - test\calendar_view_test.dart:105:19 - missing_required_argument
+  error - The named parameter 'onEdit' is required, but there's no corresponding argument - test\calendar_view_test.dart:105:19 - missing_required_argument
+  error - The named parameter 'onGoToday' is required, but there's no corresponding argument - test\calendar_view_test.dart:105:19 - missing_required_argument
+  error - The named parameter 'month' isn't defined - test\calendar_view_test.dart:106:15 - undefined_named_parameter
+  error - The named parameter 'tasks' isn't defined - test\calendar_view_test.dart:107:15 - undefined_named_parameter
+  error - The named parameter 'onMonthToday' isn't defined - test\calendar_view_test.dart:111:15 - undefined_named_parameter
+  error - The argument type 'void Function(DateTime)' can't be assigned to the parameter type 'void Function(DateTime, List<TaskItem>)'.  - test\calendar_view_test.dart:112:25 - argument_type_not_assignable
+  error - The named parameter 'onDateSelected' isn't defined - test\calendar_view_test.dart:113:15 - undefined_named_parameter
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\chat_models_test.dart:6:48 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\chat_models_test.dart:9:21 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\codewhale_bridge_service_test.dart:16:41 - prefer_const_literals_to_create_immutables
+  error - The getter 'isAvailable' isn't defined for the type 'WorkspaceItem' - test\codewhale_bridge_service_test.dart:29:17 - undefined_getter
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\codewhale_bridge_service_test.dart:33:47 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - test\codewhale_bridge_service_test.dart:246:78 - require_trailing_commas
+  error - The named parameter 'labelFor' is required, but there's no corresponding argument - test\dashboard_view_test.dart:12:19 - missing_required_argument
+  error - The named parameter 'onOpenCalendar' is required, but there's no corresponding argument - test\dashboard_view_test.dart:12:19 - missing_required_argument
+  error - The named parameter 'vm' is required, but there's no corresponding argument - test\dashboard_view_test.dart:12:19 - missing_required_argument
+  error - The named parameter 'tasks' isn't defined - test\dashboard_view_test.dart:13:15 - undefined_named_parameter
+  error - The named parameter 'ownerKey' isn't defined - test\dashboard_view_test.dart:14:15 - undefined_named_parameter
+  error - The named parameter 'onTaskTap' isn't defined - test\dashboard_view_test.dart:15:15 - undefined_named_parameter
+  error - The named parameter 'onTaskLongPress' isn't defined - test\dashboard_view_test.dart:16:15 - undefined_named_parameter
+  error - The named parameter 'assignees' is required, but there's no corresponding argument - test\dashboard_view_test.dart:28:9 - missing_required_argument
+  error - The named parameter 'details' is required, but there's no corresponding argument - test\dashboard_view_test.dart:28:9 - missing_required_argument
+  error - The named parameter 'isFamily' is required, but there's no corresponding argument - test\dashboard_view_test.dart:28:9 - missing_required_argument
+  error - The named parameter 'reminderOffsetsMinutes' is required, but there's no corresponding argument - test\dashboard_view_test.dart:28:9 - missing_required_argument
+  error - The named parameter 'participants' isn't defined - test\dashboard_view_test.dart:37:11 - undefined_named_parameter
+  error - The named parameter 'sortOrder' isn't defined - test\dashboard_view_test.dart:39:11 - undefined_named_parameter
+  error - The named parameter 'createdAt' isn't defined - test\dashboard_view_test.dart:40:11 - undefined_named_parameter
+  error - The argument type 'DateTime' can't be assigned to the parameter type 'String'.  - test\dashboard_view_test.dart:41:22 - argument_type_not_assignable
+  error - The named parameter 'assignees' is required, but there's no corresponding argument - test\dashboard_view_test.dart:44:9 - missing_required_argument
+  error - The named parameter 'details' is required, but there's no corresponding argument - test\dashboard_view_test.dart:44:9 - missing_required_argument
+  error - The named parameter 'isFamily' is required, but there's no corresponding argument - test\dashboard_view_test.dart:44:9 - missing_required_argument
+  error - The named parameter 'reminderOffsetsMinutes' is required, but there's no corresponding argument - test\dashboard_view_test.dart:44:9 - missing_required_argument
+  error - The named parameter 'participants' isn't defined - test\dashboard_view_test.dart:53:11 - undefined_named_parameter
+  error - The named parameter 'sortOrder' isn't defined - test\dashboard_view_test.dart:55:11 - undefined_named_parameter
+  error - The named parameter 'createdAt' isn't defined - test\dashboard_view_test.dart:56:11 - undefined_named_parameter
+  error - The argument type 'DateTime' can't be assigned to the parameter type 'String'.  - test\dashboard_view_test.dart:57:22 - argument_type_not_assignable
+  error - The named parameter 'labelFor' is required, but there's no corresponding argument - test\dashboard_view_test.dart:65:19 - missing_required_argument
+  error - The named parameter 'onOpenCalendar' is required, but there's no corresponding argument - test\dashboard_view_test.dart:65:19 - missing_required_argument
+  error - The named parameter 'vm' is required, but there's no corresponding argument - test\dashboard_view_test.dart:65:19 - missing_required_argument
+  error - The named parameter 'tasks' isn't defined - test\dashboard_view_test.dart:66:15 - undefined_named_parameter
+  error - The named parameter 'ownerKey' isn't defined - test\dashboard_view_test.dart:67:15 - undefined_named_parameter
+  error - The named parameter 'onTaskTap' isn't defined - test\dashboard_view_test.dart:68:15 - undefined_named_parameter
+  error - The named parameter 'onTaskLongPress' isn't defined - test\dashboard_view_test.dart:69:15 - undefined_named_parameter
+  error - The named parameter 'assignees' is required, but there's no corresponding argument - test\dashboard_view_test.dart:83:9 - missing_required_argument
+  error - The named parameter 'details' is required, but there's no corresponding argument - test\dashboard_view_test.dart:83:9 - missing_required_argument
+  error - The named parameter 'isFamily' is required, but there's no corresponding argument - test\dashboard_view_test.dart:83:9 - missing_required_argument
+  error - The named parameter 'reminderOffsetsMinutes' is required, but there's no corresponding argument - test\dashboard_view_test.dart:83:9 - missing_required_argument
+  error - The named parameter 'participants' isn't defined - test\dashboard_view_test.dart:92:11 - undefined_named_parameter
+  error - The named parameter 'sortOrder' isn't defined - test\dashboard_view_test.dart:94:11 - undefined_named_parameter
+  error - The named parameter 'createdAt' isn't defined - test\dashboard_view_test.dart:95:11 - undefined_named_parameter
+  error - The argument type 'DateTime' can't be assigned to the parameter type 'String'.  - test\dashboard_view_test.dart:96:22 - argument_type_not_assignable
+  error - The named parameter 'labelFor' is required, but there's no corresponding argument - test\dashboard_view_test.dart:104:19 - missing_required_argument
+  error - The named parameter 'onOpenCalendar' is required, but there's no corresponding argument - test\dashboard_view_test.dart:104:19 - missing_required_argument
+  error - The named parameter 'vm' is required, but there's no corresponding argument - test\dashboard_view_test.dart:104:19 - missing_required_argument
+  error - The named parameter 'tasks' isn't defined - test\dashboard_view_test.dart:105:15 - undefined_named_parameter
+  error - The named parameter 'ownerKey' isn't defined - test\dashboard_view_test.dart:106:15 - undefined_named_parameter
+  error - The named parameter 'onTaskTap' isn't defined - test\dashboard_view_test.dart:107:15 - undefined_named_parameter
+  error - The named parameter 'onTaskLongPress' isn't defined - test\dashboard_view_test.dart:108:15 - undefined_named_parameter
+  error - The named parameter 'assignees' is required, but there's no corresponding argument - test\dashboard_view_test.dart:123:9 - missing_required_argument
+  error - The named parameter 'details' is required, but there's no corresponding argument - test\dashboard_view_test.dart:123:9 - missing_required_argument
+  error - The named parameter 'isFamily' is required, but there's no corresponding argument - test\dashboard_view_test.dart:123:9 - missing_required_argument
+  error - The named parameter 'reminderOffsetsMinutes' is required, but there's no corresponding argument - test\dashboard_view_test.dart:123:9 - missing_required_argument
+  error - The named parameter 'participants' isn't defined - test\dashboard_view_test.dart:132:11 - undefined_named_parameter
+  error - The named parameter 'sortOrder' isn't defined - test\dashboard_view_test.dart:134:11 - undefined_named_parameter
+  error - The named parameter 'createdAt' isn't defined - test\dashboard_view_test.dart:135:11 - undefined_named_parameter
+  error - The argument type 'DateTime' can't be assigned to the parameter type 'String'.  - test\dashboard_view_test.dart:136:22 - argument_type_not_assignable
+  error - The named parameter 'labelFor' is required, but there's no corresponding argument - test\dashboard_view_test.dart:144:19 - missing_required_argument
+  error - The named parameter 'onOpenCalendar' is required, but there's no corresponding argument - test\dashboard_view_test.dart:144:19 - missing_required_argument
+  error - The named parameter 'vm' is required, but there's no corresponding argument - test\dashboard_view_test.dart:144:19 - missing_required_argument
+  error - The named parameter 'tasks' isn't defined - test\dashboard_view_test.dart:145:15 - undefined_named_parameter
+  error - The named parameter 'ownerKey' isn't defined - test\dashboard_view_test.dart:146:15 - undefined_named_parameter
+  error - The named parameter 'onTaskTap' isn't defined - test\dashboard_view_test.dart:147:15 - undefined_named_parameter
+  error - The named parameter 'onTaskLongPress' isn't defined - test\dashboard_view_test.dart:148:15 - undefined_named_parameter
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\local_db_migration_test.dart:17:11 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\local_db_migration_test.dart:18:16 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\local_db_migration_test.dart:19:29 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - test\local_db_migration_test.dart:117:10 - require_trailing_commas
+   info - Missing a required trailing comma - test\local_db_migration_test.dart:131:10 - require_trailing_commas
+   info - Missing a required trailing comma - test\local_db_migration_test.dart:142:10 - require_trailing_commas
+   info - Closure should be a tearoff - test\project_bridge_service_test.dart:19:31 - unnecessary_lambdas
+   info - Missing a required trailing comma - test\project_bridge_service_test.dart:36:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\project_bridge_service_test.dart:79:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\project_bridge_service_test.dart:129:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\project_bridge_service_test.dart:221:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\project_bridge_service_test.dart:336:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\project_bridge_service_test.dart:376:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\push_notification_test.dart:338:44 - require_trailing_commas
+warning - Unused import: 'dart:convert' - test\sync_api_client_test.dart:1:8 - unused_import
+  error - The method 'safeDecode' isn't defined for the type 'ApiClient' - test\sync_api_client_test.dart:30:34 - undefined_method
+  error - The method 'safeDecode' isn't defined for the type 'ApiClient' - test\sync_api_client_test.dart:35:34 - undefined_method
+  error - The method 'safeDecode' isn't defined for the type 'ApiClient' - test\sync_api_client_test.dart:40:34 - undefined_method
+  error - The method 'safeDecode' isn't defined for the type 'ApiClient' - test\sync_api_client_test.dart:46:34 - undefined_method
+  error - The method 'safeDecodeList' isn't defined for the type 'ApiClient' - test\sync_api_client_test.dart:51:34 - undefined_method
+  error - The method 'safeDecodeList' isn't defined for the type 'ApiClient' - test\sync_api_client_test.dart:56:34 - undefined_method
+  error - The method 'safeDecodeList' isn't defined for the type 'ApiClient' - test\sync_api_client_test.dart:61:34 - undefined_method
+  error - The method 'safeDecodeMap' isn't defined for the type 'ApiClient' - test\sync_api_client_test.dart:67:34 - undefined_method
+  error - The method 'safeDecodeMap' isn't defined for the type 'ApiClient' - test\sync_api_client_test.dart:72:34 - undefined_method
+   info - Missing a required trailing comma - test\sync_service_test.dart:29:49 - require_trailing_commas
+   info - Missing a required trailing comma - test\sync_service_test.dart:35:63 - require_trailing_commas
+   info - Missing a required trailing comma - test\sync_service_test.dart:42:63 - require_trailing_commas
+   info - Missing a required trailing comma - test\sync_service_test.dart:106:71 - require_trailing_commas
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\sync_service_test.dart:109:18 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\sync_service_test.dart:110:24 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - test\sync_service_test.dart:134:28 - require_trailing_commas
+   info - Missing a required trailing comma - test\sync_service_test.dart:136:57 - require_trailing_commas
+   info - Missing a required trailing comma - test\sync_service_test.dart:148:24 - require_trailing_commas
+   info - Missing a required trailing comma - test\sync_service_test.dart:152:36 - require_trailing_commas
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\sync_service_test.dart:157:15 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\sync_service_test.dart:158:15 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - test\sync_service_test.dart:164:59 - require_trailing_commas
+   info - Missing a required trailing comma - test\sync_service_test.dart:170:56 - require_trailing_commas
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\sync_service_test.dart:181:11 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\sync_service_test.dart:182:16 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\sync_service_test.dart:183:29 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - test\sync_service_test.dart:241:45 - require_trailing_commas
+   info - Missing a required trailing comma - test\sync_service_test.dart:253:47 - require_trailing_commas
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\sync_service_test.dart:285:24 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:30:78 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:36:78 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:44:62 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:45:17 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:59:64 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:60:17 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:72:81 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:73:17 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:85:62 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:86:17 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:101:64 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:103:37 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:119:64 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:121:34 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:133:62 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:134:20 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:144:64 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:146:37 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:157:62 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:158:17 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:174:11 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:188:11 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:206:11 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:227:11 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:246:11 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:265:11 - require_trailing_commas
+  error - The function 'TaskEditorSheet' isn't defined - test\task_editor_sheet_test.dart:18:37 - undefined_function
+warning - The value of the local variable 'saved' isn't used - test\task_editor_sheet_test.dart:39:17 - unused_local_variable
+  error - The function 'TaskEditorSheet' isn't defined - test\task_editor_sheet_test.dart:50:37 - undefined_function
+  error - The function 'TaskEditorSheet' isn't defined - test\task_editor_sheet_test.dart:86:37 - undefined_function
+  error - The named parameter 'assignees' is required, but there's no corresponding argument - test\task_editor_sheet_test.dart:108:24 - missing_required_argument
+  error - The named parameter 'isFamily' is required, but there's no corresponding argument - test\task_editor_sheet_test.dart:108:24 - missing_required_argument
+  error - The named parameter 'reminderOffsetsMinutes' is required, but there's no corresponding argument - test\task_editor_sheet_test.dart:108:24 - missing_required_argument
+  error - The named parameter 'participants' isn't defined - test\task_editor_sheet_test.dart:118:9 - undefined_named_parameter
+  error - The named parameter 'sortOrder' isn't defined - test\task_editor_sheet_test.dart:120:9 - undefined_named_parameter
+  error - The named parameter 'createdAt' isn't defined - test\task_editor_sheet_test.dart:121:9 - undefined_named_parameter
+  error - The argument type 'DateTime' can't be assigned to the parameter type 'String'.  - test\task_editor_sheet_test.dart:122:20 - argument_type_not_assignable
+  error - Undefined name 'TaskEditorSheet' - test\task_editor_sheet_test.dart:135:37 - undefined_identifier
+  error - The getter 'participants' isn't defined for the type 'TaskItem' - test\task_item_test.dart:26:19 - undefined_getter
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:66:15 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:67:20 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:68:33 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:95:15 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:96:20 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:97:33 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:118:15 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:119:20 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:120:33 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:144:15 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:145:20 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:146:33 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - test\task_store_test.dart:32:49 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:41:63 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:48:63 - require_trailing_commas
+   info - Parameter 'db' could be a super parameter - test\task_store_test.dart:97:3 - use_super_parameters
+   info - Missing a required trailing comma - test\task_store_test.dart:147:28 - require_trailing_commas
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_store_test.dart:158:11 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_store_test.dart:160:29 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - test\task_store_test.dart:193:80 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:195:80 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:201:48 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:201:49 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:204:48 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:204:49 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:220:61 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:222:68 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:224:61 - require_trailing_commas
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_store_test.dart:292:17 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_store_test.dart:293:22 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_store_test.dart:294:35 - prefer_const_literals_to_create_immutables
+  error - The named parameter 'assignees' is required, but there's no corresponding argument - test\tasks_board_test.dart:36:9 - missing_required_argument
+  error - The named parameter 'details' is required, but there's no corresponding argument - test\tasks_board_test.dart:36:9 - missing_required_argument
+  error - The named parameter 'isFamily' is required, but there's no corresponding argument - test\tasks_board_test.dart:36:9 - missing_required_argument
+  error - The named parameter 'reminderOffsetsMinutes' is required, but there's no corresponding argument - test\tasks_board_test.dart:36:9 - missing_required_argument
+  error - The named parameter 'participants' isn't defined - test\tasks_board_test.dart:45:11 - undefined_named_parameter
+  error - The named parameter 'sortOrder' isn't defined - test\tasks_board_test.dart:47:11 - undefined_named_parameter
+  error - The named parameter 'createdAt' isn't defined - test\tasks_board_test.dart:48:11 - undefined_named_parameter
+  error - The argument type 'DateTime' can't be assigned to the parameter type 'String'.  - test\tasks_board_test.dart:49:22 - argument_type_not_assignable
+  error - The named parameter 'assignees' is required, but there's no corresponding argument - test\tasks_board_test.dart:52:9 - missing_required_argument
+  error - The named parameter 'details' is required, but there's no corresponding argument - test\tasks_board_test.dart:52:9 - missing_required_argument
+  error - The named parameter 'isFamily' is required, but there's no corresponding argument - test\tasks_board_test.dart:52:9 - missing_required_argument
+  error - The named parameter 'reminderOffsetsMinutes' is required, but there's no corresponding argument - test\tasks_board_test.dart:52:9 - missing_required_argument
+  error - The named parameter 'participants' isn't defined - test\tasks_board_test.dart:61:11 - undefined_named_parameter
+  error - The named parameter 'sortOrder' isn't defined - test\tasks_board_test.dart:63:11 - undefined_named_parameter
+  error - The named parameter 'createdAt' isn't defined - test\tasks_board_test.dart:64:11 - undefined_named_parameter
+  error - The argument type 'DateTime' can't be assigned to the parameter type 'String'.  - test\tasks_board_test.dart:65:22 - argument_type_not_assignable
+   info - Missing a required trailing comma - test\tasks_board_test.dart:137:47 - require_trailing_commas
+   info - Missing a required trailing comma - test\workspace_views_test.dart:44:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\workspace_views_test.dart:74:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\workspace_views_test.dart:112:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\workspace_views_test.dart:220:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\workspace_views_test.dart:301:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\workspace_views_test.dart:332:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\workspace_views_test.dart:358:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\workspace_views_test.dart:381:6 - require_trailing_commas
+

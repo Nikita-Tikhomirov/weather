@@ -128,8 +128,9 @@ extension FcmServiceMessaging on FcmService {
     if (capturedLaunch?.didNotificationLaunchApp == true) {
       final response = capturedLaunch?.notificationResponse;
       if (response?.payload != null) {
+        final payload = response!.payload!;
         final data =
-            _decodeNotificationPayload(response!.payload);
+            _decodeNotificationPayload(payload);
         if (data != null) {
           _updateDiagnostics('push:local_launch');
           await onOpenPush(data);

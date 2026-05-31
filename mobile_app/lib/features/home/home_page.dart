@@ -3515,7 +3515,7 @@ class _HomePageState extends State<HomePage> {
     if (attachments.isNotEmpty) {
       return attachments;
     }
-    final single = _chatImageUrl(message);
+    final single = chatImageUrl(message);
     return single.isEmpty ? const [] : [single];
   }
 

@@ -1,0 +1,401 @@
+Analyzing mobile_app...                                         
+
+   info - Missing a required trailing comma - lib\features\chat\chat_media_bubble.dart:78:66 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_media_bubble.dart:306:70 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_media_bubble.dart:306:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_media_bubble.dart:309:70 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_media_bubble.dart:309:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_message_bubble.dart:96:48 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_message_bubble.dart:112:27 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_message_bubble.dart:298:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_message_bubble.dart:312:59 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_message_bubble.dart:318:63 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_message_bubble.dart:338:78 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_message_bubble.dart:350:73 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_message_bubble.dart:444:78 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\chat\chat_voice_bubble.dart:34:73 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:63:68 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:65:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:67:72 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:83:72 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:85:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:192:63 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:194:48 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:202:57 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:246:51 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell.dart:265:45 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell_widget.dart:109:68 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell_widget.dart:111:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell_widget.dart:114:62 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell_widget.dart:130:72 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell_widget.dart:132:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell_widget.dart:230:63 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell_widget.dart:239:57 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\desktop_shell_widget.dart:283:51 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_calls_voice.dart:79:67 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_chat_init.dart:46:29 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_chat_init.dart:48:60 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_chat_init.dart:52:53 - require_trailing_commas
+warning - The member 'setState' can only be used within instance members of subclasses of 'State' - lib\features\home\home_chat_section.dart:46:31 - invalid_use_of_protected_member
+warning - The member 'setState' can only be used within instance members of subclasses of 'State' - lib\features\home\home_chat_section.dart:56:27 - invalid_use_of_protected_member
+warning - The member 'setState' can only be used within instance members of subclasses of 'State' - lib\features\home\home_chat_section.dart:58:9 - invalid_use_of_protected_member
+   info - Missing a required trailing comma - lib\features\home\home_dashboard_section.dart:66:77 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_dashboard_section.dart:74:74 - require_trailing_commas
+warning - The declaration 'openDayTasksScreen' isn't referenced - lib\features\home\home_dashboard_section.dart:169:8 - unused_element
+   info - Missing a required trailing comma - lib\features\home\home_dashboard_section.dart:170:61 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:139:89 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\home\home_page.dart:146:25 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:153:58 - require_trailing_commas
+   info - Don't use 'BuildContext's across async gaps - lib\features\home\home_page.dart:159:17 - use_build_context_synchronously
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:159:46 - require_trailing_commas
+   info - Don't use 'BuildContext's across async gaps - lib\features\home\home_page.dart:165:11 - use_build_context_synchronously
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:165:40 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\home\home_page.dart:185:32 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:204:55 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\home\home_page.dart:206:33 - unnecessary_lambdas
+   info - Closure should be a tearoff - lib\features\home\home_page.dart:221:31 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:287:78 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:292:78 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:305:64 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:310:64 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:496:69 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:608:63 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:631:46 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:775:10 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\home\home_page.dart:1044:23 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1336:37 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1337:19 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1369:40 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1578:45 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1608:78 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1641:66 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1740:58 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1743:72 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1775:10 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1781:45 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1925:18 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:1977:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2186:10 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2217:33 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2238:74 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2248:60 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2272:106 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2272:107 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2362:74 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2430:58 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2485:71 - require_trailing_commas
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\features\home\home_page.dart:2640:18 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2758:8 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2892:74 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2904:67 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2925:58 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2925:59 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2935:72 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:2971:8 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3006:10 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3019:8 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3095:14 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3110:10 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3118:10 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3169:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3224:12 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3468:5 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3598:16 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3609:14 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3655:54 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3821:52 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_page.dart:3838:61 - require_trailing_commas
+   info - Don't use 'BuildContext's across async gaps - lib\features\home\home_profile_init.dart:68:7 - use_build_context_synchronously
+   info - Missing a required trailing comma - lib\features\home\home_profile_init.dart:96:66 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_profile_init.dart:111:62 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_profile_init.dart:113:57 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_profile_init.dart:115:70 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\home\home_projects_data.dart:103:16 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\home\home_projects_data.dart:117:27 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_projects_data.dart:122:23 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_projects_data.dart:127:23 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_projects_data.dart:132:23 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_projects_data.dart:137:23 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_projects_data.dart:142:25 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\home\home_projects_data.dart:223:32 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\home\home_projects_data.dart:318:41 - require_trailing_commas
+   info - The import of 'package:flutter/foundation.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/widgets.dart' - lib\features\home\home_push_handler.dart:5:8 - unnecessary_import
+   info - Missing a required trailing comma - lib\features\home\home_push_handler.dart:60:73 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_push_handler.dart:92:110 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_push_handler.dart:149:81 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_push_handler.dart:203:95 - require_trailing_commas
+   info - The import of 'package:flutter/foundation.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' - lib\features\home\home_share_receiver.dart:3:8 - unnecessary_import
+   info - Don't use 'BuildContext's across async gaps - lib\features\home\home_share_receiver.dart:65:9 - use_build_context_synchronously
+   info - Missing a required trailing comma - lib\features\home\home_share_receiver.dart:124:16 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_share_receiver.dart:156:16 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\home_share_receiver.dart:180:42 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\projects_data.dart:9:46 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\home\projects_data.dart:89:50 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\home\share_receiver.dart:94:16 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\share_receiver.dart:126:16 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\home\share_receiver.dart:150:42 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\family_group_edit_sheet.dart:122:73 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\family_group_edit_sheet.dart:130:78 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\family_group_edit_sheet.dart:137:63 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\family_group_edit_sheet.dart:140:74 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\family_group_edit_sheet.dart:150:94 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_chat_view.dart:364:40 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_edit_sheet.dart:106:77 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_edit_sheet.dart:134:102 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_file_browser.dart:143:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_file_browser.dart:178:52 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_file_browser.dart:186:76 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_file_browser.dart:186:77 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_file_browser.dart:190:77 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_file_browser.dart:190:78 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_file_browser.dart:200:67 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\project_file_browser.dart:200:68 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\projects_and_groups_screen.dart:164:65 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\projects_and_groups_screen.dart:179:62 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\projects\projects_and_groups_screen.dart:181:64 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\tasks\calendar_view.dart:401:69 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\tasks\task_card.dart:90:52 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\tasks\task_card.dart:165:76 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\tasks\task_card.dart:212:34 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\tasks\task_card.dart:218:66 - require_trailing_commas
+   info - Closure should be a tearoff - lib\features\tasks\task_card.dart:219:34 - unnecessary_lambdas
+   info - Missing a required trailing comma - lib\features\tasks\task_editor_sheet.dart:132:60 - require_trailing_commas
+   info - Missing a required trailing comma - lib\features\tasks\tasks_board.dart:171:56 - require_trailing_commas
+   info - Missing a required trailing comma - lib\main.dart:45:45 - require_trailing_commas
+   info - Missing a required trailing comma - lib\main.dart:48:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\main.dart:52:52 - require_trailing_commas
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\call_models.dart:5:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\call_models.dart:100:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\call_models.dart:171:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_models.dart:5:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_models.dart:82:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_models.dart:154:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_models.dart:223:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_models.dart:261:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_models.dart:458:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_models.dart:521:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_snapshots.dart:7:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_snapshots.dart:62:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\chat_snapshots.dart:110:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\device_snapshots.dart:7:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\device_snapshots.dart:45:3 - prefer_const_constructors_in_immutables
+   info - Closure should be a tearoff - lib\models\device_snapshots.dart:68:16 - unnecessary_lambdas
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\device_snapshots.dart:121:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\pending_event.dart:5:3 - prefer_const_constructors_in_immutables
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\sync_snapshots.dart:9:3 - prefer_const_constructors_in_immutables
+   info - The constant name 'in_progress' isn't a lowerCamelCase identifier - lib\models\task_item.dart:8:3 - constant_identifier_names
+   info - The constant name 'in_review' isn't a lowerCamelCase identifier - lib\models\task_item.dart:9:3 - constant_identifier_names
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\models\task_item.dart:45:3 - prefer_const_constructors_in_immutables
+   info - Missing a required trailing comma - lib\repositories\task_repository.dart:37:75 - require_trailing_commas
+   info - Missing a required trailing comma - lib\repositories\task_repository.dart:51:64 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\bridge_connection.dart:261:78 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\bridge_connection.dart:285:75 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\bridge_connection.dart:290:79 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\bridge_connection.dart:317:75 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\bridge_connection.dart:322:79 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\bridge_connection.dart:402:69 - require_trailing_commas
+warning - Unused import: '../models/project_contact.dart' - lib\services\bridge_protocol.dart:1:8 - unused_import
+   info - Missing a required trailing comma - lib\services\chat_api_client.dart:358:73 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\chat_api_client.dart:388:74 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_diagnostics.dart:14:69 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_diagnostics.dart:56:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_diagnostics.dart:100:57 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_diagnostics.dart:118:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_diagnostics.dart:125:21 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:7:26 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:17:54 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:39:71 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:55:41 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:60:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:66:34 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:76:34 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:85:26 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:106:51 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:145:73 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:157:34 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:166:41 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:172:26 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:197:45 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:204:26 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:206:25 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:215:26 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:221:34 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:261:25 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:269:23 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:271:55 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:286:39 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:303:28 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:311:51 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:314:28 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:341:26 - require_trailing_commas
+   info - Statements in an if should be enclosed in a block - lib\services\fcm_messaging.dart:350:41 - curly_braces_in_flow_control_structures
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:362:44 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:366:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:369:37 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:394:44 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:401:44 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:405:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:412:37 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:430:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_messaging.dart:448:39 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_notifications.dart:19:69 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_notifications.dart:21:70 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_notifications.dart:65:63 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\fcm_notifications.dart:67:64 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:62:32 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:65:57 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:81:57 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:92:57 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:95:56 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:113:57 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:123:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:129:49 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:138:56 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:146:55 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:154:53 - require_trailing_commas
+warning - The declaration '_decodeStringList' isn't referenced - lib\services\local_db.dart:401:23 - unused_element
+warning - The declaration '_decodeMap' isn't referenced - lib\services\local_db.dart:412:31 - unused_element
+warning - The declaration '_decodeDynamicList' isn't referenced - lib\services\local_db.dart:423:24 - unused_element
+   info - Missing a required trailing comma - lib\services\local_db.dart:536:65 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:538:63 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:614:14 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:710:36 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:724:41 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:726:49 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:730:31 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:745:36 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:750:24 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:760:41 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:762:47 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:780:36 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:791:59 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:798:46 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:802:33 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:810:57 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:884:27 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:906:47 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:913:27 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:953:23 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\local_db.dart:992:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\profile_init_service.dart:97:66 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\profile_init_service.dart:112:62 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\profile_init_service.dart:115:70 - require_trailing_commas
+   info - Dangling library doc comment - lib\services\project_bridge_service.dart:1:1 - dangling_library_doc_comments
+   info - Missing a required trailing comma - lib\services\push_notification_handler.dart:60:53 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\push_notification_handler.dart:95:95 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\push_notification_handler.dart:160:105 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\push_notification_handler.dart:215:83 - require_trailing_commas
+   info - Missing a required trailing comma - lib\services\voice_recorder_service.dart:87:67 - require_trailing_commas
+   info - Missing a required trailing comma - lib\state\task_store.dart:280:72 - require_trailing_commas
+   info - Missing a required trailing comma - lib\state\task_store.dart:297:6 - require_trailing_commas
+   info - Missing a required trailing comma - lib\state\task_store.dart:327:51 - require_trailing_commas
+   info - Missing a required trailing comma - lib\state\task_store.dart:515:69 - require_trailing_commas
+   info - Missing a required trailing comma - lib\state\task_store.dart:658:73 - require_trailing_commas
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\chat_models_test.dart:6:48 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\chat_models_test.dart:9:21 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\codewhale_bridge_service_test.dart:16:41 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\codewhale_bridge_service_test.dart:32:47 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - test\codewhale_bridge_service_test.dart:245:78 - require_trailing_commas
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\local_db_migration_test.dart:17:11 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\local_db_migration_test.dart:18:16 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\local_db_migration_test.dart:19:29 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - test\local_db_migration_test.dart:117:10 - require_trailing_commas
+   info - Missing a required trailing comma - test\local_db_migration_test.dart:131:10 - require_trailing_commas
+   info - Missing a required trailing comma - test\local_db_migration_test.dart:142:10 - require_trailing_commas
+   info - Closure should be a tearoff - test\project_bridge_service_test.dart:19:31 - unnecessary_lambdas
+   info - Missing a required trailing comma - test\project_bridge_service_test.dart:36:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\project_bridge_service_test.dart:79:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\project_bridge_service_test.dart:129:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\project_bridge_service_test.dart:221:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\project_bridge_service_test.dart:336:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\project_bridge_service_test.dart:376:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\push_notification_test.dart:338:44 - require_trailing_commas
+warning - The '?' is unnecessary because 'dynamic' is nullable without it - test\sync_api_client_test.dart:6:8 - unnecessary_question_mark
+   info - Missing a required trailing comma - test\sync_service_test.dart:29:49 - require_trailing_commas
+   info - Missing a required trailing comma - test\sync_service_test.dart:35:63 - require_trailing_commas
+   info - Missing a required trailing comma - test\sync_service_test.dart:42:63 - require_trailing_commas
+   info - Missing a required trailing comma - test\sync_service_test.dart:106:71 - require_trailing_commas
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\sync_service_test.dart:109:18 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\sync_service_test.dart:110:24 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - test\sync_service_test.dart:134:28 - require_trailing_commas
+   info - Missing a required trailing comma - test\sync_service_test.dart:136:57 - require_trailing_commas
+   info - Missing a required trailing comma - test\sync_service_test.dart:148:24 - require_trailing_commas
+   info - Missing a required trailing comma - test\sync_service_test.dart:152:36 - require_trailing_commas
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\sync_service_test.dart:157:15 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\sync_service_test.dart:158:15 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - test\sync_service_test.dart:164:59 - require_trailing_commas
+   info - Missing a required trailing comma - test\sync_service_test.dart:170:56 - require_trailing_commas
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\sync_service_test.dart:181:11 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\sync_service_test.dart:182:16 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\sync_service_test.dart:183:29 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - test\sync_service_test.dart:241:45 - require_trailing_commas
+   info - Missing a required trailing comma - test\sync_service_test.dart:253:47 - require_trailing_commas
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\sync_service_test.dart:285:24 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:30:78 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:36:78 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:44:62 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:45:17 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:59:64 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:60:17 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:72:81 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:73:17 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:85:62 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:86:17 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:101:64 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:103:37 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:119:64 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:121:34 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:133:62 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:134:20 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:144:64 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:146:37 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:157:62 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:158:17 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:174:11 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:188:11 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:206:11 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:227:11 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:246:11 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_domain_service_test.dart:265:11 - require_trailing_commas
+warning - Unused import: 'package:family_todo_mobile/models/chat_models.dart' - test\task_editor_sheet_test.dart:2:8 - unused_import
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:65:15 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:66:20 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:67:33 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:94:15 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:95:20 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:96:33 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:117:15 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:118:20 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:119:33 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:143:15 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:144:20 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_item_test.dart:145:33 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - test\task_store_test.dart:32:49 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:41:63 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:48:63 - require_trailing_commas
+   info - Parameter 'db' could be a super parameter - test\task_store_test.dart:97:3 - use_super_parameters
+   info - Missing a required trailing comma - test\task_store_test.dart:147:28 - require_trailing_commas
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_store_test.dart:158:11 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_store_test.dart:160:29 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - test\task_store_test.dart:193:80 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:195:80 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:201:48 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:201:49 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:204:48 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:204:49 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:220:61 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:222:68 - require_trailing_commas
+   info - Missing a required trailing comma - test\task_store_test.dart:224:61 - require_trailing_commas
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_store_test.dart:292:17 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_store_test.dart:293:22 - prefer_const_literals_to_create_immutables
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - test\task_store_test.dart:294:35 - prefer_const_literals_to_create_immutables
+   info - Missing a required trailing comma - test\tasks_board_test.dart:139:47 - require_trailing_commas
+   info - Missing a required trailing comma - test\workspace_views_test.dart:44:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\workspace_views_test.dart:74:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\workspace_views_test.dart:112:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\workspace_views_test.dart:220:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\workspace_views_test.dart:301:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\workspace_views_test.dart:332:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\workspace_views_test.dart:358:6 - require_trailing_commas
+   info - Missing a required trailing comma - test\workspace_views_test.dart:381:6 - require_trailing_commas
+
