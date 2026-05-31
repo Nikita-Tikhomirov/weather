@@ -48,14 +48,16 @@ void main() {
     expect(find.text('Задачи'), findsOneWidget);
     expect(find.text('Входящий видеозвонок'), findsOneWidget);
     expect(find.text('User misha'), findsOneWidget);
+    expect(find.text('Принять'), findsOneWidget);
+    expect(find.text('Отклонить'), findsOneWidget);
 
-    await tester.tap(find.text('Открыть'));
+    await tester.tap(find.text('Открыть экран звонка'));
     expect(opened, isTrue);
 
-    await tester.tap(find.byTooltip('Принять'));
+    await tester.tap(find.text('Принять'));
     expect(accepted, isTrue);
 
-    await tester.tap(find.byTooltip('Отклонить'));
+    await tester.tap(find.text('Отклонить'));
     expect(ended, isTrue);
   });
 

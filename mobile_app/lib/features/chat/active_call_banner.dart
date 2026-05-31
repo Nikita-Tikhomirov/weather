@@ -27,6 +27,28 @@ class ActiveCallOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final call = session;
+    final isIncoming = call != null &&
+        state == CallState.ringing &&
+        call.calleeProfile == owner;
+    if (isIncoming) {
+      return Stack(
+        children: [
+          child,
+          Positioned.fill(
+            child: IncomingCallPrompt(
+              session: call,
+              owner: owner,
+              profileLabel: profileLabel,
+              onOpen: onOpen,
+              onAccept: onAccept,
+              onEnd: onEnd,
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       children: [
         ActiveCallBanner(
@@ -40,6 +62,125 @@ class ActiveCallOverlay extends StatelessWidget {
         ),
         Expanded(child: child),
       ],
+    );
+  }
+}
+
+class IncomingCallPrompt extends StatelessWidget {
+  const IncomingCallPrompt({
+    super.key,
+    required this.session,
+    required this.owner,
+    required this.profileLabel,
+    required this.onOpen,
+    required this.onEnd,
+    required this.onAccept,
+  });
+
+  final CallSession session;
+  final String owner;
+  final String Function(String profile) profileLabel;
+  final VoidCallback? onOpen;
+  final VoidCallback? onEnd;
+  final VoidCallback? onAccept;
+
+  @override
+  Widget build(BuildContext context) {
+    final peerProfile = session.callerProfile == owner
+        ? session.calleeProfile
+        : session.callerProfile;
+    final callKind =
+        session.callType == 'video' ? 'видеозвонок' : 'аудиозвонок';
+    final theme = Theme.of(context);
+
+    return Material(
+      color: Colors.black,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          child: Column(
+            children: [
+              const Spacer(),
+              Container(
+                width: 112,
+                height: 112,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: Icon(
+                  session.callType == 'video' ? Icons.videocam : Icons.call,
+                  color: Colors.white,
+                  size: 52,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Входящий $callKind',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ) ??
+                    const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                profileLabel(peerProfile),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium?.copyWith(
+                      color: Colors.white70,
+                    ) ??
+                    const TextStyle(color: Colors.white70, fontSize: 16),
+              ),
+              const Spacer(),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: onEnd,
+                      icon: const Icon(Icons.call_end),
+                      label: const Text('Отклонить'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFD32F2F),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(52),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: onAccept,
+                      icon: const Icon(Icons.call),
+                      label: const Text('Принять'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF2E7D32),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(52),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: onOpen,
+                child: const Text('Открыть экран звонка'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

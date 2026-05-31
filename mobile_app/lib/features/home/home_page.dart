@@ -88,11 +88,8 @@ class _HomePageState extends State<HomePage> {
   StreamSubscription<CallState>? _callStateSub;
   CallSession? _activeCallSession;
   CallSession? _pendingIncomingCallSession;
-  CallSession? _pendingCallScreenSession;
   CallState _activeCallState = CallState.idle;
-  bool _pendingCallScreenIsIncoming = true;
   bool _callScreenOpen = false;
-  bool _callScreenOpenScheduled = false;
   bool _chatLoading = false;
   String? _editingMessageId;
   List<ChatContact> _chatContacts = const <ChatContact>[];
@@ -234,7 +231,6 @@ class _HomePageState extends State<HomePage> {
       return;
     }
     setState(() => _store = store);
-    _flushPendingCallScreenOpen();
 
     _voiceRecorder = VoiceRecorderService(
       store: store,
@@ -347,7 +343,6 @@ class _HomePageState extends State<HomePage> {
       _activeCallState = CallState.ended;
       _activeCallSession = null;
       _pendingIncomingCallSession = null;
-      _pendingCallScreenSession = null;
     });
   }
 
@@ -1079,7 +1074,6 @@ class _HomePageState extends State<HomePage> {
       if (state == CallState.idle || state == CallState.ended) {
         _activeCallSession = null;
         _pendingIncomingCallSession = null;
-        _pendingCallScreenSession = null;
       } else {
         _activeCallSession = session;
       }
@@ -2673,7 +2667,6 @@ class _HomePageState extends State<HomePage> {
       _activeCallSession = session;
       _activeCallState = CallState.ringing;
     });
-    _scheduleOpenCallScreen(session: session, isIncoming: true);
   }
 
   void _openActiveCallScreen() {
@@ -2683,49 +2676,11 @@ class _HomePageState extends State<HomePage> {
     _openCallScreen(session: session, isIncoming: isIncoming);
   }
 
-  void _flushPendingCallScreenOpen() {
-    final session = _pendingCallScreenSession;
-    if (session == null || _store == null) return;
-    _scheduleOpenCallScreen(
-      session: session,
-      isIncoming: _pendingCallScreenIsIncoming,
-    );
-  }
-
-  void _scheduleOpenCallScreen({
-    required CallSession session,
-    required bool isIncoming,
-  }) {
-    _pendingCallScreenSession = session;
-    _pendingCallScreenIsIncoming = isIncoming;
-    if (_callScreenOpen || _callScreenOpenScheduled) return;
-
-    _callScreenOpenScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _callScreenOpenScheduled = false;
-      if (!mounted) return;
-      final pending = _pendingCallScreenSession;
-      if (pending == null) return;
-      if (_store == null || _callService == null) {
-        return;
-      }
-      final pendingIsIncoming = _pendingCallScreenIsIncoming;
-      _pendingCallScreenSession = null;
-      _openCallScreen(session: pending, isIncoming: pendingIsIncoming);
-    });
-  }
-
   void _openCallScreen({
     required CallSession session,
     required bool isIncoming,
   }) {
     if (!mounted || _callService == null || _callScreenOpen) return;
-    if (_store == null) {
-      _pendingCallScreenSession = session;
-      _pendingCallScreenIsIncoming = isIncoming;
-      return;
-    }
-    _pendingCallScreenSession = null;
     _callScreenOpen = true;
     final actor = _store?.owner.value ?? '';
     final peerProfile = session.callerProfile == actor
