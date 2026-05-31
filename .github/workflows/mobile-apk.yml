@@ -20,6 +20,7 @@ jobs:
   build-android-apk:
     runs-on: ubuntu-latest
     env:
+      FLUTTER_VERSION: 3.44.0
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       ALLOWED_SIGN_SHA1_HEX: F7A5772750EC4971DBE14BEEB4144E5895DD9852,8067ED1EB450CD96421330E19BC305DD3EC553F0,F55E7F7C6AA047F6A27BB6FBC23C0ECE15A3BD71
 
@@ -53,7 +54,7 @@ jobs:
           set -euo pipefail
           FLUTTER_DIR="$RUNNER_TEMP/flutter"
           rm -rf "$FLUTTER_DIR"
-          git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$FLUTTER_DIR"
+          git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutter.git "$FLUTTER_DIR"
           echo "$FLUTTER_DIR/bin" >> "$GITHUB_PATH"
           "$FLUTTER_DIR/bin/flutter" --version
           "$FLUTTER_DIR/bin/flutter" config --no-analytics
@@ -75,6 +76,9 @@ jobs:
             cp -R mobile_app/test "$APP_DIR/test"
           fi
           cp mobile_app/pubspec.yaml "$APP_DIR/pubspec.yaml"
+          if [ -f mobile_app/pubspec.lock ]; then
+            cp mobile_app/pubspec.lock "$APP_DIR/pubspec.lock"
+          fi
           if [ -f mobile_app/analysis_options.yaml ]; then
             cp mobile_app/analysis_options.yaml "$APP_DIR/analysis_options.yaml"
           fi
@@ -117,7 +121,7 @@ jobs:
       - name: Flutter tests
         run: |
           cd /tmp/family_todo_mobile
-          flutter test
+          flutter test --concurrency=1
 
       - name: Restore fallback release keystore cache
         uses: actions/cache@v4

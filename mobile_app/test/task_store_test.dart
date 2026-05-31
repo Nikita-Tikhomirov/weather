@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:family_todo_mobile/domain/task_domain_service.dart';
 import 'package:family_todo_mobile/contracts/task_data_source.dart';
 import 'package:family_todo_mobile/models/family_group.dart';
@@ -9,6 +11,7 @@ import 'package:family_todo_mobile/services/api_client.dart';
 import 'package:family_todo_mobile/services/local_db.dart';
 import 'package:family_todo_mobile/state/task_store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 
 /// In-memory fake TaskDataSource for testing TaskStore.
 class _FakeDataSource implements TaskDataSource {
@@ -167,16 +170,29 @@ TaskItem _task(String id,
 void main() {
   group('TaskStore', () {
     late _FakeDataSource ds;
+    late Directory tempDir;
+    late LocalDb repoDb;
     late TaskStore store;
 
     setUp(() async {
       ds = _FakeDataSource();
+      tempDir = await Directory.systemTemp.createTemp('task_store_db_test_');
+      repoDb = await LocalDb.open(
+        databasePath: p.join(tempDir.path, 'family_todo_mobile.db'),
+      );
       final repo = _FakeRepository(
         dataSource: ds,
-        db: await LocalDb.open(),
+        db: repoDb,
       );
       store = TaskStore(repository: repo, domainService: TaskDomainService());
       await store.initialize(initialOwner: 'nik');
+    });
+
+    tearDown(() async {
+      await repoDb.close();
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
+      }
     });
 
     group('dashboard', () {

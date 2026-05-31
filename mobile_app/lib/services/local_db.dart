@@ -154,17 +154,17 @@ class LocalDb implements TaskDataSource {
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  static Future<LocalDb> open() async {
+  static Future<LocalDb> open({String? databasePath}) async {
     if (!kIsWeb &&
         (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
     }
     final basePath = await getDatabasesPath();
-    final dbPath = p.join(basePath, 'family_todo_mobile.db');
+    final dbPath = databasePath ?? p.join(basePath, 'family_todo_mobile.db');
     final db = await openDatabase(
       dbPath,
-      version: 9,
+      version: 10,
       onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE tasks(
@@ -267,10 +267,20 @@ class LocalDb implements TaskDataSource {
             "TEXT NOT NULL DEFAULT ''",
           );
         }
+        if (oldVersion < 10) {
+          await _addColumnIfMissing(
+            db,
+            'tasks',
+            'created_at',
+            "TEXT NOT NULL DEFAULT ''",
+          );
+        }
       },
     );
     return LocalDb._(db);
   }
+
+  Future<void> close() => _db.close();
 
   // ── Shared static helpers ─────────────────────────────────────
 

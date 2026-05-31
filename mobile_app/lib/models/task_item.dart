@@ -156,6 +156,7 @@ class TaskItem {
       'participants_json': jsonEncode(assignees),
       'reminder_offsets_json': jsonEncode(reminderOffsetsMinutes),
       'duration_minutes': durationMinutes,
+      'created_at': updatedAt,
       'updated_at': updatedAt,
       'version': version,
     };

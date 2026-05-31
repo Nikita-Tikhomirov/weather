@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:family_todo_mobile/services/local_db.dart';
 import 'package:family_todo_mobile/models/pending_event.dart';
 import 'package:family_todo_mobile/models/task_item.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 
 TaskItem _task(String id, {String ownerKey = 'test-nik', bool isFamily = false}) {
   return TaskItem(
@@ -26,9 +29,20 @@ TaskItem _task(String id, {String ownerKey = 'test-nik', bool isFamily = false})
 void main() {
   group('LocalDb', () {
     late LocalDb db;
+    late Directory tempDir;
 
     setUp(() async {
-      db = await LocalDb.open();
+      tempDir = await Directory.systemTemp.createTemp('local_db_test_');
+      db = await LocalDb.open(
+        databasePath: p.join(tempDir.path, 'family_todo_mobile.db'),
+      );
+    });
+
+    tearDown(() async {
+      await db.close();
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
+      }
     });
 
     test('open creates DB and returns instance', () {
