@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -273,7 +273,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // в”Ђв”Ђ Thin wrappers used by the desktop-shell part file в”Ђв”Ђ
+  // ── Thin wrappers used by the desktop-shell part file ──
   // These exist so the extension on _HomePageState in desktop_shell.dart
   // can mutate state without calling the protected setState() directly.
 
@@ -412,7 +412,7 @@ class _HomePageState extends State<HomePage> {
     _fileSheetSetState?.call(() {});
   }
 
-  // в”Ђв”Ђ Existing methods в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  // ── Existing methods ─────────────────────────────────────────
 
   Future<void> _refreshActiveConversation(
     TaskStore store, {
@@ -514,7 +514,7 @@ class _HomePageState extends State<HomePage> {
     } catch (error) {
       if (!quiet && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('РћС€РёР±РєР° РѕР±РЅРѕРІР»РµРЅРёСЏ С‡Р°С‚Р°: $error')),
+          SnackBar(content: Text('Ошибка обновления чата: $error')),
         );
       }
     }
@@ -720,7 +720,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _openCreateGroupSheet(TaskStore store) async {
     final selected = <String>{};
-    final titleCtl = TextEditingController(text: 'РќРѕРІР°СЏ РіСЂСѓРїРїР°');
+    final titleCtl = TextEditingController(text: 'Новая группа');
     final contacts = _phoneContacts.isEmpty ? _chatContacts : _phoneContacts;
     final created = await showModalBottomSheet<bool>(
       context: context,
@@ -735,7 +735,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   TextField(
                     controller: titleCtl,
-                    decoration: const InputDecoration(labelText: 'РќР°Р·РІР°РЅРёРµ'),
+                    decoration: const InputDecoration(labelText: 'Название'),
                   ),
                   const SizedBox(height: 8),
                   Flexible(
@@ -765,7 +765,7 @@ class _HomePageState extends State<HomePage> {
                         ? null
                         : () => Navigator.of(sheetContext).pop(true),
                     icon: const Icon(Icons.check),
-                    label: const Text('РЎРѕР·РґР°С‚СЊ'),
+                    label: const Text('Создать'),
                   ),
                 ],
               ),
@@ -798,19 +798,19 @@ class _HomePageState extends State<HomePage> {
       if (mounted) {
         setState(() => _familyMembers = members);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${contactLabel(contact)} РґРѕР±Р°РІР»РµРЅ РІ СЃРµРјСЊСЋ')),
+          SnackBar(content: Text('${contactLabel(contact)} добавлен в семью')),
         );
       }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('РќРµ СѓРґР°Р»РѕСЃСЊ РґРѕР±Р°РІРёС‚СЊ РІ СЃРµРјСЊСЋ: $error')),
+          SnackBar(content: Text('Не удалось добавить в семью: $error')),
         );
       }
     }
   }
 
-  // в”Ђв”Ђ Chat init methods (moved from chat_init.dart part file) в”Ђв”Ђ
+  // ── Chat init methods (moved from chat_init.dart part file) ──
 
   Future<void> _refreshChatBootstrap(TaskStore store) async {
     try {
@@ -982,7 +982,7 @@ class _HomePageState extends State<HomePage> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Р§Р°С‚ РЅРµРґРѕСЃС‚СѓРїРµРЅ: $error')),
+          SnackBar(content: Text('Чат недоступен: $error')),
         );
       }
     } finally {
@@ -1056,7 +1056,7 @@ class _HomePageState extends State<HomePage> {
     } catch (error) {
       if (showErrors && mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('РћС€РёР±РєР° СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё: $error')));
+            .showSnackBar(SnackBar(content: Text('Ошибка синхронизации: $error')));
       }
     }
   }
@@ -1070,7 +1070,7 @@ class _HomePageState extends State<HomePage> {
     } catch (error) {
       if (showErrors && mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('РћС€РёР±РєР° СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё: $error')));
+            .showSnackBar(SnackBar(content: Text('Ошибка синхронизации: $error')));
       }
     }
   }
@@ -1137,7 +1137,7 @@ class _HomePageState extends State<HomePage> {
           conversationKey: _activeConversationKey,
         );
       } catch (_) {
-        // silently ignored вЂ” non-critical operation
+        // silently ignored — non-critical operation
       }
     });
   }
@@ -1254,7 +1254,7 @@ class _HomePageState extends State<HomePage> {
       if (mounted) setState(() {});
     } catch (e, st) {
       debugPrint('[chat] send message error: $e\n$st');
-      // Message stays in 'sending' state вЂ” retry on next sync
+      // Message stays in 'sending' state — retry on next sync
     }
   }
 
@@ -1267,7 +1267,7 @@ class _HomePageState extends State<HomePage> {
     if (targets.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('РќРµС‚ РєРѕРЅС‚Р°РєС‚РѕРІ РґР»СЏ РїРµСЂРµСЃС‹Р»РєРё')),
+          const SnackBar(content: Text('Нет контактов для пересылки')),
         );
       }
       return;
@@ -1275,7 +1275,7 @@ class _HomePageState extends State<HomePage> {
     final selected = await showDialog<ChatContact>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('РџРѕРґРµР»РёС‚СЊСЃСЏ СЃ...'),
+        title: const Text('Поделиться с...'),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView.builder(
@@ -1295,7 +1295,7 @@ class _HomePageState extends State<HomePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('РћС‚РјРµРЅР°'),
+            child: const Text('Отмена'),
           ),
         ],
       ),
@@ -1313,14 +1313,14 @@ class _HomePageState extends State<HomePage> {
       // Send as forwarded message
       String shareText = '';
       if (message.messageType == 'text') {
-        shareText = 'в†Є $senderLabel: ${message.text}';
+        shareText = '↪ $senderLabel: ${message.text}';
       } else if (message.messageType == 'sticker') {
         await api.chatSendMessage(
           actorProfile: store.owner.value,
           conversationKey: conversationKey,
           messageType: 'sticker',
           stickerId: message.stickerId ?? '',
-          text: 'в†Є $senderLabel: РЎС‚РёРєРµСЂ',
+          text: '↪ $senderLabel: Стикер',
         );
       } else if (message.messageType == 'image' ||
           message.messageType == 'image_group') {
@@ -1342,8 +1342,8 @@ class _HomePageState extends State<HomePage> {
             messageType: atts.length == 1 ? 'image' : 'image_group',
             attachments: atts,
             text: message.text.isNotEmpty
-                ? 'в†Є $senderLabel: ${message.text}'
-                : 'в†Є $senderLabel: Р¤РѕС‚Рѕ',
+                ? '↪ $senderLabel: ${message.text}'
+                : '↪ $senderLabel: Фото',
           );
         }
       }
@@ -1368,13 +1368,13 @@ class _HomePageState extends State<HomePage> {
           useNetwork: true, quiet: true);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('РџРµСЂРµСЃР»Р°РЅРѕ в†’ ${contactLabel(selected)}')),
+          SnackBar(content: Text('Переслано → ${contactLabel(selected)}')),
         );
       }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('РћС€РёР±РєР° РїРµСЂРµСЃС‹Р»РєРё: $error')),
+          SnackBar(content: Text('Ошибка пересылки: $error')),
         );
       }
     }
@@ -1395,16 +1395,16 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('РЈРґР°Р»РёС‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ?'),
-          content: const Text('РЎРѕРѕР±С‰РµРЅРёРµ Р±СѓРґРµС‚ СѓРґР°Р»РµРЅРѕ Сѓ РІСЃРµС… СѓС‡Р°СЃС‚РЅРёРєРѕРІ.'),
+          title: const Text('Удалить сообщение?'),
+          content: const Text('Сообщение будет удалено у всех участников.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('РћС‚РјРµРЅР°'),
+              child: const Text('Отмена'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('РЈРґР°Р»РёС‚СЊ'),
+              child: const Text('Удалить'),
             ),
           ],
         );
@@ -1431,7 +1431,7 @@ class _HomePageState extends State<HomePage> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('РћС€РёР±РєР° СѓРґР°Р»РµРЅРёСЏ: $error')),
+        SnackBar(content: Text('Ошибка удаления: $error')),
       );
     }
   }
@@ -1453,7 +1453,7 @@ class _HomePageState extends State<HomePage> {
             children: [
               Wrap(
                 spacing: 8,
-                children: ['рџ‘Ќ', 'вќ¤пёЏ', 'рџ‚', 'рџ”Ґ', 'рџ™Џ'].map((reaction) {
+                children: ['👍', '❤️', '😂', '🔥', '🙏'].map((reaction) {
                   return ActionChip(
                     label: Text(reaction),
                     onPressed: () =>
@@ -1464,29 +1464,29 @@ class _HomePageState extends State<HomePage> {
               if (message.myReaction != null)
                 ListTile(
                   leading: const Icon(Icons.close),
-                  title: const Text('РЈР±СЂР°С‚СЊ СЂРµР°РєС†РёСЋ'),
+                  title: const Text('Убрать реакцию'),
                   onTap: () => Navigator.of(sheetContext).pop('react:'),
                 ),
               if (message.messageType == 'text' &&
                   message.senderProfile == store.owner.value)
                 ListTile(
                   leading: const Icon(Icons.edit_outlined),
-                  title: const Text('Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ'),
+                  title: const Text('Редактировать'),
                   onTap: () => Navigator.of(sheetContext).pop('edit'),
                 ),
               ListTile(
                 leading: const Icon(Icons.reply_outlined),
-                title: const Text('РћС‚РІРµС‚РёС‚СЊ'),
+                title: const Text('Ответить'),
                 onTap: () => Navigator.of(sheetContext).pop('reply'),
               ),
               ListTile(
                 leading: const Icon(Icons.share_outlined),
-                title: const Text('РџРѕРґРµР»РёС‚СЊСЃСЏ'),
+                title: const Text('Поделиться'),
                 onTap: () => Navigator.of(sheetContext).pop('share'),
               ),
               ListTile(
                 leading: const Icon(Icons.delete_outline),
-                title: const Text('РЈРґР°Р»РёС‚СЊ'),
+                title: const Text('Удалить'),
                 onTap: () => Navigator.of(sheetContext).pop('delete'),
               ),
             ],
@@ -1534,7 +1534,7 @@ class _HomePageState extends State<HomePage> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('РћС€РёР±РєР° СЂРµР°РєС†РёРё: $error')),
+          SnackBar(content: Text('Ошибка реакции: $error')),
         );
       }
     }
@@ -1568,7 +1568,7 @@ class _HomePageState extends State<HomePage> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё СЃС‚РёРєРµСЂР°: $error')),
+        SnackBar(content: Text('Ошибка отправки стикера: $error')),
       );
     }
   }
@@ -1594,7 +1594,7 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Group avatar вЂ” tap to change
+                  // Group avatar — tap to change
                   GestureDetector(
                     onTap: canManage
                         ? () async {
@@ -1635,7 +1635,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    conv.title.isNotEmpty ? conv.title : 'Р“СЂСѓРїРїР°',
+                    conv.title.isNotEmpty ? conv.title : 'Группа',
                     style: const TextStyle(
                         fontSize: 18, fontWeight: FontWeight.w700),
                   ),
@@ -1647,7 +1647,7 @@ class _HomePageState extends State<HomePage> {
                           child: OutlinedButton.icon(
                             onPressed: () async {
                               final title = await _promptGroupTitle(
-                                conv.title.isNotEmpty ? conv.title : 'Р“СЂСѓРїРїР°',
+                                conv.title.isNotEmpty ? conv.title : 'Группа',
                               );
                               if (title == null || title.trim().isEmpty) {
                                 return;
@@ -1665,13 +1665,13 @@ class _HomePageState extends State<HomePage> {
                               } catch (error) {
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('РћС€РёР±РєР°: $error')),
+                                    SnackBar(content: Text('Ошибка: $error')),
                                   );
                                 }
                               }
                             },
                             icon: const Icon(Icons.edit_outlined),
-                            label: const Text('РќР°Р·РІР°С‚СЊ'),
+                            label: const Text('Назвать'),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -1708,7 +1708,7 @@ class _HomePageState extends State<HomePage> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text(
-                                        'Р“СЂСѓРїРїР° СѓРґР°Р»РµРЅР° РёР· Р»РѕРєР°Р»СЊРЅРѕРіРѕ СЃРїРёСЃРєР°',
+                                        'Группа удалена из локального списка',
                                       ),
                                     ),
                                   );
@@ -1716,7 +1716,7 @@ class _HomePageState extends State<HomePage> {
                               }
                             },
                             icon: const Icon(Icons.delete_outline),
-                            label: const Text('РЈРґР°Р»РёС‚СЊ'),
+                            label: const Text('Удалить'),
                           ),
                         ),
                       ],
@@ -1748,7 +1748,7 @@ class _HomePageState extends State<HomePage> {
                                           profile: profile,
                                         );
                                       } catch (_) {
-                                        // silently ignored вЂ” non-critical operation
+                                        // silently ignored — non-critical operation
                                       }
                                     },
                                   )
@@ -1761,7 +1761,7 @@ class _HomePageState extends State<HomePage> {
                   if (canManage)
                     ListTile(
                       leading: const Icon(Icons.person_add),
-                      title: const Text('Р”РѕР±Р°РІРёС‚СЊ СѓС‡Р°СЃС‚РЅРёРєР°'),
+                      title: const Text('Добавить участника'),
                       onTap: () async {
                         Navigator.of(sheetContext).pop();
                         await _addMemberToGroup(store, conv);
@@ -1811,14 +1811,14 @@ class _HomePageState extends State<HomePage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('РђРІР°С‚Р°СЂ РѕР±РЅРѕРІР»С‘РЅ')),
+          const SnackBar(content: Text('Аватар обновлён')),
         );
       }
       return avatarUrl;
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё Р°РІР°С‚Р°СЂР°: $error')),
+          SnackBar(content: Text('Ошибка загрузки аватара: $error')),
         );
       }
       return null;
@@ -1844,7 +1844,7 @@ class _HomePageState extends State<HomePage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'РќР°Р·РІР°РЅРёРµ РіСЂСѓРїРїС‹',
+              'Название группы',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
@@ -1853,7 +1853,7 @@ class _HomePageState extends State<HomePage> {
               autofocus: true,
               maxLength: 60,
               decoration: const InputDecoration(
-                hintText: 'РќР°РїСЂРёРјРµСЂ: Р Р°Р±РѕС‚Р°',
+                hintText: 'Например: Работа',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -1863,12 +1863,12 @@ class _HomePageState extends State<HomePage> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('РћС‚РјРµРЅР°'),
+                  child: const Text('Отмена'),
                 ),
                 const SizedBox(width: 8),
                 FilledButton(
                   onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-                  child: const Text('РЎРѕС…СЂР°РЅРёС‚СЊ'),
+                  child: const Text('Сохранить'),
                 ),
               ],
             ),
@@ -1883,18 +1883,18 @@ class _HomePageState extends State<HomePage> {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('РЈРґР°Р»РёС‚СЊ РіСЂСѓРїРїСѓ?'),
+        title: const Text('Удалить группу?'),
         content: Text(
-          'Р“СЂСѓРїРїР° "${conv.title.isNotEmpty ? conv.title : 'Р“СЂСѓРїРїР°'}" РёСЃС‡РµР·РЅРµС‚ Сѓ РІСЃРµС… СѓС‡Р°СЃС‚РЅРёРєРѕРІ РІРјРµСЃС‚Рµ СЃ РїРµСЂРµРїРёСЃРєРѕР№.',
+          'Группа "${conv.title.isNotEmpty ? conv.title : 'Группа'}" исчезнет у всех участников вместе с перепиской.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('РћС‚РјРµРЅР°'),
+            child: const Text('Отмена'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('РЈРґР°Р»РёС‚СЊ'),
+            child: const Text('Удалить'),
           ),
         ],
       ),
@@ -1908,7 +1908,7 @@ class _HomePageState extends State<HomePage> {
     if (available.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('РќРµС‚ РґРѕСЃС‚СѓРїРЅС‹С… РєРѕРЅС‚Р°РєС‚РѕРІ')),
+          const SnackBar(content: Text('Нет доступных контактов')),
         );
       }
       return;
@@ -1916,7 +1916,7 @@ class _HomePageState extends State<HomePage> {
     final selected = await showDialog<String>(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('Р’С‹Р±СЂР°С‚СЊ СѓС‡Р°СЃС‚РЅРёРєР°'),
+        title: const Text('Выбрать участника'),
         children: available
             .map((c) => SimpleDialogOption(
                   onPressed: () => Navigator.pop(ctx, c.profileKey),
@@ -1934,14 +1934,14 @@ class _HomePageState extends State<HomePage> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${_profileLabel(selected)} РґРѕР±Р°РІР»РµРЅ')),
+          SnackBar(content: Text('${_profileLabel(selected)} добавлен')),
         );
       }
       await _refreshChatBootstrap(store);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('РћС€РёР±РєР°: $error')),
+          SnackBar(content: Text('Ошибка: $error')),
         );
       }
     }
@@ -1959,7 +1959,7 @@ class _HomePageState extends State<HomePage> {
       if (file.path == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('РќРµ СѓРґР°Р»РѕСЃСЊ РїСЂРѕС‡РёС‚Р°С‚СЊ С„Р°Р№Р»')),
+            const SnackBar(content: Text('Не удалось прочитать файл')),
           );
         }
         return;
@@ -1973,7 +1973,7 @@ class _HomePageState extends State<HomePage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('Р¤Р°Р№Р» СЃР»РёС€РєРѕРј Р±РѕР»СЊС€РѕР№. РњР°РєСЃРёРјСѓРј 50 РњР‘.')),
+                content: Text('Файл слишком большой. Максимум 50 МБ.')),
           );
         }
         return;
@@ -2054,7 +2054,7 @@ class _HomePageState extends State<HomePage> {
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё РґРѕРєСѓРјРµРЅС‚Р°: $error')),
+          SnackBar(content: Text('Ошибка отправки документа: $error')),
         );
         setState(() {});
       }
@@ -2098,23 +2098,23 @@ class _HomePageState extends State<HomePage> {
       final result = await showDialog<String>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('РџРѕРґРїРёСЃСЊ Рє С„РѕС‚Рѕ'),
+          title: const Text('Подпись к фото'),
           content: TextField(
             controller: captionCtl,
             maxLines: 3,
             decoration: const InputDecoration(
-              hintText: 'Р”РѕР±Р°РІРёС‚СЊ РїРѕРґРїРёСЃСЊ (РЅРµРѕР±СЏР·Р°С‚РµР»СЊРЅРѕ)',
+              hintText: 'Добавить подпись (необязательно)',
               border: OutlineInputBorder(),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, ''),
-              child: const Text('РџСЂРѕРїСѓСЃС‚РёС‚СЊ'),
+              child: const Text('Пропустить'),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, captionCtl.text.trim()),
-              child: const Text('Р“РѕС‚РѕРІРѕ'),
+              child: const Text('Готово'),
             ),
           ],
         ),
@@ -2205,7 +2205,7 @@ class _HomePageState extends State<HomePage> {
       _failOptimisticMessages(conversationKey, clientId, error.toString());
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё: $error')),
+          SnackBar(content: Text('Ошибка отправки: $error')),
         );
       }
     }
@@ -2268,7 +2268,7 @@ class _HomePageState extends State<HomePage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
                 content: Text(
-                    'Р’РёРґРµРѕ СЃР»РёС€РєРѕРј Р±РѕР»СЊС€РѕРµ (${(sizeBytes / (1024 * 1024)).round()} РњР‘). РњР°РєСЃРёРјСѓРј 500 РњР‘.')),
+                    'Видео слишком большое (${(sizeBytes / (1024 * 1024)).round()} МБ). Максимум 500 МБ.')),
           );
         }
         return;
@@ -2285,23 +2285,23 @@ class _HomePageState extends State<HomePage> {
       final result = await showDialog<String>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('РџРѕРґРїРёСЃСЊ Рє РІРёРґРµРѕ'),
+          title: const Text('Подпись к видео'),
           content: TextField(
             controller: captionCtl,
             maxLines: 3,
             decoration: const InputDecoration(
-              hintText: 'Р”РѕР±Р°РІРёС‚СЊ РїРѕРґРїРёСЃСЊ (РЅРµРѕР±СЏР·Р°С‚РµР»СЊРЅРѕ)',
+              hintText: 'Добавить подпись (необязательно)',
               border: OutlineInputBorder(),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, ''),
-              child: const Text('РџСЂРѕРїСѓСЃС‚РёС‚СЊ'),
+              child: const Text('Пропустить'),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, captionCtl.text.trim()),
-              child: const Text('Р“РѕС‚РѕРІРѕ'),
+              child: const Text('Готово'),
             ),
           ],
         ),
@@ -2338,7 +2338,7 @@ class _HomePageState extends State<HomePage> {
     if (mounted) setState(() {});
 
     try {
-      // Phase 1: Compress video (0% в†’ 25%)
+      // Phase 1: Compress video (0% → 25%)
       _updateUploadProgress(conversationKey, clientId, 0, 1, 0.0);
       final compressStart = DateTime.now();
 
@@ -2360,7 +2360,7 @@ class _HomePageState extends State<HomePage> {
       debugPrint(
           'Video compression took ${compressMs}ms, path: $compressedFile');
 
-      // Phase 2: Read compressed file (25% в†’ 30%)
+      // Phase 2: Read compressed file (25% → 30%)
       final compressedMedia =
           compressedFile != null ? File(compressedFile) : File(video.path);
 
@@ -2377,13 +2377,13 @@ class _HomePageState extends State<HomePage> {
       readTimer.cancel();
       _updateUploadProgress(conversationKey, clientId, 0, 1, 0.30);
 
-      // Phase 3: Upload with real network progress (30% в†’ 98%)
+      // Phase 3: Upload with real network progress (30% → 98%)
       final uploaded = await api.chatUploadMedia(
         actorProfile: actor,
         bytes: bytes,
         filename: 'video_compressed.mp4',
         onProgress: (progress) {
-          // progress 0..1 в†’ mapped to 0.30..0.98 with 1% steps
+          // progress 0..1 → mapped to 0.30..0.98 with 1% steps
           final p = 0.30 + (progress * 0.68);
           _updateUploadProgress(conversationKey, clientId, 0, 1, p);
         },
@@ -2417,7 +2417,7 @@ class _HomePageState extends State<HomePage> {
       _failOptimisticMessages(conversationKey, clientId, error.toString());
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё РІРёРґРµРѕ: $error')),
+          SnackBar(content: Text('Ошибка отправки видео: $error')),
         );
       }
     }
@@ -2477,7 +2477,7 @@ class _HomePageState extends State<HomePage> {
             children: [
               ListTile(
                 leading: const Icon(Icons.image_outlined),
-                title: const Text('Р“Р°Р»РµСЂРµСЏ'),
+                title: const Text('Галерея'),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _sendPhotos(store,
@@ -2486,7 +2486,7 @@ class _HomePageState extends State<HomePage> {
               ),
               ListTile(
                 leading: const Icon(Icons.photo_camera_outlined),
-                title: const Text('РљР°РјРµСЂР°'),
+                title: const Text('Камера'),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _sendPhotos(store, source: ImageSource.camera);
@@ -2494,7 +2494,7 @@ class _HomePageState extends State<HomePage> {
               ),
               ListTile(
                 leading: const Icon(Icons.videocam_outlined),
-                title: const Text('Р’РёРґРµРѕ'),
+                title: const Text('Видео'),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _pickAndSendVideo(store);
@@ -2502,7 +2502,7 @@ class _HomePageState extends State<HomePage> {
               ),
               ListTile(
                 leading: const Icon(Icons.description_outlined),
-                title: const Text('Р”РѕРєСѓРјРµРЅС‚'),
+                title: const Text('Документ'),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _pickAndSendDocument(store);
@@ -2510,7 +2510,7 @@ class _HomePageState extends State<HomePage> {
               ),
               ListTile(
                 leading: const Icon(Icons.emoji_emotions_outlined),
-                title: const Text('РЎС‚РёРєРµСЂ'),
+                title: const Text('Стикер'),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _openStickerSheet(store);
@@ -2541,7 +2541,7 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     const Expanded(
                       child: Text(
-                        'РЎС‚РёРєРµСЂС‹',
+                        'Стикеры',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -2558,7 +2558,7 @@ class _HomePageState extends State<HomePage> {
                         );
                       },
                       icon: const Icon(Icons.image_outlined),
-                      label: const Text('РњРѕР№ СЃС‚РёРєРµСЂ'),
+                      label: const Text('Мой стикер'),
                     ),
                   ],
                 ),
@@ -2687,7 +2687,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildProjectChatView(TaskStore store, {required bool compact}) {
     final project = _projectByConversationKey(_activeConversationKey);
     if (project == null) {
-      return const Center(child: Text('РџСЂРѕРµРєС‚ РЅРµ РЅР°Р№РґРµРЅ'));
+      return const Center(child: Text('Проект не найден'));
     }
 
     return ProjectChatView(
@@ -2753,7 +2753,7 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _projectMessages.add(BridgeMessage(
         type: 'status',
-        text: 'Р—Р°РїСЂР°С€РёРІР°СЋ С„Р°Р№Р»С‹ РїСЂРѕРµРєС‚Р°...',
+        text: 'Запрашиваю файлы проекта...',
       ));
     });
 
@@ -2790,7 +2790,7 @@ class _HomePageState extends State<HomePage> {
               },
               onLinkToChat: (filePath) {
                 final fullPath = '${project.path}/$filePath';
-                final link = 'Р¤Р°Р№Р»: $fullPath';
+                final link = 'Файл: $fullPath';
                 final current = _chatInputCtl.text;
                 _chatInputCtl.text = current.isEmpty ? link : '$current $link';
                 // Close sheet so user can continue editing before sending
@@ -2820,7 +2820,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showFileContentOverlay(String path) {
-    final ctl = ValueNotifier<String>('Р—Р°РіСЂСѓР·РєР° СЃРѕРґРµСЂР¶РёРјРѕРіРѕ...');
+    final ctl = ValueNotifier<String>('Загрузка содержимого...');
     showDialog<void>(
       context: context,
       useRootNavigator: true,
@@ -2843,7 +2843,7 @@ class _HomePageState extends State<HomePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Р—Р°РєСЂС‹С‚СЊ'),
+            child: const Text('Закрыть'),
           ),
         ],
       ),
@@ -2886,26 +2886,26 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         Expanded(
                           child: Text(
-                            path.isNotEmpty ? path.split('/').last : 'Р¤Р°Р№Р»',
+                            path.isNotEmpty ? path.split('/').last : 'Файл',
                             style: const TextStyle(
                                 fontSize: 18, fontWeight: FontWeight.w700),
                           ),
                         ),
                         if (!hasError)
                           IconButton(
-                            tooltip: 'РљРѕРїРёСЂРѕРІР°С‚СЊ РІСЃС‘',
+                            tooltip: 'Копировать всё',
                             icon: const Icon(Icons.copy),
                             onPressed: () {
                               Clipboard.setData(ClipboardData(text: content));
                               ScaffoldMessenger.of(sheetContext).showSnackBar(
                                 const SnackBar(
-                                    content: Text('РЎРєРѕРїРёСЂРѕРІР°РЅРѕ РІ Р±СѓС„РµСЂ'),
+                                    content: Text('Скопировано в буфер'),
                                     duration: Duration(seconds: 1)),
                               );
                             },
                           ),
                         IconButton(
-                          tooltip: 'Р—Р°РєСЂС‹С‚СЊ',
+                          tooltip: 'Закрыть',
                           icon: const Icon(Icons.close),
                           onPressed: () => Navigator.of(sheetContext).pop(),
                         ),
@@ -2930,7 +2930,7 @@ class _HomePageState extends State<HomePage> {
                             child: Padding(
                               padding: const EdgeInsets.all(24),
                               child: Text(content.isEmpty
-                                  ? 'Р¤Р°Р№Р» РїСѓСЃС‚'
+                                  ? 'Файл пуст'
                                   : content.replaceFirst('Error: ', '')),
                             ),
                           )
@@ -2965,8 +2965,8 @@ class _HomePageState extends State<HomePage> {
       _projectMessages.add(BridgeMessage(
         type: ok ? 'status' : 'error',
         text: ok
-            ? 'РљРѕРјР°РЅРґР° Р·Р°РїСѓСЃРєР° bridge РѕС‚РїСЂР°РІР»РµРЅР°'
-            : 'РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ РєРѕРјР°РЅРґСѓ Р·Р°РїСѓСЃРєР° bridge',
+            ? 'Команда запуска bridge отправлена'
+            : 'Не удалось отправить команду запуска bridge',
       ));
     });
     if (ok) {
@@ -3001,7 +3001,7 @@ class _HomePageState extends State<HomePage> {
         ..clear()
         ..add(BridgeMessage(
           type: 'status',
-          text: 'РЎРѕР·РґР°СЋ РЅРѕРІСѓСЋ СЃРµСЃСЃРёСЋ...',
+          text: 'Создаю новую сессию...',
         ));
     });
   }
@@ -3014,7 +3014,7 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _projectMessages.add(BridgeMessage(
         type: 'status',
-        text: 'РљРѕРјР°РЅРґР° РѕСЃС‚Р°РЅРѕРІРєРё РѕС‚РїСЂР°РІР»РµРЅР°',
+        text: 'Команда остановки отправлена',
       ));
     });
   }
@@ -3038,23 +3038,23 @@ class _HomePageState extends State<HomePage> {
       final result = await showDialog<String>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('РљРѕРјРјРµРЅС‚Р°СЂРёР№ Рє С„РѕС‚Рѕ'),
+          title: const Text('Комментарий к фото'),
           content: TextField(
             controller: captionCtl,
             maxLines: 3,
             decoration: const InputDecoration(
-              hintText: 'РџСЂРѕРјС‚ РґР»СЏ DeepSeek РїРѕСЃР»Рµ Р·Р°РіСЂСѓР·РєРё (РЅРµРѕР±СЏР·Р°С‚РµР»СЊРЅРѕ)',
+              hintText: 'Промт для DeepSeek после загрузки (необязательно)',
               border: OutlineInputBorder(),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, ''),
-              child: const Text('РўРѕР»СЊРєРѕ СЃРѕС…СЂР°РЅРёС‚СЊ'),
+              child: const Text('Только сохранить'),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, captionCtl.text.trim()),
-              child: const Text('РћС‚РїСЂР°РІРёС‚СЊ'),
+              child: const Text('Отправить'),
             ),
           ],
         ),
@@ -3105,15 +3105,15 @@ class _HomePageState extends State<HomePage> {
       if (sent > 0) {
         _projectMessages.add(BridgeMessage(
           type: 'send',
-          text: 'Р¤РѕС‚Рѕ СЃРѕС…СЂР°РЅРµРЅРѕ РІ vision: $sent',
+          text: 'Фото сохранено в vision: $sent',
         ));
       }
       if (failed > 0 || sent == 0) {
         _projectMessages.add(BridgeMessage(
           type: 'error',
           text: sent == 0
-              ? 'Р¤РѕС‚Рѕ РЅРµ РѕС‚РїСЂР°РІР»РµРЅРѕ. РџСЂРѕРІРµСЂСЊС‚Рµ СЃРѕРµРґРёРЅРµРЅРёРµ РёР»Рё СЂР°Р·РјРµСЂ С„Р°Р№Р»Р°.'
-              : 'РќРµ РѕС‚РїСЂР°РІР»РµРЅРѕ С„РѕС‚Рѕ: $failed',
+              ? 'Фото не отправлено. Проверьте соединение или размер файла.'
+              : 'Не отправлено фото: $failed',
         ));
       }
     });
@@ -3153,7 +3153,7 @@ class _HomePageState extends State<HomePage> {
       if (file.path == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('РќРµ СѓРґР°Р»РѕСЃСЊ РїСЂРѕС‡РёС‚Р°С‚СЊ С„Р°Р№Р»')),
+            const SnackBar(content: Text('Не удалось прочитать файл')),
           );
         }
         return;
@@ -3165,7 +3165,7 @@ class _HomePageState extends State<HomePage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('Р¤Р°Р№Р» СЃР»РёС€РєРѕРј Р±РѕР»СЊС€РѕР№. РњР°РєСЃРёРјСѓРј 15 РњР‘.')),
+                content: Text('Файл слишком большой. Максимум 15 МБ.')),
           );
         }
         return;
@@ -3178,23 +3178,23 @@ class _HomePageState extends State<HomePage> {
         final result = await showDialog<String>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('РљРѕРјРјРµРЅС‚Р°СЂРёР№ Рє РґРѕРєСѓРјРµРЅС‚Сѓ'),
+            title: const Text('Комментарий к документу'),
             content: TextField(
               controller: captionCtl,
               maxLines: 3,
               decoration: const InputDecoration(
-                hintText: 'РџСЂРѕРјС‚ РґР»СЏ DeepSeek РїРѕСЃР»Рµ Р·Р°РіСЂСѓР·РєРё (РЅРµРѕР±СЏР·Р°С‚РµР»СЊРЅРѕ)',
+                hintText: 'Промт для DeepSeek после загрузки (необязательно)',
                 border: OutlineInputBorder(),
               ),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, ''),
-                child: const Text('РўРѕР»СЊРєРѕ СЃРѕС…СЂР°РЅРёС‚СЊ'),
+                child: const Text('Только сохранить'),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, captionCtl.text.trim()),
-                child: const Text('РћС‚РїСЂР°РІРёС‚СЊ'),
+                child: const Text('Отправить'),
               ),
             ],
           ),
@@ -3216,7 +3216,7 @@ class _HomePageState extends State<HomePage> {
         setState(() {
           _projectMessages.add(BridgeMessage(
             type: 'send',
-            text: 'рџ“Ћ Р”РѕРєСѓРјРµРЅС‚: ${file.name}',
+            text: '📎 Документ: ${file.name}',
             projectId:
                 _projectByConversationKey(_activeConversationKey)?.id ?? '',
             sessionId: _activeProjectSessionId ?? '',
@@ -3226,7 +3226,7 @@ class _HomePageState extends State<HomePage> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё РґРѕРєСѓРјРµРЅС‚Р°: $error')),
+          SnackBar(content: Text('Ошибка отправки документа: $error')),
         );
       }
     }
@@ -3286,19 +3286,19 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          title: const Text('РЎРµСЂРІРµСЂ РїСЂРѕРµРєС‚РѕРІ'),
+          title: const Text('Сервер проектов'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'IP-Р°РґСЂРµСЃ Рё РїРѕСЂС‚ РџРљ, РЅР° РєРѕС‚РѕСЂРѕРј Р·Р°РїСѓС‰РµРЅ project_bridge.py',
+                'IP-адрес и порт ПК, на котором запущен project_bridge.py',
                 style: TextStyle(fontSize: 13),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: ctl,
                 decoration: const InputDecoration(
-                  labelText: 'РђРґСЂРµСЃ',
+                  labelText: 'Адрес',
                   hintText: '192.168.1.5:9876',
                 ),
               ),
@@ -3307,7 +3307,7 @@ class _HomePageState extends State<HomePage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('РћС‚РјРµРЅР°'),
+              child: const Text('Отмена'),
             ),
             FilledButton(
               onPressed: () async {
@@ -3325,7 +3325,7 @@ class _HomePageState extends State<HomePage> {
                   }
                 }
               },
-              child: const Text('РЎРѕС…СЂР°РЅРёС‚СЊ'),
+              child: const Text('Сохранить'),
             ),
           ],
         );
@@ -3337,7 +3337,7 @@ class _HomePageState extends State<HomePage> {
     if (conversation.kind == 'group' ||
         conversation.conversationKey == 'group:common') {
       final title = conversation.title.trim();
-      return title.isNotEmpty ? title : 'РћР±С‰РёР№';
+      return title.isNotEmpty ? title : 'Общий';
     }
     final peer = conversation.members.firstWhere(
       (item) => item != actor,
@@ -3483,14 +3483,14 @@ class _HomePageState extends State<HomePage> {
       await channel.invokeMethod<bool>('saveImage', {'url': url});
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Р¤РѕС‚Рѕ СЃРѕС…СЂР°РЅРµРЅРѕ РІ РіР°Р»РµСЂРµСЋ')),
+          const SnackBar(content: Text('Фото сохранено в галерею')),
         );
       }
     } catch (e, st) {
       debugPrint('[gallery] save photo error: $e\n$st');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ С„РѕС‚Рѕ')),
+          const SnackBar(content: Text('Не удалось сохранить фото')),
         );
       }
     }
@@ -3528,7 +3528,7 @@ class _HomePageState extends State<HomePage> {
       fit: BoxFit.contain,
       errorBuilder: (context, error, stackTrace) => Center(
         child: Text(
-          item.title.isEmpty ? 'рџ™‚' : item.title,
+          item.title.isEmpty ? '🙂' : item.title,
           textAlign: TextAlign.center,
         ),
       ),
@@ -3673,7 +3673,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _themeMenuButton() {
     return PopupMenuButton<String>(
-      tooltip: 'Р¦РІРµС‚РѕРІР°СЏ СЃС…РµРјР°',
+      tooltip: 'Цветовая схема',
       icon: const Icon(Icons.palette_outlined),
       initialValue: widget.selectedThemeKey,
       onSelected: widget.onThemeChanged,
@@ -3736,7 +3736,7 @@ class _HomePageState extends State<HomePage> {
                 return Scaffold(
                   appBar: AppBar(
                     leading: IconButton(
-                      tooltip: 'РџСЂРѕС„РёР»СЊ',
+                      tooltip: 'Профиль',
                       icon: const Icon(Icons.person_outline),
                       onPressed: _openProfile,
                     ),
@@ -3746,7 +3746,7 @@ class _HomePageState extends State<HomePage> {
                         valueListenable: store.canUndo,
                         builder: (context, canUndo, _) {
                           return IconButton(
-                            tooltip: 'РћС‚РєР°С‚РёС‚СЊ РїРѕСЃР»РµРґРЅРµРµ РґРµР№СЃС‚РІРёРµ',
+                            tooltip: 'Откатить последнее действие',
                             onPressed: canUndo
                                 ? () async {
                                     final messenger =
@@ -3759,7 +3759,7 @@ class _HomePageState extends State<HomePage> {
                                       messenger.showSnackBar(
                                         const SnackBar(
                                           content: Text(
-                                            'РџРѕСЃР»РµРґРЅРµРµ РґРµР№СЃС‚РІРёРµ РѕС‚РјРµРЅРµРЅРѕ',
+                                            'Последнее действие отменено',
                                           ),
                                         ),
                                       );
@@ -3775,12 +3775,12 @@ class _HomePageState extends State<HomePage> {
                         },
                       ),
                       IconButton(
-                        tooltip: 'FCM РґРёР°РіРЅРѕСЃС‚РёРєР°',
+                        tooltip: 'FCM диагностика',
                         icon: const Icon(Icons.bug_report_outlined),
                         onPressed: _showFcmDiagnosticsDialog,
                       ),
                       IconButton(
-                        tooltip: 'РљР°Р»РµРЅРґР°СЂСЊ',
+                        tooltip: 'Календарь',
                         icon: const Icon(Icons.calendar_month),
                         onPressed: () async {
                           final picked = await showDatePicker(
@@ -3795,7 +3795,7 @@ class _HomePageState extends State<HomePage> {
                         },
                       ),
                       IconButton(
-                        tooltip: 'РЎРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°С‚СЊ',
+                        tooltip: 'Синхронизировать',
                         icon: const Icon(Icons.sync),
                         onPressed: () async =>
                             _safeSyncFull(store, showErrors: true),
@@ -3874,29 +3874,29 @@ class _HomePageState extends State<HomePage> {
           valueListenable: diagnostics,
           builder: (context, text, _) {
             return AlertDialog(
-              title: const Text('FCM РґРёР°РіРЅРѕСЃС‚РёРєР°'),
+              title: const Text('FCM диагностика'),
               content: SingleChildScrollView(
                 child: SelectableText(text),
               ),
               actions: [
                 TextButton(
                   onPressed: () async {
-                    diagnostics.value = 'FCM: РѕР±РЅРѕРІР»СЏСЋ РґРёР°РіРЅРѕСЃС‚РёРєСѓ...';
+                    diagnostics.value = 'FCM: обновляю диагностику...';
                     await _pushHandler?.refreshDiagnostics();
                   },
-                  child: const Text('РћР±РЅРѕРІРёС‚СЊ'),
+                  child: const Text('Обновить'),
                 ),
                 TextButton(
                   onPressed: () async {
-                    diagnostics.value = 'FCM: СЃР±СЂР°СЃС‹РІР°СЋ С‚РѕРєРµРЅ...';
+                    diagnostics.value = 'FCM: сбрасываю токен...';
                     await _pushHandler
                         ?.refreshDiagnostics(forceResetToken: true);
                   },
-                  child: const Text('РЎР±СЂРѕСЃРёС‚СЊ С‚РѕРєРµРЅ'),
+                  child: const Text('Сбросить токен'),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Р—Р°РєСЂС‹С‚СЊ'),
+                  child: const Text('Закрыть'),
                 ),
               ],
             );

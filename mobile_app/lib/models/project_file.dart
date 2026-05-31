@@ -17,6 +17,25 @@ class ProjectFileNode {
   final int size;
   final List<ProjectFileNode> children;
 
+  /// Human-readable file size (e.g. "1.2 MB").
+  String get sizeLabel {
+    if (isDir) return '';
+    if (size < 1024) return '$size B';
+    if (size < 1024 * 1024) return '${(size / 1024).toStringAsFixed(1)} KB';
+    return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  /// Sort children: directories first, then alphabetically by name.
+  static List<ProjectFileNode> sorted(List<ProjectFileNode> nodes) {
+    final list = List<ProjectFileNode>.from(nodes);
+    list.sort((a, b) {
+      if (a.isDir && !b.isDir) return -1;
+      if (!a.isDir && b.isDir) return 1;
+      return a.name.compareTo(b.name);
+    });
+    return list;
+  }
+
   factory ProjectFileNode.fromJson(Map<String, dynamic> json) {
     final rawChildren = (json['children'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()

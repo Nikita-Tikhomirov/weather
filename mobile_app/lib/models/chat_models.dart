@@ -295,6 +295,9 @@ class ChatMessage {
   final String? editedAt;
   final String? deletedAt;
 
+  /// Whether this message has been soft-deleted.
+  bool get isDeleted => deletedAt != null && deletedAt!.isNotEmpty;
+
   /// Local-only fields for optimistic uploads
   final bool isUploading;
   final double uploadProgress;

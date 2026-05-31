@@ -77,6 +77,9 @@ class WorkspaceSession {
   final String workspaceId;
   final String title;
   final WorkspaceSessionStatus status;
+
+  /// Whether the session has a running worker process.
+  bool get isRunning => status == WorkspaceSessionStatus.running;
   final int? workerPid;
   final int? workerPort;
   final String provider;
