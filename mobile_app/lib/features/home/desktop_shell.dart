@@ -269,7 +269,7 @@ extension _DesktopShellExtension on _HomePageState {
         if (page == 0) {
           return Column(
             children: [
-              _buildProjectSelector(store),
+              buildProjectSelector(store),
               Expanded(
                 child: ValueListenableBuilder<
                     Map<String, List<TaskItem>>>(
@@ -338,7 +338,7 @@ extension _DesktopShellExtension on _HomePageState {
             },
           );
         }
-        return _buildMessengerPage(store, compact: false);
+        return buildMessengerPage(store, compact: false);
       },
     );
   }

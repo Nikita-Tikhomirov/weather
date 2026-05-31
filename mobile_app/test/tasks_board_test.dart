@@ -6,27 +6,29 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('TasksBoard', () {
     testWidgets('renders kanban columns', (tester) async {
-      final tasks = <TaskItem>[];
-
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: TasksBoard(
-              tasks: tasks,
-              ownerKey: 'test_user',
-              onTaskTap: (_) {},
-              onTaskLongPress: (_) {},
-              onReorder: (task, status) {},
+              byStatus: const <String, List<TaskItem>>{},
+              labelFor: (_) => 'User',
+              selectionMode: false,
+              selectedIds: const <String>{},
+              onToggleSelect: (_) {},
+              onDrop: (task, status) async {},
+              onEdit: (task) async {},
+              onDelete: (task) async {},
+              onDoneToggle: (task) async {},
             ),
           ),
         ),
       );
 
-      // Should have 4 columns
-      expect(find.text('To Do'), findsOneWidget);
-      expect(find.text('In Progress'), findsOneWidget);
-      expect(find.text('In Review'), findsOneWidget);
-      expect(find.text('Done'), findsOneWidget);
+      // Should have 4 columns (Russian labels)
+      expect(find.text('К выполнению'), findsOneWidget);
+      expect(find.text('В работе'), findsOneWidget);
+      expect(find.text('На проверке'), findsOneWidget);
+      expect(find.text('Выполнено'), findsOneWidget);
     });
 
     testWidgets('displays tasks in correct columns', (tester) async {
@@ -65,15 +67,26 @@ void main() {
         ),
       ];
 
+      final byStatus = <String, List<TaskItem>>{
+        'todo': [tasks[0]],
+        'done': [tasks[1]],
+        'in_progress': <TaskItem>[],
+        'in_review': <TaskItem>[],
+      };
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: TasksBoard(
-              tasks: tasks,
-              ownerKey: 'test_user',
-              onTaskTap: (_) {},
-              onTaskLongPress: (_) {},
-              onReorder: (task, status) {},
+              byStatus: byStatus,
+              labelFor: (_) => 'User',
+              selectionMode: false,
+              selectedIds: const <String>{},
+              onToggleSelect: (_) {},
+              onDrop: (task, status) async {},
+              onEdit: (task) async {},
+              onDelete: (task) async {},
+              onDoneToggle: (task) async {},
             ),
           ),
         ),
@@ -88,11 +101,15 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: TasksBoard(
-              tasks: const [],
-              ownerKey: 'test_user',
-              onTaskTap: (_) {},
-              onTaskLongPress: (_) {},
-              onReorder: (task, status) {},
+              byStatus: const <String, List<TaskItem>>{},
+              labelFor: (_) => 'User',
+              selectionMode: false,
+              selectedIds: const <String>{},
+              onToggleSelect: (_) {},
+              onDrop: (task, status) async {},
+              onEdit: (task) async {},
+              onDelete: (task) async {},
+              onDoneToggle: (task) async {},
             ),
           ),
         ),
@@ -102,8 +119,8 @@ void main() {
       expect(find.byType(TasksBoard), findsOneWidget);
     });
 
-    testWidgets('kanban column colors meet contrast requirements', (tester) async {
-      // Verify KanbanColumnStyle provides adequate contrast
+    testWidgets('kanban column colors meet contrast requirements',
+        (tester) async {
       const statuses = [
         WorkflowStatus.todo,
         WorkflowStatus.in_progress,
@@ -112,8 +129,10 @@ void main() {
       ];
 
       for (final status in statuses) {
-        final style = KanbanColumnStyle.resolve(ThemeData.light(), status);
-        final contrast = _contrastRatio(style.titleColor, style.backgroundColor);
+        final style =
+            KanbanColumnStyle.resolve(ThemeData.light(), status);
+        final contrast =
+            _contrastRatio(style.titleColor, style.backgroundColor);
         expect(contrast, greaterThanOrEqualTo(4.5),
             reason: 'Low contrast for $status');
       }
