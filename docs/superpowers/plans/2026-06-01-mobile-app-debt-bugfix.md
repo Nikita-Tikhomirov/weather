@@ -107,7 +107,7 @@ Run:
 
 Expected: both print planned uploads and do not require `WEATHER_VPS_PASSWORD`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Run:
 
@@ -196,7 +196,7 @@ git push
 - Modify: `README.md`
 - Modify: `mobile_app/README.md`
 
-- [ ] **Step 1: Document the CI-equivalent command**
+- [x] **Step 1: Document the CI-equivalent command**
 
 Add this command to mobile test instructions:
 
@@ -205,11 +205,11 @@ cd C:\Users\user\Desktop\weather\mobile_app
 C:\Users\user\tools\flutter\bin\flutter.bat test --concurrency=1
 ```
 
-- [ ] **Step 2: Record the known parallel-run issue**
+- [x] **Step 2: Record the known parallel-run issue**
 
 Document: full local `flutter test` without `--concurrency=1` can hit a transient suite-load failure while sqflite tests change the global factory.
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 Run:
 
@@ -220,7 +220,7 @@ C:\Users\user\tools\flutter\bin\flutter.bat test --concurrency=1
 
 Expected: all tests pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 Run:
 
