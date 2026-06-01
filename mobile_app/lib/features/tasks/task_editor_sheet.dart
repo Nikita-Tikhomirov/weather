@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -56,6 +58,7 @@ class TaskEditorScreen extends StatefulWidget {
     required this.dateKey,
     required this.onSaved,
     this.existing,
+    this.initialPendingAttachments = const <TaskAttachment>[],
   });
 
   final TaskStore store;
@@ -64,6 +67,7 @@ class TaskEditorScreen extends StatefulWidget {
   final String Function(DateTime value) dateKey;
   final Future<void> Function() onSaved;
   final TaskItem? existing;
+  final List<TaskAttachment> initialPendingAttachments;
 
   @override
   State<TaskEditorScreen> createState() => _TaskEditorScreenState();
@@ -89,14 +93,19 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   late String _selectedProjectId;
   late String _selectedGroupId;
   late TaskCollaboration _collaboration;
+  TaskItem? _savedTask;
+  Timer? _autosaveTimer;
   final List<TaskAttachment> _pendingAttachments = [];
 
   bool _saving = false;
+  bool _autosaveInFlight = false;
+  bool _autosaveAgain = false;
 
   @override
   void initState() {
     super.initState();
     final existing = widget.existing;
+    _savedTask = existing;
     _titleCtl = TextEditingController(text: existing?.title ?? '');
     _detailsCtl = TextEditingController(text: existing?.details ?? '');
     _durationCtl = TextEditingController(
@@ -126,11 +135,19 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         existing?.projectId ?? widget.store.currentProjectId.value;
     _selectedGroupId = existing?.groupId ?? '';
     _collaboration = existing?.collaboration ?? const TaskCollaboration();
+    _pendingAttachments.addAll(widget.initialPendingAttachments);
     _normalizeProjectSelection();
+    _titleCtl.addListener(_queueAutosave);
+    _detailsCtl.addListener(_queueAutosave);
+    _durationCtl.addListener(_queueAutosave);
   }
 
   @override
   void dispose() {
+    _autosaveTimer?.cancel();
+    _titleCtl.removeListener(_queueAutosave);
+    _detailsCtl.removeListener(_queueAutosave);
+    _durationCtl.removeListener(_queueAutosave);
     _titleCtl.dispose();
     _detailsCtl.dispose();
     _durationCtl.dispose();
@@ -143,9 +160,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   bool get _canEdit {
-    if (widget.existing == null) return true;
+    final task = _savedTask ?? widget.existing;
+    if (task == null) return true;
     final actor = widget.store.owner.value;
-    final task = widget.existing!;
     if (task.assignees.contains(actor)) return true;
     if (_projectOwnerKey(task.projectId) == actor) return true;
     if (task.groupId.isEmpty) return false;
@@ -210,25 +227,82 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   Future<void> _save() async {
-    if (_saving || !_canEdit) return;
+    await _persistDraft(closeOnSuccess: true);
+  }
+
+  void _queueAutosave() {
+    _scheduleAutosave();
+  }
+
+  void _scheduleAutosave([
+    Duration delay = const Duration(milliseconds: 500),
+  ]) {
+    if (!_canEdit || _savedTask == null) return;
+    _autosaveTimer?.cancel();
+    _autosaveTimer = Timer(delay, () {
+      unawaited(_persistDraft(automatic: true));
+    });
+  }
+
+  void _autosaveNow() {
+    if (!_canEdit || _savedTask == null) return;
+    _autosaveTimer?.cancel();
+    unawaited(_persistDraft(automatic: true));
+  }
+
+  Future<void> _persistDraft({
+    bool closeOnSuccess = false,
+    bool automatic = false,
+  }) async {
+    if (!_canEdit) return;
+    if (_saving || (automatic && _savedTask == null)) return;
     if (_selectedProjectId.isEmpty) {
-      _showSnack('Выберите проект');
+      if (!automatic) {
+        _showSnack('Выберите проект');
+      }
       return;
     }
-    setState(() => _saving = true);
-    final messenger = ScaffoldMessenger.of(context);
-    final error = await widget.store.saveDraft(
+
+    if (_autosaveInFlight) {
+      _autosaveAgain = true;
+      if (automatic) return;
+    }
+
+    final messenger = automatic ? null : ScaffoldMessenger.of(context);
+    if (automatic) {
+      _autosaveInFlight = true;
+    } else {
+      setState(() => _saving = true);
+    }
+    final result = await widget.store.saveDraftWithResult(
       draft: _buildDraft(),
-      existing: widget.existing,
+      existing: _savedTask ?? widget.existing,
+      rememberUndo: !automatic,
     );
+    if (automatic) {
+      _autosaveInFlight = false;
+    }
     if (!mounted) return;
-    setState(() => _saving = false);
-    if (error != null) {
-      messenger.showSnackBar(SnackBar(content: Text(error)));
+    if (!automatic) {
+      setState(() => _saving = false);
+    }
+    if (!result.isSuccess) {
+      if (!automatic) {
+        messenger?.showSnackBar(SnackBar(content: Text(result.error!)));
+      }
       return;
     }
-    Navigator.of(context).pop();
+    _savedTask = result.task ?? _savedTask;
     await widget.onSaved();
+    if (!mounted) return;
+    if (closeOnSuccess) {
+      Navigator.of(context).pop();
+      return;
+    }
+    if (automatic && _autosaveAgain) {
+      _autosaveAgain = false;
+      _scheduleAutosave(Duration.zero);
+    }
   }
 
   void _showSnack(String message) {
@@ -291,6 +365,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       _pendingAttachments.clear();
       _commentCtl.clear();
     });
+    _autosaveNow();
   }
 
   Future<void> _pickPhoto() async {
@@ -375,6 +450,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       );
       _checklistTitleCtl.clear();
     });
+    _autosaveNow();
   }
 
   TextEditingController _itemControllerFor(String checklistId) {
@@ -417,6 +493,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       );
       controller.clear();
     });
+    _autosaveNow();
   }
 
   void _toggleChecklistItem(String checklistId, String itemId, bool done) {
@@ -448,6 +525,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         ],
       );
     });
+    _autosaveNow();
   }
 
   void _openPhoto(TaskAttachment attachment) {
@@ -548,6 +626,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                     _selectedAssignees.clear();
                     _normalizeProjectSelection();
                   });
+                  _scheduleAutosave();
                 },
         ),
         if (isProjectTask) ...[
@@ -588,6 +667,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                         _selectedAssignees.clear();
                       }
                     });
+                    _scheduleAutosave();
                   },
           ),
           if (projectGroups.isEmpty)
@@ -614,6 +694,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                         );
                         if (picked != null) {
                           setState(() => _selectedDate = picked);
+                          _scheduleAutosave();
                         }
                       },
               ),
@@ -643,6 +724,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                             _time =
                                 '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
                           });
+                          _scheduleAutosave();
                         }
                       },
               ),
@@ -660,7 +742,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           ],
           onChanged: !_canEdit
               ? null
-              : (value) => setState(() => _priority = value ?? Priority.medium),
+              : (value) {
+                  setState(() => _priority = value ?? Priority.medium);
+                  _scheduleAutosave();
+                },
         ),
         const SizedBox(height: 10),
         DropdownButtonFormField<WorkflowStatus>(
@@ -690,8 +775,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           ],
           onChanged: !_canEdit
               ? null
-              : (value) =>
-                  setState(() => _status = value ?? WorkflowStatus.todo),
+              : (value) {
+                  setState(() => _status = value ?? WorkflowStatus.todo);
+                  _scheduleAutosave();
+                },
         ),
         const SizedBox(height: 16),
         Text('Ответственные', style: Theme.of(context).textTheme.titleSmall),
@@ -719,6 +806,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                             _selectedAssignees.remove(profile);
                           }
                         });
+                        _scheduleAutosave();
                       },
               );
             }).toList(),
@@ -744,6 +832,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                           _selectedReminderOffsets.remove(offset);
                         }
                       });
+                      _scheduleAutosave();
                     },
             );
           }).toList(),
@@ -802,6 +891,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           _PendingAttachments(
             items: _pendingAttachments,
             onRemove: _removePendingAttachment,
+            onPhotoTap: _openPhoto,
           ),
         _CommentComposer(
           controller: _commentCtl,
@@ -1043,10 +1133,15 @@ class _CommentComposer extends StatelessWidget {
 }
 
 class _PendingAttachments extends StatelessWidget {
-  const _PendingAttachments({required this.items, required this.onRemove});
+  const _PendingAttachments({
+    required this.items,
+    required this.onRemove,
+    required this.onPhotoTap,
+  });
 
   final List<TaskAttachment> items;
   final void Function(String id) onRemove;
+  final void Function(TaskAttachment attachment) onPhotoTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1056,6 +1151,13 @@ class _PendingAttachments extends StatelessWidget {
         spacing: 8,
         runSpacing: 8,
         children: items.map((item) {
+          if (item.isPhoto) {
+            return _PendingPhotoAttachment(
+              attachment: item,
+              onOpen: () => onPhotoTap(item),
+              onRemove: () => onRemove(item.id),
+            );
+          }
           return InputChip(
             avatar: Icon(item.isPhoto ? Icons.image_outlined : Icons.file_copy),
             label: Text(
@@ -1065,6 +1167,83 @@ class _PendingAttachments extends StatelessWidget {
             onDeleted: () => onRemove(item.id),
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+class _PendingPhotoAttachment extends StatelessWidget {
+  const _PendingPhotoAttachment({
+    required this.attachment,
+    required this.onOpen,
+    required this.onRemove,
+  });
+
+  final TaskAttachment attachment;
+  final VoidCallback onOpen;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final bytes = _decodeAttachmentBytes(attachment.dataBase64);
+    return SizedBox(
+      width: 116,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              Tooltip(
+                message: 'Открыть фото',
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: onOpen,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: bytes == null
+                          ? const SizedBox(
+                              width: 116,
+                              height: 78,
+                              child: Center(
+                                child: Icon(Icons.broken_image_outlined),
+                              ),
+                            )
+                          : Image.memory(
+                              bytes,
+                              width: 116,
+                              height: 78,
+                              fit: BoxFit.cover,
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 2,
+                right: 2,
+                child: IconButton.filledTonal(
+                  tooltip: 'Убрать вложение',
+                  style: IconButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  onPressed: onRemove,
+                  icon: const Icon(Icons.close, size: 16),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            attachment.filename,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
       ),
     );
   }
@@ -1148,22 +1327,28 @@ class _AttachmentPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (attachment.isPhoto) {
-      return GestureDetector(
-        onTap: () => onPhotoTap(attachment),
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.memory(
-              base64Decode(attachment.dataBase64),
-              width: 168,
-              height: 112,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const SizedBox(
-                width: 168,
-                height: 112,
-                child: Center(child: Icon(Icons.broken_image_outlined)),
-              ),
+      final bytes = _decodeAttachmentBytes(attachment.dataBase64);
+      return Tooltip(
+        message: 'Открыть фото',
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => onPhotoTap(attachment),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: bytes == null
+                  ? const SizedBox(
+                      width: 168,
+                      height: 112,
+                      child: Center(child: Icon(Icons.broken_image_outlined)),
+                    )
+                  : Image.memory(
+                      bytes,
+                      width: 168,
+                      height: 112,
+                      fit: BoxFit.cover,
+                    ),
             ),
           ),
         ),
@@ -1325,6 +1510,7 @@ class _PhotoViewer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bytes = _decodeAttachmentBytes(attachment.dataBase64);
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -1338,18 +1524,24 @@ class _PhotoViewer extends StatelessWidget {
       ),
       body: Center(
         child: InteractiveViewer(
-          child: Image.memory(
-            base64Decode(attachment.dataBase64),
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const Icon(
-              Icons.broken_image_outlined,
-              color: Colors.white,
-              size: 48,
-            ),
-          ),
+          child: bytes == null
+              ? const Icon(
+                  Icons.broken_image_outlined,
+                  color: Colors.white,
+                  size: 48,
+                )
+              : Image.memory(bytes, fit: BoxFit.contain),
         ),
       ),
     );
+  }
+}
+
+Uint8List? _decodeAttachmentBytes(String dataBase64) {
+  try {
+    return base64Decode(dataBase64);
+  } on FormatException {
+    return null;
   }
 }
 

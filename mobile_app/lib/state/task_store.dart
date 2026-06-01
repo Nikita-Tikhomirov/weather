@@ -31,6 +31,16 @@ class DashboardVm {
   final List<TaskItem> upcoming;
 }
 
+class TaskSaveResult {
+  const TaskSaveResult.success(this.task) : error = null;
+  const TaskSaveResult.failure(this.error) : task = null;
+
+  final TaskItem? task;
+  final String? error;
+
+  bool get isSuccess => error == null;
+}
+
 abstract class _UndoAction {
   Future<void> apply(TaskRepository repository);
 }
@@ -441,6 +451,18 @@ class TaskStore {
     required TaskDraft draft,
     TaskItem? existing,
   }) async {
+    final result = await saveDraftWithResult(
+      draft: draft,
+      existing: existing,
+    );
+    return result.error;
+  }
+
+  Future<TaskSaveResult> saveDraftWithResult({
+    required TaskDraft draft,
+    TaskItem? existing,
+    bool rememberUndo = true,
+  }) async {
     final error = domainService.validateDraft(
       draft: draft,
       actorProfile: owner.value,
@@ -448,7 +470,7 @@ class TaskStore {
       projectGroupMembers: _projectGroupMembers(draft.projectId),
     );
     if (error != null) {
-      return error;
+      return TaskSaveResult.failure(error);
     }
 
     final task = domainService.materializeTask(
@@ -458,13 +480,15 @@ class TaskStore {
       existing: existing,
     );
     await repository.upsert(task);
-    if (existing == null) {
-      _rememberUndo(_UndoDeleteTask(task));
-    } else {
-      _rememberUndo(_UndoRestoreTask(existing));
+    if (rememberUndo) {
+      if (existing == null) {
+        _rememberUndo(_UndoDeleteTask(task));
+      } else {
+        _rememberUndo(_UndoRestoreTask(existing));
+      }
     }
     await refreshLocal();
-    return null;
+    return TaskSaveResult.success(task);
   }
 
   Future<void> move(TaskItem item, WorkflowStatus nextStatus) async {
