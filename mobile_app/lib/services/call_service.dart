@@ -33,6 +33,80 @@ Map<String, dynamic> buildCallMediaConstraints(String callType) {
   };
 }
 
+abstract interface class CallAudioDevice {
+  Future<void> configureForCall(AndroidAudioConfiguration configuration);
+  Future<void> setMicrophoneMuted(bool muted, MediaStreamTrack track);
+  Future<void> setSpeakerOn(bool enabled);
+  Future<void> preferHeadsetOrBluetooth();
+  Future<void> clearCommunicationDevice();
+}
+
+class WebRtcCallAudioDevice implements CallAudioDevice {
+  const WebRtcCallAudioDevice();
+
+  @override
+  Future<void> configureForCall(AndroidAudioConfiguration configuration) {
+    return Helper.setAndroidAudioConfiguration(configuration);
+  }
+
+  @override
+  Future<void> setMicrophoneMuted(bool muted, MediaStreamTrack track) {
+    return Helper.setMicrophoneMute(muted, track);
+  }
+
+  @override
+  Future<void> setSpeakerOn(bool enabled) {
+    return Helper.setSpeakerphoneOn(enabled);
+  }
+
+  @override
+  Future<void> preferHeadsetOrBluetooth() {
+    return Helper.setSpeakerphoneOnButPreferBluetooth();
+  }
+
+  @override
+  Future<void> clearCommunicationDevice() {
+    return Helper.clearAndroidCommunicationDevice();
+  }
+}
+
+Future<void> resetCallAudioRoute(CallAudioDevice audioDevice) async {
+  try {
+    await audioDevice.setSpeakerOn(false);
+  } catch (_) {
+    // Best-effort cleanup: the call is already ending.
+  }
+  try {
+    await audioDevice.clearCommunicationDevice();
+  } catch (_) {
+    // Best-effort cleanup: some platforms do not expose this route API.
+  }
+}
+
+Future<void> stopAndDisposeCallMediaStream(MediaStream? stream) async {
+  if (stream == null) return;
+
+  final tracks = List<MediaStreamTrack>.from(stream.getTracks());
+  for (final track in tracks) {
+    try {
+      track.enabled = false;
+    } catch (_) {
+      // Some native tracks can already be closed by the peer connection.
+    }
+    try {
+      await track.stop();
+    } catch (_) {
+      // Continue disposing the rest of the stream even if one track is stale.
+    }
+  }
+
+  try {
+    await stream.dispose();
+  } catch (_) {
+    // Ignore stale native stream handles during teardown.
+  }
+}
+
 class CallIceServerConfig {
   static Map<String, dynamic> build({
     String turnUrls = AppConfig.turnUrls,
@@ -63,10 +137,15 @@ class CallIceServerConfig {
 }
 
 class CallService {
-  CallService({required this.api, required this.actorProfile});
+  CallService({
+    required this.api,
+    required this.actorProfile,
+    CallAudioDevice? audioDevice,
+  }) : _audioDevice = audioDevice ?? const WebRtcCallAudioDevice();
 
   final ApiClient api;
   final String actorProfile;
+  final CallAudioDevice _audioDevice;
 
   RTCPeerConnection? _pc;
   MediaStream? _localStream;
@@ -79,7 +158,6 @@ class CallService {
   Timer? _disconnectTimer;
   final List<RTCIceCandidate> _pendingRemoteCandidates = <RTCIceCandidate>[];
   bool _hasRemoteDescription = false;
-  bool _audioSessionConfigured = false;
   bool _disposed = false;
 
   CallState _state = CallState.idle;
@@ -335,10 +413,9 @@ class CallService {
 
   Future<void> _prepareAudioSession() async {
     try {
-      await Helper.setAndroidAudioConfiguration(
+      await _audioDevice.configureForCall(
         buildCallAndroidAudioConfiguration(),
       );
-      _audioSessionConfigured = true;
     } catch (_) {
       // The call can still proceed; route buttons remain available in the UI.
     }
@@ -358,16 +435,16 @@ class CallService {
     final tracks = _localStream?.getAudioTracks() ?? const <MediaStreamTrack>[];
     for (final track in tracks) {
       track.enabled = !muted;
-      await Helper.setMicrophoneMute(muted, track);
+      await _audioDevice.setMicrophoneMuted(muted, track);
     }
   }
 
   Future<void> setSpeakerOn(bool enabled) async {
-    await Helper.setSpeakerphoneOn(enabled);
+    await _audioDevice.setSpeakerOn(enabled);
   }
 
   Future<void> preferHeadsetOrBluetooth() async {
-    await Helper.setSpeakerphoneOnButPreferBluetooth();
+    await _audioDevice.preferHeadsetOrBluetooth();
   }
 
   void _startSignalPolling() {
@@ -517,25 +594,27 @@ class CallService {
     _disconnectTimer = null;
     _pendingRemoteCandidates.clear();
     _hasRemoteDescription = false;
-    if (_audioSessionConfigured) {
+
+    final localStream = _localStream;
+    final remoteStream = _remoteStream;
+    final pc = _pc;
+    _localStream = null;
+    _remoteStream = null;
+    _pc = null;
+
+    if (pc != null) {
       try {
-        await Helper.clearAndroidCommunicationDevice();
+        await pc.close();
       } catch (_) {
-        // Best-effort Android audio-route cleanup.
+        // The media tracks are still stopped below.
       }
-      _audioSessionConfigured = false;
     }
 
-    if (_localStream != null) {
-      _localStream!.getTracks().forEach((track) => track.stop());
-      _localStream!.dispose();
-      _localStream = null;
+    await stopAndDisposeCallMediaStream(localStream);
+    if (!identical(remoteStream, localStream)) {
+      await stopAndDisposeCallMediaStream(remoteStream);
     }
-
-    if (_pc != null) {
-      await _pc!.close();
-      _pc = null;
-    }
+    await resetCallAudioRoute(_audioDevice);
 
     if (notifyStreams && !_disposed) {
       if (!_remoteStreamController.isClosed) {

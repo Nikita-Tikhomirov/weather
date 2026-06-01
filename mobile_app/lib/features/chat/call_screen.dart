@@ -187,6 +187,12 @@ class _CallScreenState extends State<CallScreen> {
     _localStreamSub?.cancel();
     _errorSub?.cancel();
     _durationTimer?.cancel();
+    if (_remoteRendererReady) {
+      _remoteRenderer.srcObject = null;
+    }
+    if (_localRendererReady) {
+      _localRenderer.srcObject = null;
+    }
     _remoteRenderer.dispose();
     _localRenderer.dispose();
     super.dispose();
@@ -280,6 +286,22 @@ class _CallScreenState extends State<CallScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isVideoCall) {
+      return Scaffold(
+        backgroundColor: callScreenBaseColor(widget.session.callType),
+        body: CallAudioBody(
+          peerLabel: widget.peerLabel,
+          state: _currentState,
+          statusText: _statusText,
+          durationText: _currentState == CallState.connected
+              ? _formatDuration(_duration)
+              : '',
+          errorText: _errorText,
+          actions: _buildActions(),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: callScreenBaseColor(widget.session.callType),
       body: Stack(
@@ -389,86 +411,193 @@ class _CallScreenState extends State<CallScreen> {
       return const SizedBox.shrink();
     }
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (_currentState == CallState.ringing) ...[
-          // Reject
-          _CallButton(
-            icon: Icons.call_end,
-            color: Colors.red,
-            label: 'Отклонить',
-            onTap: () async {
-              await widget.callService.rejectCall(widget.session.sessionId);
-            },
-          ),
-          const SizedBox(width: 40),
-          // Accept
-          _CallButton(
-            icon: Icons.call,
-            color: Colors.green,
-            label: 'Принять',
-            onTap: () async {
-              await widget.callService.acceptCall(
-                widget.session.sessionId,
-                callType: widget.session.callType,
-              );
-            },
-          ),
-        ] else ...[
-          // Mute
-          _CallButton(
-            icon: _isMuted ? Icons.mic_off : Icons.mic,
-            color: _isMuted ? Colors.white : Colors.white38,
-            label: _isMuted ? 'Вкл. микро' : 'Микрофон',
-            onTap: () {
-              setState(() => _isMuted = !_isMuted);
-              unawaited(widget.callService.setMicrophoneMuted(_isMuted));
-            },
-          ),
-          const SizedBox(width: 16),
-          // Headset / Bluetooth
-          _CallButton(
-            icon: Icons.headset_mic,
-            color: _isHeadsetPreferred ? Colors.white : Colors.white38,
-            label: 'Гарнитура',
-            onTap: () {
-              setState(() {
-                _isHeadsetPreferred = true;
-                _isSpeakerOn = false;
-              });
-              unawaited(widget.callService.preferHeadsetOrBluetooth());
-            },
-          ),
-          const SizedBox(width: 16),
-          // End call
-          _CallButton(
-            icon: Icons.call_end,
-            color: Colors.red,
-            label: 'Завершить',
-            onTap: () async {
-              await widget.callService.endCall();
-            },
-            size: 64,
-          ),
-          const SizedBox(width: 16),
-          // Speaker
-          _CallButton(
-            icon: _isSpeakerOn ? Icons.volume_up : Icons.volume_down,
-            color: _isSpeakerOn ? Colors.white : Colors.white38,
-            label: 'Динамик',
-            onTap: () {
-              setState(() {
-                _isSpeakerOn = !_isSpeakerOn;
-                if (_isSpeakerOn) {
-                  _isHeadsetPreferred = false;
-                }
-              });
-              unawaited(widget.callService.setSpeakerOn(_isSpeakerOn));
-            },
-          ),
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (_currentState == CallState.ringing) ...[
+            // Reject
+            _CallButton(
+              icon: Icons.call_end,
+              color: Colors.red,
+              label: 'Отклонить',
+              onTap: () async {
+                await widget.callService.rejectCall(widget.session.sessionId);
+              },
+            ),
+            const SizedBox(width: 40),
+            // Accept
+            _CallButton(
+              icon: Icons.call,
+              color: Colors.green,
+              label: 'Принять',
+              onTap: () async {
+                await widget.callService.acceptCall(
+                  widget.session.sessionId,
+                  callType: widget.session.callType,
+                );
+              },
+            ),
+          ] else ...[
+            // Mute
+            _CallButton(
+              icon: _isMuted ? Icons.mic_off : Icons.mic,
+              color: _isMuted ? Colors.white : Colors.white38,
+              label: _isMuted ? 'Вкл. микро' : 'Микрофон',
+              onTap: () {
+                setState(() => _isMuted = !_isMuted);
+                unawaited(widget.callService.setMicrophoneMuted(_isMuted));
+              },
+            ),
+            const SizedBox(width: 16),
+            // Headset / Bluetooth
+            _CallButton(
+              icon: Icons.headset_mic,
+              color: _isHeadsetPreferred ? Colors.white : Colors.white38,
+              label: 'Гарнитура',
+              onTap: () {
+                setState(() {
+                  _isHeadsetPreferred = true;
+                  _isSpeakerOn = false;
+                });
+                unawaited(widget.callService.preferHeadsetOrBluetooth());
+              },
+            ),
+            const SizedBox(width: 16),
+            // End call
+            _CallButton(
+              icon: Icons.call_end,
+              color: Colors.red,
+              label: 'Завершить',
+              onTap: () async {
+                await widget.callService.endCall();
+              },
+              size: 64,
+            ),
+            const SizedBox(width: 16),
+            // Speaker
+            _CallButton(
+              icon: _isSpeakerOn ? Icons.volume_up : Icons.volume_down,
+              color: _isSpeakerOn ? Colors.white : Colors.white38,
+              label: 'Динамик',
+              onTap: () {
+                setState(() {
+                  _isSpeakerOn = !_isSpeakerOn;
+                  if (_isSpeakerOn) {
+                    _isHeadsetPreferred = false;
+                  }
+                });
+                unawaited(widget.callService.setSpeakerOn(_isSpeakerOn));
+              },
+            ),
+          ],
         ],
-      ],
+      ),
+    );
+  }
+}
+
+class CallAudioBody extends StatelessWidget {
+  const CallAudioBody({
+    super.key,
+    required this.peerLabel,
+    required this.state,
+    required this.statusText,
+    required this.durationText,
+    required this.errorText,
+    required this.actions,
+  });
+
+  final String peerLabel;
+  final CallState state;
+  final String statusText;
+  final String durationText;
+  final String errorText;
+  final Widget actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF1A237E), Color(0xFF0D47A1)],
+        ),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                peerLabel,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                statusText,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              if (state == CallState.connected && durationText.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  durationText,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 18,
+                    fontFamily: 'monospace',
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              if (errorText.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  errorText,
+                  style: const TextStyle(
+                    color: Color(0xFFFFC4C4),
+                    fontSize: 13,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              Expanded(
+                child: Center(
+                  child: Container(
+                    width: 112,
+                    height: 112,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.call,
+                      color: Colors.white,
+                      size: 52,
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: actions,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
