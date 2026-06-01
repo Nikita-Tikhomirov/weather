@@ -159,14 +159,18 @@ class _HomePageState extends State<HomePage> {
             prefs, savedPhone, _currentProfileDisplayName);
       } catch (e, st) {
         debugPrint('[home] restore profile by phone error: $e\n$st');
-        owner = savedOwner.isNotEmpty
-            ? savedOwner
-            : await ProfileInitService.promptForInitialProfile(
-                context, api, _setProfileInfo);
+        if (savedOwner.isNotEmpty) {
+          owner = savedOwner;
+        } else {
+          if (!mounted) return;
+          owner = await ProfileInitService.promptForInitialProfile(
+              context, api, _setProfileInfo);
+        }
       }
     } else if (savedOwner.isNotEmpty) {
       owner = savedOwner;
     } else {
+      if (!mounted) return;
       owner = await ProfileInitService.promptForInitialProfile(
           context, api, _setProfileInfo);
     }

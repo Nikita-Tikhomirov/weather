@@ -54,6 +54,9 @@ class HomeShareReceiver {
 
       // Wait a moment for UI to settle
       await Future.delayed(const Duration(milliseconds: 500));
+      if (!context.mounted) {
+        return;
+      }
 
       // Show contact picker to forward shared content
       final allContacts = getAllContacts(store)

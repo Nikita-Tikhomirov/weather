@@ -59,6 +59,9 @@ class HomeProfileInitializer {
   Future<String?> promptForInitialProfile(BuildContext context) async {
     // Let the frame settle
     await WidgetsBinding.instance.endOfFrame;
+    if (!context.mounted) {
+      return null;
+    }
 
     final phoneCtl = TextEditingController();
     final nameCtl = TextEditingController();
@@ -87,13 +90,11 @@ class HomeProfileInitializer {
                   TextField(
                     controller: nameCtl,
                     textCapitalization: TextCapitalization.words,
-                    decoration:
-                        const InputDecoration(labelText: 'Имя'),
+                    decoration: const InputDecoration(labelText: 'Имя'),
                   ),
                   if (errorText.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    Text(errorText,
-                        style: const TextStyle(color: Colors.red)),
+                    Text(errorText, style: const TextStyle(color: Colors.red)),
                   ],
                 ],
               ),
@@ -109,15 +110,12 @@ class HomeProfileInitializer {
                       );
                       await prefs.setString(
                           'actor_profile', session.profileKey);
-                      await prefs.setString(
-                          'profile_phone', session.phone);
+                      await prefs.setString('profile_phone', session.phone);
                       await prefs.setString(
                           'profile_display_name', session.displayName);
-                      onProfileInfo
-                          ?.call(session.displayName, session.phone);
+                      onProfileInfo?.call(session.displayName, session.phone);
                       if (dialogContext.mounted) {
-                        Navigator.of(dialogContext)
-                            .pop(session.profileKey);
+                        Navigator.of(dialogContext).pop(session.profileKey);
                       }
                     } catch (error) {
                       setDialogState(() => errorText = error.toString());

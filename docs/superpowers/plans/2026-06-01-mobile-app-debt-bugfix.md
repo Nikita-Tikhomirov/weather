@@ -127,7 +127,7 @@ git push
 - Modify: `mobile_app/lib/features/home/home_share_receiver.dart`
 - Test: relevant existing widget tests under `mobile_app/test/`
 
-- [ ] **Step 1: Locate analyzer issues**
+- [x] **Step 1: Locate analyzer issues**
 
 Run:
 
@@ -138,7 +138,7 @@ C:\Users\user\tools\flutter\bin\dart.bat analyze --format=machine . | Select-Str
 
 Expected: 4 current locations.
 
-- [ ] **Step 2: Add mounted guards**
+- [x] **Step 2: Add mounted guards**
 
 Pattern to apply after async gaps:
 
@@ -156,7 +156,7 @@ if (!context.mounted) {
 }
 ```
 
-- [ ] **Step 3: Run targeted tests**
+- [x] **Step 3: Run targeted tests**
 
 Run:
 
@@ -167,7 +167,7 @@ C:\Users\user\tools\flutter\bin\flutter.bat test test\home_helpers_test.dart tes
 
 Expected: all selected tests pass.
 
-- [ ] **Step 4: Run analyzer subset**
+- [x] **Step 4: Run analyzer subset**
 
 Run:
 
@@ -178,7 +178,7 @@ C:\Users\user\tools\flutter\bin\dart.bat analyze --format=machine . | Select-Str
 
 Expected: no output for this lint.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Run:
 
