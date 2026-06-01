@@ -201,7 +201,7 @@ class LocalDb implements TaskDataSource {
     final dbPath = databasePath ?? p.join(basePath, 'family_todo_mobile.db');
     final db = await openDatabase(
       dbPath,
-      version: 10,
+      version: 11,
       onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE tasks(
@@ -219,6 +219,7 @@ class LocalDb implements TaskDataSource {
             tags_json TEXT NOT NULL,
             participants_json TEXT NOT NULL,
             reminder_offsets_json TEXT NOT NULL DEFAULT '[]',
+            collaboration_json TEXT NOT NULL DEFAULT '{}',
             duration_minutes INTEGER NOT NULL,
             recurrence TEXT NOT NULL DEFAULT '',
             sort_order INTEGER NOT NULL DEFAULT 0,
@@ -310,6 +311,14 @@ class LocalDb implements TaskDataSource {
             'tasks',
             'created_at',
             "TEXT NOT NULL DEFAULT ''",
+          );
+        }
+        if (oldVersion < 11) {
+          await _addColumnIfMissing(
+            db,
+            'tasks',
+            'collaboration_json',
+            "TEXT NOT NULL DEFAULT '{}'",
           );
         }
       },

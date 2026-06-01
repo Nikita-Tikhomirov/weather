@@ -6,6 +6,7 @@ function normalize_task(array $task): array
 {
     $tags = $task['tags'] ?? [];
     $participants = $task['participants'] ?? [];
+    $collaboration = normalize_collaboration_payload($task['collaboration'] ?? $task['collaboration_json'] ?? []);
     return [
         'id' => (string)($task['id'] ?? ''),
         'owner_key' => (string)($task['owner_key'] ?? ''),
@@ -20,9 +21,27 @@ function normalize_task(array $task): array
         'priority' => (string)($task['priority'] ?? 'medium'),
         'tags' => is_array($tags) ? array_values($tags) : [],
         'participants' => is_array($participants) ? array_values($participants) : [],
+        'collaboration' => $collaboration,
         'duration_minutes' => (int)($task['duration_minutes'] ?? 0),
         'updated_at' => (string)($task['updated_at'] ?? iso_now()),
         'version' => (int)($task['version'] ?? 1),
+    ];
+}
+
+function normalize_collaboration_payload(mixed $raw): array
+{
+    if (is_string($raw) && trim($raw) !== '') {
+        $decoded = json_decode($raw, true);
+        $raw = is_array($decoded) ? $decoded : [];
+    }
+    if (!is_array($raw)) {
+        $raw = [];
+    }
+    return [
+        'comments' => array_values(is_array($raw['comments'] ?? null) ? $raw['comments'] : []),
+        'attachments' => array_values(is_array($raw['attachments'] ?? null) ? $raw['attachments'] : []),
+        'checklists' => array_values(is_array($raw['checklists'] ?? null) ? $raw['checklists'] : []),
+        'activity' => array_values(is_array($raw['activity'] ?? null) ? $raw['activity'] : []),
     ];
 }
 
@@ -55,6 +74,7 @@ function normalize_family_task(array $item): array
     $assignees = normalize_assignees($item);
     $projectId = (string)($item['project_id'] ?? '');
     $groupId = (string)($item['group_id'] ?? '');
+    $collaboration = normalize_collaboration_payload($item['collaboration'] ?? $item['collaboration_json'] ?? []);
     if (count($assignees) === 0 && ($projectId === '' || $groupId === '')) {
         throw new InvalidArgumentException('assignees must contain at least one allowed profile');
     }
@@ -72,6 +92,7 @@ function normalize_family_task(array $item): array
         'assignees' => $assignees,
         // Legacy read/write compatibility for old clients.
         'participants' => $assignees,
+        'collaboration' => $collaboration,
         'duration_minutes' => (int)($item['duration_minutes'] ?? 0),
         'updated_at' => (string)($item['updated_at'] ?? iso_now()),
         'version' => (int)($item['version'] ?? 1),
@@ -105,10 +126,10 @@ function upsert_task(PDO $db, array $task): void
     $sql = <<<SQL
 INSERT INTO tasks (
     id, owner_key, is_family, project_id, group_id, title, details, due_date, time_value, workflow_status, priority,
-    tags_json, participants_json, duration_minutes, updated_at, version
+    tags_json, participants_json, collaboration_json, duration_minutes, updated_at, version
 ) VALUES (
     :id, :owner_key, :is_family, :project_id, :group_id, :title, :details, :due_date, :time_value, :workflow_status, :priority,
-    :tags_json, :participants_json, :duration_minutes, :updated_at, :version
+    :tags_json, :participants_json, :collaboration_json, :duration_minutes, :updated_at, :version
 )
 ON DUPLICATE KEY UPDATE
     project_id = VALUES(project_id),
@@ -123,6 +144,7 @@ ON DUPLICATE KEY UPDATE
     priority = VALUES(priority),
     tags_json = VALUES(tags_json),
     participants_json = VALUES(participants_json),
+    collaboration_json = VALUES(collaboration_json),
     duration_minutes = VALUES(duration_minutes),
     updated_at = VALUES(updated_at),
     version = GREATEST(version, VALUES(version))
@@ -142,6 +164,10 @@ SQL;
         'priority' => $task['priority'],
         'tags_json' => json_encode($task['tags'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         'participants_json' => json_encode($task['participants'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'collaboration_json' => json_encode(
+            normalize_collaboration_payload($task['collaboration'] ?? []),
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        ),
         'duration_minutes' => $task['duration_minutes'],
         'updated_at' => $task['updated_at'],
         'version' => $task['version'],
@@ -177,9 +203,9 @@ function upsert_family_task(PDO $db, array $item): void
 {
     $sql = <<<SQL
 INSERT INTO family_tasks (
-    id, project_id, group_id, title, details, due_date, time_value, workflow_status, participants_json, duration_minutes, updated_at, version
+    id, project_id, group_id, title, details, due_date, time_value, workflow_status, participants_json, collaboration_json, duration_minutes, updated_at, version
 ) VALUES (
-    :id, :project_id, :group_id, :title, :details, :due_date, :time_value, :workflow_status, :participants_json, :duration_minutes, :updated_at, :version
+    :id, :project_id, :group_id, :title, :details, :due_date, :time_value, :workflow_status, :participants_json, :collaboration_json, :duration_minutes, :updated_at, :version
 )
 ON DUPLICATE KEY UPDATE
     project_id = VALUES(project_id),
@@ -190,6 +216,7 @@ ON DUPLICATE KEY UPDATE
     time_value = VALUES(time_value),
     workflow_status = VALUES(workflow_status),
     participants_json = VALUES(participants_json),
+    collaboration_json = VALUES(collaboration_json),
     duration_minutes = VALUES(duration_minutes),
     updated_at = VALUES(updated_at),
     version = GREATEST(version, VALUES(version))
@@ -205,6 +232,10 @@ SQL;
         'time_value' => $item['time'],
         'workflow_status' => $item['workflow_status'],
         'participants_json' => json_encode($item['assignees'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'collaboration_json' => json_encode(
+            normalize_collaboration_payload($item['collaboration'] ?? []),
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        ),
         'duration_minutes' => $item['duration_minutes'],
         'updated_at' => $item['updated_at'],
         'version' => $item['version'],
@@ -252,6 +283,7 @@ function changed_tasks_since(PDO $db, string $since): array
             'priority' => (string)$row['priority'],
             'tags' => json_decode((string)$row['tags_json'], true) ?: [],
             'participants' => json_decode((string)$row['participants_json'], true) ?: [],
+            'collaboration' => normalize_collaboration_payload($row['collaboration_json'] ?? []),
             'duration_minutes' => (int)$row['duration_minutes'],
             'updated_at' => (string)$row['updated_at'],
             'version' => (int)$row['version'],
@@ -284,6 +316,7 @@ function changed_tasks_after_cursor(PDO $db, string $cursor): array
             'priority' => (string)$row['priority'],
             'tags' => json_decode((string)$row['tags_json'], true) ?: [],
             'participants' => json_decode((string)$row['participants_json'], true) ?: [],
+            'collaboration' => normalize_collaboration_payload($row['collaboration_json'] ?? []),
             'duration_minutes' => (int)$row['duration_minutes'],
             'updated_at' => (string)$row['updated_at'],
             'version' => (int)$row['version'],
@@ -321,6 +354,7 @@ function changed_tasks_since_for_actor(PDO $db, string $since, string $actor): a
             'priority' => (string)$row['priority'],
             'tags' => json_decode((string)$row['tags_json'], true) ?: [],
             'participants' => json_decode((string)$row['participants_json'], true) ?: [],
+            'collaboration' => normalize_collaboration_payload($row['collaboration_json'] ?? []),
             'duration_minutes' => (int)$row['duration_minutes'],
             'updated_at' => (string)$row['updated_at'],
             'version' => (int)$row['version'],
@@ -358,6 +392,7 @@ function changed_tasks_after_cursor_for_actor(PDO $db, string $cursor, string $a
             'priority' => (string)$row['priority'],
             'tags' => json_decode((string)$row['tags_json'], true) ?: [],
             'participants' => json_decode((string)$row['participants_json'], true) ?: [],
+            'collaboration' => normalize_collaboration_payload($row['collaboration_json'] ?? []),
             'duration_minutes' => (int)$row['duration_minutes'],
             'updated_at' => (string)$row['updated_at'],
             'version' => (int)$row['version'],
@@ -387,6 +422,7 @@ function changed_family_tasks_since(PDO $db, string $since): array
             'workflow_status' => (string)$row['workflow_status'],
             'assignees' => $assignees,
             'participants' => $assignees,
+            'collaboration' => normalize_collaboration_payload($row['collaboration_json'] ?? []),
             'duration_minutes' => (int)$row['duration_minutes'],
             'updated_at' => (string)$row['updated_at'],
             'version' => (int)$row['version'],
@@ -416,6 +452,7 @@ function changed_family_tasks_after_cursor(PDO $db, string $cursor): array
             'workflow_status' => (string)$row['workflow_status'],
             'assignees' => $assignees,
             'participants' => $assignees,
+            'collaboration' => normalize_collaboration_payload($row['collaboration_json'] ?? []),
             'duration_minutes' => (int)$row['duration_minutes'],
             'updated_at' => (string)$row['updated_at'],
             'version' => (int)$row['version'],

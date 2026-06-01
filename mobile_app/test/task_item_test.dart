@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:family_todo_mobile/models/task_collaboration.dart';
 import 'package:family_todo_mobile/models/task_item.dart';
 
 void main() {
@@ -125,6 +126,80 @@ void main() {
       expect(copy.title, 'Updated');
       expect(copy.assignees, ['nik']);
       expect(copy.id, 'task-4');
+    });
+
+    test('serializes collaboration through json and db row', () {
+      const collaboration = TaskCollaboration(
+        comments: [
+          TaskComment(
+            id: 'comment-1',
+            authorProfile: 'nik',
+            text: 'Проверил макет',
+            createdAt: '2026-06-01T10:00:00',
+            attachmentIds: ['att-1'],
+          ),
+        ],
+        attachments: [
+          TaskAttachment(
+            id: 'att-1',
+            kind: 'photo',
+            filename: 'screen.png',
+            mimeType: 'image/png',
+            dataBase64: 'cG5n',
+            caption: 'Главный экран',
+            authorProfile: 'nik',
+            createdAt: '2026-06-01T10:00:00',
+            sizeBytes: 3,
+          ),
+        ],
+        checklists: [
+          TaskChecklist(
+            id: 'checklist-1',
+            title: 'Перед релизом',
+            createdBy: 'nik',
+            createdAt: '2026-06-01T10:00:00',
+            items: [
+              TaskChecklistItem(
+                id: 'item-1',
+                text: 'Проверить Android',
+                done: true,
+                createdBy: 'nik',
+                createdAt: '2026-06-01T10:00:00',
+                completedBy: 'misha',
+                completedAt: '2026-06-01T11:00:00',
+              ),
+            ],
+          ),
+        ],
+      );
+      const task = TaskItem(
+        id: 'task-collab',
+        ownerKey: 'family',
+        isFamily: true,
+        projectId: 'project-1',
+        groupId: 'group-1',
+        title: 'Test',
+        details: 'Описание',
+        dueDate: '2026-06-01',
+        time: '12:00',
+        workflowStatus: WorkflowStatus.todo,
+        priority: Priority.medium,
+        tags: [],
+        assignees: ['nik'],
+        reminderOffsetsMinutes: [30],
+        collaboration: collaboration,
+        durationMinutes: 60,
+        updatedAt: '2026-06-01T00:00:00',
+        version: 1,
+      );
+
+      final fromJson = TaskItem.fromJson(task.toJson());
+      final fromDb = TaskItem.fromDbRow(task.toDbRow());
+
+      expect(fromJson.collaboration, collaboration);
+      expect(fromDb.collaboration, collaboration);
+      expect(fromDb.collaboration.checklistDoneCount, 1);
+      expect(fromDb.collaboration.attachmentCount, 1);
     });
   });
 

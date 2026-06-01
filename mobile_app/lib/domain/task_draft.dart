@@ -1,4 +1,5 @@
 import '../models/task_item.dart';
+import '../models/task_collaboration.dart';
 
 class TaskDraft {
   const TaskDraft({
@@ -12,6 +13,7 @@ class TaskDraft {
     required this.assignees,
     required this.durationMinutes,
     required this.reminderOffsetsMinutes,
+    this.collaboration = const TaskCollaboration(),
     this.projectId = '',
     this.groupId = '',
   });
@@ -26,6 +28,7 @@ class TaskDraft {
   final List<String> assignees;
   final int durationMinutes;
   final List<int> reminderOffsetsMinutes;
+  final TaskCollaboration collaboration;
   final String projectId;
   final String groupId;
 
@@ -40,6 +43,7 @@ class TaskDraft {
     List<String>? assignees,
     int? durationMinutes,
     List<int>? reminderOffsetsMinutes,
+    TaskCollaboration? collaboration,
     String? projectId,
     String? groupId,
   }) {
@@ -55,6 +59,7 @@ class TaskDraft {
       durationMinutes: durationMinutes ?? this.durationMinutes,
       reminderOffsetsMinutes:
           reminderOffsetsMinutes ?? this.reminderOffsetsMinutes,
+      collaboration: collaboration ?? this.collaboration,
       projectId: projectId ?? this.projectId,
       groupId: groupId ?? this.groupId,
     );

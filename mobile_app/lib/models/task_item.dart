@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import 'task_collaboration.dart';
+
 /// Workflow status of a task.
 enum WorkflowStatus {
   todo,
@@ -62,6 +64,7 @@ class TaskItem {
     required this.version,
     this.projectId = '',
     this.groupId = '',
+    this.collaboration = const TaskCollaboration(),
   });
 
   final String id;
@@ -78,6 +81,7 @@ class TaskItem {
   final List<String> tags;
   final List<String> assignees;
   final List<int> reminderOffsetsMinutes;
+  final TaskCollaboration collaboration;
 
   final int durationMinutes;
   final String updatedAt;
@@ -111,6 +115,9 @@ class TaskItem {
             ? (json['reminder_offsets_minutes'] as List)
             : const [],
       ),
+      collaboration: TaskCollaboration.fromJson(
+        json['collaboration'] ?? json['collaboration_json'],
+      ),
       durationMinutes:
           int.tryParse((json['duration_minutes'] ?? 0).toString()) ?? 0,
       updatedAt: (json['updated_at'] ?? '').toString(),
@@ -135,6 +142,7 @@ class TaskItem {
       'assignees': assignees,
       'participants': assignees,
       'reminder_offsets_minutes': reminderOffsetsMinutes,
+      'collaboration': collaboration.toJson(),
       'duration_minutes': durationMinutes,
       'updated_at': updatedAt,
       'version': version,
@@ -157,6 +165,7 @@ class TaskItem {
       'tags_json': jsonEncode(tags),
       'participants_json': jsonEncode(assignees),
       'reminder_offsets_json': jsonEncode(reminderOffsetsMinutes),
+      'collaboration_json': collaboration.toJsonString(),
       'duration_minutes': durationMinutes,
       'created_at': updatedAt,
       'updated_at': updatedAt,
@@ -184,6 +193,7 @@ class TaskItem {
       reminderOffsetsMinutes: _normalizeReminderOffsets(
         _decodeDynamicList(row['reminder_offsets_json']),
       ),
+      collaboration: TaskCollaboration.fromJson(row['collaboration_json']),
       durationMinutes:
           int.tryParse((row['duration_minutes'] ?? 0).toString()) ?? 0,
       updatedAt: (row['updated_at'] ?? '').toString(),
@@ -205,6 +215,7 @@ class TaskItem {
     List<String>? tags,
     List<String>? assignees,
     List<int>? reminderOffsetsMinutes,
+    TaskCollaboration? collaboration,
     int? durationMinutes,
     String? updatedAt,
     int? version,
@@ -225,6 +236,7 @@ class TaskItem {
       assignees: assignees ?? this.assignees,
       reminderOffsetsMinutes:
           reminderOffsetsMinutes ?? this.reminderOffsetsMinutes,
+      collaboration: collaboration ?? this.collaboration,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       updatedAt: updatedAt ?? this.updatedAt,
       version: version ?? this.version,
@@ -250,6 +262,7 @@ class TaskItem {
           listEquals(tags, other.tags) &&
           listEquals(assignees, other.assignees) &&
           listEquals(reminderOffsetsMinutes, other.reminderOffsetsMinutes) &&
+          collaboration == other.collaboration &&
           durationMinutes == other.durationMinutes &&
           updatedAt == other.updatedAt &&
           version == other.version;
@@ -270,6 +283,7 @@ class TaskItem {
         Object.hashAll(tags),
         Object.hashAll(assignees),
         Object.hashAll(reminderOffsetsMinutes),
+        collaboration,
         durationMinutes,
         updatedAt,
         version,

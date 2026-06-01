@@ -37,6 +37,7 @@ class SyncService {
             'assignees': task.assignees,
             'participants': task.assignees,
             'reminder_offsets_minutes': task.reminderOffsetsMinutes,
+            'collaboration': task.collaboration.toJson(),
             'duration_minutes': task.durationMinutes,
             'updated_at': task.updatedAt,
             'version': task.version,

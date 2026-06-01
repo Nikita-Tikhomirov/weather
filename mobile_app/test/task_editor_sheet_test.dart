@@ -159,6 +159,60 @@ void main() {
 
       // Sheet rendered successfully (has "Новая задача" header)
       expect(find.text('Новая задача'), findsOneWidget);
+      expect(find.byType(TabBar), findsOneWidget);
+      expect(find.text('Настройки'), findsOneWidget);
+      expect(find.text('Работа'), findsOneWidget);
+    });
+
+    testWidgets('work tab supports comments and checklists', (tester) async {
+      final store = _FakeTaskStore();
+      store.selectedDate.value = DateTime(2026, 5, 31);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  showTaskEditorSheet(
+                    context: context,
+                    store: store,
+                    knownContacts: const [],
+                    contactLabel: (c) => c.displayName,
+                    dateKey: (d) => d.toIso8601String(),
+                    onSaved: () async {},
+                  );
+                },
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Работа'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Комментарий или подпись'),
+        'Готово к проверке',
+      );
+      await tester.tap(find.byTooltip('Отправить'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Готово к проверке'), findsOneWidget);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Новый чеклист'),
+        'Релиз',
+      );
+      await tester.tap(find.byTooltip('Добавить чеклист'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Релиз'), findsOneWidget);
     });
 
     testWidgets('edit mode pre-fills existing task data', (tester) async {

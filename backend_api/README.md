@@ -21,9 +21,10 @@ Backend синхронизации для мобильного приложен�
 ## Быстрый деплой на shared hosting
 
 1. Создайте БД MySQL и импортируйте `sql/schema.sql`.
-2. Скопируйте папку `backend_api` на хостинг.
-3. Скопируйте `config.example.php` в `config.php` и заполните.
-4. Убедитесь, что web root указывает на `backend_api/public`.
+2. Для существующей БД примените `sql/2026_06_01_add_task_collaboration.sql`.
+3. Скопируйте папку `backend_api` на хостинг.
+4. Скопируйте `config.example.php` в `config.php` и заполните.
+5. Убедитесь, что web root указывает на `backend_api/public`.
 
 ## Формат API-ключа
 

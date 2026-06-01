@@ -45,6 +45,7 @@ final class SyncRepository
             'priority' => (string)($task['priority'] ?? 'medium'),
             'tags' => is_array($tags) ? array_values($tags) : [],
             'participants' => is_array($participants) ? array_values($participants) : [],
+            'collaboration' => $this->normalizeCollaboration($task['collaboration'] ?? $task['collaboration_json'] ?? []),
             'reminder_offsets_minutes' => $this->normalizeReminderOffsets($task['reminder_offsets_minutes'] ?? []),
             'duration_minutes' => (int)($task['duration_minutes'] ?? 0),
             'updated_at' => (string)($task['updated_at'] ?? $this->nowIso()),
@@ -69,6 +70,7 @@ final class SyncRepository
             'workflow_status' => SyncRules::ensureWorkflow((string)($item['workflow_status'] ?? 'todo')),
             'assignees' => $assignees,
             'participants' => $assignees,
+            'collaboration' => $this->normalizeCollaboration($item['collaboration'] ?? $item['collaboration_json'] ?? []),
             'reminder_offsets_minutes' => $this->normalizeReminderOffsets($item['reminder_offsets_minutes'] ?? []),
             'duration_minutes' => (int)($item['duration_minutes'] ?? 0),
             'updated_at' => (string)($item['updated_at'] ?? $this->nowIso()),
@@ -152,6 +154,7 @@ final class SyncRepository
                 'priority' => $task['priority'],
                 'tags_json' => json_encode($task['tags'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'participants_json' => json_encode($task['participants'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'collaboration_json' => json_encode($this->normalizeCollaboration($task['collaboration'] ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'reminder_offsets_json' => json_encode($task['reminder_offsets_minutes'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'duration_minutes' => (int)$task['duration_minutes'],
                 'updated_at' => $task['updated_at'],
@@ -199,6 +202,7 @@ final class SyncRepository
                 'time_value' => $item['time'],
                 'workflow_status' => $item['workflow_status'],
                 'participants_json' => json_encode($item['assignees'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'collaboration_json' => json_encode($this->normalizeCollaboration($item['collaboration'] ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'reminder_offsets_json' => json_encode($item['reminder_offsets_minutes'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'duration_minutes' => (int)$item['duration_minutes'],
                 'updated_at' => $item['updated_at'],
@@ -251,6 +255,7 @@ final class SyncRepository
                 'priority' => (string)$row->priority,
                 'tags' => $this->decodeJsonArray($row->tags_json),
                 'participants' => $this->decodeJsonArray($row->participants_json),
+                'collaboration' => $this->normalizeCollaboration($row->collaboration_json ?? []),
                 'reminder_offsets_minutes' => $this->normalizeReminderOffsets($this->decodeJsonArray($row->reminder_offsets_json)),
                 'duration_minutes' => (int)$row->duration_minutes,
                 'updated_at' => (string)$row->updated_at,
@@ -285,6 +290,7 @@ final class SyncRepository
                 'workflow_status' => (string)$row->workflow_status,
                 'participants' => $participants,
                 'assignees' => $participants,
+                'collaboration' => $this->normalizeCollaboration($row->collaboration_json ?? []),
                 'reminder_offsets_minutes' => $this->normalizeReminderOffsets($this->decodeJsonArray($row->reminder_offsets_json)),
                 'duration_minutes' => (int)$row->duration_minutes,
                 'updated_at' => (string)$row->updated_at,
@@ -464,6 +470,24 @@ final class SyncRepository
         }
         $decoded = json_decode($value, true);
         return is_array($decoded) ? $decoded : [];
+    }
+
+    private function normalizeCollaboration(mixed $value): array
+    {
+        if (is_string($value) && trim($value) !== '') {
+            $decoded = json_decode($value, true);
+            $value = is_array($decoded) ? $decoded : [];
+        }
+        if (!is_array($value)) {
+            $value = [];
+        }
+
+        return [
+            'comments' => array_values(is_array($value['comments'] ?? null) ? $value['comments'] : []),
+            'attachments' => array_values(is_array($value['attachments'] ?? null) ? $value['attachments'] : []),
+            'checklists' => array_values(is_array($value['checklists'] ?? null) ? $value['checklists'] : []),
+            'activity' => array_values(is_array($value['activity'] ?? null) ? $value['activity'] : []),
+        ];
     }
 
     /** @return array<string, mixed>|null */

@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:family_todo_mobile/services/sync_service.dart';
+import 'package:family_todo_mobile/models/task_collaboration.dart';
 import 'package:family_todo_mobile/models/task_item.dart';
 import 'package:family_todo_mobile/models/pending_event.dart';
 import 'package:family_todo_mobile/models/sync_snapshots.dart';
@@ -185,6 +188,7 @@ TaskItem _makeTask(
   String ownerKey = 'nik',
   bool isFamily = false,
   WorkflowStatus workflowStatus = WorkflowStatus.todo,
+  TaskCollaboration collaboration = const TaskCollaboration(),
 }) {
   return TaskItem(
     id: id,
@@ -199,6 +203,7 @@ TaskItem _makeTask(
     tags: const [],
     assignees: const [],
     reminderOffsetsMinutes: const [],
+    collaboration: collaboration,
     durationMinutes: 0,
     updatedAt: '2026-01-01T00:00:00',
     version: 1,
@@ -247,6 +252,38 @@ void main() {
 
         final pending = await db.readPending();
         expect(pending.first.entity, 'family_task');
+      });
+
+      test('family task payload includes collaboration context', () async {
+        const collaboration = TaskCollaboration(
+          comments: [
+            TaskComment(
+              id: 'comment-1',
+              authorProfile: 'nik',
+              text: 'Готово к проверке',
+              createdAt: '2026-06-01T10:00:00',
+            ),
+          ],
+        );
+        final task = _makeTask(
+          'task-collab',
+          isFamily: true,
+          ownerKey: 'family',
+          collaboration: collaboration,
+        );
+
+        await service.enqueueUpsert(task);
+
+        final pending = await db.readPending();
+        final payload =
+            jsonDecode(pending.first.payloadJson) as Map<String, dynamic>;
+        final rawCollaboration =
+            payload['collaboration'] as Map<String, dynamic>;
+        expect(rawCollaboration['comments'], isA<List>());
+        expect(
+          (rawCollaboration['comments'] as List).first['text'],
+          'Готово к проверке',
+        );
       });
     });
 

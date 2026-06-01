@@ -68,6 +68,10 @@ class TaskCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = isDark ? const Color(0xFF1F2937) : const Color(0xFFFFFFFF);
     final textColor = Theme.of(context).colorScheme.onSurface;
+    final collaboration = item.collaboration;
+    final checklistText = collaboration.checklistTotalCount == 0
+        ? ''
+        : '${collaboration.checklistDoneCount}/${collaboration.checklistTotalCount}';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -167,6 +171,35 @@ class TaskCard extends StatelessWidget {
                   ),
                 ),
               ],
+              if (collaboration.commentCount > 0 ||
+                  collaboration.attachmentCount > 0 ||
+                  collaboration.checklistTotalCount > 0) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    if (collaboration.commentCount > 0)
+                      _TaskMetaPill(
+                        icon: Icons.chat_bubble_outline,
+                        label: '${collaboration.commentCount}',
+                        color: statusColor,
+                      ),
+                    if (collaboration.attachmentCount > 0)
+                      _TaskMetaPill(
+                        icon: Icons.attachment,
+                        label: '${collaboration.attachmentCount}',
+                        color: statusColor,
+                      ),
+                    if (checklistText.isNotEmpty)
+                      _TaskMetaPill(
+                        icon: Icons.checklist,
+                        label: checklistText,
+                        color: statusColor,
+                      ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -228,6 +261,44 @@ class TaskCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _TaskMetaPill extends StatelessWidget {
+  const _TaskMetaPill({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withAlpha(22),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }
