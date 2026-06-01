@@ -25,21 +25,27 @@ class _FakeDataSource implements TaskDataSource {
   }
 
   @override
-  Future<List<TaskItem>> readTasks(
-      {String? ownerKey, bool includeAll = false}) async {
+  Future<List<TaskItem>> readTasks({
+    String? ownerKey,
+    bool includeAll = false,
+  }) async {
     return tasks.toList();
   }
 
   @override
-  Future<void> replacePersonalTasks(
-      {required String ownerKey, required List<TaskItem> items}) async {
+  Future<void> replacePersonalTasks({
+    required String ownerKey,
+    required List<TaskItem> items,
+  }) async {
     tasks.removeWhere((t) => t.ownerKey == ownerKey && !t.isFamily);
     tasks.addAll(items);
   }
 
   @override
-  Future<void> mergePersonalTasks(
-      {required String ownerKey, required List<TaskItem> items}) async {
+  Future<void> mergePersonalTasks({
+    required String ownerKey,
+    required List<TaskItem> items,
+  }) async {
     for (final item in items) {
       await upsertTask(item);
     }
@@ -102,12 +108,15 @@ class _FakeSyncApi implements SyncApi {
   }
 
   @override
-  Future<PullSnapshot> pull(
-      {required String since, bool changesMode = false, String? cursor}) async {
+  Future<PullSnapshot> pull({
+    required String since,
+    bool changesMode = false,
+    String? cursor,
+  }) async {
     return pullResult ??
         PullSnapshot(
-          tasks: [],
-          familyTasks: [],
+          tasks: const [],
+          familyTasks: const [],
           serverTime: '2026-01-01T00:00:00',
           nextCursor: '2026-01-01T00:00:01',
           isDelta: changesMode,
@@ -123,51 +132,60 @@ class _FakeSyncApi implements SyncApi {
   }
 
   @override
-  Future<DeviceTokenRegistration> registerDeviceToken(
-      {required String actorProfile,
-      required String token,
-      required String platform,
-      required String appVersion,
-      String? deviceId,
-      String playServices = 'unknown',
-      String tokenStatus = 'active',
-      String lastError = ''}) async {
-    return DeviceTokenRegistration(
-        shouldResetToken: false, previousTokenStatus: '');
-  }
-
-  @override
-  Future<void> reportDeviceStatus(
-      {required String actorProfile,
-      required String platform,
-      required String appVersion,
-      required String tokenStatus,
-      required String playServices,
-      String? token,
-      String? deviceId,
-      String? lastError}) async {}
-
-  @override
-  Future<PushDeviceStatus> pushDeviceStatus(
-      {required String actorProfile}) async {
-    return PushDeviceStatus(
-      actorProfile: actorProfile,
-      effectiveTokenStatus: 'active',
-      activeTokenCount: 1,
-      status: {},
-      tokens: [],
+  Future<DeviceTokenRegistration> registerDeviceToken({
+    required String actorProfile,
+    required String token,
+    required String platform,
+    required String appVersion,
+    String? deviceId,
+    String playServices = 'unknown',
+    String tokenStatus = 'active',
+    String lastError = '',
+  }) async {
+    return const DeviceTokenRegistration(
+      shouldResetToken: false,
+      previousTokenStatus: '',
     );
   }
 
   @override
-  Future<void> unregisterDeviceToken(
-      {required String actorProfile, required String token}) async {}
+  Future<void> reportDeviceStatus({
+    required String actorProfile,
+    required String platform,
+    required String appVersion,
+    required String tokenStatus,
+    required String playServices,
+    String? token,
+    String? deviceId,
+    String? lastError,
+  }) async {}
+
+  @override
+  Future<PushDeviceStatus> pushDeviceStatus({
+    required String actorProfile,
+  }) async {
+    return PushDeviceStatus(
+      actorProfile: actorProfile,
+      effectiveTokenStatus: 'active',
+      activeTokenCount: 1,
+      status: const {},
+      tokens: const [],
+    );
+  }
+
+  @override
+  Future<void> unregisterDeviceToken({
+    required String actorProfile,
+    required String token,
+  }) async {}
 }
 
-TaskItem _makeTask(String id,
-    {String ownerKey = 'nik',
-    bool isFamily = false,
-    WorkflowStatus workflowStatus = WorkflowStatus.todo}) {
+TaskItem _makeTask(
+  String id, {
+  String ownerKey = 'nik',
+  bool isFamily = false,
+  WorkflowStatus workflowStatus = WorkflowStatus.todo,
+}) {
   return TaskItem(
     id: id,
     ownerKey: ownerKey,
@@ -178,9 +196,9 @@ TaskItem _makeTask(String id,
     time: '12:00',
     workflowStatus: workflowStatus,
     priority: Priority.medium,
-    tags: [],
-    assignees: [],
-    reminderOffsetsMinutes: [],
+    tags: const [],
+    assignees: const [],
+    reminderOffsetsMinutes: const [],
     durationMinutes: 0,
     updatedAt: '2026-01-01T00:00:00',
     version: 1,
@@ -237,8 +255,11 @@ void main() {
         final task = _makeTask('task-3');
         await db.upsertTask(task);
 
-        await service.enqueueDelete('task-3',
-            ownerKey: 'nik', isFamily: false);
+        await service.enqueueDelete(
+          'task-3',
+          ownerKey: 'nik',
+          isFamily: false,
+        );
 
         final tasks = await db.readTasks();
         expect(tasks.length, 0);
@@ -249,8 +270,11 @@ void main() {
       });
 
       test('family task delete uses family entity type', () async {
-        await service.enqueueDelete('task-4',
-            ownerKey: 'family', isFamily: true);
+        await service.enqueueDelete(
+          'task-4',
+          ownerKey: 'family',
+          isFamily: true,
+        );
 
         final pending = await db.readPending();
         expect(pending.first.entity, 'family_task');
@@ -282,7 +306,7 @@ void main() {
 
         api.pullResult = PullSnapshot(
           tasks: [_makeTask('server-1')],
-          familyTasks: [],
+          familyTasks: const [],
           serverTime: '2026-01-01T00:00:00',
           nextCursor: '2026-01-01T00:00:02',
           isDelta: false,

@@ -76,7 +76,10 @@ class HomeVoiceCallHandler {
     try {
       final bytes = await File(voicePath!).readAsBytes();
       final up = await api.chatUploadSticker(
-          actorProfile: actor, bytes: bytes, filename: 'voice.m4a');
+        actorProfile: actor,
+        bytes: bytes,
+        filename: 'voice.m4a',
+      );
       final meta = Map<String, dynamic>.from(up.imageMeta);
       meta['duration_ms'] = voiceSec * 1000;
       final msg = await api.chatSendMessage(

@@ -73,7 +73,9 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
                       const Card(
                         child: Padding(
                           padding: EdgeInsets.all(16),
-                          child: Text('Проектов пока нет. Нажмите + чтобы создать.'),
+                          child: Text(
+                            'Проектов пока нет. Нажмите + чтобы создать.',
+                          ),
                         ),
                       ),
                     for (final project in projects)
@@ -130,18 +132,16 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
     List<FamilyGroup> groups,
   ) {
     final projectGroupIds = pgMap[project.id] ?? [];
-    final assignedGroups = groups
-        .where((g) => projectGroupIds.contains(g.id))
-        .toList();
+    final assignedGroups =
+        groups.where((g) => projectGroupIds.contains(g.id)).toList();
 
     return ValueListenableBuilder<String>(
       valueListenable: store.currentProjectId,
       builder: (context, currentId, _) {
         final isCurrent = currentId == project.id;
         return Card(
-          color: isCurrent
-              ? Theme.of(context).colorScheme.primaryContainer
-              : null,
+          color:
+              isCurrent ? Theme.of(context).colorScheme.primaryContainer : null,
           child: ListTile(
             title: Text(project.name),
             subtitle: Column(
@@ -160,8 +160,10 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
               ],
             ),
             leading: isCurrent
-                ? Icon(Icons.check_circle,
-                    color: Theme.of(context).colorScheme.primary)
+                ? Icon(
+                    Icons.check_circle,
+                    color: Theme.of(context).colorScheme.primary,
+                  )
                 : null,
             trailing: PopupMenuButton<String>(
               onSelected: (action) {
@@ -176,9 +178,13 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
               itemBuilder: (context) => [
                 if (!isCurrent)
                   const PopupMenuItem(
-                      value: 'select', child: Text('Выбрать')),
+                    value: 'select',
+                    child: Text('Выбрать'),
+                  ),
                 const PopupMenuItem(
-                    value: 'edit', child: Text('Редактировать')),
+                  value: 'edit',
+                  child: Text('Редактировать'),
+                ),
                 const PopupMenuItem(value: 'delete', child: Text('Удалить')),
               ],
             ),

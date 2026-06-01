@@ -34,8 +34,7 @@ class ChatImageBubble extends StatelessWidget {
                 width: urls.length == 1
                     ? (compact ? 260 : 420)
                     : (compact ? 120 : 160),
-                height:
-                    urls.length == 1 ? null : (compact ? 120 : 160),
+                height: urls.length == 1 ? null : (compact ? 120 : 160),
                 errorBuilder: (context, error, stackTrace) {
                   return SelectableText(
                     urls[i],
@@ -77,8 +76,7 @@ class ChatVideoBubble extends StatelessWidget {
       children: [
         for (var i = 0; i < urls.length; i++)
           Padding(
-            padding:
-                EdgeInsets.only(bottom: i < urls.length - 1 ? 8 : 0),
+            padding: EdgeInsets.only(bottom: i < urls.length - 1 ? 8 : 0),
             child: GestureDetector(
               onTap: () {
                 final url = resolveUrl(urls[i]);
@@ -98,9 +96,8 @@ class ChatVideoBubble extends StatelessWidget {
                       height: compact ? 180 : 280,
                       child: VideoThumbnail(
                         url: resolveUrl(urls[i]),
-                        thumbnailUrl: thumbUrl != null
-                            ? resolveUrl(thumbUrl!)
-                            : null,
+                        thumbnailUrl:
+                            thumbUrl != null ? resolveUrl(thumbUrl!) : null,
                       ),
                     ),
                   ),

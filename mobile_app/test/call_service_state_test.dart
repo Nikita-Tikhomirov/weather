@@ -28,7 +28,7 @@ void main() {
       api: _PendingAcceptApi(completer),
       actorProfile: 'nik',
     );
-    final session = CallSession(
+    const session = CallSession(
       sessionId: 'call-1',
       callerProfile: 'misha',
       calleeProfile: 'nik',

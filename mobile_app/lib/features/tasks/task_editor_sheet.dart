@@ -128,8 +128,10 @@ Future<void> showTaskEditorSheet({
                       selectedGroup?.members.toSet() ?? const <String>{};
                   final assigneeContacts = selectedGroup != null
                       ? knownContacts
-                          .where((contact) => selectedGroupMembers
-                              .contains(contact.profileKey))
+                          .where(
+                            (contact) => selectedGroupMembers
+                                .contains(contact.profileKey),
+                          )
                           .toList()
                       : knownContacts
                           .where((contact) => contact.profileKey.isNotEmpty)
@@ -139,299 +141,318 @@ Future<void> showTaskEditorSheet({
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  DropdownButtonFormField<String>(
-                    // ignore: deprecated_member_use
-                    value: projectList.any((p) => p.id == selectedProjectId)
-                        ? selectedProjectId
-                        : null,
-                    decoration: const InputDecoration(labelText: 'Проект *'),
-                    hint: const Text('Выберите проект'),
-                    items: [
-                      for (final project in projectList)
-                        DropdownMenuItem<String>(
-                          value: project.id,
-                          child: Text(project.name),
+                      DropdownButtonFormField<String>(
+                        // ignore: deprecated_member_use
+                        value: projectList.any((p) => p.id == selectedProjectId)
+                            ? selectedProjectId
+                            : null,
+                        decoration:
+                            const InputDecoration(labelText: 'Проект *'),
+                        hint: const Text('Выберите проект'),
+                        items: [
+                          for (final project in projectList)
+                            DropdownMenuItem<String>(
+                              value: project.id,
+                              child: Text(project.name),
+                            ),
+                        ],
+                        onChanged: (value) {
+                          setModalState(() {
+                            selectedProjectId = value ?? '';
+                            selectedGroupId = '';
+                            selectedAssignees.clear();
+                            normalizeProjectSelection();
+                          });
+                        },
+                      ),
+                      if (isProjectTask) ...[
+                        DropdownButtonFormField<String>(
+                          // ignore: deprecated_member_use
+                          value: projectGroups.any(
+                            (group) => group.id == selectedGroupId,
+                          )
+                              ? selectedGroupId
+                              : null,
+                          decoration:
+                              const InputDecoration(labelText: 'Группа'),
+                          hint: const Text('Выберите группу'),
+                          items: [
+                            for (final group in projectGroups)
+                              DropdownMenuItem<String>(
+                                value: group.id,
+                                child: Text(group.name),
+                              ),
+                          ],
+                          onChanged: projectGroups.isEmpty
+                              ? null
+                              : (value) {
+                                  setModalState(() {
+                                    selectedGroupId = value ?? '';
+                                    final nextGroup = selectedGroupId.isNotEmpty
+                                        ? projectGroups
+                                            .cast<FamilyGroup?>()
+                                            .firstWhere(
+                                              (group) =>
+                                                  group?.id == selectedGroupId,
+                                              orElse: () => null,
+                                            )
+                                        : null;
+                                    final members =
+                                        nextGroup?.members.toSet() ??
+                                            const <String>{};
+                                    if (members.isNotEmpty) {
+                                      selectedAssignees.removeWhere(
+                                        (assignee) =>
+                                            !members.contains(assignee),
+                                      );
+                                    } else {
+                                      selectedAssignees.clear();
+                                    }
+                                  });
+                                },
                         ),
-                    ],
-                    onChanged: (value) {
-                      setModalState(() {
-                        selectedProjectId = value ?? '';
-                        selectedGroupId = '';
-                        selectedAssignees.clear();
-                        normalizeProjectSelection();
-                      });
-                    },
-                  ),
-                  if (isProjectTask) ...[
-                    DropdownButtonFormField<String>(
-                      // ignore: deprecated_member_use
-                      value: projectGroups.any(
-                        (group) => group.id == selectedGroupId,
-                      )
-                          ? selectedGroupId
-                          : null,
-                      decoration: const InputDecoration(labelText: 'Группа'),
-                      hint: const Text('Выберите группу'),
-                      items: [
-                        for (final group in projectGroups)
-                          DropdownMenuItem<String>(
-                            value: group.id,
-                            child: Text(group.name),
+                        if (projectGroups.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 6),
+                            child: Text(
+                              'У проекта нет групп.',
+                            ),
                           ),
                       ],
-                      onChanged: projectGroups.isEmpty
-                          ? null
-                          : (value) {
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.calendar_month),
+                              label: Text(dateKey(selected)),
+                              onPressed: () async {
+                                final picked = await showDatePicker(
+                                  context: sheetContext,
+                                  initialDate: selected,
+                                  firstDate: DateTime(2024),
+                                  lastDate: DateTime(2035),
+                                );
+                                if (picked != null) {
+                                  setModalState(() => selected = picked);
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.schedule),
+                              label: Text(time),
+                              onPressed: () async {
+                                final parts = time.split(':');
+                                final initial = TimeOfDay(
+                                  hour: int.tryParse(parts.first) ?? 19,
+                                  minute: int.tryParse(
+                                        parts.length > 1 ? parts[1] : '0',
+                                      ) ??
+                                      0,
+                                );
+                                final picked = await showTimePicker(
+                                  context: sheetContext,
+                                  initialTime: initial,
+                                );
+                                if (picked != null) {
+                                  setModalState(() {
+                                    time =
+                                        '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      DropdownButtonFormField<Priority>(
+                        // ignore: deprecated_member_use
+                        value: priority,
+                        decoration:
+                            const InputDecoration(labelText: 'Приоритет'),
+                        items: const [
+                          DropdownMenuItem(
+                            value: Priority.low,
+                            child: Text('Низкий'),
+                          ),
+                          DropdownMenuItem(
+                            value: Priority.medium,
+                            child: Text('Средний'),
+                          ),
+                          DropdownMenuItem(
+                            value: Priority.high,
+                            child: Text('Высокий'),
+                          ),
+                        ],
+                        onChanged: (value) => setModalState(
+                          () => priority = value ?? Priority.medium,
+                        ),
+                      ),
+                      DropdownButtonFormField<WorkflowStatus>(
+                        // ignore: deprecated_member_use
+                        value: status,
+                        decoration: const InputDecoration(labelText: 'Статус'),
+                        items: const [
+                          DropdownMenuItem(
+                            value: WorkflowStatus.todo,
+                            child: Text('К выполнению'),
+                          ),
+                          DropdownMenuItem(
+                            value: WorkflowStatus.in_progress,
+                            child: Text('В работе'),
+                          ),
+                          DropdownMenuItem(
+                            value: WorkflowStatus.in_review,
+                            child: Text('На проверке'),
+                          ),
+                          DropdownMenuItem(
+                            value: WorkflowStatus.done,
+                            child: Text('Выполнено'),
+                          ),
+                          DropdownMenuItem(
+                            value: WorkflowStatus.archive,
+                            child: Text('Архив'),
+                          ),
+                        ],
+                        onChanged: (value) => setModalState(
+                          () => status = value ?? WorkflowStatus.todo,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Ответственные',
+                        style: Theme.of(sheetContext).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 6),
+                      if (isProjectTask && selectedGroup == null)
+                        const Text('Выберите группу проекта.')
+                      else if (selectedGroup != null &&
+                          assigneeContacts.isEmpty)
+                        const Text('Участники группы не найдены в контактах.')
+                      else
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: assigneeContacts.map((member) {
+                            final profile = member.profileKey;
+                            return FilterChip(
+                              label: Text(contactLabel(member)),
+                              selected: selectedAssignees.contains(profile),
+                              onSelected: (selected) {
+                                setModalState(() {
+                                  if (selected) {
+                                    selectedAssignees.add(profile);
+                                  } else {
+                                    selectedAssignees.remove(profile);
+                                  }
+                                });
+                              },
+                            );
+                          }).toList(),
+                        ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Напоминания',
+                        style: Theme.of(sheetContext).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _reminderOptions.entries.map((entry) {
+                          final offset = entry.key;
+                          return FilterChip(
+                            label: Text(entry.value),
+                            selected: selectedReminderOffsets.contains(offset),
+                            onSelected: (selected) {
                               setModalState(() {
-                                selectedGroupId = value ?? '';
-                                final nextGroup = selectedGroupId.isNotEmpty
-                                    ? projectGroups
-                                        .cast<FamilyGroup?>()
-                                        .firstWhere(
-                                          (group) =>
-                                              group?.id == selectedGroupId,
-                                          orElse: () => null,
-                                        )
-                                    : null;
-                                final members = nextGroup?.members.toSet() ??
-                                    const <String>{};
-                                if (members.isNotEmpty) {
-                                  selectedAssignees.removeWhere(
-                                    (assignee) => !members.contains(assignee),
-                                  );
+                                if (selected) {
+                                  selectedReminderOffsets.add(offset);
                                 } else {
-                                  selectedAssignees.clear();
+                                  selectedReminderOffsets.remove(offset);
                                 }
                               });
                             },
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ); // end of StatefulBuilder Column
+                }, // end of StatefulBuilder builder
+              ), // end of StatefulBuilder
+              // ── Controls outside StatefulBuilder ──
+              TextField(
+                controller: durationCtl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Оценка времени (мин)',
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(sheetContext),
+                      child: const Text('Отмена'),
                     ),
-                    if (projectGroups.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 6),
-                        child: Text(
-                          'У проекта нет групп.',
-                        ),
-                      ),
-                  ],
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.calendar_month),
-                          label: Text(dateKey(selected)),
-                          onPressed: () async {
-                            final picked = await showDatePicker(
-                              context: sheetContext,
-                              initialDate: selected,
-                              firstDate: DateTime(2024),
-                              lastDate: DateTime(2035),
-                            );
-                            if (picked != null) {
-                              setModalState(() => selected = picked);
-                            }
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.schedule),
-                          label: Text(time),
-                          onPressed: () async {
-                            final parts = time.split(':');
-                            final initial = TimeOfDay(
-                              hour: int.tryParse(parts.first) ?? 19,
-                              minute: int.tryParse(
-                                    parts.length > 1 ? parts[1] : '0',
-                                  ) ??
-                                  0,
-                            );
-                            final picked = await showTimePicker(
-                              context: sheetContext,
-                              initialTime: initial,
-                            );
-                            if (picked != null) {
-                              setModalState(() {
-                                time =
-                                    '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-                              });
-                            }
-                          },
-                        ),
-                      ),
-                    ],
                   ),
-                  DropdownButtonFormField<Priority>(
-                    // ignore: deprecated_member_use
-                    value: priority,
-                    decoration: const InputDecoration(labelText: 'Приоритет'),
-                    items: const [
-                      DropdownMenuItem(value: Priority.low, child: Text('Низкий')),
-                      DropdownMenuItem(value: Priority.medium, child: Text('Средний')),
-                      DropdownMenuItem(value: Priority.high, child: Text('Высокий')),
-                    ],
-                    onChanged: (value) =>
-                        setModalState(() => priority = value ?? Priority.medium),
-                  ),
-                  DropdownButtonFormField<WorkflowStatus>(
-                    // ignore: deprecated_member_use
-                    value: status,
-                    decoration: const InputDecoration(labelText: 'Статус'),
-                    items: const [
-                      DropdownMenuItem(
-                        value: WorkflowStatus.todo,
-                        child: Text('К выполнению'),
-                      ),
-                      DropdownMenuItem(
-                        value: WorkflowStatus.in_progress,
-                        child: Text('В работе'),
-                      ),
-                      DropdownMenuItem(
-                        value: WorkflowStatus.in_review,
-                        child: Text('На проверке'),
-                      ),
-                      DropdownMenuItem(value: WorkflowStatus.done, child: Text('Выполнено')),
-                      DropdownMenuItem(
-                        value: WorkflowStatus.archive,
-                        child: Text('Архив'),
-                      ),
-                    ],
-                    onChanged: (value) =>
-                        setModalState(() => status = value ?? WorkflowStatus.todo),
-                   ),
-                   const SizedBox(height: 8),
-                   Text(
-                    'Ответственные',
-                    style: Theme.of(sheetContext).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 6),
-                  if (isProjectTask && selectedGroup == null)
-                    const Text('Выберите группу проекта.')
-                  else if (selectedGroup != null && assigneeContacts.isEmpty)
-                    const Text('Участники группы не найдены в контактах.')
-                  else
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: assigneeContacts.map((member) {
-                        final profile = member.profileKey;
-                        return FilterChip(
-                          label: Text(contactLabel(member)),
-                          selected: selectedAssignees.contains(profile),
-                          onSelected: (selected) {
-                            setModalState(() {
-                              if (selected) {
-                                selectedAssignees.add(profile);
-                              } else {
-                                selectedAssignees.remove(profile);
-                              }
-                            });
-                          },
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () async {
+                        if (selectedProjectId.isEmpty) {
+                          ScaffoldMessenger.of(sheetContext).showSnackBar(
+                            const SnackBar(
+                              content: Text('Выберите проект'),
+                            ),
+                          );
+                          return;
+                        }
+                        final draft = TaskDraft(
+                          title: titleCtl.text.trim(),
+                          details: detailsCtl.text.trim(),
+                          dueDate: dateKey(selected),
+                          time: time,
+                          priority: priority,
+                          workflowStatus: status,
+                          isFamily: true,
+                          assignees: selectedAssignees.toList(),
+                          durationMinutes:
+                              int.tryParse(durationCtl.text.trim()) ?? 0,
+                          reminderOffsetsMinutes:
+                              selectedReminderOffsets.toList(),
+                          projectId: selectedProjectId,
+                          groupId: selectedGroupId,
                         );
-                      }).toList(),
+                        final messenger = ScaffoldMessenger.of(sheetContext);
+                        final error = await store.saveDraft(
+                          draft: draft,
+                          existing: existing,
+                        );
+                        if (!sheetContext.mounted) {
+                          return;
+                        }
+                        if (error != null) {
+                          messenger.showSnackBar(
+                            SnackBar(content: Text(error)),
+                          );
+                          return;
+                        }
+                        Navigator.of(sheetContext).pop();
+                        await onSaved();
+                      },
+                      child: const Text('Сохранить'),
                     ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Напоминания',
-                    style: Theme.of(sheetContext).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _reminderOptions.entries.map((entry) {
-                      final offset = entry.key;
-                      return FilterChip(
-                        label: Text(entry.value),
-                        selected: selectedReminderOffsets.contains(offset),
-                        onSelected: (selected) {
-                          setModalState(() {
-                            if (selected) {
-                              selectedReminderOffsets.add(offset);
-                            } else {
-                              selectedReminderOffsets.remove(offset);
-                            }
-                          });
-                        },
-                      );
-                    }).toList(),
                   ),
                 ],
-              ); // end of StatefulBuilder Column
-              }, // end of StatefulBuilder builder
-            ), // end of StatefulBuilder
-            // ── Controls outside StatefulBuilder ──
-            TextField(
-              controller: durationCtl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Оценка времени (мин)',
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(sheetContext),
-                    child: const Text('Отмена'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () async {
-                      if (selectedProjectId.isEmpty) {
-                        ScaffoldMessenger.of(sheetContext).showSnackBar(
-                          const SnackBar(
-                            content: Text('Выберите проект'),
-                          ),
-                        );
-                        return;
-                      }
-                      final draft = TaskDraft(
-                        title: titleCtl.text.trim(),
-                        details: detailsCtl.text.trim(),
-                        dueDate: dateKey(selected),
-                        time: time,
-                        priority: priority,
-                        workflowStatus: status,
-                        isFamily: true,
-                        assignees: selectedAssignees.toList(),
-                        durationMinutes:
-                            int.tryParse(durationCtl.text.trim()) ?? 0,
-                        reminderOffsetsMinutes:
-                            selectedReminderOffsets.toList(),
-                        projectId: selectedProjectId,
-                        groupId: selectedGroupId,
-                      );
-                      final messenger =
-                          ScaffoldMessenger.of(sheetContext);
-                      final error = await store.saveDraft(
-                        draft: draft,
-                        existing: existing,
-                      );
-                      if (!sheetContext.mounted) {
-                        return;
-                      }
-                      if (error != null) {
-                        messenger.showSnackBar(
-                          SnackBar(content: Text(error)),
-                        );
-                        return;
-                      }
-                      Navigator.of(sheetContext).pop();
-                      await onSaved();
-                    },
-                    child: const Text('Сохранить'),
-                  ),
-                ),
-              ],
-            ),
-          ], // end of outer Column children
-        ), // end of outer Column
-      ), // end of SingleChildScrollView
-    ); // end of Padding
+            ], // end of outer Column children
+          ), // end of outer Column
+        ), // end of SingleChildScrollView
+      ); // end of Padding
     }, // end of showModalBottomSheet builder
   );
 }

@@ -359,9 +359,10 @@ class _ProjectImageMessage extends StatelessWidget {
                 base64Decode(message.imageBase64),
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) => const Icon(
-                    Icons.broken_image,
-                    size: 48,
-                    color: Colors.white),
+                  Icons.broken_image,
+                  size: 48,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),

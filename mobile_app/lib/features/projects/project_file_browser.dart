@@ -139,8 +139,12 @@ class ProjectFileBrowser extends StatelessWidget {
                         if (node.isDir) {
                           onOpenFile(node.path);
                         } else {
-                          _showFileDetail(context, node, onLinkToChat,
-                              onViewFile: onViewFile);
+                          _showFileDetail(
+                            context,
+                            node,
+                            onLinkToChat,
+                            onViewFile: onViewFile,
+                          );
                         }
                       },
                       onLink: () => onLinkToChat(node.path),
@@ -174,30 +178,43 @@ class ProjectFileBrowser extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.insert_drive_file_outlined,
-                        size: 40, color: cs.primary),
+                    Icon(
+                      Icons.insert_drive_file_outlined,
+                      size: 40,
+                      color: cs.primary,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(node.name,
-                              style: const TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.w600)),
+                          Text(
+                            node.name,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           const SizedBox(height: 4),
-                          Text(node.sizeLabel,
-                              style: TextStyle(
-                                  color: cs.onSurface.withValues(alpha: 0.6))),
+                          Text(
+                            node.sizeLabel,
+                            style: TextStyle(
+                              color: cs.onSurface.withValues(alpha: 0.6),
+                            ),
+                          ),
                         ],
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(node.path,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: cs.onSurface.withValues(alpha: 0.5))),
+                Text(
+                  node.path,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: cs.onSurface.withValues(alpha: 0.5),
+                  ),
+                ),
                 const SizedBox(height: 20),
                 if (onViewFile != null) ...[
                   const SizedBox(height: 8),

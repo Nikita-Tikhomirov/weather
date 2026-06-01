@@ -95,8 +95,7 @@ class CallApiClient extends HttpApiClient implements CallApi {
         'signal_type': signalType,
         if (sdp != null) 'sdp': sdp is String ? sdp : jsonEncode(sdp),
         if (candidate != null)
-          'candidate':
-              candidate is String ? candidate : jsonEncode(candidate),
+          'candidate': candidate is String ? candidate : jsonEncode(candidate),
       }),
     );
   }

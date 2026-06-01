@@ -110,7 +110,7 @@ void main() {
 
   group('contactLabel', () {
     test('returns display name when available', () {
-      final contact = ChatContact(
+      const contact = ChatContact(
         profileKey: 'u_001',
         displayName: 'Никита',
         phone: '+79991112233',
@@ -120,7 +120,7 @@ void main() {
     });
 
     test('returns phone when display name is empty', () {
-      final contact = ChatContact(
+      const contact = ChatContact(
         profileKey: 'u_042',
         displayName: '   ',
         phone: '+79991112244',
@@ -130,7 +130,7 @@ void main() {
     });
 
     test('returns profile key as fallback', () {
-      final contact = ChatContact(
+      const contact = ChatContact(
         profileKey: 'unknown',
         displayName: '',
         phone: '',
@@ -211,7 +211,7 @@ void main() {
 
   group('primaryChatMediaUrl', () {
     test('uses voice imageUrl when server returns legacy voice payload', () {
-      final message = ChatMessage(
+      const message = ChatMessage(
         id: 'voice-1',
         conversationKey: 'dm:nik:misha',
         senderProfile: 'nik',
@@ -225,7 +225,7 @@ void main() {
     });
 
     test('prefers attachment URL over legacy imageUrl', () {
-      final message = ChatMessage(
+      const message = ChatMessage(
         id: 'voice-2',
         conversationKey: 'dm:nik:misha',
         senderProfile: 'nik',
@@ -237,7 +237,7 @@ void main() {
           ChatAttachment(
             kind: 'voice',
             assetUrl: '/chat/media/attached',
-            imageMeta: const {'duration_ms': 1200},
+            imageMeta: {'duration_ms': 1200},
             sortOrder: 0,
           ),
         ],

@@ -53,7 +53,8 @@ class TaskDraft {
       isFamily: isFamily ?? this.isFamily,
       assignees: assignees ?? this.assignees,
       durationMinutes: durationMinutes ?? this.durationMinutes,
-      reminderOffsetsMinutes: reminderOffsetsMinutes ?? this.reminderOffsetsMinutes,
+      reminderOffsetsMinutes:
+          reminderOffsetsMinutes ?? this.reminderOffsetsMinutes,
       projectId: projectId ?? this.projectId,
       groupId: groupId ?? this.groupId,
     );

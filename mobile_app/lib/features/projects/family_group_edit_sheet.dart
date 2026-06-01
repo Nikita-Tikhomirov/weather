@@ -38,9 +38,8 @@ Future<void> showFamilyGroupEditSheet({
               ),
               ...contacts,
             ];
-      final availableContacts = effectiveContacts
-          .where((c) => c.profileKey.isNotEmpty)
-          .toList();
+      final availableContacts =
+          effectiveContacts.where((c) => c.profileKey.isNotEmpty).toList();
 
       return Padding(
         padding: EdgeInsets.only(
@@ -62,8 +61,7 @@ Future<void> showFamilyGroupEditSheet({
               // ── TextField manages its own state via controller ──
               TextField(
                 controller: nameCtl,
-                decoration:
-                    const InputDecoration(labelText: 'Название группы'),
+                decoration: const InputDecoration(labelText: 'Название группы'),
               ),
               const SizedBox(height: 12),
               Text(
@@ -74,7 +72,8 @@ Future<void> showFamilyGroupEditSheet({
               if (availableContacts.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(8.0),
-                  child: Text('Нет контактов. Добавьте контакты в мессенджере.'),
+                  child:
+                      Text('Нет контактов. Добавьте контакты в мессенджере.'),
                 ),
               // ── StatefulBuilder only for FilterChips ──
               StatefulBuilder(
@@ -119,25 +118,32 @@ Future<void> showFamilyGroupEditSheet({
                         if (name.isEmpty) {
                           ScaffoldMessenger.of(sheetContext).showSnackBar(
                             const SnackBar(
-                                content: Text('Введите название группы')),
+                              content: Text('Введите название группы'),
+                            ),
                           );
                           return;
                         }
                         if (selectedMembers.isEmpty) {
                           ScaffoldMessenger.of(sheetContext).showSnackBar(
                             const SnackBar(
-                                content:
-                                    Text('Выберите хотя бы одного участника')),
+                              content:
+                                  Text('Выберите хотя бы одного участника'),
+                            ),
                           );
                           return;
                         }
                         try {
                           if (isCreate) {
                             await store.createFamilyGroup(
-                                name, selectedMembers.toList());
+                              name,
+                              selectedMembers.toList(),
+                            );
                           } else {
                             await store.editFamilyGroup(
-                                group!.id, name, selectedMembers.toList());
+                              group!.id,
+                              name,
+                              selectedMembers.toList(),
+                            );
                           }
                           if (sheetContext.mounted) {
                             Navigator.pop(sheetContext);
@@ -147,7 +153,8 @@ Future<void> showFamilyGroupEditSheet({
                             ScaffoldMessenger.of(sheetContext).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                    'Ошибка: ${e.toString().replaceFirst("Exception: ", "")}'),
+                                  'Ошибка: ${e.toString().replaceFirst("Exception: ", "")}',
+                                ),
                                 backgroundColor: Colors.red,
                               ),
                             );

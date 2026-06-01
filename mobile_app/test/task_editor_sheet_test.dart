@@ -165,7 +165,7 @@ void main() {
       final store = _FakeTaskStore();
       store.selectedDate.value = DateTime(2026, 5, 31);
 
-      final existing = TaskItem(
+      const existing = TaskItem(
         id: 't1',
         ownerKey: 'test_user',
         isFamily: false,
@@ -175,9 +175,9 @@ void main() {
         time: '14:00',
         workflowStatus: WorkflowStatus.todo,
         priority: Priority.medium,
-        tags: const [],
-        assignees: const ['user1'],
-        reminderOffsetsMinutes: const [30],
+        tags: [],
+        assignees: ['user1'],
+        reminderOffsetsMinutes: [30],
         durationMinutes: 30,
         updatedAt: '2026-05-30T00:00:00',
         version: 1,

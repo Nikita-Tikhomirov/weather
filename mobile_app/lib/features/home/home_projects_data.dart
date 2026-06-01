@@ -100,7 +100,7 @@ class HomeProjectsDataManager {
       final rawList = json['projects'] as List<dynamic>? ?? [];
       final projects = rawList
           .whereType<Map<String, dynamic>>()
-          .map((item) => ProjectContact.fromJson(item))
+          .map(ProjectContact.fromJson)
           .toList();
       projectContacts = projects;
     } catch (_) {
@@ -111,35 +111,41 @@ class HomeProjectsDataManager {
   List<ProjectContact> fallbackProjects() {
     return const [
       ProjectContact(
-          id: 'tudushka',
-          name: 'Тудушка',
-          path: r'C:\Users\user\Desktop\weather',
-          icon: 'terminal'),
+        id: 'tudushka',
+        name: 'Тудушка',
+        path: r'C:\Users\user\Desktop\weather',
+        icon: 'terminal',
+      ),
       ProjectContact(
-          id: 'cifra',
-          name: 'Цифра',
-          path: r'C:\Users\user\Desktop\depseeker_test',
-          icon: 'code'),
+        id: 'cifra',
+        name: 'Цифра',
+        path: r'C:\Users\user\Desktop\depseeker_test',
+        icon: 'code',
+      ),
       ProjectContact(
-          id: 'stylish-house',
-          name: 'Stylysh-house',
-          path: r'C:\Users\user\Desktop\stylish-house',
-          icon: 'code'),
+        id: 'stylish-house',
+        name: 'Stylysh-house',
+        path: r'C:\Users\user\Desktop\stylish-house',
+        icon: 'code',
+      ),
       ProjectContact(
-          id: 'exp76',
-          name: 'Exp76',
-          path: r'C:\Users\user\Desktop\exp76.ru',
-          icon: 'code'),
+        id: 'exp76',
+        name: 'Exp76',
+        path: r'C:\Users\user\Desktop\exp76.ru',
+        icon: 'code',
+      ),
       ProjectContact(
-          id: 'groot',
-          name: 'Грут',
-          path: r'C:\Users\user\Desktop\Грут',
-          icon: 'code'),
+        id: 'groot',
+        name: 'Грут',
+        path: r'C:\Users\user\Desktop\Грут',
+        icon: 'code',
+      ),
       ProjectContact(
-          id: 'nousro',
-          name: 'Nousro',
-          path: r'C:\Users\user\Desktop\nousro',
-          icon: 'folder'),
+        id: 'nousro',
+        name: 'Nousro',
+        path: r'C:\Users\user\Desktop\nousro',
+        icon: 'folder',
+      ),
     ];
   }
 
@@ -181,8 +187,7 @@ class HomeProjectsDataManager {
       ..addAll(restoredMessages);
 
     // Only dispose existing bridge if connecting to a different project
-    if (projectBridge != null &&
-        projectBridge!.activeProjectId != projectId) {
+    if (projectBridge != null && projectBridge!.activeProjectId != projectId) {
       projectBridge?.dispose();
       projectBridge = null;
     }
@@ -219,8 +224,7 @@ class HomeProjectsDataManager {
           }
         }
         if (msg.isProjects && msg.projects.isNotEmpty) {
-          projectContacts =
-              msg.projects.map((p) => ProjectContact.fromJson(p)).toList();
+          projectContacts = msg.projects.map(ProjectContact.fromJson).toList();
         }
         if (msg.isFiles) {
           projectFiles = msg.files;
@@ -315,7 +319,9 @@ class HomeProjectsDataManager {
   }
 
   Future<void> saveProjectSessionId(
-      String projectId, String sessionId) async {
+    String projectId,
+    String sessionId,
+  ) async {
     projectSessionIds[projectId] = sessionId;
     final prefs = await SharedPreferences.getInstance();
     if (sessionId.isEmpty) {

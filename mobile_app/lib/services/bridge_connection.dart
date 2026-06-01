@@ -48,7 +48,8 @@ class ProjectBridgeService {
   /// Resolve server address from SharedPreferences.
   static Future<String> getServerAddress() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(AppConfig.prefBridgeHost) ?? AppConfig.bridgeDefaultHost;
+    return prefs.getString(AppConfig.prefBridgeHost) ??
+        AppConfig.bridgeDefaultHost;
   }
 
   /// Save server address to SharedPreferences.
@@ -257,8 +258,10 @@ class ProjectBridgeService {
         _pendingSends.removeAt(0);
       }
       _pendingSends.add(trimmed);
-      onStatusChange(false,
-          'Нет соединения, сообщение будет отправлено после переподключения.');
+      onStatusChange(
+        false,
+        'Нет соединения, сообщение будет отправлено после переподключения.',
+      );
       _scheduleReconnect();
       return false;
     }
@@ -282,19 +285,25 @@ class ProjectBridgeService {
     }
     if (bytes.length > maxProjectUploadBytes) {
       onStatusChange(
-          false, 'Файл больше 15 МБ. Уменьшите файл или отправьте другой.');
+        false,
+        'Файл больше 15 МБ. Уменьшите файл или отправьте другой.',
+      );
       return false;
     }
     if (!isConnected) {
       onStatusChange(
-          false, 'Нет соединения, файл можно отправить после переподключения.');
+        false,
+        'Нет соединения, файл можно отправить после переподключения.',
+      );
       _scheduleReconnect();
       return false;
     }
     final message = jsonEncode({
       'type': 'upload_file',
       'filename': fileName.trim().isEmpty ? 'file.bin' : fileName.trim(),
-      'mime_type': mimeType.trim().isEmpty ? 'application/octet-stream' : mimeType.trim(),
+      'mime_type': mimeType.trim().isEmpty
+          ? 'application/octet-stream'
+          : mimeType.trim(),
       'data_base64': base64Encode(bytes),
       if (caption.trim().isNotEmpty) 'caption': caption.trim(),
     });
@@ -314,12 +323,16 @@ class ProjectBridgeService {
     }
     if (bytes.length > maxProjectUploadBytes) {
       onStatusChange(
-          false, 'Фото больше 15 МБ. Уменьшите фото или отправьте другое.');
+        false,
+        'Фото больше 15 МБ. Уменьшите фото или отправьте другое.',
+      );
       return false;
     }
     if (!isConnected) {
       onStatusChange(
-          false, 'Нет соединения, фото можно отправить после переподключения.');
+        false,
+        'Нет соединения, фото можно отправить после переподключения.',
+      );
       _scheduleReconnect();
       return false;
     }
@@ -399,7 +412,9 @@ class ProjectBridgeService {
     } catch (_) {
       if (!_disposed) {
         onStatusChange(
-            false, 'Не удалось отправить данные, переподключаюсь...');
+          false,
+          'Не удалось отправить данные, переподключаюсь...',
+        );
       }
       _cleanup();
       _scheduleReconnect();

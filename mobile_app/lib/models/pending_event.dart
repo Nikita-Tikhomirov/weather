@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 @immutable
 class PendingEvent {
-  PendingEvent({
+  const PendingEvent({
     required this.eventId,
     required this.entity,
     required this.action,

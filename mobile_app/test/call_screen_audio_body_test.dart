@@ -64,7 +64,7 @@ void main() {
       actorProfile: 'nik',
       audioDevice: _NoopCallAudioDevice(),
     );
-    final session = CallSession(
+    const session = CallSession(
       sessionId: 'call-1',
       callerProfile: 'misha',
       calleeProfile: 'nik',

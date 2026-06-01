@@ -15,8 +15,7 @@ class ChatStickerBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (stickerAssetUrl.isNotEmpty &&
-        !stickerAssetUrl.startsWith('emoji://')) {
+    if (stickerAssetUrl.isNotEmpty && !stickerAssetUrl.startsWith('emoji://')) {
       return Image.network(
         stickerAssetUrl,
         fit: BoxFit.contain,

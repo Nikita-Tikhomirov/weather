@@ -60,9 +60,13 @@ extension _DesktopShellExtension on _HomePageState {
                               segments: const [
                                 ButtonSegment(value: 0, label: Text('Задачи')),
                                 ButtonSegment(
-                                    value: 1, label: Text('Календарь')),
+                                  value: 1,
+                                  label: Text('Календарь'),
+                                ),
                                 ButtonSegment(
-                                    value: 2, label: Text('Мессенджер')),
+                                  value: 2,
+                                  label: Text('Мессенджер'),
+                                ),
                               ],
                               selected: {page},
                               onSelectionChanged: (value) =>
@@ -78,9 +82,13 @@ extension _DesktopShellExtension on _HomePageState {
                               showSelectedIcon: false,
                               segments: const [
                                 ButtonSegment(
-                                    value: 'light', label: Text('Свет')),
+                                  value: 'light',
+                                  label: Text('Свет'),
+                                ),
                                 ButtonSegment(
-                                    value: 'dark', label: Text('Тьма')),
+                                  value: 'dark',
+                                  label: Text('Тьма'),
+                                ),
                               ],
                               selected: {mode},
                               onSelectionChanged: (value) =>

@@ -5,7 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  const statuses = [WorkflowStatus.todo, WorkflowStatus.in_progress, WorkflowStatus.in_review, WorkflowStatus.done];
+  const statuses = [
+    WorkflowStatus.todo,
+    WorkflowStatus.in_progress,
+    WorkflowStatus.in_review,
+    WorkflowStatus.done,
+  ];
 
   double contrastRatio(Color a, Color b) {
     final l1 = a.computeLuminance();

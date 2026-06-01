@@ -50,7 +50,7 @@ void main() {
     });
 
     test('toJson includes both assignees and participants', () {
-      final task = TaskItem(
+      const task = TaskItem(
         id: 'task-3',
         ownerKey: 'nik',
         isFamily: true,
@@ -79,7 +79,7 @@ void main() {
     });
 
     test('toDbRow includes project and group assignment', () {
-      final task = TaskItem(
+      const task = TaskItem(
         id: 'task-3-db',
         ownerKey: 'nik',
         isFamily: true,
@@ -104,7 +104,7 @@ void main() {
     });
 
     test('copyWith preserves assignees', () {
-      final task = TaskItem(
+      const task = TaskItem(
         id: 'task-4',
         ownerKey: 'nik',
         isFamily: false,
@@ -130,7 +130,7 @@ void main() {
 
   group('TaskItem family detection', () {
     test('isFamily is true when ownerKey is family', () {
-      final task = TaskItem(
+      const task = TaskItem(
         id: 'f-1',
         ownerKey: 'family',
         isFamily: true,

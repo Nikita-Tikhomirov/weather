@@ -216,8 +216,10 @@ class FcmService {
           _mergeErrors(_lastTokenError, 'manual_get_token:$error');
     }
 
-    _updateDiagnostics(forceResetToken ? 'manual:reset_done' : 'manual:refresh',
-        token: token);
+    _updateDiagnostics(
+      forceResetToken ? 'manual:reset_done' : 'manual:refresh',
+      token: token,
+    );
 
     try {
       final server = await api.pushDeviceStatus(actorProfile: actorProfile);

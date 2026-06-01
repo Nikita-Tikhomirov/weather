@@ -168,7 +168,9 @@ class _KanbanColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = KanbanColumnStyle.resolve(
-        Theme.of(context), WorkflowStatus.parse(status));
+      Theme.of(context),
+      WorkflowStatus.parse(status),
+    );
 
     return Container(
       margin: margin,

@@ -24,8 +24,7 @@ class ChatTextBubble extends StatelessWidget {
         spans.add(TextSpan(text: text.substring(lastEnd, match.start)));
       }
       final url = match.group(0)!;
-      final uri =
-          Uri.tryParse(url.startsWith('www.') ? 'https://$url' : url);
+      final uri = Uri.tryParse(url.startsWith('www.') ? 'https://$url' : url);
       spans.add(
         TextSpan(
           text: url,

@@ -5,9 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('buildVoiceAttachment marks uploaded voice as playable attachment', () {
     final attachment = buildVoiceAttachment(
-      ChatUploadResult(
+      const ChatUploadResult(
         assetUrl: '/chat/media/voice-123',
-        imageMeta: const {'mime_type': 'audio/mp4'},
+        imageMeta: {'mime_type': 'audio/mp4'},
       ),
       durationMs: 3000,
     );

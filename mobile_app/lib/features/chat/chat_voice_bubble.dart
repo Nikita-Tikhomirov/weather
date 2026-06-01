@@ -31,7 +31,8 @@ class _VoiceBubbleState extends State<VoiceBubble>
     _animCtrl = AnimationController(
       vsync: this,
       duration: Duration(
-          milliseconds: widget.durationMs > 0 ? widget.durationMs : 3000),
+        milliseconds: widget.durationMs > 0 ? widget.durationMs : 3000,
+      ),
     );
     _animCtrl.addStatusListener((status) {
       if (status == AnimationStatus.completed) {

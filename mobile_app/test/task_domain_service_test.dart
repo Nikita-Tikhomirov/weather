@@ -27,22 +27,30 @@ void main() {
     test('rejects empty title', () {
       final draft = validDraft().copyWith(title: '');
       expect(
-          service.validateDraft(draft: draft, actorProfile: 'nik'), isNotNull);
+        service.validateDraft(draft: draft, actorProfile: 'nik'),
+        isNotNull,
+      );
     });
 
     test('rejects whitespace-only title', () {
       final draft = validDraft().copyWith(title: '   ');
       expect(
-          service.validateDraft(draft: draft, actorProfile: 'nik'), isNotNull);
+        service.validateDraft(draft: draft, actorProfile: 'nik'),
+        isNotNull,
+      );
     });
 
     test('accepts valid title', () {
       expect(
-          service.validateDraft(
-              draft: validDraft(),
-              actorProfile: 'nik',
-              projectGroupMembers: const {'group-1': ['nik']}),
-          isNull);
+        service.validateDraft(
+          draft: validDraft(),
+          actorProfile: 'nik',
+          projectGroupMembers: const {
+            'group-1': ['nik'],
+          },
+        ),
+        isNull,
+      );
     });
 
     // ── Family task permissions (any registered user can create shared tasks) ──
@@ -53,11 +61,15 @@ void main() {
         assignees: ['misha'],
       );
       expect(
-          service.validateDraft(
-              draft: draft,
-              actorProfile: 'misha',
-              projectGroupMembers: const {'group-1': ['misha']}),
-          isNull);
+        service.validateDraft(
+          draft: draft,
+          actorProfile: 'misha',
+          projectGroupMembers: const {
+            'group-1': ['misha'],
+          },
+        ),
+        isNull,
+      );
     });
 
     test('accepts family task from any profile (nik)', () {
@@ -66,24 +78,34 @@ void main() {
         assignees: ['misha', 'arisha'],
       );
       expect(
-          service.validateDraft(
-              draft: draft,
-              actorProfile: 'nik',
-              projectGroupMembers: const {'group-1': ['misha', 'arisha', 'nik']}),
-          isNull);
+        service.validateDraft(
+          draft: draft,
+          actorProfile: 'nik',
+          projectGroupMembers: const {
+            'group-1': ['misha', 'arisha', 'nik'],
+          },
+        ),
+        isNull,
+      );
     });
 
-    test('accepts family task with empty assignees (group handles participants)', () {
+    test(
+        'accepts family task with empty assignees (group handles participants)',
+        () {
       final draft = validDraft().copyWith(
         isFamily: true,
         assignees: [],
       );
       expect(
-          service.validateDraft(
-              draft: draft,
-              actorProfile: 'nik',
-              projectGroupMembers: const {'group-1': ['nik']}),
-          isNull);
+        service.validateDraft(
+          draft: draft,
+          actorProfile: 'nik',
+          projectGroupMembers: const {
+            'group-1': ['nik'],
+          },
+        ),
+        isNull,
+      );
     });
 
     // ── Workflow status ──
@@ -95,12 +117,16 @@ void main() {
       for (final status in TaskDomainService.allowedStatuses) {
         final draft = validDraft().copyWith(workflowStatus: status);
         expect(
-            service.validateDraft(
-                draft: draft,
-                actorProfile: 'nik',
-                projectGroupMembers: const {'group-1': ['nik']}),
-            isNull,
-            reason: 'status=$status');
+          service.validateDraft(
+            draft: draft,
+            actorProfile: 'nik',
+            projectGroupMembers: const {
+              'group-1': ['nik'],
+            },
+          ),
+          isNull,
+          reason: 'status=$status',
+        );
       }
     });
 
@@ -113,12 +139,16 @@ void main() {
       for (final p in TaskDomainService.allowedPriority) {
         final draft = validDraft().copyWith(priority: p);
         expect(
-            service.validateDraft(
-                draft: draft,
-                actorProfile: 'nik',
-                projectGroupMembers: const {'group-1': ['nik']}),
-            isNull,
-            reason: 'priority=$p');
+          service.validateDraft(
+            draft: draft,
+            actorProfile: 'nik',
+            projectGroupMembers: const {
+              'group-1': ['nik'],
+            },
+          ),
+          isNull,
+          reason: 'priority=$p',
+        );
       }
     });
 
@@ -127,23 +157,31 @@ void main() {
     test('rejects invalid reminder offset', () {
       final draft = validDraft().copyWith(reminderOffsetsMinutes: const [7]);
       expect(
-          service.validateDraft(
-              draft: draft,
-              actorProfile: 'nik',
-              projectGroupMembers: const {'group-1': ['nik']}),
-          isNotNull);
+        service.validateDraft(
+          draft: draft,
+          actorProfile: 'nik',
+          projectGroupMembers: const {
+            'group-1': ['nik'],
+          },
+        ),
+        isNotNull,
+      );
     });
 
     test('accepts all valid reminder offsets', () {
       for (final offset in TaskDomainService.allowedReminderOffsets) {
         final draft = validDraft().copyWith(reminderOffsetsMinutes: [offset]);
         expect(
-            service.validateDraft(
-                draft: draft,
-                actorProfile: 'nik',
-                projectGroupMembers: const {'group-1': ['nik']}),
-            isNull,
-            reason: 'offset=$offset');
+          service.validateDraft(
+            draft: draft,
+            actorProfile: 'nik',
+            projectGroupMembers: const {
+              'group-1': ['nik'],
+            },
+          ),
+          isNull,
+          reason: 'offset=$offset',
+        );
       }
     });
 
@@ -151,11 +189,15 @@ void main() {
       final draft =
           validDraft().copyWith(reminderOffsetsMinutes: const [60, 30, 15]);
       expect(
-          service.validateDraft(
-              draft: draft,
-              actorProfile: 'nik',
-              projectGroupMembers: const {'group-1': ['nik']}),
-          isNull);
+        service.validateDraft(
+          draft: draft,
+          actorProfile: 'nik',
+          projectGroupMembers: const {
+            'group-1': ['nik'],
+          },
+        ),
+        isNull,
+      );
     });
 
     test('project task can have no responsible assignee', () {
@@ -170,7 +212,7 @@ void main() {
           draft: draft,
           actorProfile: 'nik',
           projectGroupMembers: const {
-            'group-1': ['nik', 'misha']
+            'group-1': ['nik', 'misha'],
           },
         ),
         isNull,
@@ -184,7 +226,7 @@ void main() {
           draft: draft,
           actorProfile: 'nik',
           projectGroupMembers: const {
-            'group-1': ['nik']
+            'group-1': ['nik'],
           },
         ),
         'Выберите группу проекта.',
@@ -202,7 +244,7 @@ void main() {
           draft: draft,
           actorProfile: 'nik',
           projectGroupMembers: const {
-            'group-1': ['nik']
+            'group-1': ['nik'],
           },
         ),
         'Ответственные должны входить в выбранную группу.',
@@ -223,7 +265,7 @@ void main() {
           actorProfile: 'nik',
           projectOwnerKey: 'owner',
           projectGroupMembers: const {
-            'group-1': ['misha']
+            'group-1': ['misha'],
           },
         ),
         'Нет прав на создание задачи в этой группе.',
@@ -242,7 +284,7 @@ void main() {
           actorProfile: 'nik',
           projectOwnerKey: 'nik',
           projectGroupMembers: const {
-            'group-1': ['misha']
+            'group-1': ['misha'],
           },
         ),
         isNull,
@@ -261,7 +303,7 @@ void main() {
           actorProfile: 'nik',
           projectOwnerKey: 'owner',
           projectGroupMembers: const {
-            'group-1': ['nik']
+            'group-1': ['nik'],
           },
         ),
         isNull,

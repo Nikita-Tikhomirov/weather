@@ -109,10 +109,14 @@ class HomeProfileInitializer {
                         displayName: nameCtl.text,
                       );
                       await prefs.setString(
-                          'actor_profile', session.profileKey);
+                        'actor_profile',
+                        session.profileKey,
+                      );
                       await prefs.setString('profile_phone', session.phone);
                       await prefs.setString(
-                          'profile_display_name', session.displayName);
+                        'profile_display_name',
+                        session.displayName,
+                      );
                       onProfileInfo?.call(session.displayName, session.phone);
                       if (dialogContext.mounted) {
                         Navigator.of(dialogContext).pop(session.profileKey);

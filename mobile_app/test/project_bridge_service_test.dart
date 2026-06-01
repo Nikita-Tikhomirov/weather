@@ -16,9 +16,7 @@ void main() {
     final accepted = Completer<Socket>();
     final statuses = <String>[];
 
-    final sub = server.listen((socket) {
-      accepted.complete(socket);
-    });
+    final sub = server.listen(accepted.complete);
 
     SharedPreferences.setMockInitialValues({
       'bridge_host': '127.0.0.1:${server.port}',
@@ -29,11 +27,13 @@ void main() {
       onStatusChange: (_, status) => statuses.add(status),
     );
 
-    service.startProject(const ProjectContact(
-      id: 'cifra',
-      name: 'Цифра',
-      path: r'C:\Users\user\Desktop\depseeker_test',
-    ));
+    service.startProject(
+      const ProjectContact(
+        id: 'cifra',
+        name: 'Цифра',
+        path: r'C:\Users\user\Desktop\depseeker_test',
+      ),
+    );
 
     expect(await service.connect(), isTrue);
     final socket = await accepted.future.timeout(const Duration(seconds: 2));
@@ -72,11 +72,13 @@ void main() {
       onStatusChange: (_, __) {},
     );
 
-    service.startProject(const ProjectContact(
-      id: 'cifra',
-      name: 'Цифра',
-      path: r'C:\Users\user\Desktop\depseeker_test',
-    ));
+    service.startProject(
+      const ProjectContact(
+        id: 'cifra',
+        name: 'Цифра',
+        path: r'C:\Users\user\Desktop\depseeker_test',
+      ),
+    );
 
     expect(service.sendText('hello while offline'), isFalse);
     expect(await service.connect(), isTrue);
@@ -122,11 +124,13 @@ void main() {
       onStatusChange: (_, __) {},
     );
 
-    service.startProject(const ProjectContact(
-      id: 'cifra',
-      name: 'Цифра',
-      path: r'C:\Users\user\Desktop\depseeker_test',
-    ));
+    service.startProject(
+      const ProjectContact(
+        id: 'cifra',
+        name: 'Цифра',
+        path: r'C:\Users\user\Desktop\depseeker_test',
+      ),
+    );
 
     expect(await service.connect(), isTrue);
     await connected.future.timeout(const Duration(seconds: 2));
@@ -213,12 +217,13 @@ void main() {
       'bridge_host': '127.0.0.1:${server.port}',
     });
 
-    final ok =
-        await ProjectBridgeService.requestBridgeStart(const ProjectContact(
-      id: 'cifra',
-      name: 'Цифра',
-      path: r'C:\Users\user\Desktop\depseeker_test',
-    ));
+    final ok = await ProjectBridgeService.requestBridgeStart(
+      const ProjectContact(
+        id: 'cifra',
+        name: 'Цифра',
+        path: r'C:\Users\user\Desktop\depseeker_test',
+      ),
+    );
 
     expect(ok, isTrue);
     await connected.future.timeout(const Duration(seconds: 2));
@@ -270,7 +275,8 @@ void main() {
     expect(finalMessage.append, isFalse);
   });
 
-  test('incoming utf8 split across tcp chunks is decoded after full line', () async {
+  test('incoming utf8 split across tcp chunks is decoded after full line',
+      () async {
     final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
     final messages = <BridgeMessage>[];
     final connected = Completer<void>();
@@ -329,11 +335,13 @@ void main() {
       onMessage: (_) {},
       onStatusChange: (_, __) {},
     );
-    service.startProject(const ProjectContact(
-      id: 'cifra',
-      name: 'Цифра',
-      path: r'C:\Users\user\Desktop\depseeker_test',
-    ));
+    service.startProject(
+      const ProjectContact(
+        id: 'cifra',
+        name: 'Цифра',
+        path: r'C:\Users\user\Desktop\depseeker_test',
+      ),
+    );
 
     expect(await service.connect(), isTrue);
     await connected.future.timeout(const Duration(seconds: 2));
@@ -369,11 +377,13 @@ void main() {
       onMessage: (_) {},
       onStatusChange: (_, __) {},
     );
-    service.startProject(const ProjectContact(
-      id: 'cifra',
-      name: 'Цифра',
-      path: r'C:\Users\user\Desktop\depseeker_test',
-    ));
+    service.startProject(
+      const ProjectContact(
+        id: 'cifra',
+        name: 'Цифра',
+        path: r'C:\Users\user\Desktop\depseeker_test',
+      ),
+    );
 
     service.startNewSession();
     expect(await service.connect(), isTrue);

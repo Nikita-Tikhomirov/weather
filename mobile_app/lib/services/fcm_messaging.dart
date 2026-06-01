@@ -72,7 +72,10 @@ extension FcmServiceMessaging on FcmService {
       final registered = await _registerToken(newToken);
       if (registered) {
         await _reportStatus(
-            tokenStatus: 'active', token: newToken, lastError: '');
+          tokenStatus: 'active',
+          token: newToken,
+          lastError: '',
+        );
       }
     });
 
@@ -96,7 +99,10 @@ extension FcmServiceMessaging on FcmService {
       final body = msg.notification?.body ??
           (msg.data['body'] ?? 'Появились новые изменения').toString();
       await _showForegroundNotification(
-          title: title, body: body, data: msg.data);
+        title: title,
+        body: body,
+        data: msg.data,
+      );
       onForegroundText('$title: $body');
     });
 
@@ -306,7 +312,9 @@ extension FcmServiceMessaging on FcmService {
     final last = _lastFisRecoveryAt;
     if (!force &&
         last != null &&
-        now.difference(last) < const Duration(minutes: 3)) return;
+        now.difference(last) < const Duration(minutes: 3)) {
+      return;
+    }
 
     _isFisRecoveryInProgress = true;
     _lastFisRecoveryAt = now;
@@ -320,7 +328,8 @@ extension FcmServiceMessaging on FcmService {
       await Future<void>.delayed(const Duration(milliseconds: 500));
       try {
         await Firebase.initializeApp(
-            options: _firebaseOptionsForCurrentPlatform());
+          options: _firebaseOptionsForCurrentPlatform(),
+        );
       } catch (_) {}
       await Future<void>.delayed(const Duration(seconds: 1));
       await _refreshNativeDiagnostics();
@@ -355,7 +364,8 @@ extension FcmServiceMessaging on FcmService {
       await Future<void>.delayed(const Duration(milliseconds: 500));
       try {
         await Firebase.initializeApp(
-            options: _firebaseOptionsForCurrentPlatform());
+          options: _firebaseOptionsForCurrentPlatform(),
+        );
       } catch (_) {}
       try {
         await FirebaseMessaging.instance.setAutoInitEnabled(true);
@@ -377,7 +387,8 @@ extension FcmServiceMessaging on FcmService {
       try {
         if (Firebase.apps.isNotEmpty) return true;
         await Firebase.initializeApp(
-            options: _firebaseOptionsForCurrentPlatform());
+          options: _firebaseOptionsForCurrentPlatform(),
+        );
         return true;
       } catch (_) {
         _lastTokenError = 'firebase_init_failed';

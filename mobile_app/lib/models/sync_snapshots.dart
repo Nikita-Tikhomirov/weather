@@ -6,7 +6,7 @@ import 'family_group.dart';
 
 @immutable
 class PullSnapshot {
-  PullSnapshot({
+  const PullSnapshot({
     required this.tasks,
     required this.familyTasks,
     required this.serverTime,
@@ -62,7 +62,11 @@ class PullSnapshot {
         isDelta,
         Object.hashAll(projects),
         Object.hashAll(familyGroups),
-        Object.hashAll(projectGroupMap.entries.map((e) => Object.hash(e.key, Object.hashAll(e.value)))),
+        Object.hashAll(
+          projectGroupMap.entries.map(
+            (e) => Object.hash(e.key, Object.hashAll(e.value)),
+          ),
+        ),
       );
 
   PullSnapshot copyWith({

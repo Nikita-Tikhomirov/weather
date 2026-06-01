@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('chat attachment tolerates legacy list image metadata', () {
-    final attachment = ChatAttachment.fromJson({
+    final attachment = ChatAttachment.fromJson(const {
       'kind': 'image',
       'asset_url': '/chat_uploads/photo.jpg',
       'image_meta': [],

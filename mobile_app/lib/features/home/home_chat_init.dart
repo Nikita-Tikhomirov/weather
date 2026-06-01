@@ -41,15 +41,24 @@ class HomeChatInitializer {
 
   final void Function(bool loading)? onChatLoading;
   final void Function(String key)? onActiveConversation;
-  final void Function(List<ChatContact> contacts,
-      List<ChatConversation> convs, List<StickerPack> packs,
-      bool clearConversation)? onChatInitState;
-  final void Function(List<ChatContact> contacts,
-      List<ChatConversation> convs, List<StickerPack> packs)? onChatBootstrapState;
+  final void Function(
+    List<ChatContact> contacts,
+    List<ChatConversation> convs,
+    List<StickerPack> packs,
+    bool clearConversation,
+  )? onChatInitState;
+  final void Function(
+    List<ChatContact> contacts,
+    List<ChatConversation> convs,
+    List<StickerPack> packs,
+  )? onChatBootstrapState;
   final void Function(String key)? onRemoveConversationState;
   final void Function(ApiClient api, String actorProfile)? onReplaceCallService;
-  final Future<void> Function(String key,
-      {required bool useNetwork, required bool quiet})? onRefreshConversation;
+  final Future<void> Function(
+    String key, {
+    required bool useNetwork,
+    required bool quiet,
+  })? onRefreshConversation;
   final Future<void> Function(List<ChatContact> contacts)? onSaveAvatarUrls;
   final Future<void> Function(List<String> profileKeys)? onLoadProfileAvatars;
   final Future<void> Function(TaskStore store)? onLoadPhoneContacts;
@@ -84,8 +93,7 @@ class HomeChatInitializer {
 
       await restoreLocalGroupAvatars(store, bootstrap.conversations);
 
-      final mergedConversations =
-          await store.repository.db.readConversations();
+      final mergedConversations = await store.repository.db.readConversations();
 
       final contacts = bootstrap.contacts;
       await onSaveAvatarUrls?.call(contacts);

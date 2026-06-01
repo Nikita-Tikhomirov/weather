@@ -2,7 +2,8 @@ import '../models/task_item.dart';
 import 'task_draft.dart';
 
 class TaskDomainService {
-  static final Set<WorkflowStatus> allowedStatuses = WorkflowStatus.values.toSet();
+  static final Set<WorkflowStatus> allowedStatuses =
+      WorkflowStatus.values.toSet();
   static final Set<Priority> allowedPriority = Priority.values.toSet();
   static const Set<int> allowedReminderOffsets = {
     1440,

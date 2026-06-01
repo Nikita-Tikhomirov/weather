@@ -142,21 +142,23 @@ class _HomePageState extends State<HomePage> {
         prefs.getString('profile_display_name')?.trim() ?? '';
     _currentProfilePhone = prefs.getString('profile_phone')?.trim() ?? '';
     _currentProfileAvatarUrl = prefs.getString(
-        '${AppConfig.prefAvatarPrefix}${savedOwner.isNotEmpty ? savedOwner : 'default'}');
+      '${AppConfig.prefAvatarPrefix}${savedOwner.isNotEmpty ? savedOwner : 'default'}',
+    );
     final locator = ServiceLocator.instance;
     final api = locator.api;
     String? owner;
     final savedPhone = prefs.getString('profile_phone')?.trim() ?? '';
     final profileInit = ProfileInitService(
       api: api,
-      onProfileChanged: (displayName, phone) {
-        _setProfileInfo(displayName, phone);
-      },
+      onProfileChanged: _setProfileInfo,
     );
     if (savedPhone.isNotEmpty) {
       try {
         owner = await profileInit.restoreProfileByPhone(
-            prefs, savedPhone, _currentProfileDisplayName);
+          prefs,
+          savedPhone,
+          _currentProfileDisplayName,
+        );
       } catch (e, st) {
         debugPrint('[home] restore profile by phone error: $e\n$st');
         if (savedOwner.isNotEmpty) {
@@ -164,7 +166,10 @@ class _HomePageState extends State<HomePage> {
         } else {
           if (!mounted) return;
           owner = await ProfileInitService.promptForInitialProfile(
-              context, api, _setProfileInfo);
+            context,
+            api,
+            _setProfileInfo,
+          );
         }
       }
     } else if (savedOwner.isNotEmpty) {
@@ -172,7 +177,10 @@ class _HomePageState extends State<HomePage> {
     } else {
       if (!mounted) return;
       owner = await ProfileInitService.promptForInitialProfile(
-          context, api, _setProfileInfo);
+        context,
+        api,
+        _setProfileInfo,
+      );
     }
     if (!mounted || owner == null || owner.isEmpty) {
       return;
@@ -192,7 +200,7 @@ class _HomePageState extends State<HomePage> {
       api: api,
       owner: owner,
       onDiagnosticsChanged: (_) {},
-      onShowDiagnosticsDialog: () => _showFcmDiagnosticsDialog(),
+      onShowDiagnosticsDialog: _showFcmDiagnosticsDialog,
       onNavigateToTasks: () => store.setPage(1),
       onNavigateToMessenger: () => store.setPage(4),
       onOpenConversation: (key) async {
@@ -203,17 +211,20 @@ class _HomePageState extends State<HomePage> {
           await _openConversation(store, key);
         }
       },
-      onIncomingCall: (session) {
-        _receiveIncomingCall(session);
-      },
+      onIncomingCall: _receiveIncomingCall,
       onSyncDelta: ({required bool showErrors}) =>
           _safeSyncDelta(store, showErrors: showErrors),
-      onRefreshActiveConversation: (
-              {required bool useNetwork, required bool quiet}) =>
-          _refreshActiveConversation(store,
-              useNetwork: useNetwork, quiet: quiet),
+      onRefreshActiveConversation: ({
+        required bool useNetwork,
+        required bool quiet,
+      }) =>
+          _refreshActiveConversation(
+        store,
+        useNetwork: useNetwork,
+        quiet: quiet,
+      ),
       getActiveConversationKey: () => _activeConversationKey,
-      getIsProjectConversation: (key) => isProjectConversation(key),
+      getIsProjectConversation: isProjectConversation,
       getPageIndex: () => store.pageIndex.value,
       shouldSuppressChatNotification: (conversationKey) {
         final canonical = canonicalConversationKey(conversationKey);
@@ -228,7 +239,7 @@ class _HomePageState extends State<HomePage> {
     _syncLoops = SyncLoopService(
       store: store,
       callService: _callService,
-      onRetryPendingMessages: (s) => _retryPendingMessages(s),
+      onRetryPendingMessages: _retryPendingMessages,
     )..start();
     if (!mounted) {
       store.dispose();
@@ -294,13 +305,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _goDesktopMonthPrev() {
-    setState(() =>
-        _desktopMonth = DateTime(_desktopMonth.year, _desktopMonth.month - 1));
+    setState(
+      () =>
+          _desktopMonth = DateTime(_desktopMonth.year, _desktopMonth.month - 1),
+    );
   }
 
   void _goDesktopMonthNext() {
-    setState(() =>
-        _desktopMonth = DateTime(_desktopMonth.year, _desktopMonth.month + 1));
+    setState(
+      () =>
+          _desktopMonth = DateTime(_desktopMonth.year, _desktopMonth.month + 1),
+    );
   }
 
   void _goDesktopMonthToday() {
@@ -312,13 +327,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _goCalendarMonthPrev() {
-    setState(() => _calendarMonth =
-        DateTime(_calendarMonth.year, _calendarMonth.month - 1));
+    setState(
+      () => _calendarMonth =
+          DateTime(_calendarMonth.year, _calendarMonth.month - 1),
+    );
   }
 
   void _goCalendarMonthNext() {
-    setState(() => _calendarMonth =
-        DateTime(_calendarMonth.year, _calendarMonth.month + 1));
+    setState(
+      () => _calendarMonth =
+          DateTime(_calendarMonth.year, _calendarMonth.month + 1),
+    );
   }
 
   void _goCalendarMonthToday() {
@@ -509,7 +528,9 @@ class _HomePageState extends State<HomePage> {
       final messagesChanged = !sameMessages(beforeMerged, merged);
       final nextTyping = _typingProfilesFor(snapshot.typingProfiles, actor);
       final typingChanged = !setEquals(
-          _typingUsers[canonicalKey] ?? const <String>{}, nextTyping);
+        _typingUsers[canonicalKey] ?? const <String>{},
+        nextTyping,
+      );
       final conversationKeyChanged =
           _activeConversationKey == conversationKey &&
               canonicalKey != conversationKey;
@@ -617,11 +638,13 @@ class _HomePageState extends State<HomePage> {
           message.deliveryStatus == 'sending' ||
           message.deliveryStatus == 'failed';
       if (!isTransient) continue;
-      final alreadyResolved = merged.any((item) =>
-          item.id == message.id ||
-          (message.clientMessageId != null &&
-              message.clientMessageId!.isNotEmpty &&
-              item.clientMessageId == message.clientMessageId));
+      final alreadyResolved = merged.any(
+        (item) =>
+            item.id == message.id ||
+            (message.clientMessageId != null &&
+                message.clientMessageId!.isNotEmpty &&
+                item.clientMessageId == message.clientMessageId),
+      );
       if (!alreadyResolved) {
         merged.add(message);
       }
@@ -644,7 +667,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _openConversation(
-      TaskStore store, String conversationKey) async {
+    TaskStore store,
+    String conversationKey,
+  ) async {
     if (!mounted) {
       return;
     }
@@ -743,52 +768,54 @@ class _HomePageState extends State<HomePage> {
       context: context,
       showDragHandle: true,
       builder: (sheetContext) {
-        return StatefulBuilder(builder: (context, setSheetState) {
-          return SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: titleCtl,
-                    decoration: const InputDecoration(labelText: 'Название'),
-                  ),
-                  const SizedBox(height: 8),
-                  Flexible(
-                    child: ListView(
-                      shrinkWrap: true,
-                      children: [
-                        for (final contact in contacts)
-                          CheckboxListTile(
-                            value: selected.contains(contact.profileKey),
-                            title: Text(contactLabel(contact)),
-                            subtitle: Text(contact.phone),
-                            onChanged: (value) {
-                              setSheetState(() {
-                                if (value == true) {
-                                  selected.add(contact.profileKey);
-                                } else {
-                                  selected.remove(contact.profileKey);
-                                }
-                              });
-                            },
-                          ),
-                      ],
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: titleCtl,
+                      decoration: const InputDecoration(labelText: 'Название'),
                     ),
-                  ),
-                  FilledButton.icon(
-                    onPressed: selected.isEmpty
-                        ? null
-                        : () => Navigator.of(sheetContext).pop(true),
-                    icon: const Icon(Icons.check),
-                    label: const Text('Создать'),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    Flexible(
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: [
+                          for (final contact in contacts)
+                            CheckboxListTile(
+                              value: selected.contains(contact.profileKey),
+                              title: Text(contactLabel(contact)),
+                              subtitle: Text(contact.phone),
+                              onChanged: (value) {
+                                setSheetState(() {
+                                  if (value == true) {
+                                    selected.add(contact.profileKey);
+                                  } else {
+                                    selected.remove(contact.profileKey);
+                                  }
+                                });
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                    FilledButton.icon(
+                      onPressed: selected.isEmpty
+                          ? null
+                          : () => Navigator.of(sheetContext).pop(true),
+                      icon: const Icon(Icons.check),
+                      label: const Text('Создать'),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        });
+            );
+          },
+        );
       },
     );
     if (created != true || selected.isEmpty) {
@@ -1058,7 +1085,7 @@ class _HomePageState extends State<HomePage> {
     _callService?.dispose();
     _callService = CallService(api: api, actorProfile: actorProfile)
       ..onIncomingCall = _handleIncomingCall
-      ..onCallEnded = () => _notifyCallEnded();
+      ..onCallEnded = _notifyCallEnded;
     _callStateSub = _callService!.onStateChange.listen(_handleCallStateChanged);
     // Update the sync loop service's call service reference
     if (_syncLoops != null) {
@@ -1094,7 +1121,8 @@ class _HomePageState extends State<HomePage> {
     } catch (error) {
       if (showErrors && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Ошибка синхронизации: $error')));
+          SnackBar(content: Text('Ошибка синхронизации: $error')),
+        );
       }
     }
   }
@@ -1108,7 +1136,8 @@ class _HomePageState extends State<HomePage> {
     } catch (error) {
       if (showErrors && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Ошибка синхронизации: $error')));
+          SnackBar(content: Text('Ошибка синхронизации: $error')),
+        );
       }
     }
   }
@@ -1150,11 +1179,13 @@ class _HomePageState extends State<HomePage> {
     final current = List<ChatMessage>.from(
       _chatMessagesByConversation[conversationKey] ?? const <ChatMessage>[],
     );
-    current.removeWhere((item) =>
-        item.id == message.id ||
-        (message.clientMessageId != null &&
-            message.clientMessageId!.isNotEmpty &&
-            item.clientMessageId == message.clientMessageId));
+    current.removeWhere(
+      (item) =>
+          item.id == message.id ||
+          (message.clientMessageId != null &&
+              message.clientMessageId!.isNotEmpty &&
+              item.clientMessageId == message.clientMessageId),
+    );
     current.add(message);
     current.sort((a, b) {
       final byCreated = a.createdAt.compareTo(b.createdAt);
@@ -1392,10 +1423,11 @@ class _HomePageState extends State<HomePage> {
             : (message.imageUrl != null && message.imageUrl!.isNotEmpty
                 ? [
                     ChatAttachment(
-                        kind: 'image',
-                        assetUrl: message.imageUrl!,
-                        imageMeta: message.imageMeta,
-                        sortOrder: 0)
+                      kind: 'image',
+                      assetUrl: message.imageUrl!,
+                      imageMeta: message.imageMeta,
+                      sortOrder: 0,
+                    ),
                   ]
                 : const <ChatAttachment>[]);
         if (atts.isNotEmpty) {
@@ -1427,8 +1459,12 @@ class _HomePageState extends State<HomePage> {
             conversationKey: conversationKey,
           )
           .catchError((_) {});
-      await _refreshConversation(store, conversationKey,
-          useNetwork: true, quiet: true);
+      await _refreshConversation(
+        store,
+        conversationKey,
+        useNetwork: true,
+        quiet: true,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Переслано → ${contactLabel(selected)}')),
@@ -1637,7 +1673,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _openManageGroupSheet(
-      TaskStore store, ChatConversation conv) async {
+    TaskStore store,
+    ChatConversation conv,
+  ) async {
     final members = List<String>.from(conv.members);
     final initialAvatarUrl = conv.avatarUrl;
     final canManage = conv.kind == 'group' ||
@@ -1650,197 +1688,210 @@ class _HomePageState extends State<HomePage> {
       context: context,
       showDragHandle: true,
       builder: (sheetContext) {
-        return StatefulBuilder(builder: (ctx, setSheetState) {
-          return SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Group avatar — tap to change
-                  GestureDetector(
-                    onTap: canManage
-                        ? () async {
-                            final url =
-                                await _pickAndSetGroupAvatar(store, conv);
-                            if (url != null && url.isNotEmpty) {
-                              setSheetState(() => avatarUrl = url);
-                              setState(() {
-                                final idx = _chatConversations.indexWhere((c) =>
-                                    c.conversationKey == conv.conversationKey);
-                                if (idx >= 0) {
-                                  _chatConversations[idx] = ChatConversation(
-                                    conversationKey: conv.conversationKey,
-                                    kind: conv.kind,
-                                    title: conv.title,
-                                    members: conv.members,
-                                    avatarUrl: url,
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Group avatar — tap to change
+                    GestureDetector(
+                      onTap: canManage
+                          ? () async {
+                              final url =
+                                  await _pickAndSetGroupAvatar(store, conv);
+                              if (url != null && url.isNotEmpty) {
+                                setSheetState(() => avatarUrl = url);
+                                setState(() {
+                                  final idx = _chatConversations.indexWhere(
+                                    (c) =>
+                                        c.conversationKey ==
+                                        conv.conversationKey,
                                   );
-                                }
-                              });
-                            }
-                          }
-                        : null,
-                    child: () {
-                      final effectiveUrl = avatarUrl;
-                      return CircleAvatar(
-                        radius: 36,
-                        backgroundImage:
-                            (effectiveUrl != null && effectiveUrl.isNotEmpty)
-                                ? AvatarUrlResolver.imageProvider(effectiveUrl)
-                                : null,
-                        onBackgroundImageError: (_, __) {},
-                        child: (effectiveUrl == null || effectiveUrl.isEmpty)
-                            ? const Icon(Icons.camera_alt, size: 32)
-                            : null,
-                      );
-                    }(),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    conv.title.isNotEmpty ? conv.title : 'Группа',
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 8),
-                  if (canManage) ...[
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                              final title = await _promptGroupTitle(
-                                conv.title.isNotEmpty ? conv.title : 'Группа',
-                              );
-                              if (title == null || title.trim().isEmpty) {
-                                return;
-                              }
-                              try {
-                                await store.repository.api.renameGroup(
-                                  actorProfile: store.owner.value,
-                                  conversationKey: conv.conversationKey,
-                                  title: title.trim(),
-                                );
-                                if (mounted && sheetContext.mounted) {
-                                  Navigator.of(sheetContext).pop();
-                                  await _refreshChatBootstrap(store);
-                                }
-                              } catch (error) {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Ошибка: $error')),
-                                  );
-                                }
-                              }
-                            },
-                            icon: const Icon(Icons.edit_outlined),
-                            label: const Text('Назвать'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                              final ok = await _confirmDeleteGroup(conv);
-                              if (ok != true) {
-                                return;
-                              }
-                              try {
-                                await store.repository.api.deleteGroup(
-                                  actorProfile: store.owner.value,
-                                  conversationKey: conv.conversationKey,
-                                );
-                                if (mounted && sheetContext.mounted) {
-                                  Navigator.of(sheetContext).pop();
-                                  await _removeLocalConversation(
-                                    store,
-                                    conv.conversationKey,
-                                  );
-                                  await _refreshChatBootstrap(store);
-                                }
-                              } catch (error) {
-                                if (mounted && sheetContext.mounted) {
-                                  Navigator.of(sheetContext).pop();
-                                  await _removeLocalConversation(
-                                    store,
-                                    conv.conversationKey,
-                                  );
-                                  if (!mounted) {
-                                    return;
+                                  if (idx >= 0) {
+                                    _chatConversations[idx] = ChatConversation(
+                                      conversationKey: conv.conversationKey,
+                                      kind: conv.kind,
+                                      title: conv.title,
+                                      members: conv.members,
+                                      avatarUrl: url,
+                                    );
                                   }
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Группа удалена из локального списка',
-                                      ),
-                                    ),
-                                  );
-                                }
+                                });
                               }
-                            },
-                            icon: const Icon(Icons.delete_outline),
-                            label: const Text('Удалить'),
-                          ),
-                        ),
-                      ],
+                            }
+                          : null,
+                      child: () {
+                        final effectiveUrl = avatarUrl;
+                        return CircleAvatar(
+                          radius: 36,
+                          backgroundImage: (effectiveUrl != null &&
+                                  effectiveUrl.isNotEmpty)
+                              ? AvatarUrlResolver.imageProvider(effectiveUrl)
+                              : null,
+                          onBackgroundImageError: (_, __) {},
+                          child: (effectiveUrl == null || effectiveUrl.isEmpty)
+                              ? const Icon(Icons.camera_alt, size: 32)
+                              : null,
+                        );
+                      }(),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      conv.title.isNotEmpty ? conv.title : 'Группа',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 8),
-                  ],
-                  Flexible(
-                    child: ListView(
-                      shrinkWrap: true,
-                      children: [
-                        for (final profile in members)
-                          ListTile(
-                            leading:
-                                const CircleAvatar(child: Icon(Icons.person)),
-                            title: Text(_profileLabel(profile)),
-                            trailing: canManage && profile != store.owner.value
-                                ? IconButton(
-                                    icon: const Icon(
-                                        Icons.remove_circle_outline,
-                                        color: Colors.red),
-                                    onPressed: () async {
-                                      setSheetState(
-                                          () => members.remove(profile));
-                                      try {
-                                        await store.repository.api
-                                            .removeGroupMember(
-                                          actorProfile: store.owner.value,
-                                          conversationKey: conv.conversationKey,
-                                          profile: profile,
-                                        );
-                                      } catch (_) {
-                                        // silently ignored — non-critical operation
-                                      }
-                                    },
-                                  )
-                                : null,
+                    if (canManage) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                final title = await _promptGroupTitle(
+                                  conv.title.isNotEmpty ? conv.title : 'Группа',
+                                );
+                                if (title == null || title.trim().isEmpty) {
+                                  return;
+                                }
+                                try {
+                                  await store.repository.api.renameGroup(
+                                    actorProfile: store.owner.value,
+                                    conversationKey: conv.conversationKey,
+                                    title: title.trim(),
+                                  );
+                                  if (mounted && sheetContext.mounted) {
+                                    Navigator.of(sheetContext).pop();
+                                    await _refreshChatBootstrap(store);
+                                  }
+                                } catch (error) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Ошибка: $error')),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.edit_outlined),
+                              label: const Text('Назвать'),
+                            ),
                           ),
-                      ],
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                final ok = await _confirmDeleteGroup(conv);
+                                if (ok != true) {
+                                  return;
+                                }
+                                try {
+                                  await store.repository.api.deleteGroup(
+                                    actorProfile: store.owner.value,
+                                    conversationKey: conv.conversationKey,
+                                  );
+                                  if (mounted && sheetContext.mounted) {
+                                    Navigator.of(sheetContext).pop();
+                                    await _removeLocalConversation(
+                                      store,
+                                      conv.conversationKey,
+                                    );
+                                    await _refreshChatBootstrap(store);
+                                  }
+                                } catch (error) {
+                                  if (mounted && sheetContext.mounted) {
+                                    Navigator.of(sheetContext).pop();
+                                    await _removeLocalConversation(
+                                      store,
+                                      conv.conversationKey,
+                                    );
+                                    if (!mounted) {
+                                      return;
+                                    }
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Группа удалена из локального списка',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.delete_outline),
+                              label: const Text('Удалить'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    Flexible(
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: [
+                          for (final profile in members)
+                            ListTile(
+                              leading:
+                                  const CircleAvatar(child: Icon(Icons.person)),
+                              title: Text(_profileLabel(profile)),
+                              trailing:
+                                  canManage && profile != store.owner.value
+                                      ? IconButton(
+                                          icon: const Icon(
+                                            Icons.remove_circle_outline,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () async {
+                                            setSheetState(
+                                              () => members.remove(profile),
+                                            );
+                                            try {
+                                              await store.repository.api
+                                                  .removeGroupMember(
+                                                actorProfile: store.owner.value,
+                                                conversationKey:
+                                                    conv.conversationKey,
+                                                profile: profile,
+                                              );
+                                            } catch (_) {
+                                              // silently ignored — non-critical operation
+                                            }
+                                          },
+                                        )
+                                      : null,
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const Divider(),
-                  if (canManage)
-                    ListTile(
-                      leading: const Icon(Icons.person_add),
-                      title: const Text('Добавить участника'),
-                      onTap: () async {
-                        Navigator.of(sheetContext).pop();
-                        await _addMemberToGroup(store, conv);
-                      },
-                    ),
-                ],
+                    const Divider(),
+                    if (canManage)
+                      ListTile(
+                        leading: const Icon(Icons.person_add),
+                        title: const Text('Добавить участника'),
+                        onTap: () async {
+                          Navigator.of(sheetContext).pop();
+                          await _addMemberToGroup(store, conv);
+                        },
+                      ),
+                  ],
+                ),
               ),
-            ),
-          );
-        });
+            );
+          },
+        );
       },
     );
   }
 
   Future<String?> _pickAndSetGroupAvatar(
-      TaskStore store, ChatConversation conv) async {
+    TaskStore store,
+    ChatConversation conv,
+  ) async {
     final picked = await _imagePicker.pickImage(
       source: ImageSource.gallery,
       imageQuality: 85,
@@ -1981,10 +2032,12 @@ class _HomePageState extends State<HomePage> {
       builder: (ctx) => SimpleDialog(
         title: const Text('Выбрать участника'),
         children: available
-            .map((c) => SimpleDialogOption(
-                  onPressed: () => Navigator.pop(ctx, c.profileKey),
-                  child: Text(contactLabel(c)),
-                ))
+            .map(
+              (c) => SimpleDialogOption(
+                onPressed: () => Navigator.pop(ctx, c.profileKey),
+                child: Text(contactLabel(c)),
+              ),
+            )
             .toList(),
       ),
     );
@@ -2036,7 +2089,8 @@ class _HomePageState extends State<HomePage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('Файл слишком большой. Максимум 50 МБ.')),
+              content: Text('Файл слишком большой. Максимум 50 МБ.'),
+            ),
           );
         }
         return;
@@ -2240,12 +2294,14 @@ class _HomePageState extends State<HomePage> {
         );
 
         _updateUploadProgress(conversationKey, clientId, i, totalCount, 0.8);
-        attachments.add(ChatAttachment(
-          kind: 'image',
-          assetUrl: uploaded.assetUrl,
-          imageMeta: uploaded.imageMeta,
-          sortOrder: i,
-        ));
+        attachments.add(
+          ChatAttachment(
+            kind: 'image',
+            assetUrl: uploaded.assetUrl,
+            imageMeta: uploaded.imageMeta,
+            sortOrder: i,
+          ),
+        );
         _updateUploadProgress(conversationKey, clientId, i, totalCount, 0.9);
       }
 
@@ -2275,8 +2331,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// Update upload progress for an optimistic message
-  void _updateUploadProgress(String conversationKey, String clientId, int index,
-      int total, double progress) {
+  void _updateUploadProgress(
+    String conversationKey,
+    String clientId,
+    int index,
+    int total,
+    double progress,
+  ) {
     final msgs = _chatMessagesByConversation[conversationKey];
     if (msgs == null) return;
     final itemProgress = progress.clamp(0.0, 1.0);
@@ -2297,7 +2358,10 @@ class _HomePageState extends State<HomePage> {
 
   /// Replace optimistic messages with the real server message
   void _replaceOptimisticMessages(
-      String conversationKey, String clientId, List<ChatMessage> realMsgs) {
+    String conversationKey,
+    String clientId,
+    List<ChatMessage> realMsgs,
+  ) {
     final msgs = _chatMessagesByConversation[conversationKey];
     if (msgs == null) return;
     msgs.removeWhere((m) => m.clientMessageId == clientId);
@@ -2307,7 +2371,10 @@ class _HomePageState extends State<HomePage> {
 
   /// Mark optimistic messages as failed (remove them)
   void _failOptimisticMessages(
-      String conversationKey, String clientId, String error) {
+    String conversationKey,
+    String clientId,
+    String error,
+  ) {
     final msgs = _chatMessagesByConversation[conversationKey];
     if (msgs == null) return;
     msgs.removeWhere((m) => m.clientMessageId == clientId);
@@ -2330,8 +2397,10 @@ class _HomePageState extends State<HomePage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text(
-                    'Видео слишком большое (${(sizeBytes / (1024 * 1024)).round()} МБ). Максимум 500 МБ.')),
+              content: Text(
+                'Видео слишком большое (${(sizeBytes / (1024 * 1024)).round()} МБ). Максимум 500 МБ.',
+              ),
+            ),
           );
         }
         return;
@@ -2421,7 +2490,8 @@ class _HomePageState extends State<HomePage> {
       final compressMs =
           DateTime.now().difference(compressStart).inMilliseconds;
       debugPrint(
-          'Video compression took ${compressMs}ms, path: $compressedFile');
+        'Video compression took ${compressMs}ms, path: $compressedFile',
+      );
 
       // Phase 2: Read compressed file (25% → 30%)
       final compressedMedia =
@@ -2489,7 +2559,9 @@ class _HomePageState extends State<HomePage> {
   /// Compress video for messenger delivery.
   /// Returns path to compressed file, or null if compression failed/skipped.
   Future<String?> _compressVideo(
-      String sourcePath, void Function(double) onProgress) async {
+    String sourcePath,
+    void Function(double) onProgress,
+  ) async {
     try {
       final info = await VideoCompress.compressVideo(
         sourcePath,
@@ -2543,8 +2615,11 @@ class _HomePageState extends State<HomePage> {
                 title: const Text('Галерея'),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
-                  _sendPhotos(store,
-                      source: ImageSource.gallery, allowMultiple: true);
+                  _sendPhotos(
+                    store,
+                    source: ImageSource.gallery,
+                    allowMultiple: true,
+                  );
                 },
               ),
               ListTile(
@@ -2751,10 +2826,12 @@ class _HomePageState extends State<HomePage> {
           service.sessionId != session.sessionId) {
         return;
       }
-      unawaited(service.acceptCall(
-        session.sessionId,
-        callType: session.callType,
-      ));
+      unawaited(
+        service.acceptCall(
+          session.sessionId,
+          callType: session.callType,
+        ),
+      );
     });
   }
 
@@ -2784,7 +2861,7 @@ class _HomePageState extends State<HomePage> {
         conversationKey: _activeConversationKey,
         kind: 'direct',
         title: '',
-        members: [],
+        members: const [],
       ),
     );
 
@@ -2887,10 +2964,12 @@ class _HomePageState extends State<HomePage> {
     _projectFilesLoading = true;
     _projectBridge?.requestFileTree();
     setState(() {
-      _projectMessages.add(BridgeMessage(
-        type: 'status',
-        text: 'Запрашиваю файлы проекта...',
-      ));
+      _projectMessages.add(
+        BridgeMessage(
+          type: 'status',
+          text: 'Запрашиваю файлы проекта...',
+        ),
+      );
     });
 
     // Show bottom sheet immediately; it will update when files arrive
@@ -3024,7 +3103,9 @@ class _HomePageState extends State<HomePage> {
                           child: Text(
                             path.isNotEmpty ? path.split('/').last : 'Файл',
                             style: const TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.w700),
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                         if (!hasError)
@@ -3035,8 +3116,9 @@ class _HomePageState extends State<HomePage> {
                               Clipboard.setData(ClipboardData(text: content));
                               ScaffoldMessenger.of(sheetContext).showSnackBar(
                                 const SnackBar(
-                                    content: Text('Скопировано в буфер'),
-                                    duration: Duration(seconds: 1)),
+                                  content: Text('Скопировано в буфер'),
+                                  duration: Duration(seconds: 1),
+                                ),
                               );
                             },
                           ),
@@ -3051,13 +3133,16 @@ class _HomePageState extends State<HomePage> {
                   if (path.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(path,
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: Theme.of(sheetContext)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.5))),
+                      child: Text(
+                        path,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Theme.of(sheetContext)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.5),
+                        ),
+                      ),
                     ),
                   const Divider(),
                   Expanded(
@@ -3065,9 +3150,11 @@ class _HomePageState extends State<HomePage> {
                         ? Center(
                             child: Padding(
                               padding: const EdgeInsets.all(24),
-                              child: Text(content.isEmpty
-                                  ? 'Файл пуст'
-                                  : content.replaceFirst('Error: ', '')),
+                              child: Text(
+                                content.isEmpty
+                                    ? 'Файл пуст'
+                                    : content.replaceFirst('Error: ', ''),
+                              ),
                             ),
                           )
                         : SingleChildScrollView(
@@ -3098,12 +3185,14 @@ class _HomePageState extends State<HomePage> {
       return;
     }
     setState(() {
-      _projectMessages.add(BridgeMessage(
-        type: ok ? 'status' : 'error',
-        text: ok
-            ? 'Команда запуска bridge отправлена'
-            : 'Не удалось отправить команду запуска bridge',
-      ));
+      _projectMessages.add(
+        BridgeMessage(
+          type: ok ? 'status' : 'error',
+          text: ok
+              ? 'Команда запуска bridge отправлена'
+              : 'Не удалось отправить команду запуска bridge',
+        ),
+      );
     });
     if (ok) {
       final store = _store;
@@ -3135,10 +3224,12 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _projectMessages
         ..clear()
-        ..add(BridgeMessage(
-          type: 'status',
-          text: 'Создаю новую сессию...',
-        ));
+        ..add(
+          BridgeMessage(
+            type: 'status',
+            text: 'Создаю новую сессию...',
+          ),
+        );
     });
   }
 
@@ -3148,10 +3239,12 @@ class _HomePageState extends State<HomePage> {
       return;
     }
     setState(() {
-      _projectMessages.add(BridgeMessage(
-        type: 'status',
-        text: 'Команда остановки отправлена',
-      ));
+      _projectMessages.add(
+        BridgeMessage(
+          type: 'status',
+          text: 'Команда остановки отправлена',
+        ),
+      );
     });
   }
 
@@ -3221,13 +3314,15 @@ class _HomePageState extends State<HomePage> {
         sent += 1;
         if (mounted) {
           setState(() {
-            _projectMessages.add(BridgeMessage(
-              type: 'sent_image',
-              text: caption,
-              imageBase64: base64Encode(bytes),
-              imageMimeType: _projectImageMime(file),
-              imageFilename: file.name,
-            ));
+            _projectMessages.add(
+              BridgeMessage(
+                type: 'sent_image',
+                text: caption,
+                imageBase64: base64Encode(bytes),
+                imageMimeType: _projectImageMime(file),
+                imageFilename: file.name,
+              ),
+            );
           });
         }
       } else {
@@ -3239,18 +3334,22 @@ class _HomePageState extends State<HomePage> {
     }
     setState(() {
       if (sent > 0) {
-        _projectMessages.add(BridgeMessage(
-          type: 'send',
-          text: 'Фото сохранено в vision: $sent',
-        ));
+        _projectMessages.add(
+          BridgeMessage(
+            type: 'send',
+            text: 'Фото сохранено в vision: $sent',
+          ),
+        );
       }
       if (failed > 0 || sent == 0) {
-        _projectMessages.add(BridgeMessage(
-          type: 'error',
-          text: sent == 0
-              ? 'Фото не отправлено. Проверьте соединение или размер файла.'
-              : 'Не отправлено фото: $failed',
-        ));
+        _projectMessages.add(
+          BridgeMessage(
+            type: 'error',
+            text: sent == 0
+                ? 'Фото не отправлено. Проверьте соединение или размер файла.'
+                : 'Не отправлено фото: $failed',
+          ),
+        );
       }
     });
   }
@@ -3301,7 +3400,8 @@ class _HomePageState extends State<HomePage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('Файл слишком большой. Максимум 15 МБ.')),
+              content: Text('Файл слишком большой. Максимум 15 МБ.'),
+            ),
           );
         }
         return;
@@ -3350,13 +3450,15 @@ class _HomePageState extends State<HomePage> {
 
       if (mounted) {
         setState(() {
-          _projectMessages.add(BridgeMessage(
-            type: 'send',
-            text: '📎 Документ: ${file.name}',
-            projectId:
-                _projectByConversationKey(_activeConversationKey)?.id ?? '',
-            sessionId: _activeProjectSessionId ?? '',
-          ));
+          _projectMessages.add(
+            BridgeMessage(
+              type: 'send',
+              text: '📎 Документ: ${file.name}',
+              projectId:
+                  _projectByConversationKey(_activeConversationKey)?.id ?? '',
+              sessionId: _activeProjectSessionId ?? '',
+            ),
+          );
         });
       }
     } catch (error) {
@@ -3599,7 +3701,7 @@ class _HomePageState extends State<HomePage> {
     for (final contact in [
       ..._chatContacts,
       ..._phoneContacts,
-      ..._familyMembers
+      ..._familyMembers,
     ]) {
       if (contact.profileKey == profile &&
           contact.displayName.trim().isNotEmpty) {
@@ -3725,23 +3827,26 @@ class _HomePageState extends State<HomePage> {
     if (store.currentProjectId.value.isNotEmpty) {
       final members = store.currentProjectGroupMembers;
       contacts = members
-          .map((profile) => ChatContact(
-                profileKey: profile,
-                displayName: _profileLabel(profile),
-                phone: '',
-                conversationKey: '',
-              ))
+          .map(
+            (profile) => ChatContact(
+              profileKey: profile,
+              displayName: _profileLabel(profile),
+              phone: '',
+              conversationKey: '',
+            ),
+          )
           .toList();
       // Always include self
       if (!contacts.any((c) => c.profileKey == store.owner.value)) {
         contacts.insert(
-            0,
-            ChatContact(
-              profileKey: store.owner.value,
-              displayName: _profileLabel(store.owner.value),
-              phone: '',
-              conversationKey: '',
-            ));
+          0,
+          ChatContact(
+            profileKey: store.owner.value,
+            displayName: _profileLabel(store.owner.value),
+            phone: '',
+            conversationKey: '',
+          ),
+        );
       }
     } else {
       contacts = _allKnownContacts(store);
@@ -3787,7 +3892,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _moveToDate(
-      TaskStore store, TaskItem item, DateTime target) async {
+    TaskStore store,
+    TaskItem item,
+    DateTime target,
+  ) async {
     await store.moveToDate(item, dateKey(target));
     await _safeSyncDelta(store, showErrors: true);
   }
@@ -3973,7 +4081,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _openDayTasksScreen(
-      TaskStore store, DateTime day, List<TaskItem> dayTasks) {
+    TaskStore store,
+    DateTime day,
+    List<TaskItem> dayTasks,
+  ) {
     store.setSelectedDate(day);
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -4029,7 +4140,8 @@ class _HomePageState extends State<HomePage> {
                   onPressed: () async {
                     diagnostics.value = 'FCM: сбрасываю токен...';
                     await _pushHandler?.refreshDiagnostics(
-                        forceResetToken: true);
+                      forceResetToken: true,
+                    );
                   },
                   child: const Text('Сбросить токен'),
                 ),

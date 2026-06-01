@@ -46,7 +46,8 @@ class ProjectContact {
           icon == other.icon;
 
   @override
-  int get hashCode => id.hashCode ^ name.hashCode ^ path.hashCode ^ icon.hashCode;
+  int get hashCode =>
+      id.hashCode ^ name.hashCode ^ path.hashCode ^ icon.hashCode;
 
   ProjectContact copyWith({
     String? id,

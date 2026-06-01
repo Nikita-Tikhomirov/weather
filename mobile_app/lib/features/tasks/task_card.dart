@@ -87,7 +87,7 @@ class TaskCard extends StatelessWidget {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: selectionMode ? onSelectionToggle : () => onEdit(),
+        onTap: selectionMode ? onSelectionToggle : onEdit,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -162,7 +162,9 @@ class TaskCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      fontSize: 13, color: textColor.withValues(alpha: 0.7)),
+                    fontSize: 13,
+                    color: textColor.withValues(alpha: 0.7),
+                  ),
                 ),
               ],
               const SizedBox(height: 8),
@@ -209,14 +211,16 @@ class TaskCard extends StatelessWidget {
                             : Icons.check_circle,
                         color: statusColor,
                       ),
-                      onPressed: () => onDoneToggle(),
+                      onPressed: onDoneToggle,
                     ),
                     IconButton(
                       tooltip: 'Удалить',
                       iconSize: 20,
-                      icon: Icon(Icons.delete_outline,
-                          color: textColor.withValues(alpha: 0.5)),
-                      onPressed: () => onDelete(),
+                      icon: Icon(
+                        Icons.delete_outline,
+                        color: textColor.withValues(alpha: 0.5),
+                      ),
+                      onPressed: onDelete,
                     ),
                   ],
                 ],

@@ -13,7 +13,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('workspace item parses bridge json', () {
-    final item = WorkspaceItem.fromJson({
+    final item = WorkspaceItem.fromJson(const {
       'id': 'weather',
       'name': 'Погода',
       'path': r'C:\Users\user\Desktop\weather',
@@ -29,7 +29,7 @@ void main() {
   });
 
   test('workspace session parses bridge json', () {
-    final session = WorkspaceSession.fromJson({
+    final session = WorkspaceSession.fromJson(const {
       'id': 'session-1',
       'workspace_id': 'weather',
       'title': 'Починить мост',
@@ -242,7 +242,9 @@ void main() {
 
     expect(received.map((row) => row['type']), contains('workspace_list'));
     expect(
-        received.map((row) => row['type']), contains('workspace_folder_list'));
+      received.map((row) => row['type']),
+      contains('workspace_folder_list'),
+    );
     expect(
       received.map((row) => row['type']),
       contains('codewhale_command_list'),

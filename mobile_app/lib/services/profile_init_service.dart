@@ -93,8 +93,10 @@ class ProfileInitService {
                   ),
                   if (errorText.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    Text(errorText,
-                        style: const TextStyle(color: Colors.red)),
+                    Text(
+                      errorText,
+                      style: const TextStyle(color: Colors.red),
+                    ),
                   ],
                 ],
               ),
@@ -109,10 +111,14 @@ class ProfileInitService {
                         displayName: nameCtl.text,
                       );
                       await prefs.setString(
-                          'actor_profile', session.profileKey);
+                        'actor_profile',
+                        session.profileKey,
+                      );
                       await prefs.setString('profile_phone', session.phone);
                       await prefs.setString(
-                          'profile_display_name', session.displayName);
+                        'profile_display_name',
+                        session.displayName,
+                      );
                       onProfileChanged(session.displayName, session.phone);
                       if (dialogContext.mounted) {
                         Navigator.of(dialogContext).pop(session.profileKey);

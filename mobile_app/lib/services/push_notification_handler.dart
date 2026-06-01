@@ -94,7 +94,8 @@ class PushNotificationHandler {
       },
       onOpenPush: (data) async {
         debugPrint(
-            '[FCM push] onOpenPush: entity=${data['entity']} conv=${data['conversation_key']}');
+          '[FCM push] onOpenPush: entity=${data['entity']} conv=${data['conversation_key']}',
+        );
         pendingPushData = Map<String, dynamic>.from(data);
         pendingPushWasOpened = true;
         await processPendingPush();
@@ -158,7 +159,8 @@ class PushNotificationHandler {
       return;
     }
     debugPrint(
-        '[FCM push] processing pending: entity=${pending['entity']} conv=${pending['conversation_key']}');
+      '[FCM push] processing pending: entity=${pending['entity']} conv=${pending['conversation_key']}',
+    );
     pendingPushData = null;
     pendingPushWasOpened = false;
 
@@ -235,7 +237,8 @@ class PushNotificationHandler {
         conversationKey.isNotEmpty &&
         !(getIsProjectConversation?.call(conversationKey) ?? false)) {
       debugPrint(
-          '[FCM push] routing to messenger -> _openConversation($conversationKey)');
+        '[FCM push] routing to messenger -> _openConversation($conversationKey)',
+      );
       onNavigateToMessenger?.call();
       await onOpenConversation?.call(conversationKey);
       return;

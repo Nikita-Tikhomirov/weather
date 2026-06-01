@@ -86,12 +86,14 @@ extension _ShareReceiverExtension on _HomePageState {
                 bytes: bytes,
                 filename: 'shared_image.jpg',
               );
-              attachments.add(ChatAttachment(
-                kind: 'image',
-                assetUrl: uploaded.assetUrl,
-                imageMeta: uploaded.imageMeta,
-                sortOrder: attachments.length,
-              ));
+              attachments.add(
+                ChatAttachment(
+                  kind: 'image',
+                  assetUrl: uploaded.assetUrl,
+                  imageMeta: uploaded.imageMeta,
+                  sortOrder: attachments.length,
+                ),
+              );
             } catch (e, st) {
               debugPrint('[share] image upload error: $e\n$st');
               // skip images that fail to read or upload
@@ -118,12 +120,14 @@ extension _ShareReceiverExtension on _HomePageState {
                 bytes: bytes,
                 filename: 'shared_video.mp4',
               );
-              attachments.add(ChatAttachment(
-                kind: 'video',
-                assetUrl: uploaded.assetUrl,
-                imageMeta: uploaded.imageMeta,
-                sortOrder: attachments.length,
-              ));
+              attachments.add(
+                ChatAttachment(
+                  kind: 'video',
+                  assetUrl: uploaded.assetUrl,
+                  imageMeta: uploaded.imageMeta,
+                  sortOrder: attachments.length,
+                ),
+              );
             } catch (e, st) {
               debugPrint('[share] video upload error: $e\n$st');
               // skip videos that fail to read or upload
@@ -146,8 +150,12 @@ extension _ShareReceiverExtension on _HomePageState {
               conversationKey: conversationKey,
             )
             .catchError((_) {});
-        await _refreshConversation(store, conversationKey,
-            useNetwork: true, quiet: true);
+        await _refreshConversation(
+          store,
+          conversationKey,
+          useNetwork: true,
+          quiet: true,
+        );
       } catch (e, st) {
         debugPrint('[share] share error: $e\n$st');
         // silently ignore share errors

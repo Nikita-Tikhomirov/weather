@@ -34,7 +34,10 @@ class TaskRepository {
     await _ensureReady();
     final snapshot = await _syncService!.syncFull();
     await _applyProjectsAndGroups(
-        snapshot.projects, snapshot.familyGroups, snapshot.projectGroupMap);
+      snapshot.projects,
+      snapshot.familyGroups,
+      snapshot.projectGroupMap,
+    );
   }
 
   Future<void> _syncProjectsAndGroups() async {
@@ -47,8 +50,11 @@ class TaskRepository {
     } catch (_) {}
   }
 
-  Future<void> _applyProjectsAndGroups(List<TaskProject> projects,
-      List<FamilyGroup> groups, Map<String, List<String>> pgMap) async {
+  Future<void> _applyProjectsAndGroups(
+    List<TaskProject> projects,
+    List<FamilyGroup> groups,
+    Map<String, List<String>> pgMap,
+  ) async {
     await db.replaceProjects(projects);
     await db.replaceFamilyGroups(groups);
     await db.replaceProjectGroupMap(pgMap);

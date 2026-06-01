@@ -347,8 +347,10 @@ void main() {
     });
 
     test('handles key with extra whitespace', () {
-      expect(_canonicalDmKey(' dm:u_001:u_042 '),
-          _canonicalDmKey('dm:u_042:u_001'));
+      expect(
+        _canonicalDmKey(' dm:u_001:u_042 '),
+        _canonicalDmKey('dm:u_042:u_001'),
+      );
     });
   });
 }

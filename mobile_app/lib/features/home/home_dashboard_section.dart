@@ -62,16 +62,21 @@ extension _DashboardSection on _HomePageState {
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
               child: Row(
                 children: [
-                  Icon(Icons.folder_outlined,
-                      size: 18, color: Theme.of(context).colorScheme.primary),
+                  Icon(
+                    Icons.folder_outlined,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: currentId.isEmpty ? null : currentId,
                         isExpanded: true,
-                        hint: Text(projectName,
-                            style: Theme.of(context).textTheme.titleSmall),
+                        hint: Text(
+                          projectName,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
                         items: [
                           for (final p in projects)
                             DropdownMenuItem<String>(

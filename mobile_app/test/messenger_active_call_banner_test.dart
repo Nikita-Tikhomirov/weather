@@ -58,7 +58,7 @@ void main() {
   testWidgets('shows incoming video call banner above contact list',
       (tester) async {
     var opened = false;
-    final session = CallSession(
+    const session = CallSession(
       sessionId: 'call-123',
       callerProfile: 'misha',
       calleeProfile: 'nik',
@@ -90,7 +90,7 @@ void main() {
   testWidgets('shows active call banner above open chat', (tester) async {
     var opened = false;
     var ended = false;
-    final session = CallSession(
+    const session = CallSession(
       sessionId: 'call-456',
       callerProfile: 'nik',
       calleeProfile: 'misha',

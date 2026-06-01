@@ -4,7 +4,7 @@ import 'chat_models.dart';
 
 @immutable
 class DeviceTokenRegistration {
-  DeviceTokenRegistration({
+  const DeviceTokenRegistration({
     required this.shouldResetToken,
     required this.previousTokenStatus,
   });
@@ -42,7 +42,7 @@ class DeviceTokenRegistration {
 
 @immutable
 class PushDeviceStatus {
-  PushDeviceStatus({
+  const PushDeviceStatus({
     required this.actorProfile,
     required this.effectiveTokenStatus,
     required this.activeTokenCount,
@@ -65,7 +65,7 @@ class PushDeviceStatus {
       status: Map<String, dynamic>.from(result['status'] as Map? ?? {}),
       tokens: (result['tokens'] as List? ?? const [])
           .whereType<Map>()
-          .map((item) => Map<String, dynamic>.from(item))
+          .map(Map<String, dynamic>.from)
           .toList(),
     );
   }
@@ -118,7 +118,7 @@ class PushDeviceStatus {
 
 @immutable
 class PhoneProfileSession {
-  PhoneProfileSession({
+  const PhoneProfileSession({
     required this.profileKey,
     required this.phone,
     required this.displayName,

@@ -6,7 +6,9 @@ part of 'home_page.dart';
 
 extension _ProjectsDataExtension on _HomePageState {
   Future<void> _openProjectContact(
-      TaskStore store, ProjectContact project) async {
+    TaskStore store,
+    ProjectContact project,
+  ) async {
     if (!canUseProjectChats(_currentProfilePhone)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -86,7 +88,9 @@ extension _ProjectsDataExtension on _HomePageState {
             }
           }
           if (msg.isProjects && msg.projects.isNotEmpty) {
-            _setProjectContacts(msg.projects.map((p) => ProjectContact.fromJson(p)).toList());
+            _setProjectContacts(
+              msg.projects.map(ProjectContact.fromJson).toList(),
+            );
           }
           if (msg.isFiles) {
             _setProjectFiles(msg.files);
@@ -139,8 +143,6 @@ extension _ProjectsDataExtension on _HomePageState {
       _saveProjectMessageToDb(db, msg.copyWith(append: false));
     }
   }
-
-
 
   ProjectContact? _projectByConversationKey(String key) {
     if (!isProjectConversation(key)) {
@@ -199,6 +201,4 @@ extension _ProjectsDataExtension on _HomePageState {
       await prefs.setString('project_session_$projectId', sessionId);
     }
   }
-
-
 }

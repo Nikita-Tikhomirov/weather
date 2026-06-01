@@ -5,6 +5,7 @@ import '../contracts/task_data_source.dart';
 import '../models/pending_event.dart';
 import '../models/sync_snapshots.dart';
 import '../models/task_item.dart';
+
 class SyncService {
   SyncService({
     required this.db,

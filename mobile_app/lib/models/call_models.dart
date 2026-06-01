@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 @immutable
 class CallSession {
-  CallSession({
+  const CallSession({
     required this.sessionId,
     required this.callerProfile,
     required this.calleeProfile,
@@ -97,7 +97,7 @@ class CallSession {
 
 @immutable
 class CallSignal {
-  CallSignal({
+  const CallSignal({
     required this.id,
     required this.signalType,
     required this.fromProfile,
@@ -168,7 +168,7 @@ class CallSignal {
 
 @immutable
 class CallSignalsPoll {
-  CallSignalsPoll({
+  const CallSignalsPoll({
     required this.signals,
     required this.cursor,
     required this.sessionStatus,

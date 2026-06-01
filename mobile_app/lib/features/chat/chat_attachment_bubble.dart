@@ -19,11 +19,9 @@ class ChatAttachmentBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final ext =
-        fileName.contains('.') ? fileName.split('.').last : '';
+    final ext = fileName.contains('.') ? fileName.split('.').last : '';
     final icon = _iconForExtension(ext);
-    final displayName =
-        fileName.isNotEmpty ? fileName : 'Документ';
+    final displayName = fileName.isNotEmpty ? fileName : 'Документ';
     final sizeText = _formatFileSize(sizeBytes);
     return GestureDetector(
       onTap: () async {
@@ -37,11 +35,9 @@ class ChatAttachmentBubble extends StatelessWidget {
         }
       },
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color:
-              mine ? cs.primaryContainer : cs.surfaceContainerHighest,
+          color: mine ? cs.primaryContainer : cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
@@ -69,8 +65,7 @@ class ChatAttachmentBubble extends StatelessWidget {
                       sizeText,
                       style: TextStyle(
                         fontSize: 11,
-                        color:
-                            cs.onSurface.withValues(alpha: 0.5),
+                        color: cs.onSurface.withValues(alpha: 0.5),
                       ),
                     ),
                   ],

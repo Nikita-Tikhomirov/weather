@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 @immutable
 class ChatConversation {
-  ChatConversation({
+  const ChatConversation({
     required this.conversationKey,
     required this.kind,
     required this.title,
@@ -79,7 +79,7 @@ class ChatConversation {
 
 @immutable
 class ChatContact {
-  ChatContact({
+  const ChatContact({
     required this.profileKey,
     required this.displayName,
     required this.phone,
@@ -151,7 +151,7 @@ class ChatContact {
 
 @immutable
 class ChatAttachment {
-  ChatAttachment({
+  const ChatAttachment({
     required this.kind,
     required this.assetUrl,
     required this.imageMeta,
@@ -199,7 +199,9 @@ class ChatAttachment {
   int get hashCode => Object.hash(
         kind,
         assetUrl,
-        Object.hashAll(imageMeta.entries.map((e) => Object.hash(e.key, e.value))),
+        Object.hashAll(
+          imageMeta.entries.map((e) => Object.hash(e.key, e.value)),
+        ),
         sortOrder,
       );
 
@@ -220,7 +222,7 @@ class ChatAttachment {
 
 @immutable
 class ChatReaction {
-  ChatReaction({required this.reaction, required this.count});
+  const ChatReaction({required this.reaction, required this.count});
 
   final String reaction;
   final int count;
@@ -258,7 +260,7 @@ class ChatReaction {
 
 @immutable
 class ChatMessage {
-  ChatMessage({
+  const ChatMessage({
     required this.id,
     required this.conversationKey,
     required this.senderProfile,
@@ -440,7 +442,9 @@ class ChatMessage {
         createdAt,
         stickerId,
         imageUrl,
-        Object.hashAll(imageMeta.entries.map((e) => Object.hash(e.key, e.value))),
+        Object.hashAll(
+          imageMeta.entries.map((e) => Object.hash(e.key, e.value)),
+        ),
         Object.hashAll(attachments),
         Object.hashAll(reactions),
         myReaction,
@@ -455,7 +459,7 @@ class ChatMessage {
 
 @immutable
 class StickerItem {
-  StickerItem({
+  const StickerItem({
     required this.stickerId,
     required this.title,
     required this.assetUrl,
@@ -499,7 +503,10 @@ class StickerItem {
 
   @override
   int get hashCode =>
-      stickerId.hashCode ^ title.hashCode ^ assetUrl.hashCode ^ sortOrder.hashCode;
+      stickerId.hashCode ^
+      title.hashCode ^
+      assetUrl.hashCode ^
+      sortOrder.hashCode;
 
   StickerItem copyWith({
     String? stickerId,
@@ -518,7 +525,7 @@ class StickerItem {
 
 @immutable
 class StickerPack {
-  StickerPack({
+  const StickerPack({
     required this.packKey,
     required this.title,
     required this.items,

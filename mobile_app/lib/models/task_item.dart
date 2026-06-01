@@ -5,7 +5,9 @@ import 'package:flutter/foundation.dart';
 /// Workflow status of a task.
 enum WorkflowStatus {
   todo,
+  // ignore: constant_identifier_names
   in_progress,
+  // ignore: constant_identifier_names
   in_review,
   done,
   archive;
@@ -42,7 +44,7 @@ enum Priority {
 /// with the previous string-based format.
 @immutable
 class TaskItem {
-  TaskItem({
+  const TaskItem({
     required this.id,
     required this.ownerKey,
     required this.isFamily,

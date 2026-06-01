@@ -63,8 +63,7 @@ class DesktopShellWidget extends StatelessWidget {
     return ValueListenableBuilder<Map<String, String>>(
       valueListenable: store.desktopThemeTokens,
       builder: (context, tokens, _) {
-        final bgApp =
-            colorFromToken(tokens, 'bg_app', const Color(0xFFF1F5F9));
+        final bgApp = colorFromToken(tokens, 'bg_app', const Color(0xFFF1F5F9));
         final bgPanel =
             colorFromToken(tokens, 'bg_panel', const Color(0xFFFFFFFF));
         final textPrimary =
@@ -106,12 +105,17 @@ class DesktopShellWidget extends StatelessWidget {
                               showSelectedIcon: false,
                               segments: const [
                                 ButtonSegment(
-                                    value: 0, label: Text('Задачи')),
+                                  value: 0,
+                                  label: Text('Задачи'),
+                                ),
                                 ButtonSegment(
-                                    value: 1, label: Text('Календарь')),
+                                  value: 1,
+                                  label: Text('Календарь'),
+                                ),
                                 ButtonSegment(
-                                    value: 2,
-                                    label: Text('Мессенджер')),
+                                  value: 2,
+                                  label: Text('Мессенджер'),
+                                ),
                               ],
                               selected: {page},
                               onSelectionChanged: (value) =>
@@ -127,9 +131,13 @@ class DesktopShellWidget extends StatelessWidget {
                               showSelectedIcon: false,
                               segments: const [
                                 ButtonSegment(
-                                    value: 'light', label: Text('Свет')),
+                                  value: 'light',
+                                  label: Text('Свет'),
+                                ),
                                 ButtonSegment(
-                                    value: 'dark', label: Text('Тьма')),
+                                  value: 'dark',
+                                  label: Text('Тьма'),
+                                ),
                               ],
                               selected: {mode},
                               onSelectionChanged: (value) =>
@@ -144,16 +152,12 @@ class DesktopShellWidget extends StatelessWidget {
                             return ValueListenableBuilder<String>(
                               valueListenable: store.themeScheme,
                               builder: (context, scheme, ___) {
-                                final safeScheme =
-                                    schemes.contains(scheme) &&
-                                            schemes.isNotEmpty
-                                        ? scheme
-                                        : (schemes.isEmpty
-                                            ? ''
-                                            : schemes.first);
+                                final safeScheme = schemes.contains(scheme) &&
+                                        schemes.isNotEmpty
+                                    ? scheme
+                                    : (schemes.isEmpty ? '' : schemes.first);
                                 return DropdownButton<String>(
-                                  value:
-                                      safeScheme.isEmpty ? null : safeScheme,
+                                  value: safeScheme.isEmpty ? null : safeScheme,
                                   hint: const Text('Тема'),
                                   onChanged: (value) {
                                     if (value != null) {
@@ -162,8 +166,7 @@ class DesktopShellWidget extends StatelessWidget {
                                   },
                                   items: schemes
                                       .map(
-                                        (item) =>
-                                            DropdownMenuItem<String>(
+                                        (item) => DropdownMenuItem<String>(
                                           value: item,
                                           child: Text(item),
                                         ),
@@ -178,8 +181,8 @@ class DesktopShellWidget extends StatelessWidget {
                         ValueListenableBuilder<DesktopHostState>(
                           valueListenable: store.voiceHostState,
                           builder: (context, voiceState, __) {
-                            final enabled = voiceState.status ==
-                                DesktopHostStatus.running;
+                            final enabled =
+                                voiceState.status == DesktopHostStatus.running;
                             return Row(
                               children: [
                                 const Text('Голос'),
@@ -214,9 +217,7 @@ class DesktopShellWidget extends StatelessWidget {
                           builder: (context, canUndo, __) {
                             return IconButton(
                               tooltip: 'Отменить',
-                              onPressed: canUndo
-                                  ? () => onUndo(store)
-                                  : null,
+                              onPressed: canUndo ? () => onUndo(store) : null,
                               icon: const Icon(Icons.undo),
                             );
                           },
@@ -227,7 +228,8 @@ class DesktopShellWidget extends StatelessWidget {
                   Expanded(
                     child: loading
                         ? const Center(
-                            child: CircularProgressIndicator())
+                            child: CircularProgressIndicator(),
+                          )
                         : desktopPageContentBuilder(store, selectedDate),
                   ),
                   AnimatedContainer(
@@ -236,7 +238,8 @@ class DesktopShellWidget extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: bgPanel,
                       border: Border(
-                          top: BorderSide(color: border)),
+                        top: BorderSide(color: border),
+                      ),
                     ),
                     child: Column(
                       children: [
@@ -251,8 +254,7 @@ class DesktopShellWidget extends StatelessWidget {
                               children: [
                                 Icon(
                                   desktopLogExpanded
-                                      ? Icons
-                                          .keyboard_arrow_down
+                                      ? Icons.keyboard_arrow_down
                                       : Icons.keyboard_arrow_up,
                                 ),
                                 const SizedBox(width: 8),
@@ -263,24 +265,19 @@ class DesktopShellWidget extends StatelessWidget {
                         ),
                         if (desktopLogExpanded)
                           Expanded(
-                            child:
-                                ValueListenableBuilder<List<String>>(
-                              valueListenable:
-                                  store.desktopLogEntries,
+                            child: ValueListenableBuilder<List<String>>(
+                              valueListenable: store.desktopLogEntries,
                               builder: (context, logs, __) {
                                 return ListView.builder(
                                   reverse: true,
-                                  padding:
-                                      const EdgeInsets.symmetric(
+                                  padding: const EdgeInsets.symmetric(
                                     horizontal: 12,
                                   ),
                                   itemCount: logs.length,
-                                  itemBuilder:
-                                      (context, index) {
-                                    return Text(logs[
-                                        logs.length -
-                                            1 -
-                                            index]);
+                                  itemBuilder: (context, index) {
+                                    return Text(
+                                      logs[logs.length - 1 - index],
+                                    );
                                   },
                                 );
                               },
@@ -297,5 +294,4 @@ class DesktopShellWidget extends StatelessWidget {
       },
     );
   }
-
 }

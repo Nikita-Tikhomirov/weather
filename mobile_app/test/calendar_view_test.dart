@@ -35,7 +35,7 @@ void main() {
 
     testWidgets('shows tasks on their dates', (tester) async {
       final tasks = [
-        TaskItem(
+        const TaskItem(
           id: '1',
           ownerKey: 'user',
           isFamily: false,
@@ -45,9 +45,9 @@ void main() {
           time: '',
           workflowStatus: WorkflowStatus.todo,
           priority: Priority.medium,
-          tags: const [],
-          assignees: const [],
-          reminderOffsetsMinutes: const [],
+          tags: [],
+          assignees: [],
+          reminderOffsetsMinutes: [],
           durationMinutes: 0,
           updatedAt: '2026-05-15T00:00:00',
           version: 1,

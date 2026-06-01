@@ -33,7 +33,7 @@ void main() {
 
     testWidgets('displays tasks in correct columns', (tester) async {
       final tasks = [
-        TaskItem(
+        const TaskItem(
           id: '1',
           ownerKey: 'test_user',
           isFamily: false,
@@ -43,14 +43,14 @@ void main() {
           time: '',
           workflowStatus: WorkflowStatus.todo,
           priority: Priority.medium,
-          tags: const [],
-          assignees: const [],
-          reminderOffsetsMinutes: const [],
+          tags: [],
+          assignees: [],
+          reminderOffsetsMinutes: [],
           durationMinutes: 0,
           updatedAt: '2026-05-30T00:00:00',
           version: 1,
         ),
-        TaskItem(
+        const TaskItem(
           id: '2',
           ownerKey: 'test_user',
           isFamily: false,
@@ -60,9 +60,9 @@ void main() {
           time: '',
           workflowStatus: WorkflowStatus.done,
           priority: Priority.high,
-          tags: const [],
-          assignees: const [],
-          reminderOffsetsMinutes: const [],
+          tags: [],
+          assignees: [],
+          reminderOffsetsMinutes: [],
           durationMinutes: 0,
           updatedAt: '2026-05-30T00:00:00',
           version: 1,
@@ -131,12 +131,14 @@ void main() {
       ];
 
       for (final status in statuses) {
-        final style =
-            KanbanColumnStyle.resolve(ThemeData.light(), status);
+        final style = KanbanColumnStyle.resolve(ThemeData.light(), status);
         final contrast =
             _contrastRatio(style.titleColor, style.backgroundColor);
-        expect(contrast, greaterThanOrEqualTo(4.5),
-            reason: 'Low contrast for $status');
+        expect(
+          contrast,
+          greaterThanOrEqualTo(4.5),
+          reason: 'Low contrast for $status',
+        );
       }
     });
   });

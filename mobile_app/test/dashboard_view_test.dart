@@ -80,7 +80,7 @@ void main() {
 
     testWidgets('shows upcoming tasks', (tester) async {
       final upcoming = [
-        TaskItem(
+        const TaskItem(
           id: '1',
           ownerKey: 'test_user',
           isFamily: false,
@@ -90,9 +90,9 @@ void main() {
           time: '18:00',
           workflowStatus: WorkflowStatus.todo,
           priority: Priority.high,
-          tags: const [],
-          assignees: const [],
-          reminderOffsetsMinutes: const [],
+          tags: [],
+          assignees: [],
+          reminderOffsetsMinutes: [],
           durationMinutes: 60,
           updatedAt: '2026-05-31T12:00:00',
           version: 1,

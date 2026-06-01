@@ -148,7 +148,8 @@ class DesktopProcessHostService {
           message: 'Process exited immediately with code 0',
         );
       }
-      final message = diagnostics?.lastErrorLine ?? 'Process exited with code $exit';
+      final message =
+          diagnostics?.lastErrorLine ?? 'Process exited with code $exit';
       return _StartupResult(
         running: false,
         errorCode: 'process_exit_nonzero',
@@ -185,7 +186,8 @@ class DesktopProcessHostService {
     onVoiceState(
       DesktopHostState(
         status: DesktopHostStatus.error,
-        lastMessage: diagnostics?.lastErrorLine ?? 'voice exited with code $code',
+        lastMessage:
+            diagnostics?.lastErrorLine ?? 'voice exited with code $code',
         errorCode: 'process_exit_nonzero',
       ),
     );
@@ -217,7 +219,9 @@ class DesktopProcessHostService {
         continue;
       }
     }
-    return const _StartResult.fail('python is not available or script not found');
+    return const _StartResult.fail(
+      'python is not available or script not found',
+    );
   }
 
   Future<void> _stopProcess({

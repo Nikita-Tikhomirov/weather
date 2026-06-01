@@ -4,7 +4,7 @@ import 'chat_models.dart';
 
 @immutable
 class ChatBootstrapSnapshot {
-  ChatBootstrapSnapshot({
+  const ChatBootstrapSnapshot({
     required this.contacts,
     required this.groupConversationKey,
     required this.conversations,
@@ -59,7 +59,7 @@ class ChatBootstrapSnapshot {
 
 @immutable
 class ChatMessagesSnapshot {
-  ChatMessagesSnapshot({
+  const ChatMessagesSnapshot({
     required this.messages,
     required this.nextCursor,
     this.typingProfiles = const [],
@@ -107,7 +107,7 @@ class ChatMessagesSnapshot {
 
 @immutable
 class ChatUploadResult {
-  ChatUploadResult({
+  const ChatUploadResult({
     required this.assetUrl,
     required this.imageMeta,
   });
@@ -133,7 +133,9 @@ class ChatUploadResult {
   @override
   int get hashCode => Object.hash(
         assetUrl,
-        Object.hashAll(imageMeta.entries.map((e) => Object.hash(e.key, e.value))),
+        Object.hashAll(
+          imageMeta.entries.map((e) => Object.hash(e.key, e.value)),
+        ),
       );
 
   ChatUploadResult copyWith({

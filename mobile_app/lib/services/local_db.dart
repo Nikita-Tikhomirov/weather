@@ -28,7 +28,8 @@ class LocalDb implements TaskDataSource {
   @override
   Future<void> upsertTask(TaskItem item) async {
     await _db.insert(
-      'tasks', item.toDbRow(),
+      'tasks',
+      item.toDbRow(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
@@ -40,12 +41,14 @@ class LocalDb implements TaskDataSource {
 
   @override
   Future<List<TaskItem>> readTasks({
-    String? ownerKey, bool includeAll = false,
+    String? ownerKey,
+    bool includeAll = false,
   }) async {
     final rows = await _db.query(
       'tasks',
       where: includeAll || ownerKey == null
-          ? null : '(owner_key = ? OR is_family = 1)',
+          ? null
+          : '(owner_key = ? OR is_family = 1)',
       whereArgs: includeAll || ownerKey == null ? null : [ownerKey],
       orderBy: 'updated_at DESC',
     );
@@ -54,31 +57,40 @@ class LocalDb implements TaskDataSource {
 
   @override
   Future<void> replacePersonalTasks({
-    required String ownerKey, required List<TaskItem> items,
+    required String ownerKey,
+    required List<TaskItem> items,
   }) async {
     await _db.transaction((txn) async {
-      await txn.delete('tasks',
-          where: 'is_family = 0 AND owner_key = ?',
-          whereArgs: [ownerKey]);
+      await txn.delete(
+        'tasks',
+        where: 'is_family = 0 AND owner_key = ?',
+        whereArgs: [ownerKey],
+      );
       for (final item in items.where((t) => !t.isFamily)) {
-        await txn.insert('tasks', item.toDbRow(),
-            conflictAlgorithm: ConflictAlgorithm.replace);
+        await txn.insert(
+          'tasks',
+          item.toDbRow(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
       }
     });
   }
 
   @override
   Future<void> mergePersonalTasks({
-    required String ownerKey, required List<TaskItem> items,
+    required String ownerKey,
+    required List<TaskItem> items,
   }) async {
-    final personal = items
-        .where((t) => !t.isFamily && t.ownerKey == ownerKey)
-        .toList();
+    final personal =
+        items.where((t) => !t.isFamily && t.ownerKey == ownerKey).toList();
     if (personal.isEmpty) return;
     await _db.transaction((txn) async {
       for (final item in personal) {
-        await txn.insert('tasks', item.toDbRow(),
-            conflictAlgorithm: ConflictAlgorithm.replace);
+        await txn.insert(
+          'tasks',
+          item.toDbRow(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
       }
     });
   }
@@ -88,11 +100,17 @@ class LocalDb implements TaskDataSource {
     final familyItems = items.where((t) => t.isFamily).toList();
     await _db.transaction((txn) async {
       for (final item in familyItems) {
-        await txn.insert('tasks', item.toDbRow(),
-            conflictAlgorithm: ConflictAlgorithm.replace);
+        await txn.insert(
+          'tasks',
+          item.toDbRow(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
       }
-      final rows = await txn.query('tasks',
-          columns: const ['id'], where: 'is_family = 1');
+      final rows = await txn.query(
+        'tasks',
+        columns: const ['id'],
+        where: 'is_family = 1',
+      );
       final remoteIds = familyItems.map((item) => item.id).toSet();
       for (final row in rows) {
         final id = (row['id'] ?? '').toString();
@@ -109,8 +127,11 @@ class LocalDb implements TaskDataSource {
     if (familyItems.isEmpty) return;
     await _db.transaction((txn) async {
       for (final item in familyItems) {
-        await txn.insert('tasks', item.toDbRow(),
-            conflictAlgorithm: ConflictAlgorithm.replace);
+        await txn.insert(
+          'tasks',
+          item.toDbRow(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
       }
     });
   }
@@ -119,14 +140,20 @@ class LocalDb implements TaskDataSource {
 
   @override
   Future<void> putPending(PendingEvent event) async {
-    await _db.insert('pending_events', event.toDbRow(),
-        conflictAlgorithm: ConflictAlgorithm.replace);
+    await _db.insert(
+      'pending_events',
+      event.toDbRow(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   @override
   Future<List<PendingEvent>> readPending({int limit = 200}) async {
-    final rows = await _db.query('pending_events',
-        orderBy: 'happened_at ASC', limit: limit);
+    final rows = await _db.query(
+      'pending_events',
+      orderBy: 'happened_at ASC',
+      limit: limit,
+    );
     return rows.map(PendingEvent.fromDbRow).toList();
   }
 
@@ -134,24 +161,34 @@ class LocalDb implements TaskDataSource {
   Future<void> removePending(List<String> eventIds) async {
     if (eventIds.isEmpty) return;
     final ph = List.filled(eventIds.length, '?').join(',');
-    await _db.delete('pending_events',
-        where: 'event_id IN ($ph)', whereArgs: eventIds);
+    await _db.delete(
+      'pending_events',
+      where: 'event_id IN ($ph)',
+      whereArgs: eventIds,
+    );
   }
 
   // -- Sync cursor -------------------------------------------------------
 
   @override
   Future<String> readSince() async {
-    final rows = await _db.query('meta',
-        where: 'k = ?', whereArgs: ['since'], limit: 1);
+    final rows = await _db.query(
+      'meta',
+      where: 'k = ?',
+      whereArgs: ['since'],
+      limit: 1,
+    );
     if (rows.isEmpty) return '1970-01-01T00:00:00';
     return (rows.first['v'] ?? '1970-01-01T00:00:00').toString();
   }
 
   @override
   Future<void> writeSince(String value) async {
-    await _db.insert('meta', {'k': 'since', 'v': value},
-        conflictAlgorithm: ConflictAlgorithm.replace);
+    await _db.insert(
+      'meta',
+      {'k': 'since', 'v': value},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   static Future<LocalDb> open({String? databasePath}) async {
@@ -407,7 +444,6 @@ class LocalDb implements TaskDataSource {
       await db.execute('ALTER TABLE $table ADD COLUMN $column $definition');
     }
   }
-
 }
 
 /// Chat-related operations exposed as extension methods on [LocalDb].
@@ -428,15 +464,13 @@ extension LocalDbChat on LocalDb {
   }
 
   Future<void> replaceConversations(List<ChatConversation> items) async {
-    final keys =
-        items.map((item) => item.conversationKey).toSet().toList();
+    final keys = items.map((item) => item.conversationKey).toSet().toList();
     await _db.transaction((txn) async {
       if (keys.isEmpty) {
         await txn.delete('chat_messages');
         await txn.delete('chat_conversations');
       } else {
-        final placeholders =
-            List.filled(keys.length, '?').join(',');
+        final placeholders = List.filled(keys.length, '?').join(',');
         await txn.delete(
           'chat_messages',
           where: 'conversation_key NOT IN ($placeholders)',
@@ -511,9 +545,11 @@ extension LocalDbChat on LocalDb {
             'image_url': item.imageUrl,
             'image_meta_json': jsonEncode(item.imageMeta),
             'attachments_json': jsonEncode(
-                item.attachments.map((a) => a.toJson()).toList()),
+              item.attachments.map((a) => a.toJson()).toList(),
+            ),
             'reactions_json': jsonEncode(
-                item.reactions.map((r) => r.toJson()).toList()),
+              item.reactions.map((r) => r.toJson()).toList(),
+            ),
             'my_reaction': item.myReaction,
             'client_message_id': item.clientMessageId,
             'created_at': item.createdAt,
@@ -585,11 +621,13 @@ extension LocalDbChat on LocalDb {
       );
     }
     return grouped.entries
-        .map((entry) => StickerPack(
-              packKey: entry.key,
-              title: entry.key,
-              items: entry.value,
-            ))
+        .map(
+          (entry) => StickerPack(
+            packKey: entry.key,
+            title: entry.key,
+            items: entry.value,
+          ),
+        )
         .toList();
   }
 
@@ -684,8 +722,10 @@ extension LocalDbProjects on LocalDb {
   }
 
   Future<List<TaskProject>> readProjects() async {
-    final rows = await _db.query('task_projects',
-        orderBy: 'name ASC, id ASC');
+    final rows = await _db.query(
+      'task_projects',
+      orderBy: 'name ASC, id ASC',
+    );
     return rows.map(TaskProject.fromDbRow).toList();
   }
 
@@ -698,14 +738,21 @@ extension LocalDbProjects on LocalDb {
   }
 
   Future<void> deleteProjectLocal(String id) async {
-    await _db.delete('task_projects',
-        where: 'id = ?', whereArgs: [id]);
-    await _db.delete('project_family_groups_local',
-        where: 'project_id = ?', whereArgs: [id]);
+    await _db.delete(
+      'task_projects',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    await _db.delete(
+      'project_family_groups_local',
+      where: 'project_id = ?',
+      whereArgs: [id],
+    );
   }
 
   Future<void> replaceFamilyGroups(
-      List<FamilyGroup> groups) async {
+    List<FamilyGroup> groups,
+  ) async {
     await _db.transaction((txn) async {
       await txn.delete('family_groups_local');
       for (final item in groups) {
@@ -719,13 +766,16 @@ extension LocalDbProjects on LocalDb {
   }
 
   Future<List<FamilyGroup>> readFamilyGroups() async {
-    final rows = await _db.query('family_groups_local',
-        orderBy: 'name ASC, id ASC');
+    final rows = await _db.query(
+      'family_groups_local',
+      orderBy: 'name ASC, id ASC',
+    );
     return rows.map(FamilyGroup.fromDbRow).toList();
   }
 
   Future<void> upsertFamilyGroupLocal(
-      FamilyGroup group) async {
+    FamilyGroup group,
+  ) async {
     await _db.insert(
       'family_groups_local',
       group.toDbRow(),
@@ -734,16 +784,20 @@ extension LocalDbProjects on LocalDb {
   }
 
   Future<void> deleteFamilyGroupLocal(String id) async {
-    await _db.delete('family_groups_local',
-        where: 'id = ?', whereArgs: [id]);
-    await _db.delete('project_family_groups_local',
-        where: 'group_id = ?', whereArgs: [id]);
+    await _db.delete(
+      'family_groups_local',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    await _db.delete(
+      'project_family_groups_local',
+      where: 'group_id = ?',
+      whereArgs: [id],
+    );
   }
 
-  Future<Map<String, List<String>>>
-      readProjectGroupMap() async {
-    final rows =
-        await _db.query('project_family_groups_local');
+  Future<Map<String, List<String>>> readProjectGroupMap() async {
+    final rows = await _db.query('project_family_groups_local');
     final map = <String, List<String>>{};
     for (final row in rows) {
       final pid = (row['project_id'] ?? '').toString();
@@ -755,37 +809,44 @@ extension LocalDbProjects on LocalDb {
   }
 
   Future<void> replaceProjectGroupMap(
-      Map<String, List<String>> map) async {
+    Map<String, List<String>> map,
+  ) async {
     await _db.transaction((txn) async {
       await txn.delete('project_family_groups_local');
       for (final entry in map.entries) {
         for (final gid in entry.value) {
           await txn.insert(
-              'project_family_groups_local',
-              {
-                'project_id': entry.key,
-                'group_id': gid,
-              },
-              conflictAlgorithm: ConflictAlgorithm.replace);
+            'project_family_groups_local',
+            {
+              'project_id': entry.key,
+              'group_id': gid,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
         }
       }
     });
   }
 
   Future<void> setProjectGroupsLocal(
-      String projectId, List<String> groupIds) async {
+    String projectId,
+    List<String> groupIds,
+  ) async {
     await _db.transaction((txn) async {
-      await txn.delete('project_family_groups_local',
-          where: 'project_id = ?',
-          whereArgs: [projectId]);
+      await txn.delete(
+        'project_family_groups_local',
+        where: 'project_id = ?',
+        whereArgs: [projectId],
+      );
       for (final gid in groupIds) {
         await txn.insert(
-            'project_family_groups_local',
-            {
-              'project_id': projectId,
-              'group_id': gid,
-            },
-            conflictAlgorithm: ConflictAlgorithm.replace);
+          'project_family_groups_local',
+          {
+            'project_id': projectId,
+            'group_id': gid,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
       }
     });
   }
@@ -843,9 +904,8 @@ extension LocalDbTasks on LocalDb {
     required String ownerKey,
     required List<TaskItem> items,
   }) async {
-    final personal = items
-        .where((t) => !t.isFamily && t.ownerKey == ownerKey)
-        .toList();
+    final personal =
+        items.where((t) => !t.isFamily && t.ownerKey == ownerKey).toList();
     if (personal.isEmpty) return;
     await _db.transaction((txn) async {
       for (final item in personal) {
@@ -859,9 +919,9 @@ extension LocalDbTasks on LocalDb {
   }
 
   Future<void> reconcileFamilyTasks(
-      List<TaskItem> items) async {
-    final familyItems =
-        items.where((t) => t.isFamily).toList();
+    List<TaskItem> items,
+  ) async {
+    final familyItems = items.where((t) => t.isFamily).toList();
     await _db.transaction((txn) async {
       for (final item in familyItems) {
         await txn.insert(
@@ -875,22 +935,24 @@ extension LocalDbTasks on LocalDb {
         columns: const ['id'],
         where: 'is_family = 1',
       );
-      final remoteIds =
-          familyItems.map((item) => item.id).toSet();
+      final remoteIds = familyItems.map((item) => item.id).toSet();
       for (final row in rows) {
         final id = (row['id'] ?? '').toString();
         if (id.isNotEmpty && !remoteIds.contains(id)) {
-          await txn.delete('tasks',
-              where: 'id = ?', whereArgs: [id]);
+          await txn.delete(
+            'tasks',
+            where: 'id = ?',
+            whereArgs: [id],
+          );
         }
       }
     });
   }
 
   Future<void> mergeFamilyTasks(
-      List<TaskItem> items) async {
-    final familyItems =
-        items.where((t) => t.isFamily).toList();
+    List<TaskItem> items,
+  ) async {
+    final familyItems = items.where((t) => t.isFamily).toList();
     if (familyItems.isEmpty) return;
     await _db.transaction((txn) async {
       for (final item in familyItems) {
@@ -912,8 +974,7 @@ extension LocalDbTasks on LocalDb {
       where: includeAll || ownerKey == null
           ? null
           : '(owner_key = ? OR is_family = 1)',
-      whereArgs:
-          includeAll || ownerKey == null ? null : [ownerKey],
+      whereArgs: includeAll || ownerKey == null ? null : [ownerKey],
       orderBy: 'updated_at DESC',
     );
     return rows.map(TaskItem.fromDbRow).toList();
@@ -927,8 +988,9 @@ extension LocalDbTasks on LocalDb {
     );
   }
 
-  Future<List<PendingEvent>> readPending(
-      {int limit = 200}) async {
+  Future<List<PendingEvent>> readPending({
+    int limit = 200,
+  }) async {
     final rows = await _db.query(
       'pending_events',
       orderBy: 'happened_at ASC',
@@ -939,8 +1001,7 @@ extension LocalDbTasks on LocalDb {
 
   Future<void> removePending(List<String> eventIds) async {
     if (eventIds.isEmpty) return;
-    final placeholders =
-        List.filled(eventIds.length, '?').join(',');
+    final placeholders = List.filled(eventIds.length, '?').join(',');
     await _db.delete(
       'pending_events',
       where: 'event_id IN ($placeholders)',
@@ -956,17 +1017,17 @@ extension LocalDbTasks on LocalDb {
       limit: 1,
     );
     if (rows.isEmpty) return '1970-01-01T00:00:00';
-    return (rows.first['v'] ?? '1970-01-01T00:00:00')
-        .toString();
+    return (rows.first['v'] ?? '1970-01-01T00:00:00').toString();
   }
 
   Future<void> writeSince(String value) async {
     await _db.insert(
-        'meta',
-        {
-          'k': 'since',
-          'v': value,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace);
+      'meta',
+      {
+        'k': 'since',
+        'v': value,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 }

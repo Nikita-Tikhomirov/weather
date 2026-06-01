@@ -89,11 +89,12 @@ class ChatMessageBubble extends StatelessWidget {
               Text(
                 _messageFooter(),
                 style: TextStyle(
-                    fontSize: 10,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.5)),
+                  fontSize: 10,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.5),
+                ),
               ),
             ],
           ),
@@ -107,9 +108,11 @@ class ChatMessageBubble extends StatelessWidget {
   Widget _buildMiniAvatar({double radius = 14}) {
     if (avatarUrl != null && avatarUrl!.isNotEmpty) {
       final image = avatarUrl!.startsWith('http') || avatarUrl!.startsWith('/')
-          ? NetworkImage(avatarUrl!.startsWith('/')
-              ? AvatarUrlResolver.resolveUrl(avatarUrl!)
-              : avatarUrl!) as ImageProvider
+          ? NetworkImage(
+              avatarUrl!.startsWith('/')
+                  ? AvatarUrlResolver.resolveUrl(avatarUrl!)
+                  : avatarUrl!,
+            ) as ImageProvider
           : FileImage(File(avatarUrl!));
       return CircleAvatar(
         radius: radius,
@@ -151,10 +154,10 @@ class ChatMessageBubble extends StatelessWidget {
     if (message.messageType == 'video' ||
         message.messageType == 'video_group') {
       final urls = _attachmentUrlsForKinds(['video']);
-      final thumbUrl = message.imageUrl is String &&
-              (message.imageUrl as String).isNotEmpty
-          ? message.imageUrl as String
-          : null;
+      final thumbUrl =
+          message.imageUrl is String && (message.imageUrl as String).isNotEmpty
+              ? message.imageUrl as String
+              : null;
       return ChatVideoBubble(
         urls: urls,
         compact: compact,
@@ -165,8 +168,7 @@ class ChatMessageBubble extends StatelessWidget {
     }
     if (message.messageType == 'audio') {
       final urls = _attachmentUrlsForKinds(['audio']);
-      final audioUrl =
-          urls.isNotEmpty ? urls.first : _bubbleAssetUrl(imageUrl);
+      final audioUrl = urls.isNotEmpty ? urls.first : _bubbleAssetUrl(imageUrl);
       return ChatAudioBubble(
         audioUrl: audioUrl,
         text: text,
@@ -201,17 +203,14 @@ class ChatMessageBubble extends StatelessWidget {
       );
     }
     if (message.messageType == 'file') {
-      final fileAtt = message.attachments.isNotEmpty
-          ? message.attachments.first
-          : null;
-      final fileName =
-          (fileAtt?.imageMeta['original_name'] ?? '').toString();
+      final fileAtt =
+          message.attachments.isNotEmpty ? message.attachments.first : null;
+      final fileName = (fileAtt?.imageMeta['original_name'] ?? '').toString();
       final fileUrl = fileAtt != null
           ? _bubbleAssetUrl(fileAtt.assetUrl)
           : _bubbleAssetUrl(imageUrl);
-      final sizeBytes = fileAtt != null
-          ? (fileAtt.imageMeta['size_bytes'] as int?) ?? 0
-          : 0;
+      final sizeBytes =
+          fileAtt != null ? (fileAtt.imageMeta['size_bytes'] as int?) ?? 0 : 0;
       return ChatAttachmentBubble(
         fileName: fileName,
         fileUrl: fileUrl,
@@ -293,29 +292,34 @@ class ChatMessageBubble extends StatelessWidget {
                         height: 40,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => const Icon(
-                            Icons.videocam,
-                            size: 40,
-                            color: Color(0xFF6B7280)),
+                          Icons.videocam,
+                          size: 40,
+                          color: Color(0xFF6B7280),
+                        ),
                       ),
                     ),
                   ),
                 if (hasVoice)
                   const Padding(
                     padding: EdgeInsets.only(right: 8),
-                    child:
-                        Icon(Icons.mic, size: 24, color: Color(0xFF6B7280)),
+                    child: Icon(Icons.mic, size: 24, color: Color(0xFF6B7280)),
                   ),
                 if (hasAudio)
                   const Padding(
                     padding: EdgeInsets.only(right: 8),
-                    child: Icon(Icons.audiotrack,
-                        size: 24, color: Color(0xFF6B7280)),
+                    child: Icon(
+                      Icons.audiotrack,
+                      size: 24,
+                      color: Color(0xFF6B7280),
+                    ),
                   ),
                 Expanded(
                   child: Text(
                     cleanQuote,
                     style: const TextStyle(
-                        fontSize: 13, color: Color(0xFF6B7280)),
+                      fontSize: 13,
+                      color: Color(0xFF6B7280),
+                    ),
                   ),
                 ),
               ],
@@ -335,7 +339,8 @@ class ChatMessageBubble extends StatelessWidget {
   List<String> _messageImageUrls() {
     final attachments = message.attachments
         .where(
-            (item) => item.kind == 'image' && item.assetUrl.trim().isNotEmpty)
+          (item) => item.kind == 'image' && item.assetUrl.trim().isNotEmpty,
+        )
         .toList()
       ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
     if (attachments.isNotEmpty) {
@@ -346,8 +351,10 @@ class ChatMessageBubble extends StatelessWidget {
 
   List<String> _attachmentUrlsForKinds(List<String> kinds) {
     final attachments = message.attachments
-        .where((item) =>
-            kinds.contains(item.kind) && item.assetUrl.trim().isNotEmpty)
+        .where(
+          (item) =>
+              kinds.contains(item.kind) && item.assetUrl.trim().isNotEmpty,
+        )
         .toList()
       ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
     if (attachments.isNotEmpty) {
@@ -441,7 +448,8 @@ class ChatMessageBubble extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final previews = message.attachments
         .where(
-            (item) => item.kind == 'image' && item.assetUrl.trim().isNotEmpty)
+          (item) => item.kind == 'image' && item.assetUrl.trim().isNotEmpty,
+        )
         .toList()
       ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
     final width = previews.length <= 1 ? (compact ? 238.0 : 320.0) : 104.0;
@@ -523,8 +531,18 @@ class ChatMessageBubble extends StatelessWidget {
     try {
       final dt = DateTime.parse(iso).toLocal();
       const months = [
-        'янв', 'фев', 'мар', 'апр', 'мая', 'июн',
-        'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
+        'янв',
+        'фев',
+        'мар',
+        'апр',
+        'мая',
+        'июн',
+        'июл',
+        'авг',
+        'сен',
+        'окт',
+        'ноя',
+        'дек',
       ];
       final day = dt.day;
       final month = months[dt.month - 1];

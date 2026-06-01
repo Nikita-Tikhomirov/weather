@@ -76,8 +76,8 @@ class CalendarView extends StatelessWidget {
                   '${_monthNamesRu[monthDate.month - 1]} ${monthDate.year}',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
               ),
               IconButton(
@@ -127,7 +127,10 @@ class CalendarView extends StatelessWidget {
 
   static List<DateTime> _daysInMonth(DateTime month) {
     final lastDay = DateTime(month.year, month.month + 1, 0);
-    return List.generate(lastDay.day, (i) => DateTime(month.year, month.month, i + 1));
+    return List.generate(
+      lastDay.day,
+      (i) => DateTime(month.year, month.month, i + 1),
+    );
   }
 
   static bool _isSameDay(DateTime a, DateTime b) {
@@ -228,7 +231,8 @@ class _DayCell extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 10,
-                                    color: colors.onSurface.withValues(alpha: 0.7),
+                                    color:
+                                        colors.onSurface.withValues(alpha: 0.7),
                                   ),
                                 ),
                               ),
@@ -256,11 +260,16 @@ class _DayCell extends StatelessWidget {
 
   static Color _statusDot(WorkflowStatus status) {
     switch (status) {
-      case WorkflowStatus.todo: return const Color(0xFF38BDF8);
-      case WorkflowStatus.in_progress: return const Color(0xFF34D399);
-      case WorkflowStatus.in_review: return const Color(0xFFFBBF24);
-      case WorkflowStatus.done: return const Color(0xFFA78BFA);
-      case WorkflowStatus.archive: return const Color(0xFF9CA3AF);
+      case WorkflowStatus.todo:
+        return const Color(0xFF38BDF8);
+      case WorkflowStatus.in_progress:
+        return const Color(0xFF34D399);
+      case WorkflowStatus.in_review:
+        return const Color(0xFFFBBF24);
+      case WorkflowStatus.done:
+        return const Color(0xFFA78BFA);
+      case WorkflowStatus.archive:
+        return const Color(0xFF9CA3AF);
     }
   }
 }
@@ -306,8 +315,8 @@ class DayTasksPage extends StatelessWidget {
               child: Text(
                 'На эту дату задач нет',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
             )
           : ListView.builder(
@@ -327,7 +336,6 @@ class DayTasksPage extends StatelessWidget {
     );
   }
 }
-
 
 // ── Desktop calendar (unchanged) ─────────────────────────────────
 
@@ -398,7 +406,9 @@ class DesktopCalendarView extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               OutlinedButton(
-                  onPressed: onGoToday, child: const Text('Сегодня')),
+                onPressed: onGoToday,
+                child: const Text('Сегодня'),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -484,7 +494,8 @@ class DesktopCalendarView extends StatelessWidget {
                                   child: Container(
                                     width: double.infinity,
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 3,
+                                      horizontal: 6,
+                                      vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFDBEAFE),

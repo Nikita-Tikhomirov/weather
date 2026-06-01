@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../models/call_models.dart';
@@ -88,7 +87,8 @@ class HomePushHandler {
       return;
     }
     debugPrint(
-        '[FCM push] init processing pending: entity=${pending['entity']} conv=${pending['conversation_key']}');
+      '[FCM push] init processing pending: entity=${pending['entity']} conv=${pending['conversation_key']}',
+    );
     pendingPushData = null;
     pendingPushWasOpened = false;
 
@@ -166,7 +166,8 @@ class HomePushHandler {
         conversationKey.isNotEmpty &&
         !isProjectConversation(conversationKey)) {
       debugPrint(
-          '[FCM push] routing to messenger → openConversation($conversationKey)');
+        '[FCM push] routing to messenger → openConversation($conversationKey)',
+      );
       pushAlreadyRouted = true;
       store.setPage(4);
       await _waitForMessengerTab();
@@ -199,7 +200,8 @@ class HomePushHandler {
       },
       onOpenPush: (data) async {
         debugPrint(
-            '[FCM push] onOpenPush: entity=${data['entity']} conv=${data['conversation_key']}');
+          '[FCM push] onOpenPush: entity=${data['entity']} conv=${data['conversation_key']}',
+        );
         pendingPushData = Map<String, dynamic>.from(data);
         pendingPushWasOpened = true;
         await handleOpenedPush(data);

@@ -237,7 +237,7 @@ git push
 **Files:**
 - Modify: Dart files reported by `flutter analyze`
 
-- [ ] **Step 1: Generate issue count**
+- [x] **Step 1: Generate issue count**
 
 Run:
 
@@ -250,7 +250,7 @@ $rows.Count
 
 Expected before work: `359`.
 
-- [ ] **Step 2: Format Dart code**
+- [x] **Step 2: Format Dart code**
 
 Run:
 
@@ -261,7 +261,7 @@ C:\Users\user\tools\flutter\bin\dart.bat format lib test
 
 Expected: files are formatted and many trailing comma issues disappear.
 
-- [ ] **Step 3: Fix non-format lints by domain**
+- [x] **Step 3: Fix non-format lints by domain**
 
 Order:
 
@@ -274,7 +274,7 @@ Order:
 6. PREFER_CONST_* and UNNECESSARY_LAMBDAS
 ```
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run:
 
@@ -286,7 +286,7 @@ C:\Users\user\tools\flutter\bin\flutter.bat test --concurrency=1
 
 Expected: analyzer issue count is lower; tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Run:
 

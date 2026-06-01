@@ -32,22 +32,28 @@ class _FakeDataSource implements TaskDataSource {
   }
 
   @override
-  Future<List<TaskItem>> readTasks(
-      {String? ownerKey, bool includeAll = false}) async {
+  Future<List<TaskItem>> readTasks({
+    String? ownerKey,
+    bool includeAll = false,
+  }) async {
     if (includeAll) return _tasks.toList();
     return _tasks.where((t) => t.ownerKey == ownerKey || t.isFamily).toList();
   }
 
   @override
-  Future<void> replacePersonalTasks(
-      {required String ownerKey, required List<TaskItem> items}) async {
+  Future<void> replacePersonalTasks({
+    required String ownerKey,
+    required List<TaskItem> items,
+  }) async {
     _tasks.removeWhere((t) => t.ownerKey == ownerKey && !t.isFamily);
     _tasks.addAll(items);
   }
 
   @override
-  Future<void> mergePersonalTasks(
-      {required String ownerKey, required List<TaskItem> items}) async {
+  Future<void> mergePersonalTasks({
+    required String ownerKey,
+    required List<TaskItem> items,
+  }) async {
     for (final item in items) {
       await upsertTask(item);
     }
@@ -96,9 +102,8 @@ class _FakeDataSource implements TaskDataSource {
 }
 
 class _FakeRepository extends TaskRepository {
-  _FakeRepository({required this.dataSource, required LocalDb db})
+  _FakeRepository({required this.dataSource, required super.db})
       : super(
-          db: db,
           api: ApiClient(baseUrl: 'http://localhost', apiKey: 'test-key'),
         );
 
@@ -164,12 +169,14 @@ class _MemoryProjectSelectionStorage implements ProjectSelectionStorage {
   }
 }
 
-TaskItem _task(String id,
-    {String ownerKey = 'nik',
-    bool isFamily = false,
-    WorkflowStatus workflowStatus = WorkflowStatus.todo,
-    String dueDate = '2026-05-24',
-    List<String>? assignees}) {
+TaskItem _task(
+  String id, {
+  String ownerKey = 'nik',
+  bool isFamily = false,
+  WorkflowStatus workflowStatus = WorkflowStatus.todo,
+  String dueDate = '2026-05-24',
+  List<String>? assignees,
+}) {
   return TaskItem(
     id: id,
     ownerKey: ownerKey,
@@ -180,9 +187,9 @@ TaskItem _task(String id,
     time: '12:00',
     workflowStatus: workflowStatus,
     priority: Priority.medium,
-    tags: [],
+    tags: const [],
     assignees: assignees ?? [ownerKey],
-    reminderOffsetsMinutes: [],
+    reminderOffsetsMinutes: const [],
     durationMinutes: 0,
     updatedAt: '2026-05-24T12:00:00',
     version: 1,
@@ -230,18 +237,37 @@ void main() {
         final yesterdayKey =
             '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
 
-        await ds.upsertTask(_task('t1',
-            dueDate: todayKey, workflowStatus: WorkflowStatus.done));
-        await ds.upsertTask(_task('t2',
-            dueDate: todayKey, workflowStatus: WorkflowStatus.todo));
-        await ds.upsertTask(_task('t3',
+        await ds.upsertTask(
+          _task(
+            't1',
+            dueDate: todayKey,
+            workflowStatus: WorkflowStatus.done,
+          ),
+        );
+        await ds.upsertTask(
+          _task(
+            't2',
+            dueDate: todayKey,
+            workflowStatus: WorkflowStatus.todo,
+          ),
+        );
+        await ds.upsertTask(
+          _task(
+            't3',
             dueDate: todayKey,
             isFamily: true,
             ownerKey: 'family',
             assignees: ['nik'],
-            workflowStatus: WorkflowStatus.todo));
-        await ds.upsertTask(_task('t4',
-            dueDate: yesterdayKey, workflowStatus: WorkflowStatus.todo));
+            workflowStatus: WorkflowStatus.todo,
+          ),
+        );
+        await ds.upsertTask(
+          _task(
+            't4',
+            dueDate: yesterdayKey,
+            workflowStatus: WorkflowStatus.todo,
+          ),
+        );
 
         await store.refreshLocal();
 
@@ -258,7 +284,8 @@ void main() {
       test('groups tasks by workflow status', () async {
         await ds.upsertTask(_task('k1', workflowStatus: WorkflowStatus.todo));
         await ds.upsertTask(
-            _task('k2', workflowStatus: WorkflowStatus.in_progress));
+          _task('k2', workflowStatus: WorkflowStatus.in_progress),
+        );
         await ds.upsertTask(_task('k3', workflowStatus: WorkflowStatus.done));
 
         await store.refreshLocal();
@@ -317,7 +344,7 @@ void main() {
       test('filters tasks by search query', () async {
         await ds.upsertTask(_task('s1'));
         await ds.upsertTask(_task('s2'));
-        final specialTitled = TaskItem(
+        const specialTitled = TaskItem(
           id: 's3',
           ownerKey: 'nik',
           isFamily: false,

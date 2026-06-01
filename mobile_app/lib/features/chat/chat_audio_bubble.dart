@@ -23,11 +23,9 @@ class ChatAudioBubble extends StatelessWidget {
         ch.invokeMethod('playVoice', {'url': audioUrl});
       },
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color:
-              mine ? cs.primaryContainer : cs.surfaceContainerHighest,
+          color: mine ? cs.primaryContainer : cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
@@ -36,8 +34,7 @@ class ChatAudioBubble extends StatelessWidget {
             Icon(
               Icons.audiotrack,
               size: 28,
-              color:
-                  mine ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+              color: mine ? cs.onPrimaryContainer : cs.onSurfaceVariant,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -45,8 +42,7 @@ class ChatAudioBubble extends StatelessWidget {
                 text.isNotEmpty ? text : 'Аудио',
                 style: TextStyle(
                   fontSize: 14,
-                  color:
-                      mine ? cs.onPrimaryContainer : cs.onSurface,
+                  color: mine ? cs.onPrimaryContainer : cs.onSurface,
                 ),
               ),
             ),

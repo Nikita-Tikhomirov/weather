@@ -102,8 +102,8 @@ Future<void> showProjectEditSheet({
                                   ScaffoldMessenger.of(sheetContext)
                                       .showSnackBar(
                                     const SnackBar(
-                                        content:
-                                            Text('Введите название проекта')),
+                                      content: Text('Введите название проекта'),
+                                    ),
                                   );
                                   return;
                                 }
@@ -131,7 +131,8 @@ Future<void> showProjectEditSheet({
                                         .showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                            'Ошибка: ${e.toString().replaceFirst("Exception: ", "")}'),
+                                          'Ошибка: ${e.toString().replaceFirst("Exception: ", "")}',
+                                        ),
                                         backgroundColor: Colors.red,
                                       ),
                                     );

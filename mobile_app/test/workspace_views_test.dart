@@ -31,17 +31,19 @@ void main() {
     var attachTapped = false;
     WorkspaceItem? opened;
 
-    await tester.pumpWidget(_testApp(
-      home: WorkspaceListView(
-        workspaces: const [workspace],
-        connected: true,
-        statusText: 'Подключено',
-        onRefresh: () {},
-        onCreateWorkspace: () => createTapped = true,
-        onAttachWorkspace: () => attachTapped = true,
-        onOpenWorkspace: (item) => opened = item,
+    await tester.pumpWidget(
+      _testApp(
+        home: WorkspaceListView(
+          workspaces: const [workspace],
+          connected: true,
+          statusText: 'Подключено',
+          onRefresh: () {},
+          onCreateWorkspace: () => createTapped = true,
+          onAttachWorkspace: () => attachTapped = true,
+          onOpenWorkspace: (item) => opened = item,
+        ),
       ),
-    ));
+    );
 
     expect(find.text('Рабочие пространства'), findsOneWidget);
     expect(find.text('Погода'), findsOneWidget);
@@ -61,17 +63,19 @@ void main() {
     WorkspaceSession? opened;
     WorkspaceSession? managed;
 
-    await tester.pumpWidget(_testApp(
-      home: WorkspaceDetailView(
-        workspace: workspace,
-        sessions: const [session],
-        onBack: () {},
-        onRefresh: () {},
-        onCreateSession: () => createSession = true,
-        onOpenSession: (item) => opened = item,
-        onManageSession: (item) => managed = item,
+    await tester.pumpWidget(
+      _testApp(
+        home: WorkspaceDetailView(
+          workspace: workspace,
+          sessions: const [session],
+          onBack: () {},
+          onRefresh: () {},
+          onCreateSession: () => createSession = true,
+          onOpenSession: (item) => opened = item,
+          onManageSession: (item) => managed = item,
+        ),
       ),
-    ));
+    );
 
     expect(find.text('Погода'), findsOneWidget);
     expect(find.text('Починить мост'), findsOneWidget);
@@ -91,25 +95,27 @@ void main() {
     var selectedName = '';
     var selectedPath = '';
 
-    await tester.pumpWidget(_testApp(
-      home: WorkspaceFolderBrowserView(
-        path: r'C:\Users\user\Desktop',
-        parent: '',
-        folders: const [
-          {
-            'name': 'weather',
-            'path': r'C:\Users\user\Desktop\weather',
+    await tester.pumpWidget(
+      _testApp(
+        home: WorkspaceFolderBrowserView(
+          path: r'C:\Users\user\Desktop',
+          parent: '',
+          folders: const [
+            {
+              'name': 'weather',
+              'path': r'C:\Users\user\Desktop\weather',
+            },
+          ],
+          onBack: () {},
+          onRefresh: () {},
+          onOpenFolder: (path) => openedPath = path,
+          onSelectFolder: (name, path) {
+            selectedName = name;
+            selectedPath = path;
           },
-        ],
-        onBack: () {},
-        onRefresh: () {},
-        onOpenFolder: (path) => openedPath = path,
-        onSelectFolder: (name, path) {
-          selectedName = name;
-          selectedPath = path;
-        },
+        ),
       ),
-    ));
+    );
 
     expect(find.text('Выбор папки'), findsOneWidget);
     expect(find.text('weather'), findsOneWidget);
@@ -136,88 +142,90 @@ void main() {
     var selectedSandboxMode = '';
     var selectedAutoMode = false;
 
-    await tester.pumpWidget(_testApp(
-      home: SessionManagementView(
-        workspace: workspace,
-        session: const WorkspaceSession(
-          id: 'session-1',
-          workspaceId: 'weather',
-          title: 'Починить мост',
-          status: WorkspaceSessionStatus.running,
-          provider: 'deepseek',
-          model: 'deepseek-v4-pro',
-          approvalPolicy: 'on-request',
-          sandboxMode: 'workspace-write',
-          autoMode: false,
-        ),
-        files: const [
-          ProjectFileNode(
-            name: 'README.md',
-            path: 'README.md',
-            isDir: false,
-            size: 12,
+    await tester.pumpWidget(
+      _testApp(
+        home: SessionManagementView(
+          workspace: workspace,
+          session: const WorkspaceSession(
+            id: 'session-1',
+            workspaceId: 'weather',
+            title: 'Починить мост',
+            status: WorkspaceSessionStatus.running,
+            provider: 'deepseek',
+            model: 'deepseek-v4-pro',
+            approvalPolicy: 'on-request',
+            sandboxMode: 'workspace-write',
+            autoMode: false,
           ),
-        ],
-        currentFilePath: '',
-        isFilesLoading: false,
-        filePreviewPath: '',
-        filePreviewText: '',
-        commands: const [
-          {
-            'group': 'Навыки',
-            'label': 'vision',
-            'value': '/skill vision',
-            'description': 'Проверка изображений',
+          files: const [
+            ProjectFileNode(
+              name: 'README.md',
+              path: 'README.md',
+              isDir: false,
+              size: 12,
+            ),
+          ],
+          currentFilePath: '',
+          isFilesLoading: false,
+          filePreviewPath: '',
+          filePreviewText: '',
+          commands: const [
+            {
+              'group': 'Навыки',
+              'label': 'vision',
+              'value': '/skill vision',
+              'description': 'Проверка изображений',
+            },
+            {
+              'group': 'Навыки',
+              'label': 'web-screenshot',
+              'value': '/skill web-screenshot',
+              'description': 'Скриншоты сайтов',
+            },
+            {
+              'group': 'Сессия',
+              'label': 'Статус',
+              'value': '/status',
+              'description': 'Проверить статус',
+            },
+          ],
+          onBack: () {},
+          onStop: () => stopped = true,
+          onKill: () => killed = true,
+          onRestart: () => restarted = true,
+          onRefreshFiles: () {},
+          onOpenFilePath: (path) => openedPath = path,
+          onReadFile: (path) => openedPath = path,
+          onInsertFilePath: (path) => insertedPath = path,
+          onSendPhoto: () {},
+          onSendDocument: () {},
+          onRunCommand: commands.add,
+          onUpdateSettings: ({
+            String? provider,
+            String? model,
+            String? approvalPolicy,
+            String? sandboxMode,
+            bool? autoMode,
+          }) {
+            if (provider != null) {
+              selectedProvider = provider;
+            }
+            if (model != null) {
+              selectedModel = model;
+            }
+            if (approvalPolicy != null) {
+              selectedApprovalPolicy = approvalPolicy;
+            }
+            if (sandboxMode != null) {
+              selectedSandboxMode = sandboxMode;
+            }
+            if (autoMode != null) {
+              selectedAutoMode = autoMode;
+            }
           },
-          {
-            'group': 'Навыки',
-            'label': 'web-screenshot',
-            'value': '/skill web-screenshot',
-            'description': 'Скриншоты сайтов',
-          },
-          {
-            'group': 'Сессия',
-            'label': 'Статус',
-            'value': '/status',
-            'description': 'Проверить статус',
-          },
-        ],
-        onBack: () {},
-        onStop: () => stopped = true,
-        onKill: () => killed = true,
-        onRestart: () => restarted = true,
-        onRefreshFiles: () {},
-        onOpenFilePath: (path) => openedPath = path,
-        onReadFile: (path) => openedPath = path,
-        onInsertFilePath: (path) => insertedPath = path,
-        onSendPhoto: () {},
-        onSendDocument: () {},
-        onRunCommand: commands.add,
-        onUpdateSettings: ({
-          String? provider,
-          String? model,
-          String? approvalPolicy,
-          String? sandboxMode,
-          bool? autoMode,
-        }) {
-          if (provider != null) {
-            selectedProvider = provider;
-          }
-          if (model != null) {
-            selectedModel = model;
-          }
-          if (approvalPolicy != null) {
-            selectedApprovalPolicy = approvalPolicy;
-          }
-          if (sandboxMode != null) {
-            selectedSandboxMode = sandboxMode;
-          }
-          if (autoMode != null) {
-            selectedAutoMode = autoMode;
-          }
-        },
+        ),
       ),
-    ));
+    );
 
     expect(find.text('Управление сессией'), findsOneWidget);
     await tester.tap(find.byTooltip('Остановить сессию'));
@@ -285,20 +293,22 @@ void main() {
     var sent = '';
     final controller = TextEditingController();
 
-    await tester.pumpWidget(_testApp(
-      home: SessionChatView(
-        workspace: workspace,
-        session: session,
-        events: const [
-          {'type': 'user_message', 'text': 'Привет'},
-          {'type': 'assistant_delta', 'text': 'Готов'},
-        ],
-        inputController: controller,
-        onBack: () {},
-        onOpenManagement: () => managementOpened = true,
-        onSend: (text) => sent = text,
+    await tester.pumpWidget(
+      _testApp(
+        home: SessionChatView(
+          workspace: workspace,
+          session: session,
+          events: const [
+            {'type': 'user_message', 'text': 'Привет'},
+            {'type': 'assistant_delta', 'text': 'Готов'},
+          ],
+          inputController: controller,
+          onBack: () {},
+          onOpenManagement: () => managementOpened = true,
+          onSend: (text) => sent = text,
+        ),
       ),
-    ));
+    );
 
     expect(find.text('Привет'), findsOneWidget);
     expect(find.text('Готов'), findsOneWidget);
@@ -324,33 +334,37 @@ void main() {
       ];
     }
 
-    await tester.pumpWidget(_testApp(
-      home: SessionChatView(
-        workspace: workspace,
-        session: session,
-        events: events(80),
-        inputController: controller,
-        onBack: () {},
-        onOpenManagement: () {},
-        onSend: (_) {},
+    await tester.pumpWidget(
+      _testApp(
+        home: SessionChatView(
+          workspace: workspace,
+          session: session,
+          events: events(80),
+          inputController: controller,
+          onBack: () {},
+          onOpenManagement: () {},
+          onSend: (_) {},
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('message-79'), findsOneWidget);
     expect(find.text('message-0'), findsNothing);
 
-    await tester.pumpWidget(_testApp(
-      home: SessionChatView(
-        workspace: workspace,
-        session: session,
-        events: events(81),
-        inputController: controller,
-        onBack: () {},
-        onOpenManagement: () {},
-        onSend: (_) {},
+    await tester.pumpWidget(
+      _testApp(
+        home: SessionChatView(
+          workspace: workspace,
+          session: session,
+          events: events(81),
+          inputController: controller,
+          onBack: () {},
+          onOpenManagement: () {},
+          onSend: (_) {},
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('message-80'), findsOneWidget);
@@ -363,19 +377,21 @@ void main() {
     var documentRequested = false;
     final controller = TextEditingController();
 
-    await tester.pumpWidget(_testApp(
-      home: SessionChatView(
-        workspace: workspace,
-        session: session,
-        events: const [],
-        inputController: controller,
-        onBack: () {},
-        onOpenManagement: () {},
-        onSend: (_) {},
-        onSendPhoto: () => photoRequested = true,
-        onSendDocument: () => documentRequested = true,
+    await tester.pumpWidget(
+      _testApp(
+        home: SessionChatView(
+          workspace: workspace,
+          session: session,
+          events: const [],
+          inputController: controller,
+          onBack: () {},
+          onOpenManagement: () {},
+          onSend: (_) {},
+          onSendPhoto: () => photoRequested = true,
+          onSendDocument: () => documentRequested = true,
+        ),
       ),
-    ));
+    );
 
     await tester.tap(find.byTooltip('Прикрепить фото'));
     await tester.tap(find.byTooltip('Прикрепить документ'));
@@ -390,21 +406,23 @@ void main() {
       (tester) async {
     final controller = TextEditingController();
 
-    await tester.pumpWidget(_testApp(
-      home: SessionChatView(
-        workspace: workspace,
-        session: session,
-        events: const [
-          {'type': 'user_message', 'text': 'Привет'},
-          {'type': 'assistant_delta', 'text': 'Го', 'final': false},
-          {'type': 'assistant_delta', 'text': 'тов', 'final': false},
-        ],
-        inputController: controller,
-        onBack: () {},
-        onOpenManagement: () {},
-        onSend: (_) {},
+    await tester.pumpWidget(
+      _testApp(
+        home: SessionChatView(
+          workspace: workspace,
+          session: session,
+          events: const [
+            {'type': 'user_message', 'text': 'Привет'},
+            {'type': 'assistant_delta', 'text': 'Го', 'final': false},
+            {'type': 'assistant_delta', 'text': 'тов', 'final': false},
+          ],
+          inputController: controller,
+          onBack: () {},
+          onOpenManagement: () {},
+          onSend: (_) {},
+        ),
       ),
-    ));
+    );
 
     expect(find.text('Привет'), findsOneWidget);
     expect(find.text('Готов'), findsOneWidget);
@@ -418,19 +436,21 @@ void main() {
       (tester) async {
     final controller = TextEditingController();
 
-    await tester.pumpWidget(_testApp(
-      home: SessionChatView(
-        workspace: workspace,
-        session: session,
-        events: const [
-          {'type': 'assistant_delta', 'text': 'Скопируй меня'},
-        ],
-        inputController: controller,
-        onBack: () {},
-        onOpenManagement: () {},
-        onSend: (_) {},
+    await tester.pumpWidget(
+      _testApp(
+        home: SessionChatView(
+          workspace: workspace,
+          session: session,
+          events: const [
+            {'type': 'assistant_delta', 'text': 'Скопируй меня'},
+          ],
+          inputController: controller,
+          onBack: () {},
+          onOpenManagement: () {},
+          onSend: (_) {},
+        ),
       ),
-    ));
+    );
 
     expect(find.byTooltip('Копировать текст'), findsOneWidget);
 
@@ -440,20 +460,22 @@ void main() {
   testWidgets('session chat shows process events separately', (tester) async {
     final controller = TextEditingController();
 
-    await tester.pumpWidget(_testApp(
-      home: SessionChatView(
-        workspace: workspace,
-        session: session,
-        events: const [
-          {'type': 'session_process_event', 'text': 'git status'},
-          {'type': 'assistant_delta', 'text': 'Готово'},
-        ],
-        inputController: controller,
-        onBack: () {},
-        onOpenManagement: () {},
-        onSend: (_) {},
+    await tester.pumpWidget(
+      _testApp(
+        home: SessionChatView(
+          workspace: workspace,
+          session: session,
+          events: const [
+            {'type': 'session_process_event', 'text': 'git status'},
+            {'type': 'assistant_delta', 'text': 'Готово'},
+          ],
+          inputController: controller,
+          onBack: () {},
+          onOpenManagement: () {},
+          onSend: (_) {},
+        ),
       ),
-    ));
+    );
 
     expect(find.text('Ход работы: git status'), findsOneWidget);
     expect(find.text('Готово'), findsOneWidget);

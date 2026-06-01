@@ -11,7 +11,10 @@ extension FcmServiceDiagnostics on FcmService {
     String? lastError,
   }) async {
     final key = _statusKey(
-        tokenStatus: tokenStatus, token: token, lastError: lastError);
+      tokenStatus: tokenStatus,
+      token: token,
+      lastError: lastError,
+    );
     if (key == _lastStatusReportedKey) {
       final lastAt = _lastStatusReportedAt;
       if (lastAt != null) {
@@ -26,9 +29,8 @@ extension FcmServiceDiagnostics on FcmService {
     try {
       await api.reportDeviceStatus(
         actorProfile: actorProfile,
-        platform: Platform.isAndroid
-            ? 'android'
-            : (Platform.isIOS ? 'ios' : 'other'),
+        platform:
+            Platform.isAndroid ? 'android' : (Platform.isIOS ? 'ios' : 'other'),
         appVersion: _appVersion,
         tokenStatus: tokenStatus,
         playServices: _playServicesState,
@@ -48,12 +50,13 @@ extension FcmServiceDiagnostics on FcmService {
     String? lastError,
   }) {
     final errorText = (lastError ?? _lastTokenError).trim();
-    final maxError =
-        errorText.length < 80 ? errorText.length : 80;
+    final maxError = errorText.length < 80 ? errorText.length : 80;
     final tokenPart = token == null || token.isEmpty
         ? ''
         : token.substring(
-            0, token.length < 12 ? token.length : 12);
+            0,
+            token.length < 12 ? token.length : 12,
+          );
     return '$tokenStatus|$_playServicesState|$tokenPart|${errorText.substring(0, maxError)}';
   }
 
@@ -68,17 +71,14 @@ extension FcmServiceDiagnostics on FcmService {
         'fis=${_installationId.substring(0, _installationId.length < 24 ? _installationId.length : 24)}',
     ].where((part) => part.trim().isNotEmpty).toList();
     final merged = parts.join(' | ');
-    return merged.length <= 500
-        ? merged
-        : merged.substring(0, 500);
+    return merged.length <= 500 ? merged : merged.substring(0, 500);
   }
 
   // ── Diagnostics ─────────────────────────────────────────────────
 
   void _startDiagnosticsLoop() {
     _diagnosticsTimer?.cancel();
-    _diagnosticsTimer =
-        Timer.periodic(const Duration(seconds: 10), (_) async {
+    _diagnosticsTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
       await refreshDiagnostics();
     });
   }
@@ -90,23 +90,22 @@ extension FcmServiceDiagnostics on FcmService {
           .invokeMethod<Object?>('getPlayServicesStatus');
       if (raw is Map) {
         final data = Map<Object?, Object?>.from(raw);
-        _playServicesNativeStatus =
-            (data['statusName'] ?? '').toString();
+        _playServicesNativeStatus = (data['statusName'] ?? '').toString();
         _packageName = (data['packageName'] ?? '').toString();
       }
     } catch (error) {
       _playServicesNativeStatus = 'native_status_error';
       _lastTokenError = _mergeErrors(
-          _lastTokenError, 'play_services_status:$error');
+        _lastTokenError,
+        'play_services_status:$error',
+      );
     }
     try {
-      final installationId =
-          await _firebaseInstallationsChannel
-              .invokeMethod<String>('getInstallationId');
+      final installationId = await _firebaseInstallationsChannel
+          .invokeMethod<String>('getInstallationId');
       _installationId = installationId?.trim() ?? '';
     } catch (error) {
-      _lastTokenError =
-          _mergeErrors(_lastTokenError, 'installation_id:$error');
+      _lastTokenError = _mergeErrors(_lastTokenError, 'installation_id:$error');
     }
   }
 
@@ -115,14 +114,15 @@ extension FcmServiceDiagnostics on FcmService {
     final tokenPrefix = token == null || token.isEmpty
         ? ''
         : token.substring(
-            0, token.length < 16 ? token.length : 16);
+            0,
+            token.length < 16 ? token.length : 16,
+          );
     final installationPrefix = _installationId.isEmpty
         ? ''
         : _installationId.substring(
             0,
-            _installationId.length < 16
-                ? _installationId.length
-                : 16);
+            _installationId.length < 16 ? _installationId.length : 16,
+          );
     final parts = <String>[
       'step=$step',
       'actor=$actorProfile',

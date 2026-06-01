@@ -22,7 +22,8 @@ void main() {
 
   test('call ICE configuration can be overridden by dart defines', () {
     final config = CallIceServerConfig.build(
-      turnUrls: 'turn:example.com:3478?transport=udp, turn:example.com:443?transport=tcp',
+      turnUrls:
+          'turn:example.com:3478?transport=udp, turn:example.com:443?transport=tcp',
       turnUsername: 'demo',
       turnCredential: 'secret',
     );
@@ -30,7 +31,10 @@ void main() {
 
     expect(
       servers.last['urls'],
-      ['turn:example.com:3478?transport=udp', 'turn:example.com:443?transport=tcp'],
+      [
+        'turn:example.com:3478?transport=udp',
+        'turn:example.com:443?transport=tcp',
+      ],
     );
     expect(servers.last['username'], 'demo');
     expect(servers.last['credential'], 'secret');

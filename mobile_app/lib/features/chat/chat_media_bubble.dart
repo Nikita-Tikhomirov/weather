@@ -81,14 +81,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         children: [
           Icon(Icons.error_outline, color: Colors.white, size: 48),
           SizedBox(height: 12),
-          Text('Не удалось загрузить видео',
-              style: TextStyle(color: Colors.white, fontSize: 16)),
+          Text(
+            'Не удалось загрузить видео',
+            style: TextStyle(color: Colors.white, fontSize: 16),
+          ),
         ],
       );
     }
     if (!_ready || _controller == null) {
       return const Center(
-          child: CircularProgressIndicator(color: Colors.white));
+        child: CircularProgressIndicator(color: Colors.white),
+      );
     }
     return Column(
       children: [
@@ -322,12 +325,20 @@ class _VideoControlsState extends State<VideoControls> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(posStr,
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 13)),
-                          Text(durStr,
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 13)),
+                          Text(
+                            posStr,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                            ),
+                          ),
+                          Text(
+                            durStr,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                            ),
+                          ),
                         ],
                       ),
                     ),

@@ -331,7 +331,11 @@ class TaskStore {
   }
 
   Future<void> editProject(
-      String id, String name, String description, List<String> groupIds) async {
+    String id,
+    String name,
+    String description,
+    List<String> groupIds,
+  ) async {
     final api = repository.api;
     await api.updateProject(
       actorProfile: owner.value,
@@ -341,14 +345,16 @@ class TaskStore {
       groupIds: groupIds,
     );
     // Update local DB immediately
-    await repository.db.upsertProjectLocal(TaskProject(
-      id: id,
-      name: name,
-      description: description,
-      ownerKey: owner.value,
-      createdAt: DateTime.now().toIso8601String(),
-      updatedAt: DateTime.now().toIso8601String(),
-    ));
+    await repository.db.upsertProjectLocal(
+      TaskProject(
+        id: id,
+        name: name,
+        description: description,
+        ownerKey: owner.value,
+        createdAt: DateTime.now().toIso8601String(),
+        updatedAt: DateTime.now().toIso8601String(),
+      ),
+    );
     // Update project-group mapping locally
     await repository.db.setProjectGroupsLocal(id, groupIds);
     await refreshProjectsAndGroups();
@@ -378,7 +384,10 @@ class TaskStore {
   }
 
   Future<void> editFamilyGroup(
-      String id, String name, List<String> members) async {
+    String id,
+    String name,
+    List<String> members,
+  ) async {
     await repository.api.updateFamilyGroup(
       actorProfile: owner.value,
       id: id,
@@ -566,7 +575,11 @@ class TaskStore {
     required Map<String, String> tokens,
   }) {
     desktop.setTheme(
-        mode: mode, scheme: scheme, schemes: schemes, tokens: tokens);
+      mode: mode,
+      scheme: scheme,
+      schemes: schemes,
+      tokens: tokens,
+    );
   }
 
   void setVoiceHostState(DesktopHostState state) {
@@ -711,8 +724,10 @@ class TaskStore {
           (task) => task.dueDate == dateKey,
         )
         .toList()
-      ..sort((a, b) =>
-          ('${a.dueDate} ${a.time}').compareTo('${b.dueDate} ${b.time}'));
+      ..sort(
+        (a, b) =>
+            ('${a.dueDate} ${a.time}').compareTo('${b.dueDate} ${b.time}'),
+      );
     _recomputeDashboardOnly();
   }
 

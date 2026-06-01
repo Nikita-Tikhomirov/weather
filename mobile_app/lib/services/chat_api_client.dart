@@ -355,7 +355,8 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
     if (streamedResponse.statusCode < 200 ||
         streamedResponse.statusCode >= 300) {
       throw StateError(
-          'Document upload failed: ${streamedResponse.statusCode} $text');
+        'Document upload failed: ${streamedResponse.statusCode} $text',
+      );
     }
 
     final body = jsonDecode(text) as Map<String, dynamic>;
@@ -385,7 +386,8 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
     final response = await http.Response.fromStream(await request.send());
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError(
-          'Avatar upload failed: ${response.statusCode} ${response.body}');
+        'Avatar upload failed: ${response.statusCode} ${response.body}',
+      );
     }
     final body = jsonDecode(response.body) as Map<String, dynamic>;
     return ((body['user'] as Map?)?['avatar_url'] ?? '').toString();
@@ -499,7 +501,8 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
 
   @override
   Future<List<StickerPack>> chatStickerPacks() async {
-    final body = await getJsonWithFallback(paths: const ['/chat/stickers/packs']);
+    final body =
+        await getJsonWithFallback(paths: const ['/chat/stickers/packs']);
     return (body['sticker_packs'] as List? ?? const [])
         .whereType<Map>()
         .map((row) => StickerPack.fromJson(Map<String, dynamic>.from(row)))
