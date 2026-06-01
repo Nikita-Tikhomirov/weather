@@ -213,6 +213,29 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Релиз'), findsOneWidget);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Пункт'),
+        'Проверить сборку',
+      );
+      final addItemButton = find.byTooltip('Добавить пункт');
+      await tester.ensureVisible(addItemButton);
+      await tester.pumpAndSettle();
+      await tester.tap(addItemButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Проверить сборку'), findsOneWidget);
+      final checklistTile = find.byType(CheckboxListTile).first;
+      await tester.ensureVisible(checklistTile);
+      await tester.pumpAndSettle();
+      var checklistItem = tester.widget<CheckboxListTile>(checklistTile);
+      expect(checklistItem.value, isFalse);
+
+      await tester.tap(checklistTile);
+      await tester.pumpAndSettle();
+
+      checklistItem = tester.widget<CheckboxListTile>(checklistTile);
+      expect(checklistItem.value, isTrue);
     });
 
     testWidgets('edit mode pre-fills existing task data', (tester) async {
