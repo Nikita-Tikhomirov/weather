@@ -356,11 +356,11 @@ Expected: all tests pass.
 - Modify: `mobile_app/lib/services/local_db.dart`
 - Modify/create: files under `mobile_app/lib/services/`
 
-- [ ] **Step 1: Split only one domain at a time**
+- [x] **Step 1: Split only one domain at a time**
 
 First target: move remaining chat/project-only methods from `home_page.dart` into existing `home_chat_section.dart` and `projects_data.dart`.
 
-- [ ] **Step 2: Run focused tests after each move**
+- [x] **Step 2: Run focused tests after each move**
 
 Run:
 
@@ -369,7 +369,7 @@ cd mobile_app
 C:\Users\user\tools\flutter\bin\flutter.bat test test\home_helpers_test.dart test\push_notification_test.dart test\workspace_views_test.dart --concurrency=1
 ```
 
-- [ ] **Step 3: Commit each successful split**
+- [x] **Step 3: Commit each successful split**
 
 Run:
 
