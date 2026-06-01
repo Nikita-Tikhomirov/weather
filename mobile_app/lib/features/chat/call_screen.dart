@@ -6,6 +6,12 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../../models/call_models.dart';
 import '../../services/call_service.dart';
 
+Color callScreenBaseColor(String callType) {
+  return callType.trim().toLowerCase() == 'video'
+      ? Colors.black
+      : const Color(0xFF0D47A1);
+}
+
 class CallScreen extends StatefulWidget {
   const CallScreen({
     super.key,
@@ -51,6 +57,9 @@ class _CallScreenState extends State<CallScreen> {
   static const double _localPreviewMargin = 16;
   static const double _controlsReservedHeight = 164;
 
+  bool get _isVideoCall =>
+      widget.session.callType.trim().toLowerCase() == 'video';
+
   @override
   void initState() {
     super.initState();
@@ -60,9 +69,20 @@ class _CallScreenState extends State<CallScreen> {
         : serviceState;
     _remoteStream = widget.callService.remoteStream;
     _localStream = widget.callService.localStream;
-    _isSpeakerOn = widget.session.callType == 'video';
-    _initializeRemoteRenderer();
-    _initializeLocalRenderer();
+    _isSpeakerOn = _isVideoCall;
+    if (_isVideoCall) {
+      _initializeRemoteRenderer();
+      _initializeLocalRenderer();
+    }
+    if (_currentState == CallState.connected) {
+      _startDuration();
+      _speakerPreferenceApplied = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          unawaited(_applyAudioRoute());
+        }
+      });
+    }
 
     _stateSub = widget.callService.onStateChange.listen((state) {
       if (!mounted) return;
@@ -199,9 +219,7 @@ class _CallScreenState extends State<CallScreen> {
   }
 
   Widget _buildLocalPreviewOverlay() {
-    if (widget.session.callType != 'video' ||
-        !_localRendererReady ||
-        _localStream == null) {
+    if (!_isVideoCall || !_localRendererReady || _localStream == null) {
       return const SizedBox.shrink();
     }
     return Positioned.fill(
@@ -263,11 +281,11 @@ class _CallScreenState extends State<CallScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: callScreenBaseColor(widget.session.callType),
       body: Stack(
         children: [
           // Remote video (or placeholder)
-          if (_remoteStream != null && widget.session.callType == 'video')
+          if (_remoteStream != null && _isVideoCall)
             Positioned.fill(
               child: RTCVideoView(
                 _remoteRenderer,

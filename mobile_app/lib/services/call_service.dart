@@ -14,6 +14,25 @@ enum CallState {
   ended,
 }
 
+AndroidAudioConfiguration buildCallAndroidAudioConfiguration() {
+  return AndroidAudioConfiguration.communication;
+}
+
+Map<String, dynamic> buildCallMediaConstraints(String callType) {
+  final wantsVideo = callType.trim().toLowerCase() == 'video';
+  return {
+    'audio': true,
+    'video': wantsVideo
+        ? {
+            'facingMode': 'user',
+            'width': {'ideal': 640, 'max': 960},
+            'height': {'ideal': 360, 'max': 540},
+            'frameRate': {'ideal': 20, 'max': 24},
+          }
+        : false,
+  };
+}
+
 class CallIceServerConfig {
   static Map<String, dynamic> build({
     String turnUrls = AppConfig.turnUrls,
@@ -60,6 +79,7 @@ class CallService {
   Timer? _disconnectTimer;
   final List<RTCIceCandidate> _pendingRemoteCandidates = <RTCIceCandidate>[];
   bool _hasRemoteDescription = false;
+  bool _audioSessionConfigured = false;
   bool _disposed = false;
 
   CallState _state = CallState.idle;
@@ -111,6 +131,8 @@ class CallService {
         _stateController.add(_state);
       }
 
+      await _prepareAudioSession();
+
       // Create peer connection and local stream
       await _createPeerConnection();
       await _openLocalMedia(callType: callType);
@@ -161,6 +183,7 @@ class CallService {
         _stateController.add(_state);
       }
 
+      await _prepareAudioSession();
       await _createPeerConnection();
       await _openLocalMedia(callType: callType);
 
@@ -282,31 +305,18 @@ class CallService {
   }
 
   Future<void> _openLocalMedia({required String callType}) async {
-    final wantsVideo = callType == 'video';
+    final wantsVideo = callType.trim().toLowerCase() == 'video';
 
     try {
-      _localStream = await navigator.mediaDevices.getUserMedia({
-        'audio': {
-          'echoCancellation': true,
-          'noiseSuppression': true,
-          'autoGainControl': true,
-        },
-        'video': wantsVideo
-            ? {
-                'facingMode': 'user',
-                'width': {'ideal': 640, 'max': 960},
-                'height': {'ideal': 360, 'max': 540},
-                'frameRate': {'ideal': 20, 'max': 24},
-              }
-            : false,
-      });
+      _localStream = await navigator.mediaDevices.getUserMedia(
+        buildCallMediaConstraints(callType),
+      );
     } catch (e) {
       if (wantsVideo) {
         _errorController.add('Camera unavailable, continuing with audio');
-        _localStream = await navigator.mediaDevices.getUserMedia({
-          'audio': true,
-          'video': false,
-        });
+        _localStream = await navigator.mediaDevices.getUserMedia(
+          buildCallMediaConstraints('audio'),
+        );
       } else {
         rethrow;
       }
@@ -321,6 +331,17 @@ class CallService {
       _localStreamController.add(_localStream);
     }
     await _addLocalTracks();
+  }
+
+  Future<void> _prepareAudioSession() async {
+    try {
+      await Helper.setAndroidAudioConfiguration(
+        buildCallAndroidAudioConfiguration(),
+      );
+      _audioSessionConfigured = true;
+    } catch (_) {
+      // The call can still proceed; route buttons remain available in the UI.
+    }
   }
 
   Future<void> _addLocalTracks() async {
@@ -405,8 +426,8 @@ class CallService {
           await _cleanup();
           break;
       }
-    } catch (_) {
-      // Skip bad signals
+    } catch (e) {
+      _errorController.add('Ошибка сигналинга звонка: $e');
     }
   }
 
@@ -496,6 +517,14 @@ class CallService {
     _disconnectTimer = null;
     _pendingRemoteCandidates.clear();
     _hasRemoteDescription = false;
+    if (_audioSessionConfigured) {
+      try {
+        await Helper.clearAndroidCommunicationDevice();
+      } catch (_) {
+        // Best-effort Android audio-route cleanup.
+      }
+      _audioSessionConfigured = false;
+    }
 
     if (_localStream != null) {
       _localStream!.getTracks().forEach((track) => track.stop());
