@@ -491,6 +491,19 @@ class TaskStore {
     return TaskSaveResult.success(task);
   }
 
+  Future<TaskSaveResult> saveExistingSnapshot({
+    required TaskItem previous,
+    required TaskItem task,
+    bool rememberUndo = true,
+  }) async {
+    await repository.upsert(task);
+    if (rememberUndo) {
+      _rememberUndo(_UndoRestoreTask(previous));
+    }
+    await refreshLocal();
+    return TaskSaveResult.success(task);
+  }
+
   Future<void> move(TaskItem item, WorkflowStatus nextStatus) async {
     if (item.workflowStatus == nextStatus) {
       return;

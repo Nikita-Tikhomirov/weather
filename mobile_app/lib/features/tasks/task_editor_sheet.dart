@@ -256,10 +256,8 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }) async {
     if (!_canEdit) return;
     if (_saving || (automatic && _savedTask == null)) return;
-    if (_selectedProjectId.isEmpty) {
-      if (!automatic) {
-        _showSnack('Выберите проект');
-      }
+    if (_selectedProjectId.isEmpty && !automatic) {
+      _showSnack('Выберите проект');
       return;
     }
 
@@ -274,11 +272,16 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     } else {
       setState(() => _saving = true);
     }
-    final result = await widget.store.saveDraftWithResult(
+    var result = await widget.store.saveDraftWithResult(
       draft: _buildDraft(),
       existing: _savedTask ?? widget.existing,
       rememberUndo: !automatic,
     );
+    if (!result.isSuccess &&
+        automatic &&
+        _canUseExistingSnapshotAutosave(result.error)) {
+      result = await _saveExistingSnapshot();
+    }
     if (automatic) {
       _autosaveInFlight = false;
     }
@@ -303,6 +306,47 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       _autosaveAgain = false;
       _scheduleAutosave(Duration.zero);
     }
+  }
+
+  bool _canUseExistingSnapshotAutosave(String? error) {
+    if (error == null || (_savedTask ?? widget.existing) == null) {
+      return false;
+    }
+    return error == 'Выберите проект.' ||
+        error == 'Выберите группу проекта.' ||
+        error == 'Выбранная группа не входит в проект.' ||
+        error == 'Нет прав на создание задачи в этой группе.' ||
+        error == 'Ответственные должны входить в выбранную группу.';
+  }
+
+  Future<TaskSaveResult> _saveExistingSnapshot() {
+    final previous = _savedTask ?? widget.existing;
+    if (previous == null) {
+      return Future.value(
+        const TaskSaveResult.failure('Невозможно сохранить задачу.'),
+      );
+    }
+    final title = _titleCtl.text.trim();
+    final task = previous.copyWith(
+      title: title.isEmpty ? previous.title : title,
+      details: _detailsCtl.text.trim(),
+      dueDate: widget.dateKey(_selectedDate),
+      time: _time,
+      workflowStatus: _status,
+      priority: _priority,
+      assignees: _selectedAssignees.toList(),
+      reminderOffsetsMinutes: _selectedReminderOffsets.toList(),
+      collaboration: _collaboration,
+      durationMinutes:
+          int.tryParse(_durationCtl.text.trim()) ?? previous.durationMinutes,
+      updatedAt: DateTime.now().toIso8601String(),
+      version: previous.version + 1,
+    );
+    return widget.store.saveExistingSnapshot(
+      previous: previous,
+      task: task,
+      rememberUndo: false,
+    );
   }
 
   void _showSnack(String message) {

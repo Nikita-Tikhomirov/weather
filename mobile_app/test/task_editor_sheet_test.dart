@@ -347,6 +347,74 @@ void main() {
       );
     });
 
+    testWidgets('autosaves legacy existing task without project metadata',
+        (tester) async {
+      const legacyTask = TaskItem(
+        id: 'task-legacy',
+        ownerKey: 'family',
+        isFamily: true,
+        title: 'Legacy Task',
+        details: '',
+        dueDate: '2026-05-31',
+        time: '14:00',
+        workflowStatus: WorkflowStatus.todo,
+        priority: Priority.medium,
+        tags: [],
+        assignees: ['test_user'],
+        reminderOffsetsMinutes: [],
+        durationMinutes: 30,
+        updatedAt: '2026-05-30T00:00:00',
+        version: 1,
+      );
+      final repository = _FakeTaskRepository();
+      repository.tasks.add(legacyTask);
+      final store = _FakeTaskStore(repository);
+      store.owner.value = 'test_user';
+      store.selectedDate.value = DateTime(2026, 5, 31);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  showTaskEditorSheet(
+                    context: context,
+                    store: store,
+                    knownContacts: const [],
+                    contactLabel: (c) => c.displayName,
+                    dateKey: (d) => d.toIso8601String(),
+                    onSaved: () async {},
+                    existing: legacyTask,
+                  );
+                },
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Работа'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Комментарий или подпись'),
+        'Комментарий в старой задаче',
+      );
+      await tester.tap(find.byTooltip('Отправить'));
+      await tester.pumpAndSettle();
+
+      expect(repository.upserts, isNotEmpty);
+      expect(
+        repository.tasks.single.collaboration.comments.single.text,
+        'Комментарий в старой задаче',
+      );
+    });
+
     testWidgets('autosaves checklist actions without pressing save',
         (tester) async {
       final repository = _FakeTaskRepository();
