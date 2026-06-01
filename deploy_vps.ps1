@@ -1,28 +1,39 @@
 # PowerShell deploy script for laravel_backend_vps to VPS
 param(
     [switch]$DryRun,
-    [switch]$SkipMigration
+    [switch]$SkipMigration,
+    [string]$HostIp = $(if ($env:WEATHER_VPS_HOST) { $env:WEATHER_VPS_HOST } else { "31.129.97.211" }),
+    [string]$HostUser = $(if ($env:WEATHER_VPS_USER) { $env:WEATHER_VPS_USER } else { "root" }),
+    [string]$HostPassword = $env:WEATHER_VPS_PASSWORD,
+    [string]$RemoteBase = $(if ($env:WEATHER_VPS_REMOTE_BASE) { $env:WEATHER_VPS_REMOTE_BASE } else { "/var/www/adebechigef" })
 )
 
-$hostIp = "31.129.97.211"
-$hostUser = "root"
-$hostPassword = "WCw8eJo&TIxu"
-$remoteBase = "/var/www/adebechigef"
+$ErrorActionPreference = "Stop"
+
+if (-not $DryRun -and [string]::IsNullOrWhiteSpace($HostPassword)) {
+    throw "Set WEATHER_VPS_PASSWORD or pass -HostPassword before deploying."
+}
+
+$env:WEATHER_VPS_HOST = $HostIp
+$env:WEATHER_VPS_USER = $HostUser
+$env:WEATHER_VPS_PASSWORD = $HostPassword
+$env:WEATHER_VPS_REMOTE_BASE = $RemoteBase
+$env:WEATHER_SKIP_MIGRATION = if ($SkipMigration) { "1" } else { "0" }
 
 $files = @(
-    @{Local="laravel_backend_vps\app\Services\Push\FcmPushGateway.php";   Remote="$remoteBase/app/Services/Push/FcmPushGateway.php"},
-    @{Local="laravel_backend_vps\app\Http\Controllers\ChatController.php"; Remote="$remoteBase/app/Http/Controllers/ChatController.php"},
-    @{Local="laravel_backend_vps\app\Domain\Chat\ChatRepository.php";      Remote="$remoteBase/app/Domain/Chat/ChatRepository.php"},
-    @{Local="laravel_backend_vps\app\Services\Push\PushOutboxService.php"; Remote="$remoteBase/app/Services/Push/PushOutboxService.php"},
-    @{Local="laravel_backend_vps\database\migrations\2026_05_21_000700_add_avatar_url_to_messenger_users.php"; Remote="$remoteBase/database/migrations/2026_05_21_000700_add_avatar_url_to_messenger_users.php"},
-    @{Local="laravel_backend_vps\app\Http\Controllers\ProjectGroupController.php"; Remote="$remoteBase/app/Http/Controllers/ProjectGroupController.php"},
-    @{Local="laravel_backend_vps\app\Http\Controllers\SyncController.php";      Remote="$remoteBase/app/Http/Controllers/SyncController.php"},
-    @{Local="laravel_backend_vps\app\Domain\Sync\SyncRules.php";           Remote="$remoteBase/app/Domain/Sync/SyncRules.php"},
-    @{Local="laravel_backend_vps\app\Domain\Sync\SyncRepository.php";      Remote="$remoteBase/app/Domain/Sync/SyncRepository.php"},
-    @{Local="laravel_backend_vps\app\Domain\Sync\Profiles.php";            Remote="$remoteBase/app/Domain/Sync/Profiles.php"},
-    @{Local="laravel_backend_vps\app\Domain\Sync\ActorProfileGuard.php";   Remote="$remoteBase/app/Domain/Sync/ActorProfileGuard.php"},
-    @{Local="laravel_backend_vps\routes\api.php";                          Remote="$remoteBase/routes/api.php"},
-    @{Local="laravel_backend_vps\database\migrations\2026_05_26_000800_add_projects_and_family_groups.php"; Remote="$remoteBase/database/migrations/2026_05_26_000800_add_projects_and_family_groups.php"}
+    @{Local="laravel_backend_vps\app\Services\Push\FcmPushGateway.php";   Remote="$RemoteBase/app/Services/Push/FcmPushGateway.php"},
+    @{Local="laravel_backend_vps\app\Http\Controllers\ChatController.php"; Remote="$RemoteBase/app/Http/Controllers/ChatController.php"},
+    @{Local="laravel_backend_vps\app\Domain\Chat\ChatRepository.php";      Remote="$RemoteBase/app/Domain/Chat/ChatRepository.php"},
+    @{Local="laravel_backend_vps\app\Services\Push\PushOutboxService.php"; Remote="$RemoteBase/app/Services/Push/PushOutboxService.php"},
+    @{Local="laravel_backend_vps\database\migrations\2026_05_21_000700_add_avatar_url_to_messenger_users.php"; Remote="$RemoteBase/database/migrations/2026_05_21_000700_add_avatar_url_to_messenger_users.php"},
+    @{Local="laravel_backend_vps\app\Http\Controllers\ProjectGroupController.php"; Remote="$RemoteBase/app/Http/Controllers/ProjectGroupController.php"},
+    @{Local="laravel_backend_vps\app\Http\Controllers\SyncController.php";      Remote="$RemoteBase/app/Http/Controllers/SyncController.php"},
+    @{Local="laravel_backend_vps\app\Domain\Sync\SyncRules.php";           Remote="$RemoteBase/app/Domain/Sync/SyncRules.php"},
+    @{Local="laravel_backend_vps\app\Domain\Sync\SyncRepository.php";      Remote="$RemoteBase/app/Domain/Sync/SyncRepository.php"},
+    @{Local="laravel_backend_vps\app\Domain\Sync\Profiles.php";            Remote="$RemoteBase/app/Domain/Sync/Profiles.php"},
+    @{Local="laravel_backend_vps\app\Domain\Sync\ActorProfileGuard.php";   Remote="$RemoteBase/app/Domain/Sync/ActorProfileGuard.php"},
+    @{Local="laravel_backend_vps\routes\api.php";                          Remote="$RemoteBase/routes/api.php"},
+    @{Local="laravel_backend_vps\database\migrations\2026_05_26_000800_add_projects_and_family_groups.php"; Remote="$RemoteBase/database/migrations/2026_05_26_000800_add_projects_and_family_groups.php"}
 )
 
 if ($DryRun) {
@@ -44,9 +55,11 @@ if ($LASTEXITCODE -ne 0) {
 $script = @"
 import paramiko, sys, os
 
-host = "$hostIp"
-user = "$hostUser"
-password = "$hostPassword"
+host = os.environ["WEATHER_VPS_HOST"]
+user = os.environ["WEATHER_VPS_USER"]
+password = os.environ["WEATHER_VPS_PASSWORD"]
+remote_base = os.environ["WEATHER_VPS_REMOTE_BASE"]
+skip_migration = os.environ.get("WEATHER_SKIP_MIGRATION") == "1"
 
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -74,13 +87,16 @@ for local, remote in files:
 
 sftp.close()
 
-stdin, stdout, stderr = client.exec_command('cd $remoteBase && php artisan migrate --force 2>&1')
-print('Migration:', stdout.read().decode().strip())
-err = stderr.read().decode().strip()
-if err:
-    print('Migration stderr:', err)
+if skip_migration:
+    print("Migration: skipped")
+else:
+    stdin, stdout, stderr = client.exec_command(f'cd {remote_base} && php artisan migrate --force 2>&1')
+    print('Migration:', stdout.read().decode().strip())
+    err = stderr.read().decode().strip()
+    if err:
+        print('Migration stderr:', err)
 
-stdin2, stdout2, stderr2 = client.exec_command(f'cd $remoteBase && php artisan cache:clear 2>&1')
+stdin2, stdout2, stderr2 = client.exec_command(f'cd {remote_base} && php artisan cache:clear 2>&1')
 print('Cache clear:', stdout2.read().decode().strip())
 
 client.close()

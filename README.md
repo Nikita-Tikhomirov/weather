@@ -155,6 +155,30 @@ python .\voice_trigger.py
 Результат:
 - `mobile_app\build\app\outputs\flutter-apk\app-release.apk`
 
+Проверка Flutter-клиента перед публикацией:
+
+```powershell
+cd .\mobile_app
+C:\Users\user\tools\flutter\bin\flutter.bat test --concurrency=1
+C:\Users\user\tools\flutter\bin\flutter.bat analyze
+```
+
+Полный локальный прогон тестов запускается с `--concurrency=1`, как в CI:
+часть sqflite-тестов меняет глобальную factory, поэтому параллельный запуск
+может давать нестабильный сбой загрузки suite.
+
+Безопасный деплой на VPS:
+
+```powershell
+$env:WEATHER_VPS_PASSWORD = '<пароль VPS из локального хранилища>'
+.\deploy_vps.ps1
+.\deploy_backend_api.ps1
+```
+
+Deploy-скрипты больше не хранят пароль в git. Дополнительные override:
+`WEATHER_VPS_HOST`, `WEATHER_VPS_USER`, `WEATHER_VPS_REMOTE_BASE`,
+`WEATHER_SIMPLE_API_REMOTE_BASE`, `TODO_BACKEND_API_KEY`.
+
 ## 4.3 Project bridge для мобильного чата
 
 Проектные чаты в APK работают через VPS tunnel и локальный `project_bridge.py`.

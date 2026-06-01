@@ -12,8 +12,8 @@ void main() {
       expect(AppConfig.apiKey, isNotEmpty);
     });
 
-    test('turnCredential is NOT the old hardcoded password', () {
-      expect(AppConfig.turnCredential, isNot('WCw8eJo&TIxu'));
+    test('turnCredential uses safe development placeholder', () {
+      expect(AppConfig.turnCredential, 'dev-turn-credential');
     });
 
     test('stunUrls contains google stun servers', () {

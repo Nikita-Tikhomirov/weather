@@ -1,3 +1,4 @@
+import 'package:family_todo_mobile/app/app_config.dart';
 import 'package:family_todo_mobile/services/call_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -35,11 +36,10 @@ void main() {
     expect(servers.last['credential'], 'secret');
   });
 
-  test('call ICE configuration default credential is NOT hardcoded password', () {
+  test('call ICE configuration default credential comes from AppConfig', () {
     final config = CallIceServerConfig.build();
     final servers = config['iceServers'] as List<dynamic>;
     final credential = servers.last['credential'] as String;
-    // Safety: the default must never be the old hardcoded password
-    expect(credential, isNot('WCw8eJo&TIxu'));
+    expect(credential, AppConfig.turnCredential);
   });
 }

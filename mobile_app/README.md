@@ -64,3 +64,16 @@ flutter run \
   --dart-define=FIREBASE_API_KEY=YOUR_FIREBASE_API_KEY \
   --dart-define=FIREBASE_STORAGE_BUCKET=YOUR_FIREBASE_STORAGE_BUCKET
 ```
+
+## Local verification
+
+PowerShell from `mobile_app/`:
+
+```powershell
+C:\Users\user\tools\flutter\bin\flutter.bat test --concurrency=1
+C:\Users\user\tools\flutter\bin\flutter.bat analyze
+```
+
+Use `--concurrency=1` for the full local test suite, matching CI. Some
+sqflite-based tests change the global database factory and can make a
+parallel full run fail while individual suites still pass.
