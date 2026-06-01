@@ -347,6 +347,61 @@ void main() {
       );
     });
 
+    testWidgets('autosaves new task after first collaboration action',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      store.currentProjectId.value = 'project-1';
+      store.selectedDate.value = DateTime(2026, 5, 31);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  showTaskEditorSheet(
+                    context: context,
+                    store: store,
+                    knownContacts: const [],
+                    contactLabel: (c) => c.displayName,
+                    dateKey: (d) => d.toIso8601String(),
+                    onSaved: () async {},
+                  );
+                },
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Название'),
+        'Новая автозадача',
+      );
+      await tester.tap(find.text('Работа'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Комментарий или подпись'),
+        'Первый комментарий',
+      );
+      await tester.tap(find.byTooltip('Отправить'));
+      await tester.pumpAndSettle();
+
+      expect(repository.upserts, isNotEmpty);
+      expect(repository.tasks.single.title, 'Новая автозадача');
+      expect(
+        repository.tasks.single.collaboration.comments.single.text,
+        'Первый комментарий',
+      );
+    });
+
     testWidgets('autosaves legacy existing task without project metadata',
         (tester) async {
       const legacyTask = TaskItem(

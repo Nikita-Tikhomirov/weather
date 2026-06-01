@@ -237,7 +237,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   void _scheduleAutosave([
     Duration delay = const Duration(milliseconds: 500),
   ]) {
-    if (!_canEdit || _savedTask == null) return;
+    if (!_canEdit) return;
     _autosaveTimer?.cancel();
     _autosaveTimer = Timer(delay, () {
       unawaited(_persistDraft(automatic: true));
@@ -245,7 +245,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   void _autosaveNow() {
-    if (!_canEdit || _savedTask == null) return;
+    if (!_canEdit) return;
     _autosaveTimer?.cancel();
     unawaited(_persistDraft(automatic: true));
   }
@@ -255,7 +255,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     bool automatic = false,
   }) async {
     if (!_canEdit) return;
-    if (_saving || (automatic && _savedTask == null)) return;
+    if (_saving) return;
     if (_selectedProjectId.isEmpty && !automatic) {
       _showSnack('Выберите проект');
       return;
