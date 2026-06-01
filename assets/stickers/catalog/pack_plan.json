@@ -1,0 +1,491 @@
+{
+  "schema_version": 1,
+  "target_count": 2500,
+  "grid_size": 25,
+  "styles": {
+    "plush_3d": "polished 3D toy/plush sticker, soft rounded forms, tactile felt and vinyl details, cute expressive face, premium mobile sticker look",
+    "meme_wobbly": "funny meme sticker, deliberately wobbly awkward drawing, expressive pose, chaotic but charming, clean enough for a mobile app"
+  },
+  "packs": [
+    {
+      "pack_id": "rats_plush_3d_emotions",
+      "group": "rats",
+      "style": "plush_3d",
+      "category": "emotions",
+      "grid_count": 4,
+      "sticker_count": 100,
+      "source_dir": "assets/stickers/source_grids/rats/plush_3d/emotions",
+      "output_dir": "assets/stickers/library/rats/plush_3d/emotions"
+    },
+    {
+      "pack_id": "rats_plush_3d_daily",
+      "group": "rats",
+      "style": "plush_3d",
+      "category": "daily",
+      "grid_count": 4,
+      "sticker_count": 100,
+      "source_dir": "assets/stickers/source_grids/rats/plush_3d/daily",
+      "output_dir": "assets/stickers/library/rats/plush_3d/daily"
+    },
+    {
+      "pack_id": "rats_plush_3d_food_sleep",
+      "group": "rats",
+      "style": "plush_3d",
+      "category": "food_sleep",
+      "grid_count": 3,
+      "sticker_count": 75,
+      "source_dir": "assets/stickers/source_grids/rats/plush_3d/food_sleep",
+      "output_dir": "assets/stickers/library/rats/plush_3d/food_sleep"
+    },
+    {
+      "pack_id": "rats_plush_3d_work_study",
+      "group": "rats",
+      "style": "plush_3d",
+      "category": "work_study",
+      "grid_count": 3,
+      "sticker_count": 75,
+      "source_dir": "assets/stickers/source_grids/rats/plush_3d/work_study",
+      "output_dir": "assets/stickers/library/rats/plush_3d/work_study"
+    },
+    {
+      "pack_id": "rats_plush_3d_weather_seasons",
+      "group": "rats",
+      "style": "plush_3d",
+      "category": "weather_seasons",
+      "grid_count": 2,
+      "sticker_count": 50,
+      "source_dir": "assets/stickers/source_grids/rats/plush_3d/weather_seasons",
+      "output_dir": "assets/stickers/library/rats/plush_3d/weather_seasons"
+    },
+    {
+      "pack_id": "rats_plush_3d_cozy_love",
+      "group": "rats",
+      "style": "plush_3d",
+      "category": "cozy_love",
+      "grid_count": 2,
+      "sticker_count": 50,
+      "source_dir": "assets/stickers/source_grids/rats/plush_3d/cozy_love",
+      "output_dir": "assets/stickers/library/rats/plush_3d/cozy_love"
+    },
+    {
+      "pack_id": "rats_plush_3d_adventures",
+      "group": "rats",
+      "style": "plush_3d",
+      "category": "adventures",
+      "grid_count": 2,
+      "sticker_count": 50,
+      "source_dir": "assets/stickers/source_grids/rats/plush_3d/adventures",
+      "output_dir": "assets/stickers/library/rats/plush_3d/adventures"
+    },
+    {
+      "pack_id": "rats_meme_wobbly_reactions",
+      "group": "rats",
+      "style": "meme_wobbly",
+      "category": "reactions",
+      "grid_count": 5,
+      "sticker_count": 125,
+      "source_dir": "assets/stickers/source_grids/rats/meme_wobbly/reactions",
+      "output_dir": "assets/stickers/library/rats/meme_wobbly/reactions"
+    },
+    {
+      "pack_id": "rats_meme_wobbly_chaos",
+      "group": "rats",
+      "style": "meme_wobbly",
+      "category": "chaos",
+      "grid_count": 5,
+      "sticker_count": 125,
+      "source_dir": "assets/stickers/source_grids/rats/meme_wobbly/chaos",
+      "output_dir": "assets/stickers/library/rats/meme_wobbly/chaos"
+    },
+    {
+      "pack_id": "rats_meme_wobbly_daily_fail",
+      "group": "rats",
+      "style": "meme_wobbly",
+      "category": "daily_fail",
+      "grid_count": 4,
+      "sticker_count": 100,
+      "source_dir": "assets/stickers/source_grids/rats/meme_wobbly/daily_fail",
+      "output_dir": "assets/stickers/library/rats/meme_wobbly/daily_fail"
+    },
+    {
+      "pack_id": "rats_meme_wobbly_office_study_fail",
+      "group": "rats",
+      "style": "meme_wobbly",
+      "category": "office_study_fail",
+      "grid_count": 3,
+      "sticker_count": 75,
+      "source_dir": "assets/stickers/source_grids/rats/meme_wobbly/office_study_fail",
+      "output_dir": "assets/stickers/library/rats/meme_wobbly/office_study_fail"
+    },
+    {
+      "pack_id": "rats_meme_wobbly_food_sleep_absurd",
+      "group": "rats",
+      "style": "meme_wobbly",
+      "category": "food_sleep_absurd",
+      "grid_count": 2,
+      "sticker_count": 50,
+      "source_dir": "assets/stickers/source_grids/rats/meme_wobbly/food_sleep_absurd",
+      "output_dir": "assets/stickers/library/rats/meme_wobbly/food_sleep_absurd"
+    },
+    {
+      "pack_id": "rats_meme_wobbly_weird_original",
+      "group": "rats",
+      "style": "meme_wobbly",
+      "category": "weird_original",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/rats/meme_wobbly/weird_original",
+      "output_dir": "assets/stickers/library/rats/meme_wobbly/weird_original"
+    },
+    {
+      "pack_id": "hedgehogs_plush_3d_cozy",
+      "group": "hedgehogs",
+      "style": "plush_3d",
+      "category": "cozy",
+      "grid_count": 4,
+      "sticker_count": 100,
+      "source_dir": "assets/stickers/source_grids/hedgehogs/plush_3d/cozy",
+      "output_dir": "assets/stickers/library/hedgehogs/plush_3d/cozy"
+    },
+    {
+      "pack_id": "hedgehogs_plush_3d_emotions",
+      "group": "hedgehogs",
+      "style": "plush_3d",
+      "category": "emotions",
+      "grid_count": 3,
+      "sticker_count": 75,
+      "source_dir": "assets/stickers/source_grids/hedgehogs/plush_3d/emotions",
+      "output_dir": "assets/stickers/library/hedgehogs/plush_3d/emotions"
+    },
+    {
+      "pack_id": "hedgehogs_plush_3d_daily",
+      "group": "hedgehogs",
+      "style": "plush_3d",
+      "category": "daily",
+      "grid_count": 3,
+      "sticker_count": 75,
+      "source_dir": "assets/stickers/source_grids/hedgehogs/plush_3d/daily",
+      "output_dir": "assets/stickers/library/hedgehogs/plush_3d/daily"
+    },
+    {
+      "pack_id": "hedgehogs_plush_3d_weather_seasons",
+      "group": "hedgehogs",
+      "style": "plush_3d",
+      "category": "weather_seasons",
+      "grid_count": 2,
+      "sticker_count": 50,
+      "source_dir": "assets/stickers/source_grids/hedgehogs/plush_3d/weather_seasons",
+      "output_dir": "assets/stickers/library/hedgehogs/plush_3d/weather_seasons"
+    },
+    {
+      "pack_id": "hedgehogs_plush_3d_food_sleep",
+      "group": "hedgehogs",
+      "style": "plush_3d",
+      "category": "food_sleep",
+      "grid_count": 2,
+      "sticker_count": 50,
+      "source_dir": "assets/stickers/source_grids/hedgehogs/plush_3d/food_sleep",
+      "output_dir": "assets/stickers/library/hedgehogs/plush_3d/food_sleep"
+    },
+    {
+      "pack_id": "hedgehogs_plush_3d_tiny_heroics",
+      "group": "hedgehogs",
+      "style": "plush_3d",
+      "category": "tiny_heroics",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/hedgehogs/plush_3d/tiny_heroics",
+      "output_dir": "assets/stickers/library/hedgehogs/plush_3d/tiny_heroics"
+    },
+    {
+      "pack_id": "hedgehogs_meme_wobbly_grumpy_reactions",
+      "group": "hedgehogs",
+      "style": "meme_wobbly",
+      "category": "grumpy_reactions",
+      "grid_count": 4,
+      "sticker_count": 100,
+      "source_dir": "assets/stickers/source_grids/hedgehogs/meme_wobbly/grumpy_reactions",
+      "output_dir": "assets/stickers/library/hedgehogs/meme_wobbly/grumpy_reactions"
+    },
+    {
+      "pack_id": "hedgehogs_meme_wobbly_chaos",
+      "group": "hedgehogs",
+      "style": "meme_wobbly",
+      "category": "chaos",
+      "grid_count": 3,
+      "sticker_count": 75,
+      "source_dir": "assets/stickers/source_grids/hedgehogs/meme_wobbly/chaos",
+      "output_dir": "assets/stickers/library/hedgehogs/meme_wobbly/chaos"
+    },
+    {
+      "pack_id": "hedgehogs_meme_wobbly_everyday_fails",
+      "group": "hedgehogs",
+      "style": "meme_wobbly",
+      "category": "everyday_fails",
+      "grid_count": 3,
+      "sticker_count": 75,
+      "source_dir": "assets/stickers/source_grids/hedgehogs/meme_wobbly/everyday_fails",
+      "output_dir": "assets/stickers/library/hedgehogs/meme_wobbly/everyday_fails"
+    },
+    {
+      "pack_id": "hedgehogs_meme_wobbly_food_sleep_absurd",
+      "group": "hedgehogs",
+      "style": "meme_wobbly",
+      "category": "food_sleep_absurd",
+      "grid_count": 2,
+      "sticker_count": 50,
+      "source_dir": "assets/stickers/source_grids/hedgehogs/meme_wobbly/food_sleep_absurd",
+      "output_dir": "assets/stickers/library/hedgehogs/meme_wobbly/food_sleep_absurd"
+    },
+    {
+      "pack_id": "hedgehogs_meme_wobbly_social_moods",
+      "group": "hedgehogs",
+      "style": "meme_wobbly",
+      "category": "social_moods",
+      "grid_count": 2,
+      "sticker_count": 50,
+      "source_dir": "assets/stickers/source_grids/hedgehogs/meme_wobbly/social_moods",
+      "output_dir": "assets/stickers/library/hedgehogs/meme_wobbly/social_moods"
+    },
+    {
+      "pack_id": "hedgehogs_meme_wobbly_weird_original",
+      "group": "hedgehogs",
+      "style": "meme_wobbly",
+      "category": "weird_original",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/hedgehogs/meme_wobbly/weird_original",
+      "output_dir": "assets/stickers/library/hedgehogs/meme_wobbly/weird_original"
+    },
+    {
+      "pack_id": "duos_plush_3d_friendship",
+      "group": "duos",
+      "style": "plush_3d",
+      "category": "friendship",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/duos/plush_3d/friendship",
+      "output_dir": "assets/stickers/library/duos/plush_3d/friendship"
+    },
+    {
+      "pack_id": "duos_plush_3d_family",
+      "group": "duos",
+      "style": "plush_3d",
+      "category": "family",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/duos/plush_3d/family",
+      "output_dir": "assets/stickers/library/duos/plush_3d/family"
+    },
+    {
+      "pack_id": "duos_plush_3d_helping",
+      "group": "duos",
+      "style": "plush_3d",
+      "category": "helping",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/duos/plush_3d/helping",
+      "output_dir": "assets/stickers/library/duos/plush_3d/helping"
+    },
+    {
+      "pack_id": "duos_plush_3d_cozy",
+      "group": "duos",
+      "style": "plush_3d",
+      "category": "cozy",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/duos/plush_3d/cozy",
+      "output_dir": "assets/stickers/library/duos/plush_3d/cozy"
+    },
+    {
+      "pack_id": "duos_plush_3d_tiny_adventures",
+      "group": "duos",
+      "style": "plush_3d",
+      "category": "tiny_adventures",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/duos/plush_3d/tiny_adventures",
+      "output_dir": "assets/stickers/library/duos/plush_3d/tiny_adventures"
+    },
+    {
+      "pack_id": "duos_meme_wobbly_arguments",
+      "group": "duos",
+      "style": "meme_wobbly",
+      "category": "arguments",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/duos/meme_wobbly/arguments",
+      "output_dir": "assets/stickers/library/duos/meme_wobbly/arguments"
+    },
+    {
+      "pack_id": "duos_meme_wobbly_chaos_team",
+      "group": "duos",
+      "style": "meme_wobbly",
+      "category": "chaos_team",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/duos/meme_wobbly/chaos_team",
+      "output_dir": "assets/stickers/library/duos/meme_wobbly/chaos_team"
+    },
+    {
+      "pack_id": "duos_meme_wobbly_roommate_life",
+      "group": "duos",
+      "style": "meme_wobbly",
+      "category": "roommate_life",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/duos/meme_wobbly/roommate_life",
+      "output_dir": "assets/stickers/library/duos/meme_wobbly/roommate_life"
+    },
+    {
+      "pack_id": "duos_meme_wobbly_mutual_panic",
+      "group": "duos",
+      "style": "meme_wobbly",
+      "category": "mutual_panic",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/duos/meme_wobbly/mutual_panic",
+      "output_dir": "assets/stickers/library/duos/meme_wobbly/mutual_panic"
+    },
+    {
+      "pack_id": "duos_meme_wobbly_weird_duo",
+      "group": "duos",
+      "style": "meme_wobbly",
+      "category": "weird_duo",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/duos/meme_wobbly/weird_duo",
+      "output_dir": "assets/stickers/library/duos/meme_wobbly/weird_duo"
+    },
+    {
+      "pack_id": "mixed_plush_3d_app_core_reactions",
+      "group": "mixed",
+      "style": "plush_3d",
+      "category": "app_core_reactions",
+      "grid_count": 2,
+      "sticker_count": 50,
+      "source_dir": "assets/stickers/source_grids/mixed/plush_3d/app_core_reactions",
+      "output_dir": "assets/stickers/library/mixed/plush_3d/app_core_reactions"
+    },
+    {
+      "pack_id": "mixed_plush_3d_daily_moods",
+      "group": "mixed",
+      "style": "plush_3d",
+      "category": "daily_moods",
+      "grid_count": 2,
+      "sticker_count": 50,
+      "source_dir": "assets/stickers/source_grids/mixed/plush_3d/daily_moods",
+      "output_dir": "assets/stickers/library/mixed/plush_3d/daily_moods"
+    },
+    {
+      "pack_id": "mixed_plush_3d_weather_seasons",
+      "group": "mixed",
+      "style": "plush_3d",
+      "category": "weather_seasons",
+      "grid_count": 2,
+      "sticker_count": 50,
+      "source_dir": "assets/stickers/source_grids/mixed/plush_3d/weather_seasons",
+      "output_dir": "assets/stickers/library/mixed/plush_3d/weather_seasons"
+    },
+    {
+      "pack_id": "mixed_plush_3d_celebrations",
+      "group": "mixed",
+      "style": "plush_3d",
+      "category": "celebrations",
+      "grid_count": 2,
+      "sticker_count": 50,
+      "source_dir": "assets/stickers/source_grids/mixed/plush_3d/celebrations",
+      "output_dir": "assets/stickers/library/mixed/plush_3d/celebrations"
+    },
+    {
+      "pack_id": "mixed_plush_3d_love_family",
+      "group": "mixed",
+      "style": "plush_3d",
+      "category": "love_family",
+      "grid_count": 2,
+      "sticker_count": 50,
+      "source_dir": "assets/stickers/source_grids/mixed/plush_3d/love_family",
+      "output_dir": "assets/stickers/library/mixed/plush_3d/love_family"
+    },
+    {
+      "pack_id": "mixed_meme_wobbly_app_core_reactions",
+      "group": "mixed",
+      "style": "meme_wobbly",
+      "category": "app_core_reactions",
+      "grid_count": 2,
+      "sticker_count": 50,
+      "source_dir": "assets/stickers/source_grids/mixed/meme_wobbly/app_core_reactions",
+      "output_dir": "assets/stickers/library/mixed/meme_wobbly/app_core_reactions"
+    },
+    {
+      "pack_id": "mixed_meme_wobbly_excuses",
+      "group": "mixed",
+      "style": "meme_wobbly",
+      "category": "excuses",
+      "grid_count": 2,
+      "sticker_count": 50,
+      "source_dir": "assets/stickers/source_grids/mixed/meme_wobbly/excuses",
+      "output_dir": "assets/stickers/library/mixed/meme_wobbly/excuses"
+    },
+    {
+      "pack_id": "mixed_meme_wobbly_panic",
+      "group": "mixed",
+      "style": "meme_wobbly",
+      "category": "panic",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/mixed/meme_wobbly/panic",
+      "output_dir": "assets/stickers/library/mixed/meme_wobbly/panic"
+    },
+    {
+      "pack_id": "mixed_meme_wobbly_internet_brain",
+      "group": "mixed",
+      "style": "meme_wobbly",
+      "category": "internet_brain",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/mixed/meme_wobbly/internet_brain",
+      "output_dir": "assets/stickers/library/mixed/meme_wobbly/internet_brain"
+    },
+    {
+      "pack_id": "mixed_meme_wobbly_household_chaos",
+      "group": "mixed",
+      "style": "meme_wobbly",
+      "category": "household_chaos",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/mixed/meme_wobbly/household_chaos",
+      "output_dir": "assets/stickers/library/mixed/meme_wobbly/household_chaos"
+    },
+    {
+      "pack_id": "mixed_meme_wobbly_monday_energy",
+      "group": "mixed",
+      "style": "meme_wobbly",
+      "category": "monday_energy",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/mixed/meme_wobbly/monday_energy",
+      "output_dir": "assets/stickers/library/mixed/meme_wobbly/monday_energy"
+    },
+    {
+      "pack_id": "mixed_meme_wobbly_suspicious",
+      "group": "mixed",
+      "style": "meme_wobbly",
+      "category": "suspicious",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/mixed/meme_wobbly/suspicious",
+      "output_dir": "assets/stickers/library/mixed/meme_wobbly/suspicious"
+    },
+    {
+      "pack_id": "mixed_meme_wobbly_surreal",
+      "group": "mixed",
+      "style": "meme_wobbly",
+      "category": "surreal",
+      "grid_count": 1,
+      "sticker_count": 25,
+      "source_dir": "assets/stickers/source_grids/mixed/meme_wobbly/surreal",
+      "output_dir": "assets/stickers/library/mixed/meme_wobbly/surreal"
+    }
+  ]
+}
