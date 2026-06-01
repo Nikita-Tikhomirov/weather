@@ -17,10 +17,10 @@ class PushActionReceiver : BroadcastReceiver() {
 
         Thread {
             try {
-                val connection = URL("$PUSH_API_BASE_URL/chat/conversations/read").openConnection() as HttpURLConnection
+                val connection = URL("$pushApiBaseUrl/chat/conversations/read").openConnection() as HttpURLConnection
                 connection.requestMethod = "POST"
                 connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-                connection.setRequestProperty("X-Api-Key", PUSH_API_KEY)
+                connection.setRequestProperty("X-Api-Key", pushApiKey)
                 connection.doOutput = true
                 val body = "{\"actor_profile\":\"${jsonEscape(actor)}\",\"conversation_key\":\"${jsonEscape(conversationKey)}\"}"
                 OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { it.write(body) }

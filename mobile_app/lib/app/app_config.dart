@@ -55,7 +55,10 @@ class AppConfig {
 
   /// Default project-bridge host:port (used when SharedPreferences
   /// does not contain a saved value).
-  static const String bridgeDefaultHost = '31.129.97.211:9877';
+  static const String bridgeDefaultHost = String.fromEnvironment(
+    'BRIDGE_DEFAULT_HOST',
+    defaultValue: '31.129.97.211:9877',
+  );
 
   // ── SharedPreferences keys ───────────────────────────────────
 

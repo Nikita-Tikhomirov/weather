@@ -307,7 +307,7 @@ git push
 - Modify: `mobile_app/android/app/build.gradle`
 - Modify: `mobile_app/lib/app/app_config.dart`
 
-- [ ] **Step 1: Make production secrets mandatory in CI release builds**
+- [x] **Step 1: Make production secrets mandatory in CI release builds**
 
 Expected workflow behavior:
 
@@ -316,7 +316,7 @@ test -n "${TODO_BACKEND_API_KEY:-}" || { echo "::error::TODO_BACKEND_API_KEY is 
 test -n "${FIREBASE_API_KEY:-}" || { echo "::error::FIREBASE_API_KEY is required"; exit 1; }
 ```
 
-- [ ] **Step 2: Replace Kotlin constants with BuildConfig values**
+- [x] **Step 2: Replace Kotlin constants with BuildConfig values**
 
 Target shape:
 
@@ -326,7 +326,7 @@ val pushApiBaseUrl: String get() = BuildConfig.PUSH_API_BASE_URL
 val pushApiKey: String get() = BuildConfig.PUSH_API_KEY
 ```
 
-- [ ] **Step 3: Add Gradle buildConfigFields**
+- [x] **Step 3: Add Gradle buildConfigFields**
 
 Target shape:
 
@@ -335,7 +335,7 @@ buildConfigField "String", "PUSH_API_BASE_URL", "\"${System.getenv("API_BASE_URL
 buildConfigField "String", "PUSH_API_KEY", "\"${System.getenv("API_KEY") ?: "dev-local-key"}\""
 ```
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run:
 

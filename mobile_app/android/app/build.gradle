@@ -11,6 +11,32 @@ if (buildNumberEnv != null && buildNumberEnv ==~ /\d+/) {
     releaseVersionCode = buildNumberEnv.toInteger()
 }
 def releaseVersionName = System.getenv("APP_VERSION") ?: "0.1.6"
+def isReleaseTask = gradle.startParameter.taskNames.any {
+    it.toString().toLowerCase().contains("release")
+}
+def envOrProperty = { name ->
+    def envValue = System.getenv(name)
+    if (envValue != null && !envValue.trim().isEmpty()) {
+        return envValue
+    }
+    def propertyValue = project.findProperty(name)
+    if (propertyValue != null && !propertyValue.toString().trim().isEmpty()) {
+        return propertyValue.toString()
+    }
+    return ""
+}
+def requiredReleaseValue = { name, devDefault ->
+    def value = envOrProperty(name)
+    if (isReleaseTask && value.isEmpty()) {
+        throw new GradleException("${name} is required for Android release builds")
+    }
+    return value.isEmpty() ? devDefault : value
+}
+def buildConfigString = { value ->
+    return "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+}
+def pushApiBaseUrl = requiredReleaseValue("API_BASE_URL", "http://31.129.97.211")
+def pushApiKey = requiredReleaseValue("API_KEY", "dev-local-key")
 
 android {
     namespace "com.example.family_todo_mobile"
@@ -39,12 +65,18 @@ android {
         jvmTarget = "17"
     }
 
+    buildFeatures {
+        buildConfig true
+    }
+
     defaultConfig {
         applicationId "com.example.family_todo_mobile"
         minSdkVersion flutter.minSdkVersion
         targetSdk 36
         versionCode releaseVersionCode
         versionName releaseVersionName
+        buildConfigField "String", "PUSH_API_BASE_URL", buildConfigString(pushApiBaseUrl)
+        buildConfigField "String", "PUSH_API_KEY", buildConfigString(pushApiKey)
     }
 
     buildTypes {

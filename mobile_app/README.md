@@ -45,9 +45,16 @@ APK is built automatically by GitHub Actions workflow:
 
 Workflow does:
 - prepares a full Flutter Android structure,
+- validates required mobile release secrets,
 - restores project `lib/` and `pubspec.yaml`,
 - builds release APK,
 - publishes APK to GitHub Release.
+
+Required GitHub Actions secrets for release builds:
+`MOBILE_API_BASE_URL`, `TODO_BACKEND_API_KEY`, `FIREBASE_APP_ID`,
+`FIREBASE_PROJECT_ID`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_API_KEY`,
+`FIREBASE_STORAGE_BUCKET`, `TURN_URLS`, `TURN_USERNAME`, `TURN_CREDENTIAL`,
+`BRIDGE_DEFAULT_HOST`.
 
 Last CI trigger: 2026-04-22
 
