@@ -334,10 +334,60 @@ void main() {
 
         expect(api.pushedEvents.length, 0);
       });
+
+      test('keeps local collaboration when pull echoes stale family task',
+          () async {
+        const collaboration = TaskCollaboration(
+          comments: [
+            TaskComment(
+              id: 'comment-1',
+              authorProfile: 'nik',
+              text: 'Сразу сохранить',
+              createdAt: '2026-06-01T10:00:00',
+            ),
+          ],
+          checklists: [
+            TaskChecklist(
+              id: 'checklist-1',
+              title: 'Проверка',
+              createdBy: 'nik',
+              createdAt: '2026-06-01T10:01:00',
+            ),
+          ],
+        );
+        final localTask = _makeTask(
+          'task-local-collab',
+          isFamily: true,
+          ownerKey: 'family',
+          collaboration: collaboration,
+        );
+        await service.enqueueUpsert(localTask);
+        api.pullResult = PullSnapshot(
+          tasks: const [],
+          familyTasks: [
+            localTask.copyWith(collaboration: const TaskCollaboration()),
+          ],
+          serverTime: '2026-06-01T10:02:00',
+          nextCursor: '2026-06-01T10:02:00',
+          isDelta: true,
+          projects: const [],
+          familyGroups: const [],
+          projectGroupMap: const {},
+        );
+
+        await service.syncDelta();
+
+        final tasks = await db.readTasks();
+        final stored = tasks.singleWhere((task) => task.id == localTask.id);
+        expect(stored.collaboration.comments.single.text, 'Сразу сохранить');
+        expect(stored.collaboration.checklists.single.title, 'Проверка');
+      });
     });
 
     group('syncFull', () {
-      test('pushes pending, pulls full snapshot, replaces tasks', () async {
+      test('pushes pending, pulls full snapshot, keeps optimistic upsert',
+          () async {
+        await db.upsertTask(_makeTask('stale-local'));
         final task = _makeTask('task-6');
         await service.enqueueUpsert(task);
 
@@ -359,9 +409,51 @@ void main() {
         expect(db.since, '2026-01-01T00:00:02');
 
         final tasks = await db.readTasks();
-        // Old task-6 should be replaced by server-1
-        expect(tasks.length, 1);
-        expect(tasks.first.id, 'server-1');
+        final ids = tasks.map((task) => task.id).toSet();
+        expect(ids, containsAll(['server-1', 'task-6']));
+        expect(ids, isNot(contains('stale-local')));
+      });
+
+      test('keeps local collaboration when full pull echoes stale family task',
+          () async {
+        const collaboration = TaskCollaboration(
+          comments: [
+            TaskComment(
+              id: 'comment-2',
+              authorProfile: 'nik',
+              text: 'Не терять после входа',
+              createdAt: '2026-06-01T11:00:00',
+            ),
+          ],
+        );
+        final localTask = _makeTask(
+          'task-full-collab',
+          isFamily: true,
+          ownerKey: 'family',
+          collaboration: collaboration,
+        );
+        await service.enqueueUpsert(localTask);
+        api.pullResult = PullSnapshot(
+          tasks: const [],
+          familyTasks: [
+            localTask.copyWith(collaboration: const TaskCollaboration()),
+          ],
+          serverTime: '2026-06-01T11:02:00',
+          nextCursor: '2026-06-01T11:02:00',
+          isDelta: false,
+          projects: const [],
+          familyGroups: const [],
+          projectGroupMap: const {},
+        );
+
+        await service.syncFull();
+
+        final tasks = await db.readTasks();
+        final stored = tasks.singleWhere((task) => task.id == localTask.id);
+        expect(
+          stored.collaboration.comments.single.text,
+          'Не терять после входа',
+        );
       });
     });
   });

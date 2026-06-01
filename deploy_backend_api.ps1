@@ -21,21 +21,15 @@ $env:WEATHER_VPS_PASSWORD = $HostPassword
 $env:WEATHER_SIMPLE_API_REMOTE_BASE = $RemoteBase
 $env:TODO_BACKEND_API_KEY = $ApiKey
 
-$files = @(
-    @{Local="backend_api\public\index.php";                      Remote="$RemoteBase/public/index.php"},
-    @{Local="backend_api\src\repository.php";                    Remote="$RemoteBase/src/repository.php"},
-    @{Local="backend_api\src\auth.php";                          Remote="$RemoteBase/src/auth.php"},
-    @{Local="backend_api\public\_route.php";                     Remote="$RemoteBase/public/_route.php"},
-    @{Local="backend_api\public\projects.php";                   Remote="$RemoteBase/public/projects.php"},
-    @{Local="backend_api\public\projects_create.php";            Remote="$RemoteBase/public/projects_create.php"},
-    @{Local="backend_api\public\projects_update.php";            Remote="$RemoteBase/public/projects_update.php"},
-    @{Local="backend_api\public\projects_delete.php";            Remote="$RemoteBase/public/projects_delete.php"},
-    @{Local="backend_api\public\projects_set_groups.php";        Remote="$RemoteBase/public/projects_set_groups.php"},
-    @{Local="backend_api\public\family_groups.php";              Remote="$RemoteBase/public/family_groups.php"},
-    @{Local="backend_api\public\family_groups_create.php";       Remote="$RemoteBase/public/family_groups_create.php"},
-    @{Local="backend_api\public\family_groups_update.php";       Remote="$RemoteBase/public/family_groups_update.php"},
-    @{Local="backend_api\public\family_groups_delete.php";       Remote="$RemoteBase/public/family_groups_delete.php"}
-)
+$files = @()
+foreach ($dir in @("public", "src")) {
+    Get-ChildItem -Path "backend_api\$dir" -Filter "*.php" | ForEach-Object {
+        $files += @{
+            Local = ($_.FullName.Substring((Resolve-Path ".").Path.Length + 1) -replace "\\", "/")
+            Remote = "$RemoteBase/$dir/$($_.Name)"
+        }
+    }
+}
 
 if ($DryRun) {
     Write-Host "=== DRY RUN ==="
@@ -48,7 +42,7 @@ if ($DryRun) {
 Write-Host "Deploying backend_api to $HostIp ..."
 
 $script = @"
-import paramiko, sys, os
+import paramiko, sys, os, posixpath
 
 host = os.environ["WEATHER_VPS_HOST"]
 user = os.environ["WEATHER_VPS_USER"]
@@ -60,6 +54,18 @@ client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 client.connect(host, username=user, password=password, timeout=15)
 sftp = client.open_sftp()
 
+def ensure_remote_dir(path):
+    parts = []
+    current = path
+    while current not in ('', '/'):
+        parts.append(current)
+        current = posixpath.dirname(current)
+    for item in reversed(parts):
+        try:
+            sftp.stat(item)
+        except FileNotFoundError:
+            sftp.mkdir(item)
+
 files = [
 $($files | ForEach-Object { "    ('$($_.Local)', '$($_.Remote)')," }) 
 ]
@@ -70,6 +76,7 @@ for local, remote in files:
         print(f'  SKIP (not found): {local}')
         continue
     print(f'Uploading {local} ...')
+    ensure_remote_dir(posixpath.dirname(remote))
     # backup
     try:
         sftp.stat(remote + '.bak')
@@ -83,7 +90,52 @@ for local, remote in files:
     sftp.put(local_path, remote)
     print(f'  OK: {local} -> {remote}')
 
+remote_base = os.environ["WEATHER_SIMPLE_API_REMOTE_BASE"]
+try:
+    sftp.stat(posixpath.join(remote_base, 'config.php'))
+    has_config = True
+except FileNotFoundError:
+    has_config = False
+
 sftp.close()
+
+if has_config:
+    migration = r'''php <<'PHP'
+<?php
+`$config = require '__REMOTE_BASE__/config.php';
+`$db = `$config['db'] ?? [];
+`$dsn = sprintf(
+    'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+    `$db['host'] ?? '127.0.0.1',
+    (int)(`$db['port'] ?? 3306),
+    `$db['name'] ?? '',
+    `$db['charset'] ?? 'utf8mb4'
+);
+`$pdo = new PDO(`$dsn, `$db['user'] ?? '', `$db['pass'] ?? '', [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+]);
+foreach (['tasks', 'family_tasks'] as `$table) {
+    `$stmt = `$pdo->prepare(
+        'SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?'
+    );
+    `$stmt->execute([`$table, 'collaboration_json']);
+    if ((int)`$stmt->fetchColumn() === 0) {
+        `$pdo->exec(sprintf('ALTER TABLE `%s` ADD COLUMN `collaboration_json` JSON NULL AFTER `participants_json`', `$table));
+        echo "added `$table.collaboration_json\n";
+    } else {
+        echo "exists `$table.collaboration_json\n";
+    }
+}
+PHP'''.replace('__REMOTE_BASE__', remote_base)
+    stdin, stdout, stderr = client.exec_command(migration)
+    print(stdout.read().decode().strip())
+    err = stderr.read().decode().strip()
+    if err:
+        print(err, file=sys.stderr)
+        sys.exit(1)
+else:
+    print('Migration skipped: config.php not found, file-store sync mode is active.')
 
 # Test the endpoints
 stdin, stdout, stderr = client.exec_command(f'curl -s -o /dev/null -w "%{{http_code}}" -X POST http://localhost/projects/create -H "Content-Type: application/json" -H "X-Api-Key: {api_key}" -d \'{{"actor_profile":"nik","name":"test"}}\' 2>&1')
@@ -97,3 +149,6 @@ print('Deploy done.')
 "@
 
 $script | python -
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
