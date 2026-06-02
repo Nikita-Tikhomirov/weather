@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -22,6 +23,16 @@ class ChatApiContractTest extends TestCase
     public function bootstrap_returns_contacts_group_and_sticker_packs(): void
     {
         config(['sync.api_key' => 'prod-key']);
+        DB::table('chat_stickers')->insert([
+            'sticker_id' => 'rats_plush_3d_emotions_001',
+            'pack_key' => 'rats_plush_3d_emotions',
+            'title' => 'happy nod',
+            'asset_url' => 'https://s3.example.test/stickers/rats_plush_3d_emotions_001.png',
+            'is_active' => 1,
+            'sort_order' => 1,
+            'created_at' => now()->format('Y-m-d\TH:i:s'),
+            'updated_at' => now()->format('Y-m-d\TH:i:s'),
+        ]);
 
         $response = $this->withHeaders(['X-Api-Key' => 'prod-key'])
             ->getJson('/chat/bootstrap?actor_profile=nik');
@@ -46,6 +57,14 @@ class ChatApiContractTest extends TestCase
 
         $packs = data_get($response->json(), 'sticker_packs', []);
         $this->assertNotEmpty($packs);
+        $this->assertSame('rats_plush_3d_emotions', data_get($packs, '0.pack_key'));
+        $this->assertSame(
+            'https://s3.example.test/stickers/rats_plush_3d_emotions_001.png',
+            data_get($packs, '0.items.0.asset_url'),
+        );
+        $this->assertFalse(
+            collect($packs)->pluck('pack_key')->contains('emoji'),
+        );
     }
 
     #[Test]

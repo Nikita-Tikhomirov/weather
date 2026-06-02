@@ -586,6 +586,13 @@ php artisan chat:media-migrate --delete-local
 
 Команда переносит только известные медиа мессенджера (`chat_stickers`, `chat_documents`, `profile_avatars`) и переписывает ссылки в БД.
 
+Для новых стикеров храните в `chat_stickers.asset_url` абсолютные S3 URL, а
+`pack_key` задавайте в формате `group_style_category`, например
+`rats_plush_3d_emotions`. Мобильный интерфейс сортирует такие пакеты по группам
+(`rats`, `hedgehogs`, `duos`, `mixed`), стилям (`plush_3d`, `meme_wobbly`) и
+темам. Старые встроенные `emoji`/`default` стикеры не показываются в новом
+каталоге.
+
 ## 14. Что можно улучшить дальше
 
 - Добавить `requirements.txt`/`pyproject.toml` для воспроизводимой установки.

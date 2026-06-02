@@ -11,6 +11,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--prefix", required=True, help="Output file prefix.")
     parser.add_argument("--rows", type=int, default=5)
     parser.add_argument("--cols", type=int, default=5)
+    parser.add_argument("--start-index", type=int, default=1, help="First output sticker index.")
     parser.add_argument("--padding", type=int, default=42, help="Padding on final 512x512 canvas.")
     parser.add_argument("--format", choices=["png", "webp"], default="png")
     parser.add_argument("--key", default="00ff00", help="Chroma key color as RRGGBB.")
@@ -97,7 +98,11 @@ def main() -> None:
     source = Image.open(args.grid).convert("RGBA")
     cell_width = source.width // args.cols
     cell_height = source.height // args.rows
-    index = 1
+    if args.start_index < 1:
+        raise SystemExit("--start-index must be 1 or greater")
+
+    index = args.start_index
+    saved_count = 0
 
     for row in range(args.rows):
         for col in range(args.cols):
@@ -115,8 +120,9 @@ def main() -> None:
             else:
                 sticker.save(output, "PNG")
             index += 1
+            saved_count += 1
 
-    print(f"Saved {index - 1} stickers to {args.out}")
+    print(f"Saved {saved_count} stickers to {args.out}")
 
 
 if __name__ == "__main__":

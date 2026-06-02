@@ -20,6 +20,7 @@ import '../chat/active_call_banner.dart';
 import '../chat/call_screen.dart';
 import '../chat/chat_photo_viewer.dart';
 import '../chat/messenger_page.dart';
+import '../chat/sticker_picker_sheet.dart';
 import '../projects/project_file_browser.dart';
 import '../projects/project_chat_view.dart';
 import '../projects/projects_and_groups_screen.dart';
@@ -2667,74 +2668,18 @@ class _HomePageState extends State<HomePage> {
     }
     await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
       builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Стикеры',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: () async {
-                        Navigator.of(sheetContext).pop();
-                        await _sendPhotos(
-                          store,
-                          source: ImageSource.gallery,
-                          allowMultiple: true,
-                        );
-                      },
-                      icon: const Icon(Icons.image_outlined),
-                      label: const Text('Мой стикер'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: ListView(
-                    children: [
-                      for (final pack in _chatStickerPacks) ...[
-                        Text(
-                          pack.title.isEmpty ? pack.packKey : pack.title,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (final item in pack.items)
-                              OutlinedButton(
-                                onPressed: () async {
-                                  Navigator.of(sheetContext).pop();
-                                  await _sendBuiltInSticker(store, item);
-                                },
-                                child: SizedBox(
-                                  width: 64,
-                                  height: 64,
-                                  child: _stickerPreview(item),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
+        return FractionallySizedBox(
+          heightFactor: 0.9,
+          child: StickerPickerSheet(
+            packs: _chatStickerPacks,
+            assetUrlResolver: _absoluteAssetUrl,
+            onStickerSelected: (sticker) async {
+              Navigator.of(sheetContext).pop();
+              await _sendBuiltInSticker(store, sticker);
+            },
           ),
         );
       },
@@ -3080,23 +3025,6 @@ class _HomePageState extends State<HomePage> {
     }
     final single = chatImageUrl(message);
     return single.isEmpty ? const [] : [single];
-  }
-
-  Widget _stickerPreview(StickerItem item) {
-    final url = _absoluteAssetUrl(item.assetUrl);
-    if (url.isEmpty || url.startsWith('emoji://')) {
-      return Center(child: Text(item.title));
-    }
-    return Image.network(
-      url,
-      fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) => Center(
-        child: Text(
-          item.title.isEmpty ? '🙂' : item.title,
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
   }
 
   String _absoluteAssetUrl(String raw) {

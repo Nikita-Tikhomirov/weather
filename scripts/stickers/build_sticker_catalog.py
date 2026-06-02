@@ -2,16 +2,153 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from itertools import cycle
 from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 STICKER_ROOT = PROJECT_ROOT / "assets" / "stickers"
 CATALOG_DIR = STICKER_ROOT / "catalog"
-SOURCE_DIR = STICKER_ROOT / "source_grids"
-LIBRARY_DIR = STICKER_ROOT / "library"
+SOURCE_DIR = STICKER_ROOT / "source_grids_v2"
+LIBRARY_DIR = STICKER_ROOT / "library_v2"
 GRID_SIZE = 25
+PROMPT_VERSION = 2
+
+
+CELL_DIRECTIONS = [
+    "front-facing standing pose, red heart pillow, round silhouette",
+    "side-facing sitting pose, blue ceramic mug, low wide silhouette",
+    "tiny jump pose, yellow star badge, paws lifted",
+    "curled pose, purple blanket roll, compact silhouette",
+    "leaning pose, orange keyring, one paw forward",
+    "dramatic arms-wide pose, pink toy megaphone with no text, tall silhouette",
+    "sleepy slouch pose, cream moon cushion, heavy eyelids",
+    "sneaky tiptoe pose, black-and-white checker scarf, narrow silhouette",
+    "proud chest-out pose, gold paper crown with no text, chin raised",
+    "tiny panic run pose, red-and-blue ribbon trail, motion lines",
+    "calm seated pose, lavender teacup, soft smile",
+    "confused head-tilt pose, tan paper map with no writing, asymmetrical silhouette",
+    "victory hop pose, white tiny flag with no symbol, one foot up",
+    "bashful tucked-paws pose, rose gift box, small blush",
+    "skeptical side-eye pose, gray magnifying glass, angled eyebrows",
+    "overthinking crouch pose, navy puzzle piece, paws on cheeks",
+    "surprised backward-lean pose, peach balloon, open mouth",
+    "focused tiny-work pose, brown clipboard with no writing, narrowed eyes",
+    "relaxed blanket pose, ivory pillow stack, soft rounded outline",
+    "idea pose, amber lightbulb prop, bright eyes",
+    "tiny dance pose, magenta party streamer, one paw overhead",
+    "protective hug pose, sky-blue plush cloud, closed-eye smile",
+    "determined march pose, copper tiny shield with no emblem, forward lean",
+    "awkward freeze pose, lilac soap bubble, stiff little paws",
+    "celebration spin pose, silver confetti swirl, wide happy face",
+]
+
+
+ACCENT_COLORS = [
+    "coral",
+    "crimson",
+    "ruby",
+    "scarlet",
+    "rose",
+    "blush-pink",
+    "fuchsia",
+    "magenta",
+    "lilac",
+    "lavender",
+    "violet",
+    "plum",
+    "indigo",
+    "navy",
+    "cobalt",
+    "sapphire",
+    "sky-blue",
+    "periwinkle",
+    "amber",
+    "gold",
+    "lemon-yellow",
+    "butter-yellow",
+    "peach",
+    "apricot",
+    "tangerine",
+    "orange",
+    "copper",
+    "bronze",
+    "caramel",
+    "chocolate",
+    "mocha",
+    "ivory",
+    "cream",
+    "pearl-white",
+    "silver",
+    "graphite",
+    "charcoal",
+    "black",
+    "white",
+    "slate",
+    "mauve",
+    "burgundy",
+    "raspberry",
+    "salmon",
+    "terracotta",
+    "sand",
+    "clay",
+    "orchid",
+    "midnight-blue",
+    "warm-gray",
+]
+
+
+ACCENT_DETAILS = [
+    "tiny star patch",
+    "round button pin",
+    "striped scarf knot",
+    "paperclip charm",
+    "heart-shaped patch",
+    "crescent moon charm",
+    "dotted bow tie",
+    "checker wristband",
+    "small ribbon loop",
+    "tiny lightning charm",
+    "mini cloud puff",
+    "single confetti burst",
+    "toy camera strap",
+    "little badge shape",
+    "tiny folded napkin",
+    "soft pom-pom",
+    "small blanket tassel",
+    "toy compass charm",
+    "tiny paper crown trim",
+    "small scarf fringe",
+    "mini flower-shaped pin",
+    "single sparkle cluster",
+    "little stitched pocket",
+    "tiny pillow corner",
+    "small teacup charm",
+    "mini bookmark ribbon",
+    "tiny donut-shaped patch",
+    "little envelope charm",
+    "small sock cuff",
+    "mini umbrella handle",
+    "single bubble accent",
+    "tiny medal ribbon",
+    "small toy shield edge",
+    "mini star wand tip",
+    "little bow on tail",
+    "tiny leaf-shaped patch",
+    "small quilt square",
+    "mini keychain ring",
+    "tiny candle flame shape",
+    "little sleepy cap trim",
+    "small notebook corner",
+    "mini spoon charm",
+    "tiny music-note charm without text",
+    "single snowflake charm",
+    "little cupcake wrapper",
+    "small map corner without writing",
+    "mini rocket patch",
+    "tiny suitcase tag without text",
+    "single spiral accent",
+    "little toy wheel",
+]
 
 
 STYLE_DESCRIPTIONS = {
@@ -364,15 +501,39 @@ PACKS = [
 ]
 
 
-def select_concepts(category: str, offset: int) -> list[str]:
+def make_global_signature(global_index: int) -> str:
+    color = ACCENT_COLORS[global_index % len(ACCENT_COLORS)]
+    detail = ACCENT_DETAILS[(global_index // len(ACCENT_COLORS)) % len(ACCENT_DETAILS)]
+    cycle = global_index // (len(ACCENT_COLORS) * len(ACCENT_DETAILS))
+    if cycle:
+        return f"{color} {detail}, extra asymmetrical placement variant {cycle + 1}"
+    return f"{color} {detail}"
+
+
+def select_concepts(category: str, offset: int, global_start_index: int) -> list[str]:
     concepts = CONCEPT_POOLS[category]
     items = []
-    iterator = cycle(concepts)
-    for _ in range(offset * GRID_SIZE):
-        next(iterator)
+    used = set()
     for index in range(GRID_SIZE):
-        base = next(iterator)
-        items.append(f"{base}, variant {index + 1}")
+        base_index = ((offset * GRID_SIZE) + index) % len(concepts)
+        base = concepts[base_index]
+        concept = base
+        if concept in used:
+            for shift in range(1, len(concepts) + 1):
+                partner = concepts[(base_index + shift + offset) % len(concepts)]
+                concept = f"{base} combined with {partner}"
+                if concept not in used:
+                    break
+        if concept in used:
+            raise RuntimeError(f"Could not build a unique concept for {category}")
+
+        used.add(concept)
+        direction = CELL_DIRECTIONS[(offset + index) % len(CELL_DIRECTIONS)]
+        signature = make_global_signature(global_start_index + index)
+        items.append(
+            f"cell {index + 1:02d}: {concept}, {direction}, "
+            f"unique visible accent: {signature}"
+        )
     return items
 
 
@@ -388,7 +549,11 @@ def make_grid_prompt(pack: Pack, grid_index: int, concepts: list[str]) -> str:
         f"Style: {style}. "
         f"Theme: {pack.category.replace('_', ' ')} batch {grid_index:03d}. "
         f"Each cell must contain one complete centered sticker with generous padding. "
-        f"Make every sticker different: {concept_text}. "
+        "All 25 stickers must be visually unique: no repeated pose, prop set, facial "
+        "expression, silhouette, or composition inside the same grid. "
+        "Do not create twins, copy-paste characters, mirrored duplicates, or the same "
+        "character with only a tiny color change. "
+        f"Use these 25 unique design briefs in row-major order: {concept_text}. "
         "No readable text inside the artwork. Keep silhouettes bold, funny, and easy "
         "to understand at small mobile size. Avoid green elements because the green "
         "background will be removed later."
@@ -399,6 +564,7 @@ def build_catalog() -> tuple[list[dict], list[dict], list[dict]]:
     pack_plan = []
     grid_prompts = []
     stickers = []
+    global_sticker_index = 0
 
     for pack in PACKS:
         source_dir = SOURCE_DIR / pack.group / pack.style / pack.category
@@ -415,6 +581,7 @@ def build_catalog() -> tuple[list[dict], list[dict], list[dict]]:
                 "group": pack.group,
                 "style": pack.style,
                 "category": pack.category,
+                "prompt_version": PROMPT_VERSION,
                 "grid_count": pack.grid_count,
                 "sticker_count": pack.grid_count * GRID_SIZE,
                 "source_dir": str(source_dir.relative_to(PROJECT_ROOT)).replace("\\", "/"),
@@ -423,19 +590,22 @@ def build_catalog() -> tuple[list[dict], list[dict], list[dict]]:
         )
 
         for grid_number in range(1, pack.grid_count + 1):
-            concepts = select_concepts(pack.category, grid_number - 1)
+            grid_global_start = global_sticker_index
+            concepts = select_concepts(pack.category, grid_number - 1, grid_global_start)
             grid_id = f"{pack_id}_grid_{grid_number:03d}"
-            source_path = source_dir / f"{grid_id}.png"
+            source_path = source_dir / f"{grid_id}_v{PROMPT_VERSION}.png"
+            source_exists = source_path.exists()
             grid_prompts.append(
                 {
                     "grid_id": grid_id,
                     "pack_id": pack_id,
+                    "prompt_version": PROMPT_VERSION,
                     "group": pack.group,
                     "style": pack.style,
                     "category": pack.category,
                     "count": GRID_SIZE,
                     "source_path": str(source_path.relative_to(PROJECT_ROOT)).replace("\\", "/"),
-                    "source_exists": source_path.exists(),
+                    "source_exists": source_exists,
                     "output_dir": str(output_dir.relative_to(PROJECT_ROOT)).replace("\\", "/"),
                     "prompt": make_grid_prompt(pack, grid_number, concepts),
                 }
@@ -448,7 +618,7 @@ def build_catalog() -> tuple[list[dict], list[dict], list[dict]]:
                 stickers.append(
                     {
                         "id": sticker_id,
-                        "status": "ready" if output_path.exists() else "planned",
+                        "status": "ready" if source_exists and output_path.exists() else "planned",
                         "group": pack.group,
                         "style": pack.style,
                         "category": pack.category,
@@ -459,6 +629,7 @@ def build_catalog() -> tuple[list[dict], list[dict], list[dict]]:
                         "path": str(output_path.relative_to(PROJECT_ROOT)).replace("\\", "/"),
                     }
                 )
+                global_sticker_index += 1
 
     return pack_plan, grid_prompts, stickers
 
@@ -477,6 +648,7 @@ def main() -> None:
         CATALOG_DIR / "pack_plan.json",
         {
             "schema_version": 1,
+            "prompt_version": PROMPT_VERSION,
             "target_count": target_count,
             "grid_size": GRID_SIZE,
             "styles": STYLE_DESCRIPTIONS,
@@ -492,6 +664,7 @@ def main() -> None:
         STICKER_ROOT / "manifest.json",
         {
             "schema_version": 1,
+            "prompt_version": PROMPT_VERSION,
             "target_count": target_count,
             "grid_count": len(grid_prompts),
             "sticker_count": len(stickers),

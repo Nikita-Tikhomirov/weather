@@ -177,9 +177,11 @@ final class ChatRepository
 
     public function stickerPacks(): array
     {
-        $this->ensureDefaultStickerPacks();
         $rows = DB::table('chat_stickers')
             ->where('is_active', 1)
+            ->where('asset_url', 'not like', 'emoji://%')
+            ->where('asset_url', 'not like', '/stickers/default/%')
+            ->whereNotIn('pack_key', ['emoji', 'default'])
             ->orderBy('pack_key')
             ->orderBy('sort_order')
             ->orderBy('sticker_id')
@@ -635,28 +637,9 @@ final class ChatRepository
         }
     }
 
-    private function ensureDefaultStickerPacks(): void
-    {
-        $now = $this->nowIso();
-        foreach ([
-            ['builtin-emoji-smile', 'emoji', ':)', 'emoji://grinning-face', 10],
-            ['builtin-emoji-laugh', 'emoji', ':D', 'emoji://face-with-tears-of-joy', 20],
-            ['builtin-emoji-heart', 'emoji', '<3', 'emoji://heart', 30],
-            ['builtin-emoji-thumbs-up', 'emoji', '+1', 'emoji://thumbs-up', 40],
-        ] as $item) {
-            DB::table('chat_stickers')->updateOrInsert(
-                ['sticker_id' => $item[0]],
-                ['pack_key' => $item[1], 'title' => $item[2], 'asset_url' => $item[3], 'is_active' => 1, 'sort_order' => $item[4], 'created_at' => $now, 'updated_at' => $now]
-            );
-        }
-    }
-
     private function stickerPackTitle(string $packKey): string
     {
         return match ($packKey) {
-            'emoji' => 'Emoji',
-            'funny' => 'Fun',
-            'default' => 'Default',
             default => ucfirst($packKey),
         };
     }

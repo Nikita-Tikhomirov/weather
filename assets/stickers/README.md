@@ -7,6 +7,8 @@
 
 - Целевой объем: 2500 стикеров.
 - Формат генерации: 100 сеток по 25 стикеров.
+- Текущий срез после остановки генерации: 1100 готовых PNG. Из них 500 старых
+  файлов в `library` и 600 новых файлов в `library_v2`.
 - Основные стили:
   - `plush_3d` - мягкий 3D toy/plush стиль.
   - `meme_wobbly` - смешной мемный кривоватый стиль.
@@ -27,12 +29,30 @@ assets/stickers/
     ...
   library/
     ...
+  source_grids_v2/
+    ...
+  library_v2/
+    ...
   manifest.json
 ```
 
-`source_grids` - сюда кладутся сгенерированные сетки 5x5.  
-`library` - сюда попадают нарезанные отдельные PNG/WebP.  
+`source_grids` и `library` - старые сохраненные сетки и нарезанные файлы.
+`source_grids_v2` и `library_v2` - новая библиотека с промптами
+`prompt_version=2`, где внутри каждой сетки требуются 25 уникальных идей, а
+каждый стикер получает уникальный визуальный акцент на уровне всего нового
+набора.
 `manifest.json` - список запланированных файлов, категорий и тегов.
+
+Начиная с `prompt_version=2`, исходные сетки сохраняются с суффиксом `_v2`.
+Старые сетки без суффикса не удаляются и остаются в `source_grids`/`library`, но
+новый `manifest.json` считает готовыми только файлы из `source_grids_v2` и
+`library_v2`.
+
+Для загрузки в приложение через S3 используйте `chat_stickers.asset_url` с
+абсолютной S3-ссылкой. `pack_key` лучше сохранять в формате
+`group_style_category`, например `rats_plush_3d_emotions` или
+`hedgehogs_meme_wobbly_grumpy_reactions`: мобильный интерфейс по этому ключу
+раскладывает стикеры по группам, стилям и темам.
 
 ## Генерация каталога
 
@@ -49,12 +69,24 @@ python .\scripts\stickers\build_sticker_catalog.py
 
 ```powershell
 python .\scripts\stickers\slice_sticker_grid.py `
-  --grid .\assets\stickers\source_grids\rats\plush_3d\emotions\rat_plush_3d_emotions_grid_001.png `
-  --out .\assets\stickers\library\rats\plush_3d\emotions `
-  --prefix rat_plush_3d_emotions `
+  --grid .\assets\stickers\source_grids_v2\rats\plush_3d\emotions\rats_plush_3d_emotions_grid_001_v2.png `
+  --out .\assets\stickers\library_v2\rats\plush_3d\emotions `
+  --prefix rats_plush_3d_emotions `
+  --start-index 1 `
   --format png
 ```
 
 По умолчанию утилита ожидает сетку 5x5, убирает chroma-key фон `#00ff00`,
 триммит пустые края и кладет каждый стикер на квадратный холст 512x512.
+Для второй сетки в той же категории используйте `--start-index 26`, для третьей -
+`--start-index 51` и так далее.
 
+## Проверка качества
+
+```powershell
+python .\scripts\stickers\check_sticker_quality.py
+```
+
+Проверка требует 25 уникальных брифов в каждой сетке, PNG 512x512 с прозрачными
+углами, глобально уникальные брифы в `manifest.json` и отсутствие почти
+одинаковых стикеров внутри одной готовой сетки.
