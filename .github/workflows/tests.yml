@@ -5,6 +5,7 @@ on:
     branches: [master]
     paths:
       - 'mobile_app/**'
+      - 'assets/stickers/**'
       - 'backend_api/**'
       - '**.py'
       - '**.dart'

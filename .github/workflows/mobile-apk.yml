@@ -7,6 +7,7 @@ on:
       - master
     paths:
       - 'mobile_app/**'
+      - 'assets/stickers/**'
       - '.github/workflows/mobile-apk.yml'
 
 permissions:
