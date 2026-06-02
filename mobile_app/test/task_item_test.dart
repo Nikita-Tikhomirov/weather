@@ -221,6 +221,29 @@ void main() {
       expect(json['asset_url'], '/chat/media/task-photo');
       expect(json['image_meta'], const {'width': 1200, 'height': 800});
     });
+
+    test('preserves task comment reply edit and delete metadata', () {
+      final comment = TaskComment.fromJson(const {
+        'id': 'comment-2',
+        'author_profile': 'nik',
+        'text': 'Ответил по макету',
+        'created_at': '2026-06-01T10:00:00',
+        'edited_at': '2026-06-01T10:05:00',
+        'deleted_at': '2026-06-01T10:10:00',
+        'reply_to_comment_id': 'comment-1',
+        'attachment_ids': ['att-2'],
+      });
+
+      final json = comment.toJson();
+
+      expect(comment.replyToCommentId, 'comment-1');
+      expect(comment.editedAt, '2026-06-01T10:05:00');
+      expect(comment.deletedAt, '2026-06-01T10:10:00');
+      expect(comment.isDeleted, isTrue);
+      expect(json['reply_to_comment_id'], 'comment-1');
+      expect(json['edited_at'], '2026-06-01T10:05:00');
+      expect(json['deleted_at'], '2026-06-01T10:10:00');
+    });
   });
 
   group('TaskItem family detection', () {

@@ -139,6 +139,9 @@ class TaskComment {
     required this.text,
     required this.createdAt,
     this.attachmentIds = const [],
+    this.replyToCommentId = '',
+    this.editedAt = '',
+    this.deletedAt = '',
   });
 
   final String id;
@@ -146,6 +149,11 @@ class TaskComment {
   final String text;
   final String createdAt;
   final List<String> attachmentIds;
+  final String replyToCommentId;
+  final String editedAt;
+  final String deletedAt;
+
+  bool get isDeleted => deletedAt.trim().isNotEmpty;
 
   factory TaskComment.fromJson(Map<String, dynamic> json) {
     return TaskComment(
@@ -154,6 +162,9 @@ class TaskComment {
       text: (json['text'] ?? '').toString(),
       createdAt: (json['created_at'] ?? '').toString(),
       attachmentIds: _decodeStringList(json['attachment_ids']),
+      replyToCommentId: (json['reply_to_comment_id'] ?? '').toString(),
+      editedAt: (json['edited_at'] ?? '').toString(),
+      deletedAt: (json['deleted_at'] ?? '').toString(),
     );
   }
 
@@ -164,6 +175,9 @@ class TaskComment {
       'text': text,
       'created_at': createdAt,
       'attachment_ids': attachmentIds,
+      'reply_to_comment_id': replyToCommentId,
+      'edited_at': editedAt,
+      'deleted_at': deletedAt,
     };
   }
 
@@ -173,6 +187,9 @@ class TaskComment {
     String? text,
     String? createdAt,
     List<String>? attachmentIds,
+    String? replyToCommentId,
+    String? editedAt,
+    String? deletedAt,
   }) {
     return TaskComment(
       id: id ?? this.id,
@@ -180,6 +197,9 @@ class TaskComment {
       text: text ?? this.text,
       createdAt: createdAt ?? this.createdAt,
       attachmentIds: attachmentIds ?? this.attachmentIds,
+      replyToCommentId: replyToCommentId ?? this.replyToCommentId,
+      editedAt: editedAt ?? this.editedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
     );
   }
 
@@ -192,7 +212,10 @@ class TaskComment {
           authorProfile == other.authorProfile &&
           text == other.text &&
           createdAt == other.createdAt &&
-          listEquals(attachmentIds, other.attachmentIds);
+          listEquals(attachmentIds, other.attachmentIds) &&
+          replyToCommentId == other.replyToCommentId &&
+          editedAt == other.editedAt &&
+          deletedAt == other.deletedAt;
 
   @override
   int get hashCode => Object.hash(
@@ -201,6 +224,9 @@ class TaskComment {
         text,
         createdAt,
         Object.hashAll(attachmentIds),
+        replyToCommentId,
+        editedAt,
+        deletedAt,
       );
 }
 

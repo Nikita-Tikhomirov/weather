@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:family_todo_mobile/features/tasks/task_editor_sheet.dart';
 import 'package:family_todo_mobile/models/family_group.dart';
 import 'package:family_todo_mobile/models/task_collaboration.dart';
@@ -17,6 +19,8 @@ class _FakeApiClient extends ApiClient {
 
   int mediaUploadCount = 0;
   int documentUploadCount = 0;
+  Completer<void>? mediaUploadGate;
+  Completer<void>? documentUploadGate;
 
   @override
   Future<ChatUploadResult> chatUploadMedia({
@@ -26,6 +30,8 @@ class _FakeApiClient extends ApiClient {
     void Function(double progress)? onProgress,
   }) async {
     mediaUploadCount += 1;
+    onProgress?.call(0.35);
+    await mediaUploadGate?.future;
     onProgress?.call(1);
     return const ChatUploadResult(
       assetUrl: '/chat/media/uploaded-photo',
@@ -41,6 +47,8 @@ class _FakeApiClient extends ApiClient {
     void Function(double progress)? onProgress,
   }) async {
     documentUploadCount += 1;
+    onProgress?.call(0.35);
+    await documentUploadGate?.future;
     onProgress?.call(1);
     return ChatUploadResult(
       assetUrl: '/chat/media/$filename',
@@ -304,7 +312,10 @@ void main() {
         find.widgetWithText(TextField, 'Новый чеклист'),
         'Релиз',
       );
-      await tester.tap(find.byTooltip('Добавить чеклист'));
+      final addChecklistButton = find.byTooltip('Добавить чеклист');
+      await tester.ensureVisible(addChecklistButton);
+      await tester.pumpAndSettle();
+      await tester.tap(addChecklistButton);
       await tester.pumpAndSettle();
 
       expect(find.text('Релиз'), findsOneWidget);
@@ -880,6 +891,218 @@ void main() {
         'original_name': 'brief.pdf',
         'size_bytes': 3,
       });
+    });
+
+    testWidgets('shows upload progress while sending attachment',
+        (tester) async {
+      const imageBase64 =
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=';
+      final repository = _FakeTaskRepository();
+      repository.fakeApi.mediaUploadGate = Completer<void>();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            initialPendingAttachments: const [
+              TaskAttachment(
+                id: 'pending-photo',
+                kind: 'photo',
+                filename: 'pending.png',
+                mimeType: 'image/png',
+                dataBase64: imageBase64,
+                createdAt: '2026-06-01T10:00:00',
+                sizeBytes: 68,
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Работа'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Отправить'));
+      await tester.pump();
+
+      expect(find.text('35%'), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsWidgets);
+
+      repository.fakeApi.mediaUploadGate!.complete();
+      await tester.pumpAndSettle();
+      expect(repository.upserts, isNotEmpty);
+    });
+
+    testWidgets('can reply to a task comment and autosaves it', (tester) async {
+      final task = _editableTask.copyWith(
+        collaboration: const TaskCollaboration(
+          comments: [
+            TaskComment(
+              id: 'comment-root',
+              authorProfile: 'test_user',
+              text: 'Нужно проверить экран',
+              createdAt: '2026-06-01T10:00:00',
+            ),
+          ],
+        ),
+      );
+      final repository = _FakeTaskRepository();
+      repository.tasks.add(task);
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: task,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Работа'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Действия комментария'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Ответить'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ответ на комментарий'), findsOneWidget);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Комментарий или подпись'),
+        'Проверю сегодня',
+      );
+      await tester.tap(find.byTooltip('Отправить'));
+      await tester.pumpAndSettle();
+
+      final comments = repository.upserts.last.collaboration.comments;
+      expect(comments, hasLength(2));
+      expect(comments.last.text, 'Проверю сегодня');
+      expect(comments.last.replyToCommentId, 'comment-root');
+    });
+
+    testWidgets('can edit own task comment and autosaves it', (tester) async {
+      final task = _editableTask.copyWith(
+        collaboration: const TaskCollaboration(
+          comments: [
+            TaskComment(
+              id: 'comment-edit',
+              authorProfile: 'test_user',
+              text: 'Старый текст',
+              createdAt: '2026-06-01T10:00:00',
+            ),
+          ],
+        ),
+      );
+      final repository = _FakeTaskRepository();
+      repository.tasks.add(task);
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: task,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Работа'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Действия комментария'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Редактировать'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Редактирование комментария'), findsOneWidget);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Комментарий или подпись'),
+        'Новый текст',
+      );
+      await tester.tap(find.byTooltip('Отправить'));
+      await tester.pumpAndSettle();
+
+      final comment = repository.upserts.last.collaboration.comments.single;
+      expect(comment.text, 'Новый текст');
+      expect(comment.editedAt, isNotEmpty);
+    });
+
+    testWidgets('can delete task comment and autosaves soft delete',
+        (tester) async {
+      final task = _editableTask.copyWith(
+        collaboration: const TaskCollaboration(
+          comments: [
+            TaskComment(
+              id: 'comment-delete',
+              authorProfile: 'test_user',
+              text: 'Удалить меня',
+              createdAt: '2026-06-01T10:00:00',
+              attachmentIds: ['att-delete'],
+            ),
+          ],
+          attachments: [
+            TaskAttachment(
+              id: 'att-delete',
+              kind: 'file',
+              filename: 'old.pdf',
+              assetUrl: '/chat/media/old.pdf',
+              createdAt: '2026-06-01T10:00:00',
+            ),
+          ],
+        ),
+      );
+      final repository = _FakeTaskRepository();
+      repository.tasks.add(task);
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: task,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Работа'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Действия комментария'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Удалить'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Удалить'));
+      await tester.pumpAndSettle();
+
+      final collaboration = repository.upserts.last.collaboration;
+      expect(collaboration.comments.single.isDeleted, isTrue);
+      expect(collaboration.comments.single.text, '');
+      expect(collaboration.comments.single.attachmentIds, isEmpty);
+      expect(collaboration.attachments, isEmpty);
+      expect(find.text('Комментарий удалён'), findsOneWidget);
     });
 
     testWidgets('edit mode pre-fills existing task data', (tester) async {

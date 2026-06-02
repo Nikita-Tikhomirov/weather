@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:http/http.dart' as http;
 
@@ -291,20 +292,19 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
     request.headers['X-Api-Key'] = apiKey;
     request.fields['actor_profile'] = actorProfile;
     request.files.add(
-      http.MultipartFile.fromBytes('image', bytes, filename: filename),
+      _multipartFileWithProgress(
+        field: 'image',
+        bytes: bytes,
+        filename: filename,
+        onProgress: onProgress,
+      ),
     );
 
     final streamedResponse = await request.send();
-    final totalBytes = streamedResponse.contentLength ?? bytes.length;
-    var receivedBytes = 0;
     final chunks = <int>[];
 
     await for (final chunk in streamedResponse.stream) {
       chunks.addAll(chunk);
-      receivedBytes += chunk.length;
-      if (onProgress != null && totalBytes > 0) {
-        onProgress((receivedBytes / totalBytes).clamp(0.0, 1.0));
-      }
     }
 
     final text = utf8.decode(chunks);
@@ -314,6 +314,7 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
     }
 
     final body = jsonDecode(text) as Map<String, dynamic>;
+    onProgress?.call(1);
     return ChatUploadResult(
       assetUrl: (body['asset_url'] ?? '').toString(),
       imageMeta:
@@ -335,20 +336,19 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
     request.headers['X-Api-Key'] = apiKey;
     request.fields['actor_profile'] = actorProfile;
     request.files.add(
-      http.MultipartFile.fromBytes('file', bytes, filename: filename),
+      _multipartFileWithProgress(
+        field: 'file',
+        bytes: bytes,
+        filename: filename,
+        onProgress: onProgress,
+      ),
     );
 
     final streamedResponse = await request.send();
-    final totalBytes = streamedResponse.contentLength ?? bytes.length;
-    var receivedBytes = 0;
     final chunks = <int>[];
 
     await for (final chunk in streamedResponse.stream) {
       chunks.addAll(chunk);
-      receivedBytes += chunk.length;
-      if (onProgress != null && totalBytes > 0) {
-        onProgress((receivedBytes / totalBytes).clamp(0.0, 1.0));
-      }
     }
 
     final text = utf8.decode(chunks);
@@ -360,6 +360,7 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
     }
 
     final body = jsonDecode(text) as Map<String, dynamic>;
+    onProgress?.call(1);
     return ChatUploadResult(
       assetUrl: (body['asset_url'] ?? '').toString(),
       imageMeta:
@@ -508,4 +509,35 @@ class ChatApiClient extends HttpApiClient implements ChatApi {
         .map((row) => StickerPack.fromJson(Map<String, dynamic>.from(row)))
         .toList();
   }
+}
+
+http.MultipartFile _multipartFileWithProgress({
+  required String field,
+  required List<int> bytes,
+  required String filename,
+  required void Function(double progress)? onProgress,
+}) {
+  const chunkSize = 64 * 1024;
+  final totalBytes = bytes.length;
+
+  Stream<List<int>> streamBytes() async* {
+    if (totalBytes == 0) {
+      return;
+    }
+    var offset = 0;
+    while (offset < totalBytes) {
+      final end = math.min(offset + chunkSize, totalBytes);
+      final chunk = bytes.sublist(offset, end);
+      offset = end;
+      onProgress?.call(((offset / totalBytes) * 0.98).clamp(0.0, 0.98));
+      yield chunk;
+    }
+  }
+
+  return http.MultipartFile(
+    field,
+    streamBytes(),
+    totalBytes,
+    filename: filename,
+  );
 }

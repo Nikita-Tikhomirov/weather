@@ -97,6 +97,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   TaskItem? _savedTask;
   Timer? _autosaveTimer;
   final List<TaskAttachment> _pendingAttachments = [];
+  final Map<String, double> _attachmentUploadProgress = {};
+  TaskComment? _replyToComment;
+  String _editingCommentId = '';
 
   bool _saving = false;
   bool _autosaveInFlight = false;
@@ -379,11 +382,47 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   Future<void> _sendComment() async {
     if (!_canEdit || _sendingComment) return;
     final text = _commentCtl.text.trim();
+    final editingId = _editingCommentId;
+    if (editingId.isNotEmpty) {
+      if (text.isEmpty) return;
+      final now = DateTime.now().toIso8601String();
+      var edited = false;
+      final comments = _collaboration.comments.map((comment) {
+        if (comment.id != editingId || comment.isDeleted) {
+          return comment;
+        }
+        edited = true;
+        return comment.copyWith(text: text, editedAt: now);
+      }).toList();
+      if (!edited) {
+        _cancelCommentEdit();
+        return;
+      }
+      setState(() {
+        _collaboration = _collaboration.copyWith(
+          comments: comments,
+          activity: [
+            ..._collaboration.activity,
+            _activity(
+              type: 'comment_edited',
+              text: 'отредактировал комментарий',
+              targetId: editingId,
+            ),
+          ],
+        );
+        _editingCommentId = '';
+        _commentCtl.clear();
+      });
+      _autosaveNow();
+      return;
+    }
+
     if (text.isEmpty && _pendingAttachments.isEmpty) {
       return;
     }
     final now = DateTime.now().toIso8601String();
     final pending = List<TaskAttachment>.from(_pendingAttachments);
+    final replyTo = _replyToComment;
     if (mounted) {
       setState(() => _sendingComment = true);
     }
@@ -401,7 +440,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     } catch (error) {
       if (mounted) {
         _showSnack('Не удалось загрузить вложение: $error');
-        setState(() => _sendingComment = false);
+        setState(() {
+          _sendingComment = false;
+          _attachmentUploadProgress.clear();
+        });
       }
       return;
     }
@@ -413,6 +455,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       text: text,
       createdAt: now,
       attachmentIds: attachments.map((item) => item.id).toList(),
+      replyToCommentId: replyTo?.id ?? '',
     );
     setState(() {
       _collaboration = _collaboration.copyWith(
@@ -421,15 +464,19 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         activity: [
           ..._collaboration.activity,
           _activity(
-            type: 'comment_added',
-            text: attachments.isEmpty
-                ? 'добавил комментарий'
-                : 'добавил комментарий с вложением',
+            type: replyTo == null ? 'comment_added' : 'comment_replied',
+            text: replyTo == null
+                ? attachments.isEmpty
+                    ? 'добавил комментарий'
+                    : 'добавил комментарий с вложением'
+                : 'ответил на комментарий',
             targetId: comment.id,
           ),
         ],
       );
       _pendingAttachments.clear();
+      _attachmentUploadProgress.clear();
+      _replyToComment = null;
       _commentCtl.clear();
     });
     _autosaveNow();
@@ -451,6 +498,14 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     }
 
     final api = widget.store.repository.api;
+    void updateProgress(double progress) {
+      if (!mounted) return;
+      setState(() {
+        _attachmentUploadProgress[attachment.id] =
+            progress.clamp(0.0, 1.0).toDouble();
+      });
+    }
+
     final upload = attachment.isPhoto
         ? await api.chatUploadMedia(
             actorProfile: widget.store.owner.value,
@@ -458,6 +513,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             filename: attachment.filename.isEmpty
                 ? 'task-photo.jpg'
                 : attachment.filename,
+            onProgress: updateProgress,
           )
         : await api.chatUploadDocument(
             actorProfile: widget.store.owner.value,
@@ -465,6 +521,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             filename: attachment.filename.isEmpty
                 ? 'task-file.bin'
                 : attachment.filename,
+            onProgress: updateProgress,
           );
 
     if (upload.assetUrl.trim().isEmpty) {
@@ -480,33 +537,51 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   Future<void> _pickPhoto() async {
-    if (!_canEdit) return;
-    final picked = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 82,
-      maxWidth: 1600,
-    );
-    if (picked == null) return;
-    final bytes = await picked.readAsBytes();
-    if (!mounted) return;
-    setState(() {
-      _pendingAttachments.add(
+    if (!_canEdit || _editingCommentId.isNotEmpty) return;
+    final picker = ImagePicker();
+    List<XFile> picked;
+    try {
+      picked = await picker.pickMultiImage(
+        imageQuality: 72,
+        maxWidth: 1600,
+        maxHeight: 1600,
+      );
+    } catch (_) {
+      final one = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 72,
+        maxWidth: 1600,
+        maxHeight: 1600,
+      );
+      picked = one == null ? const <XFile>[] : [one];
+    }
+    if (picked.isEmpty) return;
+    final caption = await _promptAttachmentCaption('Подпись к фото');
+    _applyAttachmentCaption(caption);
+    final attachments = <TaskAttachment>[];
+    for (final item in picked) {
+      final bytes = await item.readAsBytes();
+      attachments.add(
         TaskAttachment(
           id: _newId('att'),
           kind: 'photo',
-          filename: picked.name,
-          mimeType: picked.mimeType ?? 'image/jpeg',
+          filename: item.name,
+          mimeType: item.mimeType ?? 'image/jpeg',
           dataBase64: base64Encode(bytes),
           authorProfile: widget.store.owner.value,
           createdAt: DateTime.now().toIso8601String(),
           sizeBytes: bytes.length,
         ),
       );
+    }
+    if (!mounted) return;
+    setState(() {
+      _pendingAttachments.addAll(attachments);
     });
   }
 
   Future<void> _pickFile() async {
-    if (!_canEdit) return;
+    if (!_canEdit || _editingCommentId.isNotEmpty) return;
     final result = await FilePicker.platform.pickFiles(withData: true);
     if (result == null || result.files.isEmpty) return;
     final file = result.files.single;
@@ -516,6 +591,8 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       if (mounted) _showSnack('Не удалось прочитать файл');
       return;
     }
+    final caption = await _promptAttachmentCaption('Подпись к файлу');
+    _applyAttachmentCaption(caption);
     if (!mounted) return;
     setState(() {
       _pendingAttachments.add(
@@ -534,7 +611,199 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   void _removePendingAttachment(String id) {
-    setState(() => _pendingAttachments.removeWhere((item) => item.id == id));
+    setState(() {
+      _pendingAttachments.removeWhere((item) => item.id == id);
+      _attachmentUploadProgress.remove(id);
+    });
+  }
+
+  Future<String?> _promptAttachmentCaption(String title) async {
+    if (!mounted) return null;
+    final controller = TextEditingController();
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: Text(title),
+            content: TextField(
+              controller: controller,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'Добавить подпись (необязательно)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(''),
+                child: const Text('Пропустить'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(
+                  controller.text.trim(),
+                ),
+                child: const Text('Готово'),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      controller.dispose();
+    }
+  }
+
+  void _applyAttachmentCaption(String? caption) {
+    final value = caption?.trim() ?? '';
+    if (value.isEmpty) return;
+    final current = _commentCtl.text.trim();
+    _commentCtl.text = current.isEmpty ? value : '$current\n$value';
+    _commentCtl.selection = TextSelection.collapsed(
+      offset: _commentCtl.text.length,
+    );
+  }
+
+  TaskComment? _commentById(String id) {
+    if (id.isEmpty) return null;
+    for (final comment in _collaboration.comments) {
+      if (comment.id == id) {
+        return comment;
+      }
+    }
+    return null;
+  }
+
+  void _startCommentReply(TaskComment comment) {
+    if (!_canEdit || comment.isDeleted) return;
+    setState(() {
+      _replyToComment = comment;
+      _editingCommentId = '';
+    });
+  }
+
+  void _startCommentEdit(TaskComment comment) {
+    if (!_canEdit || comment.isDeleted) return;
+    setState(() {
+      _replyToComment = null;
+      _editingCommentId = comment.id;
+      _commentCtl.text = comment.text;
+      _commentCtl.selection = TextSelection.collapsed(
+        offset: _commentCtl.text.length,
+      );
+    });
+  }
+
+  void _cancelCommentReply() {
+    setState(() => _replyToComment = null);
+  }
+
+  void _cancelCommentEdit() {
+    setState(() {
+      _editingCommentId = '';
+      _commentCtl.clear();
+    });
+  }
+
+  Future<void> _deleteComment(TaskComment comment) async {
+    if (!_canEdit || comment.isDeleted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Удалить комментарий?'),
+          content: const Text('Комментарий будет удалён из карточки задачи.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Отмена'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Удалить'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) return;
+
+    final now = DateTime.now().toIso8601String();
+    final nextComments = _collaboration.comments.map((item) {
+      if (item.id != comment.id) return item;
+      return item.copyWith(
+        text: '',
+        attachmentIds: const [],
+        deletedAt: now,
+      );
+    }).toList();
+    final activeAttachmentIds = nextComments
+        .where((item) => !item.isDeleted)
+        .expand((item) => item.attachmentIds)
+        .toSet();
+    setState(() {
+      _collaboration = _collaboration.copyWith(
+        comments: nextComments,
+        attachments: _collaboration.attachments
+            .where((item) => activeAttachmentIds.contains(item.id))
+            .toList(),
+        activity: [
+          ..._collaboration.activity,
+          _activity(
+            type: 'comment_deleted',
+            text: 'удалил комментарий',
+            targetId: comment.id,
+          ),
+        ],
+      );
+      if (_replyToComment?.id == comment.id) {
+        _replyToComment = null;
+      }
+      if (_editingCommentId == comment.id) {
+        _editingCommentId = '';
+        _commentCtl.clear();
+      }
+    });
+    _autosaveNow();
+  }
+
+  Future<void> _openCommentActions(TaskComment comment) async {
+    if (!_canEdit || comment.isDeleted) return;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.reply_outlined),
+                title: const Text('Ответить'),
+                onTap: () => Navigator.of(sheetContext).pop('reply'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Редактировать'),
+                onTap: () => Navigator.of(sheetContext).pop('edit'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: const Text('Удалить'),
+                onTap: () => Navigator.of(sheetContext).pop('delete'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (action == 'reply') {
+      _startCommentReply(comment);
+    } else if (action == 'edit') {
+      _startCommentEdit(comment);
+    } else if (action == 'delete') {
+      await _deleteComment(comment);
+    }
   }
 
   void _addChecklist() {
@@ -1011,12 +1280,14 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           ..._collaboration.comments.map(
             (comment) => _CommentBubble(
               comment: comment,
+              replyToComment: _commentById(comment.replyToCommentId),
               attachments: _collaboration.attachmentsFor(comment),
               owner: widget.store.owner.value,
               labelFor: _profileLabel,
               assetBaseUrl: _assetBaseUrl,
               onPhotoTap: _openPhoto,
               onFileTap: _openFile,
+              onActions: () => unawaited(_openCommentActions(comment)),
             ),
           ),
         const SizedBox(height: 8),
@@ -1024,12 +1295,20 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           _PendingAttachments(
             items: _pendingAttachments,
             assetBaseUrl: _assetBaseUrl,
+            progressById: _attachmentUploadProgress,
             onRemove: _removePendingAttachment,
             onPhotoTap: _openPhoto,
           ),
         _CommentComposer(
           controller: _commentCtl,
           enabled: _canEdit && !_sendingComment,
+          attachmentsEnabled:
+              _canEdit && !_sendingComment && _editingCommentId.isEmpty,
+          replyToComment: _replyToComment,
+          editingComment: _commentById(_editingCommentId),
+          labelFor: _profileLabel,
+          onCancelReply: _cancelCommentReply,
+          onCancelEdit: _cancelCommentEdit,
           onPickPhoto: _pickPhoto,
           onPickFile: _pickFile,
           onSend: () => unawaited(_sendComment()),
@@ -1210,6 +1489,12 @@ class _CommentComposer extends StatelessWidget {
   const _CommentComposer({
     required this.controller,
     required this.enabled,
+    required this.attachmentsEnabled,
+    required this.replyToComment,
+    required this.editingComment,
+    required this.labelFor,
+    required this.onCancelReply,
+    required this.onCancelEdit,
     required this.onPickPhoto,
     required this.onPickFile,
     required this.onSend,
@@ -1217,48 +1502,138 @@ class _CommentComposer extends StatelessWidget {
 
   final TextEditingController controller;
   final bool enabled;
+  final bool attachmentsEnabled;
+  final TaskComment? replyToComment;
+  final TaskComment? editingComment;
+  final String Function(String profile) labelFor;
+  final VoidCallback onCancelReply;
+  final VoidCallback onCancelEdit;
   final VoidCallback onPickPhoto;
   final VoidCallback onPickFile;
   final VoidCallback onSend;
 
   @override
   Widget build(BuildContext context) {
+    final editing = editingComment;
+    final reply = replyToComment;
     return Padding(
       padding: const EdgeInsets.only(top: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
         children: [
-          IconButton(
-            tooltip: 'Фото',
-            onPressed: enabled ? onPickPhoto : null,
-            icon: const Icon(Icons.image_outlined),
-          ),
-          IconButton(
-            tooltip: 'Файл',
-            onPressed: enabled ? onPickFile : null,
-            icon: const Icon(Icons.attach_file),
-          ),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              enabled: enabled,
-              minLines: 1,
-              maxLines: 4,
-              textInputAction: TextInputAction.newline,
-              decoration: const InputDecoration(
-                hintText: 'Комментарий или подпись',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(24)),
-                ),
-                isDense: true,
+          if (editing != null)
+            _ComposerContextBanner(
+              title: 'Редактирование комментария',
+              subtitle: _commentPreview(editing),
+              onClose: onCancelEdit,
+            )
+          else if (reply != null)
+            _ComposerContextBanner(
+              title: 'Ответ на комментарий',
+              subtitle:
+                  '${labelFor(reply.authorProfile)}: ${_commentPreview(reply)}',
+              onClose: onCancelReply,
+            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              IconButton(
+                tooltip: 'Фото',
+                onPressed: attachmentsEnabled ? onPickPhoto : null,
+                icon: const Icon(Icons.image_outlined),
               ),
+              IconButton(
+                tooltip: 'Файл',
+                onPressed: attachmentsEnabled ? onPickFile : null,
+                icon: const Icon(Icons.attach_file),
+              ),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  enabled: enabled,
+                  minLines: 1,
+                  maxLines: 4,
+                  textInputAction: TextInputAction.newline,
+                  decoration: const InputDecoration(
+                    hintText: 'Комментарий или подпись',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(24)),
+                    ),
+                    isDense: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(
+                tooltip: 'Отправить',
+                onPressed: enabled ? onSend : null,
+                icon: const Icon(Icons.send),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ComposerContextBanner extends StatelessWidget {
+  const _ComposerContextBanner({
+    required this.title,
+    required this.subtitle,
+    required this.onClose,
+  });
+
+  final String title;
+  final String subtitle;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
+      decoration: BoxDecoration(
+        color: cs.secondaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: 34,
+            decoration: BoxDecoration(
+              color: cs.secondary,
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
           const SizedBox(width: 8),
-          IconButton.filled(
-            tooltip: 'Отправить',
-            onPressed: enabled ? onSend : null,
-            icon: const Icon(Icons.send),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style:
+                      TextStyle(fontSize: 12, color: cs.onSecondaryContainer),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Отменить',
+            onPressed: onClose,
+            icon: const Icon(Icons.close, size: 18),
           ),
         ],
       ),
@@ -1270,12 +1645,14 @@ class _PendingAttachments extends StatelessWidget {
   const _PendingAttachments({
     required this.items,
     required this.assetBaseUrl,
+    required this.progressById,
     required this.onRemove,
     required this.onPhotoTap,
   });
 
   final List<TaskAttachment> items;
   final String assetBaseUrl;
+  final Map<String, double> progressById;
   final void Function(String id) onRemove;
   final void Function(TaskAttachment attachment) onPhotoTap;
 
@@ -1291,16 +1668,14 @@ class _PendingAttachments extends StatelessWidget {
             return _PendingPhotoAttachment(
               attachment: item,
               assetBaseUrl: assetBaseUrl,
+              progress: progressById[item.id],
               onOpen: () => onPhotoTap(item),
               onRemove: () => onRemove(item.id),
             );
           }
-          return InputChip(
-            avatar: Icon(item.isPhoto ? Icons.image_outlined : Icons.file_copy),
-            label: Text(
-              item.filename,
-              overflow: TextOverflow.ellipsis,
-            ),
+          return _PendingFileAttachment(
+            attachment: item,
+            progress: progressById[item.id],
             onDeleted: () => onRemove(item.id),
           );
         }).toList(),
@@ -1313,12 +1688,14 @@ class _PendingPhotoAttachment extends StatelessWidget {
   const _PendingPhotoAttachment({
     required this.attachment,
     required this.assetBaseUrl,
+    required this.progress,
     required this.onOpen,
     required this.onRemove,
   });
 
   final TaskAttachment attachment;
   final String assetBaseUrl;
+  final double? progress;
   final VoidCallback onOpen;
   final VoidCallback onRemove;
 
@@ -1326,6 +1703,7 @@ class _PendingPhotoAttachment extends StatelessWidget {
   Widget build(BuildContext context) {
     final bytes = _decodeAttachmentBytes(attachment.dataBase64);
     final imageUrl = _absoluteAttachmentUrl(attachment.assetUrl, assetBaseUrl);
+    final uploadProgress = progress;
     return SizedBox(
       width: 116,
       child: Column(
@@ -1367,8 +1745,30 @@ class _PendingPhotoAttachment extends StatelessWidget {
                   icon: const Icon(Icons.close, size: 16),
                 ),
               ),
+              if (uploadProgress != null)
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.34),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${(uploadProgress * 100).round()}%',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
+          if (uploadProgress != null) ...[
+            const SizedBox(height: 4),
+            LinearProgressIndicator(value: uploadProgress),
+          ],
           const SizedBox(height: 4),
           Text(
             attachment.filename,
@@ -1382,29 +1782,98 @@ class _PendingPhotoAttachment extends StatelessWidget {
   }
 }
 
+class _PendingFileAttachment extends StatelessWidget {
+  const _PendingFileAttachment({
+    required this.attachment,
+    required this.progress,
+    required this.onDeleted,
+  });
+
+  final TaskAttachment attachment;
+  final double? progress;
+  final VoidCallback onDeleted;
+
+  @override
+  Widget build(BuildContext context) {
+    final uploadProgress = progress;
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 240),
+      padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).dividerColor),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.insert_drive_file_outlined, size: 18),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  attachment.filename,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                tooltip: 'Убрать вложение',
+                visualDensity: VisualDensity.compact,
+                onPressed: onDeleted,
+                icon: const Icon(Icons.close, size: 16),
+              ),
+            ],
+          ),
+          if (uploadProgress != null) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(child: LinearProgressIndicator(value: uploadProgress)),
+                const SizedBox(width: 8),
+                Text(
+                  '${(uploadProgress * 100).round()}%',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _CommentBubble extends StatelessWidget {
   const _CommentBubble({
     required this.comment,
+    required this.replyToComment,
     required this.attachments,
     required this.owner,
     required this.labelFor,
     required this.assetBaseUrl,
     required this.onPhotoTap,
     required this.onFileTap,
+    required this.onActions,
   });
 
   final TaskComment comment;
+  final TaskComment? replyToComment;
   final List<TaskAttachment> attachments;
   final String owner;
   final String Function(String profile) labelFor;
   final String assetBaseUrl;
   final void Function(TaskAttachment attachment) onPhotoTap;
   final void Function(TaskAttachment attachment) onFileTap;
+  final VoidCallback onActions;
 
   @override
   Widget build(BuildContext context) {
     final mine = comment.authorProfile == owner;
     final cs = Theme.of(context).colorScheme;
+    final deleted = comment.isDeleted;
     return Align(
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -1419,19 +1888,54 @@ class _CommentBubble extends StatelessWidget {
           crossAxisAlignment:
               mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            Text(
-              labelFor(comment.authorProfile),
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: cs.primary,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Expanded(
+                  child: Text(
+                    labelFor(comment.authorProfile),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: cs.primary,
+                    ),
+                  ),
+                ),
+                if (!deleted)
+                  IconButton(
+                    tooltip: 'Действия комментария',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
+                    onPressed: onActions,
+                    icon: const Icon(Icons.more_vert, size: 18),
+                  ),
+              ],
             ),
-            if (comment.text.isNotEmpty) ...[
+            if (replyToComment != null) ...[
+              const SizedBox(height: 4),
+              _CommentReplyQuote(
+                author: labelFor(replyToComment!.authorProfile),
+                preview: _commentPreview(replyToComment!),
+              ),
+            ],
+            if (deleted) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Комментарий удалён',
+                style: TextStyle(
+                  color: cs.outline,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ] else if (comment.text.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(comment.text),
             ],
-            if (attachments.isNotEmpty) ...[
+            if (!deleted && attachments.isNotEmpty) ...[
               const SizedBox(height: 8),
               ...attachments.map(
                 (attachment) => _AttachmentPreview(
@@ -1444,11 +1948,54 @@ class _CommentBubble extends StatelessWidget {
             ],
             const SizedBox(height: 4),
             Text(
-              _shortDateTime(comment.createdAt),
+              comment.editedAt.isEmpty
+                  ? _shortDateTime(comment.createdAt)
+                  : '${_shortDateTime(comment.createdAt)} · изменено',
               style: TextStyle(fontSize: 11, color: cs.outline),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CommentReplyQuote extends StatelessWidget {
+  const _CommentReplyQuote({required this.author, required this.preview});
+
+  final String author;
+  final String preview;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+      decoration: BoxDecoration(
+        color: cs.surface.withValues(alpha: 0.56),
+        border: Border(left: BorderSide(color: cs.primary, width: 3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            author,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: cs.primary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            preview,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12),
+          ),
+        ],
       ),
     );
   }
@@ -1822,6 +2369,20 @@ String _mimeTypeForName(String name) {
     return 'text/plain';
   }
   return 'application/octet-stream';
+}
+
+String _commentPreview(TaskComment comment) {
+  if (comment.isDeleted) {
+    return 'Комментарий удалён';
+  }
+  final text = comment.text.trim();
+  if (text.isNotEmpty) {
+    return text;
+  }
+  if (comment.attachmentIds.isNotEmpty) {
+    return 'Вложение';
+  }
+  return 'Комментарий';
 }
 
 String _shortDateTime(String raw) {
