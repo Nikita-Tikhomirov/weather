@@ -17,7 +17,7 @@ class ChatStickerBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = compact ? 160.0 : 220.0;
     if (stickerAssetUrl.isEmpty || stickerAssetUrl.startsWith('emoji://')) {
-      return _StickerUnavailable(size: size);
+      return _StickerUnavailable(size: size, text: text);
     }
     return Image.network(
       stickerAssetUrl,
@@ -25,27 +25,43 @@ class ChatStickerBubble extends StatelessWidget {
       width: size,
       height: size,
       errorBuilder: (context, error, stackTrace) {
-        return _StickerUnavailable(size: size);
+        return _StickerUnavailable(size: size, text: text);
       },
     );
   }
 }
 
 class _StickerUnavailable extends StatelessWidget {
-  const _StickerUnavailable({required this.size});
+  const _StickerUnavailable({required this.size, required this.text});
 
   final double size;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
+    final label = text.trim().isEmpty ? 'Стикер недоступен' : text.trim();
     return SizedBox(
       width: size,
       height: size,
       child: Center(
-        child: Icon(
-          Icons.broken_image_outlined,
-          size: 34,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
         ),
       ),
     );

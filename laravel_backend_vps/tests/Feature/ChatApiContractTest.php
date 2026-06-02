@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\Test;
@@ -17,6 +18,43 @@ class ChatApiContractTest extends TestCase
     {
         parent::setUp();
         config(['sync.locked_actor_profile' => '']);
+    }
+
+    #[Test]
+    public function sticker_import_activates_generated_v2_stickers_and_deactivates_old_rows(): void
+    {
+        config(['chat.media_disk' => 'public']);
+        Storage::fake('public');
+        DB::table('chat_stickers')->insert([
+            'sticker_id' => 'builtin-emoji-smile',
+            'pack_key' => 'emoji',
+            'title' => ':)',
+            'asset_url' => 'emoji://grinning-face',
+            'is_active' => 1,
+            'sort_order' => 1,
+            'created_at' => now()->format('Y-m-d\TH:i:s'),
+            'updated_at' => now()->format('Y-m-d\TH:i:s'),
+        ]);
+
+        $source = sys_get_temp_dir().DIRECTORY_SEPARATOR.'stickers_'.bin2hex(random_bytes(6));
+        $dir = $source.DIRECTORY_SEPARATOR.'library_v2'.DIRECTORY_SEPARATOR.'rats'.DIRECTORY_SEPARATOR.'plush_3d'.DIRECTORY_SEPARATOR.'emotions';
+        mkdir($dir, 0777, true);
+        file_put_contents($dir.DIRECTORY_SEPARATOR.'rats_plush_3d_emotions_001.png', 'png');
+
+        Artisan::call('chat:stickers-import', ['source' => $source]);
+
+        $this->assertSame(
+            0,
+            (int) DB::table('chat_stickers')
+                ->where('sticker_id', 'builtin-emoji-smile')
+                ->value('is_active'),
+        );
+        $this->assertDatabaseHas('chat_stickers', [
+            'sticker_id' => 'rats_plush_3d_emotions_001',
+            'pack_key' => 'rats_plush_3d_emotions',
+            'is_active' => 1,
+        ]);
+        Storage::disk('public')->assertExists('chat_stickers/rats_plush_3d_emotions/rats_plush_3d_emotions_001.png');
     }
 
     #[Test]

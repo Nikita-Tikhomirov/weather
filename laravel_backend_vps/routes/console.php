@@ -133,6 +133,119 @@ Artisan::command('chat:media-migrate {--delete-local}', function () {
     $this->info(json_encode(['ok' => true, 'disk' => $diskName, 'stats' => $stats], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 })->purpose('Move legacy chat media files to the configured chat media disk and rewrite URLs');
 
+Artisan::command('chat:stickers-import {source=assets/stickers} {--keep-existing} {--dry-run}', function () {
+    $sourceArg = trim((string) $this->argument('source'));
+    $sourceRoot = str_starts_with($sourceArg, '/') ? $sourceArg : base_path($sourceArg);
+    $libraryDir = $sourceRoot.'/library_v2';
+    if (!is_dir($libraryDir)) {
+        $this->error("Sticker library_v2 directory not found: {$libraryDir}");
+        return 1;
+    }
+
+    $disk = Storage::disk(ChatMediaStorage::disk());
+    $dryRun = (bool) $this->option('dry-run');
+    $keepExisting = (bool) $this->option('keep-existing');
+    $now = now()->format('Y-m-d\TH:i:s');
+    $seenIds = [];
+    $importedIds = [];
+    $stats = [
+        'scanned' => 0,
+        'uploaded' => 0,
+        'upserted' => 0,
+        'deactivated' => 0,
+        'duplicates' => 0,
+        'skipped' => 0,
+    ];
+
+    $files = [];
+    $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($libraryDir));
+    foreach ($iterator as $file) {
+        if ($file instanceof \SplFileInfo && $file->isFile() && strtolower($file->getExtension()) === 'png') {
+            $files[] = $file->getPathname();
+        }
+    }
+    sort($files, SORT_STRING);
+
+    $humanTitle = static function (string $category, string $baseName): string {
+        if (preg_match('/_(\d+)$/', $baseName, $match) === 1) {
+            return str_replace('_', ' ', $category).' '.$match[1];
+        }
+        return str_replace('_', ' ', $baseName);
+    };
+
+    foreach ($files as $path) {
+        $stats['scanned']++;
+        $relative = str_replace('\\', '/', substr($path, strlen($libraryDir) + 1));
+        $parts = explode('/', $relative);
+        if (count($parts) < 4) {
+            $stats['skipped']++;
+            continue;
+        }
+
+        [$group, $style, $category] = array_slice($parts, 0, 3);
+        $filename = basename($path);
+        $baseName = pathinfo($filename, PATHINFO_FILENAME);
+        $stickerId = $baseName;
+        if (isset($seenIds[$stickerId])) {
+            $stats['duplicates']++;
+            continue;
+        }
+        $seenIds[$stickerId] = true;
+        $importedIds[] = $stickerId;
+
+        $packKey = "{$group}_{$style}_{$category}";
+        $sortOrder = $stats['scanned'];
+        if (preg_match('/_(\d+)$/', $baseName, $match) === 1) {
+            $sortOrder = (int) $match[1];
+        }
+
+        $targetPath = "chat_stickers/{$packKey}/{$filename}";
+        if (!$dryRun && !$disk->exists($targetPath)) {
+            $handle = fopen($path, 'rb');
+            if ($handle === false) {
+                $stats['skipped']++;
+                continue;
+            }
+            $disk->put($targetPath, $handle);
+            fclose($handle);
+            $stats['uploaded']++;
+        }
+
+        if (!$dryRun) {
+            DB::table('chat_stickers')->updateOrInsert(
+                ['sticker_id' => $stickerId],
+                [
+                    'pack_key' => $packKey,
+                    'title' => $humanTitle($category, $baseName),
+                    'asset_url' => ChatMediaStorage::urlForPath($targetPath),
+                    'is_active' => 1,
+                    'sort_order' => $sortOrder,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ],
+            );
+            $stats['upserted']++;
+        }
+    }
+
+    if (!$dryRun && !$keepExisting && $importedIds !== []) {
+        $stats['deactivated'] = DB::table('chat_stickers')
+            ->whereNotIn('sticker_id', $importedIds)
+            ->update(['is_active' => 0, 'updated_at' => $now]);
+    }
+
+    $this->info(json_encode([
+        'ok' => true,
+        'disk' => ChatMediaStorage::disk(),
+        'source' => $libraryDir,
+        'keep_existing' => $keepExisting,
+        'dry_run' => $dryRun,
+        'stats' => $stats,
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+    return 0;
+})->purpose('Import generated v2 sticker PNG files into chat_stickers and deactivate old stickers');
+
 Schedule::command('push:send-reminders --limit=200')
     ->everyMinute()
     ->withoutOverlapping();

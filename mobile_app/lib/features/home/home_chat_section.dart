@@ -94,7 +94,15 @@ extension _ChatSection on _HomePageState {
       return message.text.isNotEmpty ? message.text : 'Голосовое сообщение';
     }
     if (message.messageType == 'sticker') {
-      return '';
+      final explicitText = message.text.trim();
+      if (explicitText.isNotEmpty) {
+        return explicitText;
+      }
+      final item = _stickerItemForMessage(message);
+      if (item != null && item.title.trim().isNotEmpty) {
+        return item.title.trim();
+      }
+      return 'Стикер недоступен';
     }
     return message.text;
   }
@@ -107,7 +115,50 @@ extension _ChatSection on _HomePageState {
     if (raw.isNotEmpty) {
       return raw.startsWith('http') ? raw : AvatarUrlResolver.resolveUrl(raw);
     }
-    return '';
+    final item = _stickerItemForMessage(message);
+    if (item == null || _isLegacyStickerAsset(item.assetUrl)) {
+      return '';
+    }
+    return _absoluteStickerAssetUrl(item.assetUrl);
+  }
+
+  StickerItem? _stickerItemForMessage(ChatMessage message) {
+    final stickerId = message.stickerId?.trim() ?? '';
+    if (stickerId.isEmpty) {
+      return null;
+    }
+    for (final pack in _chatStickerPacks) {
+      for (final item in pack.items) {
+        if (item.stickerId == stickerId) {
+          return item;
+        }
+      }
+    }
+    return null;
+  }
+
+  bool _isLegacyStickerAsset(String raw) {
+    final value = raw.trim();
+    return value.isEmpty ||
+        value.startsWith('emoji://') ||
+        value.startsWith('/stickers/default/');
+  }
+
+  String _absoluteStickerAssetUrl(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty ||
+        value.startsWith('http://') ||
+        value.startsWith('https://')) {
+      return value;
+    }
+    if (!value.startsWith('/')) {
+      return value;
+    }
+    final baseUrl = _store?.repository.api.baseUrl.trim() ?? '';
+    if (baseUrl.isEmpty) {
+      return value;
+    }
+    return '${baseUrl.replaceFirst(RegExp(r'/+$'), '')}$value';
   }
 
   String chatImageUrl(ChatMessage message) {

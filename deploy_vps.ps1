@@ -2,6 +2,8 @@
 param(
     [switch]$DryRun,
     [switch]$SkipMigration,
+    [switch]$SkipStickerImport,
+    [switch]$SkipStickerAssets,
     [string]$HostIp = $(if ($env:WEATHER_VPS_HOST) { $env:WEATHER_VPS_HOST } else { "31.129.97.211" }),
     [string]$HostUser = $(if ($env:WEATHER_VPS_USER) { $env:WEATHER_VPS_USER } else { "root" }),
     [string]$HostPassword = $env:WEATHER_VPS_PASSWORD,
@@ -19,6 +21,8 @@ $env:WEATHER_VPS_USER = $HostUser
 $env:WEATHER_VPS_PASSWORD = $HostPassword
 $env:WEATHER_VPS_REMOTE_BASE = $RemoteBase
 $env:WEATHER_SKIP_MIGRATION = if ($SkipMigration) { "1" } else { "0" }
+$env:WEATHER_SKIP_STICKER_IMPORT = if ($SkipStickerImport) { "1" } else { "0" }
+$env:WEATHER_SKIP_STICKER_ASSETS = if ($SkipStickerAssets) { "1" } else { "0" }
 
 $files = @(
     @{Local="laravel_backend_vps\app\Services\Push\FcmPushGateway.php";   Remote="$RemoteBase/app/Services/Push/FcmPushGateway.php"},
@@ -33,6 +37,8 @@ $files = @(
     @{Local="laravel_backend_vps\app\Domain\Sync\Profiles.php";            Remote="$RemoteBase/app/Domain/Sync/Profiles.php"},
     @{Local="laravel_backend_vps\app\Domain\Sync\ActorProfileGuard.php";   Remote="$RemoteBase/app/Domain/Sync/ActorProfileGuard.php"},
     @{Local="laravel_backend_vps\routes\api.php";                          Remote="$RemoteBase/routes/api.php"},
+    @{Local="laravel_backend_vps\routes\console.php";                      Remote="$RemoteBase/routes/console.php"},
+    @{Local="laravel_backend_vps\database\migrations\2026_06_02_000700_deactivate_legacy_chat_stickers.php"; Remote="$RemoteBase/database/migrations/2026_06_02_000700_deactivate_legacy_chat_stickers.php"},
     @{Local="laravel_backend_vps\database\migrations\2026_05_26_000800_add_projects_and_family_groups.php"; Remote="$RemoteBase/database/migrations/2026_05_26_000800_add_projects_and_family_groups.php"}
 )
 
@@ -41,7 +47,21 @@ if ($DryRun) {
     foreach ($f in $files) {
         Write-Host "Would upload: $($f.Local) -> $($f.Remote)"
     }
-    Write-Host "Would run: php artisan migrate --force"
+    if ($SkipMigration) {
+        Write-Host "Would skip migration"
+    } else {
+        Write-Host "Would run: php artisan migrate --force"
+    }
+    if ($SkipStickerAssets) {
+        Write-Host "Would skip sticker asset upload"
+    } else {
+        Write-Host "Would upload: assets\stickers\library_v2 -> $RemoteBase/assets/stickers/library_v2"
+    }
+    if ($SkipStickerImport) {
+        Write-Host "Would skip sticker import"
+    } else {
+        Write-Host "Would run: php artisan chat:stickers-import assets/stickers"
+    }
     Write-Host "Would run: php artisan cache:clear"
     exit 0
 }
@@ -60,6 +80,8 @@ user = os.environ["WEATHER_VPS_USER"]
 password = os.environ["WEATHER_VPS_PASSWORD"]
 remote_base = os.environ["WEATHER_VPS_REMOTE_BASE"]
 skip_migration = os.environ.get("WEATHER_SKIP_MIGRATION") == "1"
+skip_sticker_import = os.environ.get("WEATHER_SKIP_STICKER_IMPORT") == "1"
+skip_sticker_assets = os.environ.get("WEATHER_SKIP_STICKER_ASSETS") == "1"
 
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -69,6 +91,16 @@ sftp = client.open_sftp()
 files = [
 $($files | ForEach-Object { $l = $_.Local -replace '\\', '/'; "    ('$l', '$($_.Remote)')," }) 
 ]
+
+def ensure_remote_dir(path):
+    parts = [part for part in path.strip('/').split('/') if part]
+    current = ''
+    for part in parts:
+        current += '/' + part
+        try:
+            sftp.stat(current)
+        except:
+            sftp.mkdir(current)
 
 for local, remote in files:
     print(f'Uploading {local} ...')
@@ -85,7 +117,38 @@ for local, remote in files:
     sftp.put(local, remote)
     print(f'  {local} -> {remote}')
 
+def upload_tree(local_root, remote_root):
+    if not os.path.isdir(local_root):
+        print(f'Skip missing tree: {local_root}')
+        return
+    count = 0
+    for base, _, names in os.walk(local_root):
+        rel = os.path.relpath(base, local_root).replace('\\\\', '/')
+        remote_dir = remote_root if rel == '.' else remote_root.rstrip('/') + '/' + rel
+        ensure_remote_dir(remote_dir)
+        for name in names:
+            if name == '.gitkeep':
+                continue
+            local_path = os.path.join(base, name)
+            remote_path = remote_dir.rstrip('/') + '/' + name
+            sftp.put(local_path, remote_path)
+            count += 1
+            if count % 50 == 0:
+                print(f'  uploaded sticker assets: {count}')
+    print(f'Sticker assets uploaded: {count}')
+
+if skip_sticker_assets:
+    print('Sticker asset upload: skipped')
+else:
+    upload_tree('assets/stickers/library_v2', f'{remote_base}/assets/stickers/library_v2')
+
 sftp.close()
+
+stdin0, stdout0, stderr0 = client.exec_command(f'cd {remote_base} && php artisan optimize:clear 2>&1')
+print('Optimize clear:', stdout0.read().decode().strip())
+err0 = stderr0.read().decode().strip()
+if err0:
+    print('Optimize clear stderr:', err0)
 
 if skip_migration:
     print("Migration: skipped")
@@ -95,6 +158,15 @@ else:
     err = stderr.read().decode().strip()
     if err:
         print('Migration stderr:', err)
+
+if skip_sticker_import:
+    print("Sticker import: skipped")
+else:
+    stdin3, stdout3, stderr3 = client.exec_command(f'cd {remote_base} && php artisan chat:stickers-import assets/stickers 2>&1')
+    print('Sticker import:', stdout3.read().decode().strip())
+    err3 = stderr3.read().decode().strip()
+    if err3:
+        print('Sticker import stderr:', err3)
 
 stdin2, stdout2, stderr2 = client.exec_command(f'cd {remote_base} && php artisan cache:clear 2>&1')
 print('Cache clear:', stdout2.read().decode().strip())

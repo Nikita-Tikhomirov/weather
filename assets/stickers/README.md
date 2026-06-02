@@ -44,13 +44,20 @@ assets/stickers/
 `manifest.json` - список запланированных файлов, категорий и тегов.
 
 Начиная с `prompt_version=2`, исходные сетки сохраняются с суффиксом `_v2`.
-Старые сетки без суффикса не удаляются и остаются в `source_grids`/`library`, но
-новый `manifest.json` считает готовыми только файлы из `source_grids_v2` и
-`library_v2`.
+Старые сетки без суффикса не удаляются и остаются в `source_grids`/`library` как
+архив, но в приложение импортируется только `library_v2`. Новый `manifest.json`
+считает готовыми только файлы из `source_grids_v2` и `library_v2`.
 
-Для загрузки в приложение через S3 используйте `chat_stickers.asset_url` с
-абсолютной S3-ссылкой. `pack_key` лучше сохранять в формате
-`group_style_category`, например `rats_plush_3d_emotions` или
+Для загрузки в приложение через S3 используется backend-команда:
+
+```bash
+php artisan chat:stickers-import assets/stickers
+```
+
+Она импортирует только `library_v2`, заполняет `chat_stickers.asset_url`
+ссылками через `CHAT_MEDIA_DISK` и деактивирует старые активные стикеры, которых
+нет в новом v2-наборе. `pack_key` формируется как `group_style_category`,
+например `rats_plush_3d_emotions` или
 `hedgehogs_meme_wobbly_grumpy_reactions`: мобильный интерфейс по этому ключу
 раскладывает стикеры по группам, стилям и темам.
 

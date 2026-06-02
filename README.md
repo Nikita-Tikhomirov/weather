@@ -593,6 +593,16 @@ php artisan chat:media-migrate --delete-local
 темам. Старые встроенные `emoji`/`default` стикеры не показываются в новом
 каталоге.
 
+Для массового импорта сгенерированных стикеров на VPS:
+
+```bash
+php artisan chat:stickers-import assets/stickers
+```
+
+Команда импортирует только `assets/stickers/library_v2`, загружает PNG в
+настроенный `CHAT_MEDIA_DISK` и деактивирует старые строки `chat_stickers`,
+которых нет в новом v2-наборе.
+
 ## 14. Что можно улучшить дальше
 
 - Добавить `requirements.txt`/`pyproject.toml` для воспроизводимой установки.
