@@ -76,7 +76,12 @@ class BackendFamilyContractTests(unittest.TestCase):
             "'assignees' => ['nik'],"
             "'collaboration' => ["
             "  'comments' => [['id' => 'c-1', 'text' => 'Сделал']],"
-            "  'attachments' => [['id' => 'a-1', 'filename' => 'photo.jpg']],"
+            "  'attachments' => [["
+            "    'id' => 'a-1',"
+            "    'filename' => 'photo.jpg',"
+            "    'asset_url' => '/chat/media/task-photo',"
+            "    'image_meta' => ['width' => 1200]"
+            "  ]],"
             "  'checklists' => [['id' => 'cl-1', 'title' => 'QA']],"
             "  'activity' => [['id' => 'act-1', 'type' => 'comment_added']]"
             "]"
@@ -86,6 +91,14 @@ class BackendFamilyContractTests(unittest.TestCase):
         collaboration = payload.get("collaboration", {})
         self.assertEqual(collaboration.get("comments", [{}])[0].get("text"), "Сделал")
         self.assertEqual(collaboration.get("attachments", [{}])[0].get("filename"), "photo.jpg")
+        self.assertEqual(
+            collaboration.get("attachments", [{}])[0].get("asset_url"),
+            "/chat/media/task-photo",
+        )
+        self.assertEqual(
+            collaboration.get("attachments", [{}])[0].get("image_meta", {}).get("width"),
+            1200,
+        )
         self.assertEqual(collaboration.get("checklists", [{}])[0].get("title"), "QA")
         self.assertEqual(collaboration.get("activity", [{}])[0].get("type"), "comment_added")
 

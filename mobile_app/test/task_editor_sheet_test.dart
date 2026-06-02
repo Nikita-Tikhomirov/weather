@@ -12,17 +12,55 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Minimal fake TaskRepository that never touches a real database.
+class _FakeApiClient extends ApiClient {
+  _FakeApiClient() : super(baseUrl: 'https://api.example.test', apiKey: 'test');
+
+  int mediaUploadCount = 0;
+  int documentUploadCount = 0;
+
+  @override
+  Future<ChatUploadResult> chatUploadMedia({
+    required String actorProfile,
+    required List<int> bytes,
+    required String filename,
+    void Function(double progress)? onProgress,
+  }) async {
+    mediaUploadCount += 1;
+    onProgress?.call(1);
+    return const ChatUploadResult(
+      assetUrl: '/chat/media/uploaded-photo',
+      imageMeta: {'width': 1, 'height': 1},
+    );
+  }
+
+  @override
+  Future<ChatUploadResult> chatUploadDocument({
+    required String actorProfile,
+    required List<int> bytes,
+    required String filename,
+    void Function(double progress)? onProgress,
+  }) async {
+    documentUploadCount += 1;
+    onProgress?.call(1);
+    return ChatUploadResult(
+      assetUrl: '/chat/media/$filename',
+      imageMeta: {'original_name': filename, 'size_bytes': bytes.length},
+    );
+  }
+}
+
 class _FakeTaskRepository implements TaskRepository {
   final List<TaskItem> tasks = [];
   final List<TaskItem> upserts = [];
   final List<TaskProject> taskProjects = [];
   final List<FamilyGroup> groups = [];
   final Map<String, List<String>> projectGroups = {};
+  final _FakeApiClient fakeApi = _FakeApiClient();
 
   @override
   LocalDb get db => throw UnimplementedError();
   @override
-  ApiClient get api => throw UnimplementedError();
+  ApiClient get api => fakeApi;
   @override
   String get actorProfile => 'test_user';
 
@@ -631,6 +669,74 @@ void main() {
       expect(find.byType(InteractiveViewer), findsOneWidget);
     });
 
+    testWidgets('remote photo attachment renders thumbnail and opens viewer',
+        (tester) async {
+      final task = _editableTask.copyWith(
+        title: 'Remote Photo Task',
+        collaboration: TaskCollaboration.fromJson(const {
+          'comments': [
+            {
+              'id': 'comment-remote',
+              'author_profile': 'test_user',
+              'text': 'Фото из S3',
+              'created_at': '2026-06-01T10:00:00',
+              'attachment_ids': ['att-remote'],
+            },
+          ],
+          'attachments': [
+            {
+              'id': 'att-remote',
+              'kind': 'photo',
+              'filename': 'remote.png',
+              'mime_type': 'image/png',
+              'asset_url': '/chat/media/task-photo',
+              'image_meta': {'width': 640, 'height': 480},
+              'created_at': '2026-06-01T10:00:00',
+            },
+          ],
+        }),
+      );
+      final store = _FakeTaskStore();
+      _seedProjectAccess(store);
+      store.selectedDate.value = DateTime(2026, 5, 31);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  showTaskEditorSheet(
+                    context: context,
+                    store: store,
+                    knownContacts: const [],
+                    contactLabel: (c) => c.displayName,
+                    dateKey: (d) => d.toIso8601String(),
+                    onSaved: () async {},
+                    existing: task,
+                  );
+                },
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Работа'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Image), findsOneWidget);
+      await tester.tap(find.byTooltip('Открыть фото'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('remote.png'), findsOneWidget);
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+    });
+
     testWidgets('pending photo attachment renders thumbnail and opens viewer',
         (tester) async {
       const imageBase64 =
@@ -673,6 +779,107 @@ void main() {
 
       expect(find.text('pending.png'), findsOneWidget);
       expect(find.byType(InteractiveViewer), findsOneWidget);
+    });
+
+    testWidgets('uploads pending photo before autosaving comment',
+        (tester) async {
+      const imageBase64 =
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=';
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            initialPendingAttachments: const [
+              TaskAttachment(
+                id: 'pending-photo',
+                kind: 'photo',
+                filename: 'pending.png',
+                mimeType: 'image/png',
+                dataBase64: imageBase64,
+                createdAt: '2026-06-01T10:00:00',
+                sizeBytes: 68,
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Работа'));
+      await tester.pumpAndSettle();
+      final commentField = find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField &&
+            widget.decoration?.hintText == 'Комментарий или подпись',
+      );
+      await tester.enterText(commentField, 'Подпись к фото');
+      await tester.tap(find.byTooltip('Отправить'));
+      await tester.pumpAndSettle();
+
+      expect(repository.fakeApi.mediaUploadCount, 1);
+      expect(repository.upserts, isNotEmpty);
+      final attachmentJson =
+          repository.upserts.last.collaboration.attachments.single.toJson();
+      expect(attachmentJson['asset_url'], '/chat/media/uploaded-photo');
+      expect(attachmentJson['data_base64'], '');
+      expect(attachmentJson['caption'], 'Подпись к фото');
+    });
+
+    testWidgets('uploads pending document before autosaving comment',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            initialPendingAttachments: const [
+              TaskAttachment(
+                id: 'pending-doc',
+                kind: 'file',
+                filename: 'brief.pdf',
+                mimeType: 'application/pdf',
+                dataBase64: 'cGRm',
+                createdAt: '2026-06-01T10:00:00',
+                sizeBytes: 3,
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Работа'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Отправить'));
+      await tester.pumpAndSettle();
+
+      expect(repository.fakeApi.documentUploadCount, 1);
+      expect(repository.upserts, isNotEmpty);
+      final attachmentJson =
+          repository.upserts.last.collaboration.attachments.single.toJson();
+      expect(attachmentJson['asset_url'], '/chat/media/brief.pdf');
+      expect(attachmentJson['data_base64'], '');
+      expect(attachmentJson['image_meta'], {
+        'original_name': 'brief.pdf',
+        'size_bytes': 3,
+      });
     });
 
     testWidgets('edit mode pre-fills existing task data', (tester) async {

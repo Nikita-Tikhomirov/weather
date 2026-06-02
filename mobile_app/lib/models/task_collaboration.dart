@@ -11,6 +11,8 @@ class TaskAttachment {
     required this.createdAt,
     this.mimeType = '',
     this.dataBase64 = '',
+    this.assetUrl = '',
+    this.imageMeta = const {},
     this.caption = '',
     this.authorProfile = '',
     this.sizeBytes = 0,
@@ -21,21 +23,28 @@ class TaskAttachment {
   final String filename;
   final String mimeType;
   final String dataBase64;
+  final String assetUrl;
+  final Map<String, dynamic> imageMeta;
   final String caption;
   final String authorProfile;
   final String createdAt;
   final int sizeBytes;
 
-  bool get isPhoto => kind == 'photo';
+  bool get isPhoto => kind == 'photo' || kind == 'image';
   bool get isFile => kind == 'file';
 
   factory TaskAttachment.fromJson(Map<String, dynamic> json) {
+    final rawImageMeta = json['image_meta'];
     return TaskAttachment(
       id: (json['id'] ?? '').toString(),
       kind: (json['kind'] ?? 'file').toString(),
       filename: (json['filename'] ?? '').toString(),
       mimeType: (json['mime_type'] ?? '').toString(),
-      dataBase64: (json['data_base64'] ?? '').toString(),
+      dataBase64: (json['data_base64'] ?? json['dataBase64'] ?? '').toString(),
+      assetUrl: (json['asset_url'] ?? json['image_url'] ?? '').toString(),
+      imageMeta: rawImageMeta is Map
+          ? Map<String, dynamic>.from(rawImageMeta)
+          : const <String, dynamic>{},
       caption: (json['caption'] ?? '').toString(),
       authorProfile: (json['author_profile'] ?? '').toString(),
       createdAt: (json['created_at'] ?? '').toString(),
@@ -50,6 +59,8 @@ class TaskAttachment {
       'filename': filename,
       'mime_type': mimeType,
       'data_base64': dataBase64,
+      'asset_url': assetUrl,
+      'image_meta': imageMeta,
       'caption': caption,
       'author_profile': authorProfile,
       'created_at': createdAt,
@@ -63,6 +74,8 @@ class TaskAttachment {
     String? filename,
     String? mimeType,
     String? dataBase64,
+    String? assetUrl,
+    Map<String, dynamic>? imageMeta,
     String? caption,
     String? authorProfile,
     String? createdAt,
@@ -74,6 +87,8 @@ class TaskAttachment {
       filename: filename ?? this.filename,
       mimeType: mimeType ?? this.mimeType,
       dataBase64: dataBase64 ?? this.dataBase64,
+      assetUrl: assetUrl ?? this.assetUrl,
+      imageMeta: imageMeta ?? this.imageMeta,
       caption: caption ?? this.caption,
       authorProfile: authorProfile ?? this.authorProfile,
       createdAt: createdAt ?? this.createdAt,
@@ -91,6 +106,8 @@ class TaskAttachment {
           filename == other.filename &&
           mimeType == other.mimeType &&
           dataBase64 == other.dataBase64 &&
+          assetUrl == other.assetUrl &&
+          mapEquals(imageMeta, other.imageMeta) &&
           caption == other.caption &&
           authorProfile == other.authorProfile &&
           createdAt == other.createdAt &&
@@ -103,6 +120,10 @@ class TaskAttachment {
         filename,
         mimeType,
         dataBase64,
+        assetUrl,
+        Object.hashAll(
+          imageMeta.entries.map((entry) => Object.hash(entry.key, entry.value)),
+        ),
         caption,
         authorProfile,
         createdAt,

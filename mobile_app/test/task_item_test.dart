@@ -201,6 +201,26 @@ void main() {
       expect(fromDb.collaboration.checklistDoneCount, 1);
       expect(fromDb.collaboration.attachmentCount, 1);
     });
+
+    test('preserves task attachment asset url and metadata', () {
+      final attachment = TaskAttachment.fromJson(const {
+        'id': 'att-s3',
+        'kind': 'photo',
+        'filename': 'screen.png',
+        'mime_type': 'image/png',
+        'asset_url': '/chat/media/task-photo',
+        'image_meta': {'width': 1200, 'height': 800},
+        'caption': 'Главный экран',
+        'author_profile': 'nik',
+        'created_at': '2026-06-01T10:00:00',
+        'size_bytes': 42,
+      });
+
+      final json = attachment.toJson();
+
+      expect(json['asset_url'], '/chat/media/task-photo');
+      expect(json['image_meta'], const {'width': 1200, 'height': 800});
+    });
   });
 
   group('TaskItem family detection', () {

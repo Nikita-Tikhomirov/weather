@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../domain/task_draft.dart';
 import '../../models/chat_models.dart';
@@ -100,6 +101,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   bool _saving = false;
   bool _autosaveInFlight = false;
   bool _autosaveAgain = false;
+  bool _sendingComment = false;
 
   @override
   void initState() {
@@ -374,16 +376,37 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     );
   }
 
-  void _sendComment() {
-    if (!_canEdit) return;
+  Future<void> _sendComment() async {
+    if (!_canEdit || _sendingComment) return;
     final text = _commentCtl.text.trim();
     if (text.isEmpty && _pendingAttachments.isEmpty) {
       return;
     }
     final now = DateTime.now().toIso8601String();
-    final attachments = _pendingAttachments
-        .map((item) => item.copyWith(caption: text, createdAt: now))
-        .toList();
+    final pending = List<TaskAttachment>.from(_pendingAttachments);
+    if (mounted) {
+      setState(() => _sendingComment = true);
+    }
+
+    late final List<TaskAttachment> attachments;
+    try {
+      attachments = [];
+      for (final item in pending) {
+        attachments.add(
+          await _uploadAttachmentIfNeeded(
+            item.copyWith(caption: text, createdAt: now),
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        _showSnack('Не удалось загрузить вложение: $error');
+        setState(() => _sendingComment = false);
+      }
+      return;
+    }
+    if (!mounted) return;
+
     final comment = TaskComment(
       id: _newId('comment'),
       authorProfile: widget.store.owner.value,
@@ -410,6 +433,50 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       _commentCtl.clear();
     });
     _autosaveNow();
+    if (mounted) {
+      setState(() => _sendingComment = false);
+    }
+  }
+
+  Future<TaskAttachment> _uploadAttachmentIfNeeded(
+    TaskAttachment attachment,
+  ) async {
+    if (attachment.assetUrl.trim().isNotEmpty) {
+      return attachment.copyWith(dataBase64: '');
+    }
+
+    final bytes = _decodeAttachmentBytes(attachment.dataBase64);
+    if (bytes == null || bytes.isEmpty) {
+      throw StateError('файл пустой или повреждён');
+    }
+
+    final api = widget.store.repository.api;
+    final upload = attachment.isPhoto
+        ? await api.chatUploadMedia(
+            actorProfile: widget.store.owner.value,
+            bytes: bytes,
+            filename: attachment.filename.isEmpty
+                ? 'task-photo.jpg'
+                : attachment.filename,
+          )
+        : await api.chatUploadDocument(
+            actorProfile: widget.store.owner.value,
+            bytes: bytes,
+            filename: attachment.filename.isEmpty
+                ? 'task-file.bin'
+                : attachment.filename,
+          );
+
+    if (upload.assetUrl.trim().isEmpty) {
+      throw StateError('сервер не вернул ссылку на файл');
+    }
+
+    return attachment.copyWith(
+      assetUrl: upload.assetUrl,
+      imageMeta:
+          upload.imageMeta.isEmpty ? attachment.imageMeta : upload.imageMeta,
+      dataBase64: '',
+    );
   }
 
   Future<void> _pickPhoto() async {
@@ -456,7 +523,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           id: _newId('att'),
           kind: 'file',
           filename: file.name,
-          mimeType: 'application/octet-stream',
+          mimeType: _mimeTypeForName(file.name),
           dataBase64: base64Encode(bytes),
           authorProfile: widget.store.owner.value,
           createdAt: DateTime.now().toIso8601String(),
@@ -575,9 +642,29 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   void _openPhoto(TaskAttachment attachment) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => _PhotoViewer(attachment: attachment),
+        builder: (_) => _PhotoViewer(
+          attachment: attachment,
+          assetBaseUrl: _assetBaseUrl,
+        ),
       ),
     );
+  }
+
+  String get _assetBaseUrl => widget.store.repository.api.baseUrl.trim();
+
+  Future<void> _openFile(TaskAttachment attachment) async {
+    final url = _absoluteAttachmentUrl(attachment.assetUrl, _assetBaseUrl);
+    if (url.isEmpty) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (error) {
+      debugPrint('[tasks] open attachment error: $error');
+      if (mounted) {
+        _showSnack('Не удалось открыть файл');
+      }
+    }
   }
 
   @override
@@ -927,22 +1014,25 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
               attachments: _collaboration.attachmentsFor(comment),
               owner: widget.store.owner.value,
               labelFor: _profileLabel,
+              assetBaseUrl: _assetBaseUrl,
               onPhotoTap: _openPhoto,
+              onFileTap: _openFile,
             ),
           ),
         const SizedBox(height: 8),
         if (_pendingAttachments.isNotEmpty)
           _PendingAttachments(
             items: _pendingAttachments,
+            assetBaseUrl: _assetBaseUrl,
             onRemove: _removePendingAttachment,
             onPhotoTap: _openPhoto,
           ),
         _CommentComposer(
           controller: _commentCtl,
-          enabled: _canEdit,
+          enabled: _canEdit && !_sendingComment,
           onPickPhoto: _pickPhoto,
           onPickFile: _pickFile,
-          onSend: _sendComment,
+          onSend: () => unawaited(_sendComment()),
         ),
         const SizedBox(height: 22),
         _SectionHeader(
@@ -1179,11 +1269,13 @@ class _CommentComposer extends StatelessWidget {
 class _PendingAttachments extends StatelessWidget {
   const _PendingAttachments({
     required this.items,
+    required this.assetBaseUrl,
     required this.onRemove,
     required this.onPhotoTap,
   });
 
   final List<TaskAttachment> items;
+  final String assetBaseUrl;
   final void Function(String id) onRemove;
   final void Function(TaskAttachment attachment) onPhotoTap;
 
@@ -1198,6 +1290,7 @@ class _PendingAttachments extends StatelessWidget {
           if (item.isPhoto) {
             return _PendingPhotoAttachment(
               attachment: item,
+              assetBaseUrl: assetBaseUrl,
               onOpen: () => onPhotoTap(item),
               onRemove: () => onRemove(item.id),
             );
@@ -1219,17 +1312,20 @@ class _PendingAttachments extends StatelessWidget {
 class _PendingPhotoAttachment extends StatelessWidget {
   const _PendingPhotoAttachment({
     required this.attachment,
+    required this.assetBaseUrl,
     required this.onOpen,
     required this.onRemove,
   });
 
   final TaskAttachment attachment;
+  final String assetBaseUrl;
   final VoidCallback onOpen;
   final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
     final bytes = _decodeAttachmentBytes(attachment.dataBase64);
+    final imageUrl = _absoluteAttachmentUrl(attachment.assetUrl, assetBaseUrl);
     return SizedBox(
       width: 116,
       child: Column(
@@ -1247,20 +1343,13 @@ class _PendingPhotoAttachment extends StatelessWidget {
                     onTap: onOpen,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: bytes == null
-                          ? const SizedBox(
-                              width: 116,
-                              height: 78,
-                              child: Center(
-                                child: Icon(Icons.broken_image_outlined),
-                              ),
-                            )
-                          : Image.memory(
-                              bytes,
-                              width: 116,
-                              height: 78,
-                              fit: BoxFit.cover,
-                            ),
+                      child: _TaskAttachmentImage(
+                        bytes: bytes,
+                        imageUrl: imageUrl,
+                        width: 116,
+                        height: 78,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                 ),
@@ -1299,14 +1388,18 @@ class _CommentBubble extends StatelessWidget {
     required this.attachments,
     required this.owner,
     required this.labelFor,
+    required this.assetBaseUrl,
     required this.onPhotoTap,
+    required this.onFileTap,
   });
 
   final TaskComment comment;
   final List<TaskAttachment> attachments;
   final String owner;
   final String Function(String profile) labelFor;
+  final String assetBaseUrl;
   final void Function(TaskAttachment attachment) onPhotoTap;
+  final void Function(TaskAttachment attachment) onFileTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1343,7 +1436,9 @@ class _CommentBubble extends StatelessWidget {
               ...attachments.map(
                 (attachment) => _AttachmentPreview(
                   attachment: attachment,
+                  assetBaseUrl: assetBaseUrl,
                   onPhotoTap: onPhotoTap,
+                  onFileTap: onFileTap,
                 ),
               ),
             ],
@@ -1362,16 +1457,22 @@ class _CommentBubble extends StatelessWidget {
 class _AttachmentPreview extends StatelessWidget {
   const _AttachmentPreview({
     required this.attachment,
+    required this.assetBaseUrl,
     required this.onPhotoTap,
+    required this.onFileTap,
   });
 
   final TaskAttachment attachment;
+  final String assetBaseUrl;
   final void Function(TaskAttachment attachment) onPhotoTap;
+  final void Function(TaskAttachment attachment) onFileTap;
 
   @override
   Widget build(BuildContext context) {
     if (attachment.isPhoto) {
       final bytes = _decodeAttachmentBytes(attachment.dataBase64);
+      final imageUrl =
+          _absoluteAttachmentUrl(attachment.assetUrl, assetBaseUrl);
       return Tooltip(
         message: 'Открыть фото',
         child: GestureDetector(
@@ -1381,42 +1482,48 @@ class _AttachmentPreview extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 6),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: bytes == null
-                  ? const SizedBox(
-                      width: 168,
-                      height: 112,
-                      child: Center(child: Icon(Icons.broken_image_outlined)),
-                    )
-                  : Image.memory(
-                      bytes,
-                      width: 168,
-                      height: 112,
-                      fit: BoxFit.cover,
-                    ),
+              child: _TaskAttachmentImage(
+                bytes: bytes,
+                imageUrl: imageUrl,
+                width: 168,
+                height: 112,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
         ),
       );
     }
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).dividerColor),
+    return Tooltip(
+      message: attachment.assetUrl.isEmpty ? 'Файл' : 'Открыть файл',
+      child: InkWell(
         borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.insert_drive_file_outlined, size: 20),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              attachment.filename,
-              overflow: TextOverflow.ellipsis,
-            ),
+        onTap: attachment.assetUrl.isEmpty ? null : () => onFileTap(attachment),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            border: Border.all(color: Theme.of(context).dividerColor),
+            borderRadius: BorderRadius.circular(8),
           ),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.insert_drive_file_outlined, size: 20),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  attachment.filename,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (attachment.assetUrl.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                const Icon(Icons.open_in_new, size: 16),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1548,13 +1655,18 @@ class _ActivityRow extends StatelessWidget {
 }
 
 class _PhotoViewer extends StatelessWidget {
-  const _PhotoViewer({required this.attachment});
+  const _PhotoViewer({
+    required this.attachment,
+    required this.assetBaseUrl,
+  });
 
   final TaskAttachment attachment;
+  final String assetBaseUrl;
 
   @override
   Widget build(BuildContext context) {
     final bytes = _decodeAttachmentBytes(attachment.dataBase64);
+    final imageUrl = _absoluteAttachmentUrl(attachment.assetUrl, assetBaseUrl);
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -1568,13 +1680,16 @@ class _PhotoViewer extends StatelessWidget {
       ),
       body: Center(
         child: InteractiveViewer(
-          child: bytes == null
-              ? const Icon(
-                  Icons.broken_image_outlined,
-                  color: Colors.white,
-                  size: 48,
-                )
-              : Image.memory(bytes, fit: BoxFit.contain),
+          child: bytes != null
+              ? Image.memory(bytes, fit: BoxFit.contain)
+              : imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const _BrokenAttachmentIcon(isDark: true),
+                    )
+                  : const _BrokenAttachmentIcon(isDark: true),
         ),
       ),
     );
@@ -1582,11 +1697,131 @@ class _PhotoViewer extends StatelessWidget {
 }
 
 Uint8List? _decodeAttachmentBytes(String dataBase64) {
+  if (dataBase64.trim().isEmpty) {
+    return null;
+  }
   try {
-    return base64Decode(dataBase64);
+    final bytes = base64Decode(dataBase64);
+    return bytes.isEmpty ? null : bytes;
   } on FormatException {
     return null;
   }
+}
+
+class _TaskAttachmentImage extends StatelessWidget {
+  const _TaskAttachmentImage({
+    required this.bytes,
+    required this.imageUrl,
+    required this.width,
+    required this.height,
+    required this.fit,
+  });
+
+  final Uint8List? bytes;
+  final String imageUrl;
+  final double width;
+  final double height;
+  final BoxFit fit;
+
+  @override
+  Widget build(BuildContext context) {
+    if (bytes != null) {
+      return Image.memory(bytes!, width: width, height: height, fit: fit);
+    }
+    if (imageUrl.isNotEmpty) {
+      return Image.network(
+        imageUrl,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) =>
+            _BrokenAttachmentBox(width: width, height: height),
+      );
+    }
+    return _BrokenAttachmentBox(width: width, height: height);
+  }
+}
+
+class _BrokenAttachmentBox extends StatelessWidget {
+  const _BrokenAttachmentBox({required this.width, required this.height});
+
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: const Center(child: Icon(Icons.broken_image_outlined)),
+    );
+  }
+}
+
+class _BrokenAttachmentIcon extends StatelessWidget {
+  const _BrokenAttachmentIcon({this.isDark = false});
+
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(
+      Icons.broken_image_outlined,
+      color: isDark ? Colors.white : null,
+      size: 48,
+    );
+  }
+}
+
+String _absoluteAttachmentUrl(String raw, String baseUrl) {
+  final value = raw.trim();
+  if (value.isEmpty ||
+      value.startsWith('http://') ||
+      value.startsWith('https://') ||
+      value.startsWith('file://') ||
+      value.startsWith('content://')) {
+    return value;
+  }
+  if (!value.startsWith('/')) {
+    return value;
+  }
+  final base = baseUrl.trim();
+  if (base.isEmpty) {
+    return value;
+  }
+  return '${base.replaceFirst(RegExp(r'/+$'), '')}$value';
+}
+
+String _mimeTypeForName(String name) {
+  final lower = name.toLowerCase();
+  if (lower.endsWith('.png')) {
+    return 'image/png';
+  }
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+    return 'image/jpeg';
+  }
+  if (lower.endsWith('.gif')) {
+    return 'image/gif';
+  }
+  if (lower.endsWith('.pdf')) {
+    return 'application/pdf';
+  }
+  if (lower.endsWith('.doc')) {
+    return 'application/msword';
+  }
+  if (lower.endsWith('.docx')) {
+    return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  }
+  if (lower.endsWith('.xls')) {
+    return 'application/vnd.ms-excel';
+  }
+  if (lower.endsWith('.xlsx')) {
+    return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  }
+  if (lower.endsWith('.txt') || lower.endsWith('.md')) {
+    return 'text/plain';
+  }
+  return 'application/octet-stream';
 }
 
 String _shortDateTime(String raw) {
