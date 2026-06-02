@@ -37,9 +37,12 @@ class ChatApiContractTest extends TestCase
         ]);
 
         $source = sys_get_temp_dir().DIRECTORY_SEPARATOR.'stickers_'.bin2hex(random_bytes(6));
-        $dir = $source.DIRECTORY_SEPARATOR.'library_v2'.DIRECTORY_SEPARATOR.'rats'.DIRECTORY_SEPARATOR.'plush_3d'.DIRECTORY_SEPARATOR.'emotions';
-        mkdir($dir, 0777, true);
-        file_put_contents($dir.DIRECTORY_SEPARATOR.'rats_plush_3d_emotions_001.png', 'png');
+        $v2Dir = $source.DIRECTORY_SEPARATOR.'library_v2'.DIRECTORY_SEPARATOR.'rats'.DIRECTORY_SEPARATOR.'plush_3d'.DIRECTORY_SEPARATOR.'emotions';
+        $gen1Dir = $source.DIRECTORY_SEPARATOR.'library'.DIRECTORY_SEPARATOR.'rats'.DIRECTORY_SEPARATOR.'plush_3d'.DIRECTORY_SEPARATOR.'emotions';
+        mkdir($v2Dir, 0777, true);
+        mkdir($gen1Dir, 0777, true);
+        file_put_contents($v2Dir.DIRECTORY_SEPARATOR.'rats_plush_3d_emotions_001.png', 'png-v2');
+        file_put_contents($gen1Dir.DIRECTORY_SEPARATOR.'rats_plush_3d_emotions_001.png', 'png-gen1');
 
         Artisan::call('chat:stickers-import', ['source' => $source]);
 
@@ -54,7 +57,17 @@ class ChatApiContractTest extends TestCase
             'pack_key' => 'rats_plush_3d_emotions',
             'is_active' => 1,
         ]);
+        $this->assertDatabaseHas('chat_stickers', [
+            'sticker_id' => 'gen1_rats_plush_3d_emotions_001',
+            'pack_key' => 'rats_plush_3d_emotions',
+            'is_active' => 1,
+        ]);
+        $this->assertSame(
+            2,
+            (int) DB::table('chat_stickers')->where('is_active', 1)->count(),
+        );
         Storage::disk('public')->assertExists('chat_stickers/rats_plush_3d_emotions/rats_plush_3d_emotions_001.png');
+        Storage::disk('public')->assertExists('chat_stickers/gen1/rats_plush_3d_emotions/rats_plush_3d_emotions_001.png');
     }
 
     #[Test]

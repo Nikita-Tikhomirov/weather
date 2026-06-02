@@ -136,9 +136,17 @@ Artisan::command('chat:media-migrate {--delete-local}', function () {
 Artisan::command('chat:stickers-import {source=assets/stickers} {--keep-existing} {--dry-run}', function () {
     $sourceArg = trim((string) $this->argument('source'));
     $sourceRoot = str_starts_with($sourceArg, '/') ? $sourceArg : base_path($sourceArg);
-    $libraryDir = $sourceRoot.'/library_v2';
-    if (!is_dir($libraryDir)) {
-        $this->error("Sticker library_v2 directory not found: {$libraryDir}");
+
+    $libraries = [
+        ['name' => 'library_v2', 'id_prefix' => '', 'path_prefix' => '', 'sort_offset' => 0],
+        ['name' => 'library', 'id_prefix' => 'gen1_', 'path_prefix' => 'gen1/', 'sort_offset' => 100000],
+    ];
+    $libraries = array_values(array_filter(
+        $libraries,
+        static fn (array $library): bool => is_dir($sourceRoot.'/'.$library['name']),
+    ));
+    if ($libraries === []) {
+        $this->error("Sticker directories not found: {$sourceRoot}/library_v2 or {$sourceRoot}/library");
         return 1;
     }
 
@@ -158,13 +166,26 @@ Artisan::command('chat:stickers-import {source=assets/stickers} {--keep-existing
     ];
 
     $files = [];
-    $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($libraryDir));
-    foreach ($iterator as $file) {
-        if ($file instanceof \SplFileInfo && $file->isFile() && strtolower($file->getExtension()) === 'png') {
-            $files[] = $file->getPathname();
+    foreach ($libraries as $library) {
+        $libraryDir = $sourceRoot.'/'.$library['name'];
+        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($libraryDir));
+        foreach ($iterator as $file) {
+            if ($file instanceof \SplFileInfo && $file->isFile() && strtolower($file->getExtension()) === 'png') {
+                $files[] = [
+                    'path' => $file->getPathname(),
+                    'root' => $libraryDir,
+                    'id_prefix' => $library['id_prefix'],
+                    'path_prefix' => $library['path_prefix'],
+                    'sort_offset' => $library['sort_offset'],
+                    'source' => $library['name'],
+                ];
+            }
         }
     }
-    sort($files, SORT_STRING);
+    usort(
+        $files,
+        static fn (array $left, array $right): int => [$left['source'], $left['path']] <=> [$right['source'], $right['path']],
+    );
 
     $humanTitle = static function (string $category, string $baseName): string {
         if (preg_match('/_(\d+)$/', $baseName, $match) === 1) {
@@ -173,9 +194,10 @@ Artisan::command('chat:stickers-import {source=assets/stickers} {--keep-existing
         return str_replace('_', ' ', $baseName);
     };
 
-    foreach ($files as $path) {
+    foreach ($files as $entry) {
         $stats['scanned']++;
-        $relative = str_replace('\\', '/', substr($path, strlen($libraryDir) + 1));
+        $path = (string) $entry['path'];
+        $relative = str_replace('\\', '/', substr($path, strlen((string) $entry['root']) + 1));
         $parts = explode('/', $relative);
         if (count($parts) < 4) {
             $stats['skipped']++;
@@ -185,7 +207,7 @@ Artisan::command('chat:stickers-import {source=assets/stickers} {--keep-existing
         [$group, $style, $category] = array_slice($parts, 0, 3);
         $filename = basename($path);
         $baseName = pathinfo($filename, PATHINFO_FILENAME);
-        $stickerId = $baseName;
+        $stickerId = ((string) $entry['id_prefix']).$baseName;
         if (isset($seenIds[$stickerId])) {
             $stats['duplicates']++;
             continue;
@@ -198,9 +220,10 @@ Artisan::command('chat:stickers-import {source=assets/stickers} {--keep-existing
         if (preg_match('/_(\d+)$/', $baseName, $match) === 1) {
             $sortOrder = (int) $match[1];
         }
+        $sortOrder += (int) $entry['sort_offset'];
 
-        $targetPath = "chat_stickers/{$packKey}/{$filename}";
-        if (!$dryRun && !$disk->exists($targetPath)) {
+        $targetPath = "chat_stickers/{$entry['path_prefix']}{$packKey}/{$filename}";
+        if (!$dryRun) {
             $handle = fopen($path, 'rb');
             if ($handle === false) {
                 $stats['skipped']++;
@@ -237,14 +260,15 @@ Artisan::command('chat:stickers-import {source=assets/stickers} {--keep-existing
     $this->info(json_encode([
         'ok' => true,
         'disk' => ChatMediaStorage::disk(),
-        'source' => $libraryDir,
+        'source' => $sourceRoot,
+        'libraries' => array_column($libraries, 'name'),
         'keep_existing' => $keepExisting,
         'dry_run' => $dryRun,
         'stats' => $stats,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
     return 0;
-})->purpose('Import generated v2 sticker PNG files into chat_stickers and deactivate old stickers');
+})->purpose('Import generated sticker PNG files into chat_stickers and deactivate pre-generation stickers');
 
 Schedule::command('push:send-reminders --limit=200')
     ->everyMinute()

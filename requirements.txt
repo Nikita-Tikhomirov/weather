@@ -16,3 +16,7 @@ python-telegram-bot>=20.0
 
 # HTTP sync client (used by sync_runtime.py)
 requests>=2.31.0
+
+# Sticker slicing and validation tools
+Pillow>=10.0.0
+opencv-python>=4.8.0

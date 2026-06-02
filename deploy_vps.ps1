@@ -55,6 +55,7 @@ if ($DryRun) {
     if ($SkipStickerAssets) {
         Write-Host "Would skip sticker asset upload"
     } else {
+        Write-Host "Would upload: assets\stickers\library -> $RemoteBase/assets/stickers/library"
         Write-Host "Would upload: assets\stickers\library_v2 -> $RemoteBase/assets/stickers/library_v2"
     }
     if ($SkipStickerImport) {
@@ -140,6 +141,7 @@ def upload_tree(local_root, remote_root):
 if skip_sticker_assets:
     print('Sticker asset upload: skipped')
 else:
+    upload_tree('assets/stickers/library', f'{remote_base}/assets/stickers/library')
     upload_tree('assets/stickers/library_v2', f'{remote_base}/assets/stickers/library_v2')
 
 sftp.close()

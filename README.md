@@ -599,9 +599,12 @@ php artisan chat:media-migrate --delete-local
 php artisan chat:stickers-import assets/stickers
 ```
 
-Команда импортирует только `assets/stickers/library_v2`, загружает PNG в
-настроенный `CHAT_MEDIA_DISK` и деактивирует старые строки `chat_stickers`,
-которых нет в новом v2-наборе.
+Команда импортирует оба сгенерированных набора: `assets/stickers/library_v2`
+и `assets/stickers/library`. Первый набор получает префикс `gen1_` в
+`sticker_id`, чтобы не конфликтовать с одноименными v2-файлами. После импорта
+деактивируются только строки `chat_stickers`, которых нет среди этих
+сгенерированных файлов: встроенные до генерации `emoji`/`default`/`builtin`
+стикеры не остаются активными.
 
 ## 14. Что можно улучшить дальше
 
