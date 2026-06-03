@@ -179,6 +179,12 @@ Deploy-скрипты больше не хранят пароль в git. Доп
 `WEATHER_VPS_HOST`, `WEATHER_VPS_USER`, `WEATHER_VPS_REMOTE_BASE`,
 `WEATHER_SIMPLE_API_REMOTE_BASE`, `TODO_BACKEND_API_KEY`.
 
+Smoke-проверка TURN для звонков после изменений coturn или release-секретов:
+
+```powershell
+python .\scripts\smoke_turn_allocate.py
+```
+
 ## 4.3 Project bridge для мобильного чата
 
 Проектные чаты в APK работают через VPS tunnel и локальный `project_bridge.py`.
