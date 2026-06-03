@@ -596,6 +596,171 @@ void main() {
       );
     });
 
+    testWidgets('autosaves checklist rename and delete without pressing save',
+        (tester) async {
+      final task = _editableTask.copyWith(
+        collaboration: const TaskCollaboration(
+          checklists: [
+            TaskChecklist(
+              id: 'checklist-edit',
+              title: 'Старый чеклист',
+              createdBy: 'test_user',
+              createdAt: '2026-06-01T10:00:00',
+              items: [
+                TaskChecklistItem(
+                  id: 'item-keep',
+                  text: 'Пункт',
+                  createdBy: 'test_user',
+                  createdAt: '2026-06-01T10:00:00',
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+      final repository = _FakeTaskRepository();
+      repository.tasks.add(task);
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: task,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Работа'));
+      await tester.pumpAndSettle();
+      final editChecklistButton = find.byTooltip('Редактировать чеклист');
+      final workList = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        editChecklistButton,
+        240,
+        scrollable: workList,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(editChecklistButton);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Название чеклиста'),
+        'Новый чеклист',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Сохранить'));
+      await tester.pumpAndSettle();
+
+      expect(
+        repository.upserts.last.collaboration.checklists.single.title,
+        'Новый чеклист',
+      );
+
+      final deleteChecklistButton = find.byTooltip('Удалить чеклист');
+      await tester.scrollUntilVisible(
+        deleteChecklistButton,
+        240,
+        scrollable: workList,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(deleteChecklistButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Удалить'));
+      await tester.pumpAndSettle();
+
+      expect(repository.upserts.last.collaboration.checklists, isEmpty);
+    });
+
+    testWidgets(
+        'autosaves checklist item edit and delete without pressing save',
+        (tester) async {
+      final task = _editableTask.copyWith(
+        collaboration: const TaskCollaboration(
+          checklists: [
+            TaskChecklist(
+              id: 'checklist-item-edit',
+              title: 'Запуск',
+              createdBy: 'test_user',
+              createdAt: '2026-06-01T10:00:00',
+              items: [
+                TaskChecklistItem(
+                  id: 'item-edit',
+                  text: 'Старый пункт',
+                  createdBy: 'test_user',
+                  createdAt: '2026-06-01T10:00:00',
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+      final repository = _FakeTaskRepository();
+      repository.tasks.add(task);
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: task,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Работа'));
+      await tester.pumpAndSettle();
+      final editItemButton = find.byTooltip('Редактировать пункт');
+      final workList = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        editItemButton,
+        240,
+        scrollable: workList,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(editItemButton);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Текст пункта'),
+        'Новый пункт',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Сохранить'));
+      await tester.pumpAndSettle();
+
+      expect(
+        repository
+            .upserts.last.collaboration.checklists.single.items.single.text,
+        'Новый пункт',
+      );
+
+      final deleteItemButton = find.byTooltip('Удалить пункт');
+      await tester.scrollUntilVisible(
+        deleteItemButton,
+        240,
+        scrollable: workList,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(deleteItemButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Удалить'));
+      await tester.pumpAndSettle();
+
+      expect(
+        repository.upserts.last.collaboration.checklists.single.items,
+        isEmpty,
+      );
+    });
+
     testWidgets('photo preview opens full-screen viewer', (tester) async {
       const imageBase64 =
           'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=';

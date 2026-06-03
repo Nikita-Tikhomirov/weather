@@ -620,8 +620,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   Future<String?> _promptAttachmentCaption(String title) async {
     if (!mounted) return null;
     final controller = TextEditingController();
+    var disposeAfterFrame = false;
     try {
-      return await showDialog<String>(
+      final result = await showDialog<String>(
         context: context,
         builder: (dialogContext) {
           return AlertDialog(
@@ -649,8 +650,15 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           );
         },
       );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.dispose();
+      });
+      disposeAfterFrame = true;
+      return result;
     } finally {
-      controller.dispose();
+      if (!disposeAfterFrame) {
+        controller.dispose();
+      }
     }
   }
 
@@ -906,6 +914,212 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       );
     });
     _autosaveNow();
+  }
+
+  Future<void> _renameChecklist(TaskChecklist checklist) async {
+    if (!_canEdit) return;
+    final title = await _promptTextEdit(
+      title: 'Редактировать чеклист',
+      label: 'Название чеклиста',
+      initialValue: checklist.title,
+    );
+    final nextTitle = title?.trim() ?? '';
+    if (nextTitle.isEmpty || nextTitle == checklist.title) return;
+
+    final nextChecklists = _collaboration.checklists.map((item) {
+      if (item.id != checklist.id) return item;
+      return item.copyWith(title: nextTitle);
+    }).toList();
+    setState(() {
+      _collaboration = _collaboration.copyWith(
+        checklists: nextChecklists,
+        activity: [
+          ..._collaboration.activity,
+          _activity(
+            type: 'checklist_renamed',
+            text: 'переименовал чеклист "$nextTitle"',
+            targetId: checklist.id,
+          ),
+        ],
+      );
+    });
+    _autosaveNow();
+  }
+
+  Future<void> _deleteChecklist(TaskChecklist checklist) async {
+    if (!_canEdit) return;
+    final confirmed = await _confirmDelete(
+      title: 'Удалить чеклист?',
+      message: 'Чеклист и все его пункты будут удалены из задачи.',
+    );
+    if (!confirmed) return;
+
+    setState(() {
+      _collaboration = _collaboration.copyWith(
+        checklists: _collaboration.checklists
+            .where((item) => item.id != checklist.id)
+            .toList(),
+        activity: [
+          ..._collaboration.activity,
+          _activity(
+            type: 'checklist_deleted',
+            text: 'удалил чеклист "${checklist.title}"',
+            targetId: checklist.id,
+          ),
+        ],
+      );
+      _checklistItemControllers.remove(checklist.id)?.dispose();
+    });
+    _autosaveNow();
+  }
+
+  Future<void> _renameChecklistItem(
+    String checklistId,
+    TaskChecklistItem item,
+  ) async {
+    if (!_canEdit) return;
+    final text = await _promptTextEdit(
+      title: 'Редактировать пункт',
+      label: 'Текст пункта',
+      initialValue: item.text,
+    );
+    final nextText = text?.trim() ?? '';
+    if (nextText.isEmpty || nextText == item.text) return;
+
+    final nextChecklists = _collaboration.checklists.map((checklist) {
+      if (checklist.id != checklistId) return checklist;
+      return checklist.copyWith(
+        items: checklist.items.map((candidate) {
+          if (candidate.id != item.id) return candidate;
+          return candidate.copyWith(text: nextText);
+        }).toList(),
+      );
+    }).toList();
+    setState(() {
+      _collaboration = _collaboration.copyWith(
+        checklists: nextChecklists,
+        activity: [
+          ..._collaboration.activity,
+          _activity(
+            type: 'checklist_item_renamed',
+            text: 'отредактировал пункт чеклиста',
+            targetId: item.id,
+          ),
+        ],
+      );
+    });
+    _autosaveNow();
+  }
+
+  Future<void> _deleteChecklistItem(
+    String checklistId,
+    TaskChecklistItem item,
+  ) async {
+    if (!_canEdit) return;
+    final confirmed = await _confirmDelete(
+      title: 'Удалить пункт?',
+      message: 'Пункт будет удалён из чеклиста.',
+    );
+    if (!confirmed) return;
+
+    final nextChecklists = _collaboration.checklists.map((checklist) {
+      if (checklist.id != checklistId) return checklist;
+      return checklist.copyWith(
+        items: checklist.items
+            .where((candidate) => candidate.id != item.id)
+            .toList(),
+      );
+    }).toList();
+    setState(() {
+      _collaboration = _collaboration.copyWith(
+        checklists: nextChecklists,
+        activity: [
+          ..._collaboration.activity,
+          _activity(
+            type: 'checklist_item_deleted',
+            text: 'удалил пункт чеклиста',
+            targetId: item.id,
+          ),
+        ],
+      );
+    });
+    _autosaveNow();
+  }
+
+  Future<String?> _promptTextEdit({
+    required String title,
+    required String label,
+    required String initialValue,
+  }) async {
+    if (!mounted) return null;
+    final controller = TextEditingController(text: initialValue);
+    var disposeAfterFrame = false;
+    try {
+      final result = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: Text(title),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: label,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Отмена'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(
+                  controller.text.trim(),
+                ),
+                child: const Text('Сохранить'),
+              ),
+            ],
+          );
+        },
+      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.dispose();
+      });
+      disposeAfterFrame = true;
+      return result;
+    } finally {
+      if (!disposeAfterFrame) {
+        controller.dispose();
+      }
+    }
+  }
+
+  Future<bool> _confirmDelete({
+    required String title,
+    required String message,
+  }) async {
+    if (!mounted) return false;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Отмена'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Удалить'),
+            ),
+          ],
+        );
+      },
+    );
+    return confirmed == true;
   }
 
   void _openPhoto(TaskAttachment attachment) {
@@ -1354,6 +1568,14 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
               onAddItem: () => _addChecklistItem(checklist.id),
               onToggleItem: (item, done) =>
                   _toggleChecklistItem(checklist.id, item.id, done),
+              onRenameChecklist: () => unawaited(_renameChecklist(checklist)),
+              onDeleteChecklist: () => unawaited(_deleteChecklist(checklist)),
+              onRenameItem: (item) => unawaited(
+                _renameChecklistItem(checklist.id, item),
+              ),
+              onDeleteItem: (item) => unawaited(
+                _deleteChecklistItem(checklist.id, item),
+              ),
             ),
           ),
         const SizedBox(height: 22),
@@ -2083,6 +2305,10 @@ class _ChecklistPanel extends StatelessWidget {
     required this.itemController,
     required this.onAddItem,
     required this.onToggleItem,
+    required this.onRenameChecklist,
+    required this.onDeleteChecklist,
+    required this.onRenameItem,
+    required this.onDeleteItem,
   });
 
   final TaskChecklist checklist;
@@ -2090,6 +2316,10 @@ class _ChecklistPanel extends StatelessWidget {
   final TextEditingController itemController;
   final VoidCallback onAddItem;
   final void Function(TaskChecklistItem item, bool done) onToggleItem;
+  final VoidCallback onRenameChecklist;
+  final VoidCallback onDeleteChecklist;
+  final void Function(TaskChecklistItem item) onRenameItem;
+  final void Function(TaskChecklistItem item) onDeleteItem;
 
   @override
   Widget build(BuildContext context) {
@@ -2115,6 +2345,19 @@ class _ChecklistPanel extends StatelessWidget {
                 ),
               ),
               Text('${checklist.doneCount}/${checklist.totalCount}'),
+              const SizedBox(width: 4),
+              IconButton(
+                tooltip: 'Редактировать чеклист',
+                visualDensity: VisualDensity.compact,
+                onPressed: enabled ? onRenameChecklist : null,
+                icon: const Icon(Icons.edit_outlined, size: 18),
+              ),
+              IconButton(
+                tooltip: 'Удалить чеклист',
+                visualDensity: VisualDensity.compact,
+                onPressed: enabled ? onDeleteChecklist : null,
+                icon: const Icon(Icons.delete_outline, size: 18),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -2134,6 +2377,25 @@ class _ChecklistPanel extends StatelessWidget {
                       : TextDecoration.none,
                 ),
               ),
+              secondary: enabled
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Редактировать пункт',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () => onRenameItem(item),
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                        ),
+                        IconButton(
+                          tooltip: 'Удалить пункт',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () => onDeleteItem(item),
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                        ),
+                      ],
+                    )
+                  : null,
               onChanged: enabled
                   ? (value) => onToggleItem(item, value ?? false)
                   : null,
