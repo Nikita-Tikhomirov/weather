@@ -232,6 +232,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
 
   Future<AgentRunPolicy> requestAgentPolicy({
     required String actorProfile,
+    String actorPhone = '',
     required String taskId,
     required String taskType,
     required String workspaceId,
@@ -243,6 +244,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
       body: jsonEncode(
         _agentPayload(
           actorProfile: actorProfile,
+          actorPhone: actorPhone,
           taskId: taskId,
           taskType: taskType,
           workspaceId: workspaceId,
@@ -259,6 +261,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
 
   Future<AgentTicketResult> requestAgentTicket({
     required String actorProfile,
+    String actorPhone = '',
     required String taskId,
     required String taskType,
     required String workspaceId,
@@ -270,6 +273,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
       body: jsonEncode(
         _agentPayload(
           actorProfile: actorProfile,
+          actorPhone: actorPhone,
           taskId: taskId,
           taskType: taskType,
           workspaceId: workspaceId,
@@ -283,6 +287,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
 
   Future<AgentContextPack> fetchAgentContext({
     required String actorProfile,
+    String actorPhone = '',
     required String taskId,
     required String workspaceId,
     String taskType = 'feature',
@@ -293,6 +298,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
       body: jsonEncode(
         _agentPayload(
           actorProfile: actorProfile,
+          actorPhone: actorPhone,
           taskId: taskId,
           taskType: taskType,
           workspaceId: workspaceId,
@@ -308,6 +314,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
 
   Future<void> recordAgentSession({
     required String actorProfile,
+    String actorPhone = '',
     required String taskId,
     required String workspaceId,
     required String agentSessionId,
@@ -322,6 +329,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
       body: jsonEncode({
         ..._agentPayload(
           actorProfile: actorProfile,
+          actorPhone: actorPhone,
           taskId: taskId,
           taskType: taskType,
           workspaceId: workspaceId,
@@ -337,6 +345,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
 
   Future<void> recordAgentEvent({
     required String actorProfile,
+    String actorPhone = '',
     required String taskId,
     required String workspaceId,
     required String agentSessionId,
@@ -350,6 +359,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
       body: jsonEncode({
         ..._agentPayload(
           actorProfile: actorProfile,
+          actorPhone: actorPhone,
           taskId: taskId,
           taskType: taskType,
           workspaceId: workspaceId,
@@ -364,12 +374,14 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
 
   Future<List<WorkspaceAccessGrant>> listWorkspaceAccess({
     required String actorProfile,
+    String actorPhone = '',
     String workspaceId = '',
   }) async {
     final body = await getJsonWithFallback(
       paths: const ['/admin/workspace-access', '/admin/workspace-access/'],
       query: {
         'actor_profile': actorProfile,
+        if (actorPhone.trim().isNotEmpty) 'phone': actorPhone,
         if (workspaceId.trim().isNotEmpty) 'workspace_id': workspaceId,
       },
     );
@@ -385,6 +397,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
 
   Future<WorkspaceAccessGrant> grantWorkspaceAccess({
     required String actorProfile,
+    String actorPhone = '',
     required String profileKey,
     required String workspaceId,
     String role = 'workspace_user',
@@ -396,6 +409,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
       ],
       body: jsonEncode({
         'actor_profile': actorProfile,
+        if (actorPhone.trim().isNotEmpty) 'actor_phone': actorPhone,
         'profile_key': profileKey,
         'workspace_id': workspaceId,
         'role': role,
@@ -413,6 +427,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
 
   Future<void> revokeWorkspaceAccess({
     required String actorProfile,
+    String actorPhone = '',
     required String profileKey,
     required String workspaceId,
   }) async {
@@ -423,6 +438,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
       ],
       body: jsonEncode({
         'actor_profile': actorProfile,
+        if (actorPhone.trim().isNotEmpty) 'actor_phone': actorPhone,
         'profile_key': profileKey,
         'workspace_id': workspaceId,
       }),
@@ -611,6 +627,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
 
   Map<String, dynamic> _agentPayload({
     required String actorProfile,
+    String actorPhone = '',
     required String taskId,
     required String taskType,
     required String workspaceId,
@@ -619,6 +636,7 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
   }) {
     return {
       'actor_profile': actorProfile,
+      if (actorPhone.trim().isNotEmpty) 'actor_phone': actorPhone,
       'task_id': taskId,
       'task_type': taskType,
       'workspace_id': workspaceId,

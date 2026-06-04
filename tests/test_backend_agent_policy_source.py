@@ -59,6 +59,17 @@ def test_access_policy_service_declares_superadmin_agent_capabilities_and_ticket
     assert "writeAudit" in service
 
 
+def test_access_policy_uses_phone_fallback_when_actor_profile_is_not_resolved() -> None:
+    service = read_backend("app/Domain/Access/AccessPolicyService.php")
+    controller = read_backend("app/Http/Controllers/AgentPolicyController.php")
+
+    assert "accessForActor(string $actor, string $fallbackPhone = '')" in service
+    assert "fallbackPhone" in service
+    assert "strtolower(trim($profile))" in service
+    assert "'nikita' => $this->superadminPhone()" in service
+    assert "accessForActor($actor, $phone)" in controller
+
+
 def test_agent_task_service_updates_task_collaboration_and_events() -> None:
     service = read_backend("app/Domain/Agent/AgentTaskService.php")
 

@@ -96,7 +96,7 @@ final class AccessPolicyService
     ];
 
     /** @return array<string, mixed> */
-    public function accessForActor(string $actor): array
+    public function accessForActor(string $actor, string $fallbackPhone = ''): array
     {
         $profile = trim($actor);
         if ($profile === '') {
@@ -107,6 +107,9 @@ final class AccessPolicyService
         $phone = $row === null
             ? $this->legacyProfilePhone($profile)
             : (string) $row->phone_normalized;
+        if (trim($phone) === '' && trim($fallbackPhone) !== '') {
+            $phone = $fallbackPhone;
+        }
 
         return $this->accessForPhone($phone, $profile);
     }
@@ -150,10 +153,10 @@ final class AccessPolicyService
         ];
     }
 
-    public function isSuperadminActor(string $actor): bool
+    public function isSuperadminActor(string $actor, string $fallbackPhone = ''): bool
     {
         try {
-            return (bool) ($this->accessForActor($actor)['is_superadmin'] ?? false);
+            return (bool) ($this->accessForActor($actor, $fallbackPhone)['is_superadmin'] ?? false);
         } catch (\Throwable) {
             return false;
         }
@@ -166,8 +169,9 @@ final class AccessPolicyService
         string $requestedMode,
         string $workspaceId,
         string $taskId,
+        string $actorPhone = '',
     ): array {
-        $access = $this->accessForActor($actor);
+        $access = $this->accessForActor($actor, $actorPhone);
         $capabilities = array_map('strval', $access['capabilities'] ?? []);
         $mode = $this->normalizeMode($requestedMode) ?: $this->defaultMode($taskType);
         $workspaceId = trim($workspaceId);
@@ -184,7 +188,7 @@ final class AccessPolicyService
             );
         }
 
-        if (!$this->hasWorkspaceAccess($actor, $workspaceId)) {
+        if (!$this->hasWorkspaceAccess($actor, $workspaceId, $actorPhone)) {
             $this->writeAudit($actor, 'agent.policy_denied', 'workspace', $workspaceId, [
                 'task_id' => $taskId,
                 'reason' => 'workspace_access_missing',
@@ -292,8 +296,9 @@ final class AccessPolicyService
         string $profileKey,
         string $workspaceId,
         string $role = 'workspace_user',
+        string $actorPhone = '',
     ): array {
-        if (!$this->isSuperadminActor($actor)) {
+        if (!$this->isSuperadminActor($actor, $actorPhone)) {
             $this->writeAudit($actor, 'workspace_access.grant_denied', 'workspace', trim($workspaceId), [
                 'profile_key' => trim($profileKey),
             ]);
@@ -338,9 +343,14 @@ final class AccessPolicyService
         return $grant;
     }
 
-    public function revokeWorkspaceAccess(string $actor, string $profileKey, string $workspaceId): void
+    public function revokeWorkspaceAccess(
+        string $actor,
+        string $profileKey,
+        string $workspaceId,
+        string $actorPhone = '',
+    ): void
     {
-        if (!$this->isSuperadminActor($actor)) {
+        if (!$this->isSuperadminActor($actor, $actorPhone)) {
             $this->writeAudit($actor, 'workspace_access.revoke_denied', 'workspace', trim($workspaceId), [
                 'profile_key' => trim($profileKey),
             ]);
@@ -361,9 +371,9 @@ final class AccessPolicyService
     }
 
     /** @return list<array<string, mixed>> */
-    public function listWorkspaceAccess(string $actor, string $workspaceId = ''): array
+    public function listWorkspaceAccess(string $actor, string $workspaceId = '', string $actorPhone = ''): array
     {
-        if (!$this->isSuperadminActor($actor)) {
+        if (!$this->isSuperadminActor($actor, $actorPhone)) {
             throw new InvalidArgumentException('Просмотр доступов к воркспейсам доступен только суперадмину.');
         }
         if (!Schema::hasTable('workspace_access')) {
@@ -387,9 +397,9 @@ final class AccessPolicyService
     }
 
     /** @return list<array<string, mixed>> */
-    public function auditLogs(string $actor, int $limit = 100): array
+    public function auditLogs(string $actor, int $limit = 100, string $actorPhone = ''): array
     {
-        if (!$this->isSuperadminActor($actor)) {
+        if (!$this->isSuperadminActor($actor, $actorPhone)) {
             throw new InvalidArgumentException('Аудит доступен только суперадмину.');
         }
         if (!Schema::hasTable('audit_logs')) {
@@ -415,13 +425,13 @@ final class AccessPolicyService
             ->all();
     }
 
-    public function hasWorkspaceAccess(string $actor, string $workspaceId): bool
+    public function hasWorkspaceAccess(string $actor, string $workspaceId, string $actorPhone = ''): bool
     {
         $workspaceId = trim($workspaceId);
         if ($workspaceId === '') {
             return false;
         }
-        $access = $this->accessForActor($actor);
+        $access = $this->accessForActor($actor, $actorPhone);
         if ((bool)($access['is_superadmin'] ?? false)) {
             return true;
         }
@@ -471,8 +481,8 @@ final class AccessPolicyService
 
     private function legacyProfilePhone(string $profile): string
     {
-        return match (trim($profile)) {
-            'nik' => $this->superadminPhone(),
+        return match (strtolower(trim($profile))) {
+            'nik', 'nikita' => $this->superadminPhone(),
             default => '',
         };
     }

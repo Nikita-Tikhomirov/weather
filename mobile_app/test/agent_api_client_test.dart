@@ -136,14 +136,18 @@ void main() {
     });
 
     test('fetches access, ticket, context and records events', () async {
-      final access = await client.fetchAccessPolicy(actorProfile: 'nik');
+      final access = await client.fetchAccessPolicy(
+        actorProfile: 'nik-local',
+        phone: '+7 967 981-24-38',
+      );
       expect(access.isSuperadmin, isTrue);
       expect(access.canUseMessenger, isTrue);
       expect(access.canUseWorkspaces, isTrue);
       expect(access.canUseAi, isTrue);
 
       final ticket = await client.requestAgentTicket(
-        actorProfile: 'nik',
+        actorProfile: 'nik-local',
+        actorPhone: '+7 967 981-24-38',
         taskId: 'task-1',
         taskType: 'feature',
         workspaceId: 'weather',
@@ -153,7 +157,8 @@ void main() {
       expect(ticket.policy.canStartAgentChat, isTrue);
 
       final context = await client.fetchAgentContext(
-        actorProfile: 'nik',
+        actorProfile: 'nik-local',
+        actorPhone: '+7 967 981-24-38',
         taskId: 'task-1',
         workspaceId: 'weather',
       );
@@ -162,7 +167,8 @@ void main() {
       expect(context.toPrompt(), contains('Падает после push'));
 
       await client.recordAgentEvent(
-        actorProfile: 'nik',
+        actorProfile: 'nik-local',
+        actorPhone: '+7 967 981-24-38',
         taskId: 'task-1',
         workspaceId: 'weather',
         agentSessionId: 'agent-session-1',
@@ -176,7 +182,11 @@ void main() {
         '/agent/context',
         '/agent/events',
       ]);
+      expect(requests.first['query']['phone'], '+7 967 981-24-38');
+      expect(requests[1]['body']['actor_phone'], '+7 967 981-24-38');
+      expect(requests[2]['body']['actor_phone'], '+7 967 981-24-38');
       final eventRequest = requests.last;
+      expect(eventRequest['body']['actor_phone'], '+7 967 981-24-38');
       expect(eventRequest['body']['agent_session_id'], 'agent-session-1');
       expect(eventRequest['body']['payload']['session_id'], 'session-1');
     });
@@ -196,13 +206,17 @@ void main() {
     });
 
     test('manages workspace access for superadmin panel', () async {
-      final grants = await client.listWorkspaceAccess(actorProfile: 'nik');
+      final grants = await client.listWorkspaceAccess(
+        actorProfile: 'nik-local',
+        actorPhone: '+7 967 981-24-38',
+      );
       expect(grants.single.workspaceId, 'weather');
       expect(grants.single.profileKey, 'dev');
       expect(grants.single.role, 'agent_operator');
 
       final grant = await client.grantWorkspaceAccess(
-        actorProfile: 'nik',
+        actorProfile: 'nik-local',
+        actorPhone: '+7 967 981-24-38',
         profileKey: 'qa',
         workspaceId: 'weather',
         role: 'workspace_user',
@@ -211,7 +225,8 @@ void main() {
       expect(grant.workspaceId, 'weather');
 
       await client.revokeWorkspaceAccess(
-        actorProfile: 'nik',
+        actorProfile: 'nik-local',
+        actorPhone: '+7 967 981-24-38',
         profileKey: 'qa',
         workspaceId: 'weather',
       );
@@ -221,6 +236,9 @@ void main() {
         '/admin/workspace-access/grant',
         '/admin/workspace-access/revoke',
       ]);
+      expect(requests[0]['query']['phone'], '+7 967 981-24-38');
+      expect(requests[1]['body']['actor_phone'], '+7 967 981-24-38');
+      expect(requests[2]['body']['actor_phone'], '+7 967 981-24-38');
     });
   });
 }

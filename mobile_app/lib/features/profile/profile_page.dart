@@ -116,13 +116,15 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _loadWorkspaceAccess() async {
-    if (!widget.accessPolicy.canManageWorkspaceAccess || _workspaceAccessLoading) {
+    if (!widget.accessPolicy.canManageWorkspaceAccess ||
+        _workspaceAccessLoading) {
       return;
     }
     setState(() => _workspaceAccessLoading = true);
     try {
       final grants = await widget.api.listWorkspaceAccess(
         actorProfile: widget.profileKey,
+        actorPhone: widget.phone,
       );
       if (!mounted) return;
       setState(() {
@@ -151,6 +153,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       await widget.api.grantWorkspaceAccess(
         actorProfile: widget.profileKey,
+        actorPhone: widget.phone,
         profileKey: profile,
         workspaceId: workspace,
         role: _grantRole,
@@ -174,6 +177,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       await widget.api.revokeWorkspaceAccess(
         actorProfile: widget.profileKey,
+        actorPhone: widget.phone,
         profileKey: grant.profileKey,
         workspaceId: grant.workspaceId,
       );
@@ -195,6 +199,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final grants = await widget.api.listWorkspaceAccess(
         actorProfile: widget.profileKey,
+        actorPhone: widget.phone,
       );
       if (!mounted) return;
       setState(() {
@@ -360,9 +365,8 @@ class _ProfilePageState extends State<ProfilePage> {
               subtitle: Text(_roleLabel(grant.role)),
               trailing: IconButton(
                 tooltip: 'Отозвать доступ',
-                onPressed: grant.isActive
-                    ? () => _revokeWorkspaceAccess(grant)
-                    : null,
+                onPressed:
+                    grant.isActive ? () => _revokeWorkspaceAccess(grant) : null,
                 icon: const Icon(Icons.remove_circle_outline),
               ),
             ),

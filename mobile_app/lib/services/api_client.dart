@@ -138,6 +138,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
 
   Future<AgentRunPolicy> requestAgentPolicy({
     required String actorProfile,
+    String actorPhone = '',
     required String taskId,
     required String taskType,
     required String workspaceId,
@@ -146,6 +147,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
   }) {
     return _sync.requestAgentPolicy(
       actorProfile: actorProfile,
+      actorPhone: actorPhone,
       taskId: taskId,
       taskType: taskType,
       workspaceId: workspaceId,
@@ -156,6 +158,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
 
   Future<AgentTicketResult> requestAgentTicket({
     required String actorProfile,
+    String actorPhone = '',
     required String taskId,
     required String taskType,
     required String workspaceId,
@@ -164,6 +167,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
   }) {
     return _sync.requestAgentTicket(
       actorProfile: actorProfile,
+      actorPhone: actorPhone,
       taskId: taskId,
       taskType: taskType,
       workspaceId: workspaceId,
@@ -174,6 +178,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
 
   Future<AgentContextPack> fetchAgentContext({
     required String actorProfile,
+    String actorPhone = '',
     required String taskId,
     required String workspaceId,
     String taskType = 'feature',
@@ -181,6 +186,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
   }) {
     return _sync.fetchAgentContext(
       actorProfile: actorProfile,
+      actorPhone: actorPhone,
       taskId: taskId,
       workspaceId: workspaceId,
       taskType: taskType,
@@ -190,6 +196,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
 
   Future<void> recordAgentSession({
     required String actorProfile,
+    String actorPhone = '',
     required String taskId,
     required String workspaceId,
     required String agentSessionId,
@@ -201,6 +208,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
   }) {
     return _sync.recordAgentSession(
       actorProfile: actorProfile,
+      actorPhone: actorPhone,
       taskId: taskId,
       workspaceId: workspaceId,
       agentSessionId: agentSessionId,
@@ -214,6 +222,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
 
   Future<void> recordAgentEvent({
     required String actorProfile,
+    String actorPhone = '',
     required String taskId,
     required String workspaceId,
     required String agentSessionId,
@@ -224,6 +233,7 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
   }) {
     return _sync.recordAgentEvent(
       actorProfile: actorProfile,
+      actorPhone: actorPhone,
       taskId: taskId,
       workspaceId: workspaceId,
       agentSessionId: agentSessionId,
@@ -236,22 +246,26 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
 
   Future<List<WorkspaceAccessGrant>> listWorkspaceAccess({
     required String actorProfile,
+    String actorPhone = '',
     String workspaceId = '',
   }) {
     return _sync.listWorkspaceAccess(
       actorProfile: actorProfile,
+      actorPhone: actorPhone,
       workspaceId: workspaceId,
     );
   }
 
   Future<WorkspaceAccessGrant> grantWorkspaceAccess({
     required String actorProfile,
+    String actorPhone = '',
     required String profileKey,
     required String workspaceId,
     String role = 'workspace_user',
   }) {
     return _sync.grantWorkspaceAccess(
       actorProfile: actorProfile,
+      actorPhone: actorPhone,
       profileKey: profileKey,
       workspaceId: workspaceId,
       role: role,
@@ -260,11 +274,13 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
 
   Future<void> revokeWorkspaceAccess({
     required String actorProfile,
+    String actorPhone = '',
     required String profileKey,
     required String workspaceId,
   }) {
     return _sync.revokeWorkspaceAccess(
       actorProfile: actorProfile,
+      actorPhone: actorPhone,
       profileKey: profileKey,
       workspaceId: workspaceId,
     );

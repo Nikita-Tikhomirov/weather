@@ -23,7 +23,7 @@ class AgentPolicyController extends Controller
             $actor = trim((string) $request->query('actor_profile', (string) $request->input('actor_profile', '')));
             $phone = trim((string) $request->query('phone', (string) $request->input('phone', '')));
             $payload = $actor !== ''
-                ? $this->access->accessForActor($actor)
+                ? $this->access->accessForActor($actor, $phone)
                 : $this->access->accessForPhone($phone);
 
             return $this->json(200, ['ok' => true, 'access' => $payload]);
@@ -178,7 +178,7 @@ class AgentPolicyController extends Controller
             $workspaceId = (string)$request->query('workspace_id', '');
             return $this->json(200, [
                 'ok' => true,
-                'access' => $this->access->listWorkspaceAccess($actor, $workspaceId),
+                'access' => $this->access->listWorkspaceAccess($actor, $workspaceId, $this->actorPhone($request)),
             ]);
         } catch (InvalidArgumentException $e) {
             return $this->json(403, ['ok' => false, 'error' => $e->getMessage()]);
@@ -197,6 +197,7 @@ class AgentPolicyController extends Controller
                     (string)$request->input('profile_key', ''),
                     (string)$request->input('workspace_id', ''),
                     (string)$request->input('role', 'workspace_user'),
+                    $this->actorPhone($request),
                 ),
             ]);
         } catch (InvalidArgumentException $e) {
@@ -213,6 +214,7 @@ class AgentPolicyController extends Controller
                 (string)$request->input('actor_profile', ''),
                 (string)$request->input('profile_key', ''),
                 (string)$request->input('workspace_id', ''),
+                $this->actorPhone($request),
             );
             return $this->json(200, ['ok' => true]);
         } catch (InvalidArgumentException $e) {
@@ -230,6 +232,7 @@ class AgentPolicyController extends Controller
                 'audit' => $this->access->auditLogs(
                     (string)$request->query('actor_profile', ''),
                     (int)$request->query('limit', 100),
+                    $this->actorPhone($request),
                 ),
             ]);
         } catch (InvalidArgumentException $e) {
@@ -248,11 +251,20 @@ class AgentPolicyController extends Controller
             (string) $request->input('requested_mode', ''),
             (string) $request->input('workspace_id', ''),
             (string) $request->input('task_id', ''),
+            $this->actorPhone($request),
         );
     }
 
     private function json(int $status, array $payload): JsonResponse
     {
         return response()->json($payload, $status, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    private function actorPhone(Request $request): string
+    {
+        return trim((string) $request->query(
+            'phone',
+            (string) $request->input('actor_phone', (string) $request->input('phone', '')),
+        ));
     }
 }

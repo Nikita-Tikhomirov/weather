@@ -3152,6 +3152,7 @@ class _HomePageState extends State<HomePage> {
       dateKey: dateKey,
       existing: existing,
       agentPolicy: agentPolicy,
+      actorPhone: _currentProfilePhone,
       onSaved: () => _safeSyncDelta(store, showErrors: true),
     );
   }
@@ -3177,6 +3178,7 @@ class _HomePageState extends State<HomePage> {
     try {
       return await store.repository.api.requestAgentPolicy(
         actorProfile: store.owner.value,
+        actorPhone: _currentProfilePhone,
         taskId: existing?.id ?? '',
         taskType: 'feature',
         workspaceId: workspaceId,

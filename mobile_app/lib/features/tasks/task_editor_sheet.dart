@@ -38,6 +38,7 @@ Future<void> showTaskEditorSheet({
   required Future<void> Function() onSaved,
   TaskItem? existing,
   AgentRunPolicy agentPolicy = const AgentRunPolicy.unavailable(),
+  String actorPhone = '',
 }) async {
   await Navigator.of(context).push<void>(
     MaterialPageRoute(
@@ -49,6 +50,7 @@ Future<void> showTaskEditorSheet({
         onSaved: onSaved,
         existing: existing,
         agentPolicy: agentPolicy,
+        actorPhone: actorPhone,
       ),
     ),
   );
@@ -65,6 +67,7 @@ class TaskEditorScreen extends StatefulWidget {
     this.existing,
     this.initialPendingAttachments = const <TaskAttachment>[],
     this.agentPolicy = const AgentRunPolicy.unavailable(),
+    this.actorPhone = '',
   });
 
   final TaskStore store;
@@ -75,6 +78,7 @@ class TaskEditorScreen extends StatefulWidget {
   final TaskItem? existing;
   final List<TaskAttachment> initialPendingAttachments;
   final AgentRunPolicy agentPolicy;
+  final String actorPhone;
 
   @override
   State<TaskEditorScreen> createState() => _TaskEditorScreenState();
@@ -1220,6 +1224,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       final api = widget.store.repository.api;
       final ticket = await api.requestAgentTicket(
         actorProfile: widget.store.owner.value,
+        actorPhone: widget.actorPhone,
         taskId: saved.id,
         taskType: _taskTypeForAgent(saved),
         workspaceId: policy.workspaceId,
@@ -1227,6 +1232,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       );
       final contextPack = await api.fetchAgentContext(
         actorProfile: widget.store.owner.value,
+        actorPhone: widget.actorPhone,
         taskId: saved.id,
         workspaceId: policy.workspaceId,
         taskType: _taskTypeForAgent(saved),
@@ -1234,6 +1240,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       );
       await api.recordAgentSession(
         actorProfile: widget.store.owner.value,
+        actorPhone: widget.actorPhone,
         taskId: saved.id,
         workspaceId: policy.workspaceId,
         agentSessionId: session.id,
@@ -1312,8 +1319,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
     final bridgeSession = message.session;
     if (bridgeSession != null && pendingId.isNotEmpty) {
-      final workspaceId =
-          bridgeSession.workspaceId.isNotEmpty ? bridgeSession.workspaceId : _pendingAgentWorkspaceId;
+      final workspaceId = bridgeSession.workspaceId.isNotEmpty
+          ? bridgeSession.workspaceId
+          : _pendingAgentWorkspaceId;
       setState(() {
         _markAgentSession(
           pendingId,
@@ -1332,6 +1340,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       unawaited(
         widget.store.repository.api.recordAgentSession(
           actorProfile: widget.store.owner.value,
+          actorPhone: widget.actorPhone,
           taskId: (_savedTask ?? widget.existing)?.id ?? '',
           workspaceId: workspaceId,
           agentSessionId: pendingId,
@@ -1350,6 +1359,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         unawaited(
           widget.store.repository.api.recordAgentEvent(
             actorProfile: widget.store.owner.value,
+            actorPhone: widget.actorPhone,
             taskId: (_savedTask ?? widget.existing)?.id ?? '',
             workspaceId: workspaceId,
             agentSessionId: pendingId,
@@ -1366,6 +1376,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       unawaited(
         widget.store.repository.api.recordAgentEvent(
           actorProfile: widget.store.owner.value,
+          actorPhone: widget.actorPhone,
           taskId: (_savedTask ?? widget.existing)?.id ?? '',
           workspaceId: message.workspaceId.isNotEmpty
               ? message.workspaceId
