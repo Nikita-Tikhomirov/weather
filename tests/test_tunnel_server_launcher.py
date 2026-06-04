@@ -3,6 +3,7 @@ import base64
 import json
 import unittest
 
+from agent_policy import build_agent_run_policy, build_user_access, sign_policy_ticket
 from tunnel_server import MAX_RELAY_LINE_BYTES, TunnelServer
 
 
@@ -319,6 +320,128 @@ class TunnelServerLauncherTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(relayed["type"], "upload_file")
         self.assertEqual(relayed["filename"], "large.jpg")
         self.assertEqual(relayed["data_base64"], payload["data_base64"])
+
+        mobile_writer.close()
+        bridge_writer.close()
+        await mobile_writer.wait_closed()
+        await bridge_writer.wait_closed()
+
+
+class SecureCodeWhaleTunnelTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.server = TunnelServer(
+            host="127.0.0.1",
+            port=0,
+            policy_ticket_secret="secret",
+        )
+        await self.server.start()
+        assert self.server._server is not None
+        self.port = self.server._server.sockets[0].getsockname()[1]
+
+    async def asyncTearDown(self) -> None:
+        await self.server.stop()
+
+    async def test_codewhale_mobile_command_without_ticket_is_rejected(self) -> None:
+        bridge_reader, bridge_writer = await asyncio.open_connection(
+            "127.0.0.1",
+            self.port,
+            limit=MAX_RELAY_LINE_BYTES,
+        )
+        bridge_writer.write(
+            json.dumps(
+                {"type": "codewhale_register", "project_id": "codewhale"}
+            ).encode("utf-8")
+            + b"\n"
+        )
+        await bridge_writer.drain()
+
+        mobile_reader, mobile_writer = await asyncio.open_connection(
+            "127.0.0.1",
+            self.port,
+            limit=MAX_RELAY_LINE_BYTES,
+        )
+        mobile_writer.write(
+            json.dumps({"type": "codewhale_connect", "project_id": "codewhale"}).encode(
+                "utf-8"
+            )
+            + b"\n"
+        )
+        await mobile_writer.drain()
+        self.assertEqual((await _read_json(mobile_reader))["type"], "status")
+        self.assertEqual((await _read_json(bridge_reader))["type"], "codewhale_mobile_attached")
+
+        mobile_writer.write(json.dumps({"type": "workspace_list"}).encode("utf-8") + b"\n")
+        await mobile_writer.drain()
+
+        denied = await _read_json(mobile_reader)
+        self.assertEqual(denied["type"], "error")
+        self.assertIn("policy", denied["error"])
+
+        mobile_writer.close()
+        bridge_writer.close()
+        await mobile_writer.wait_closed()
+        await bridge_writer.wait_closed()
+
+    async def test_codewhale_mobile_command_with_valid_ticket_is_relayed(self) -> None:
+        bridge_reader, bridge_writer = await asyncio.open_connection(
+            "127.0.0.1",
+            self.port,
+            limit=MAX_RELAY_LINE_BYTES,
+        )
+        bridge_writer.write(
+            json.dumps(
+                {"type": "codewhale_register", "project_id": "codewhale"}
+            ).encode("utf-8")
+            + b"\n"
+        )
+        await bridge_writer.drain()
+
+        mobile_reader, mobile_writer = await asyncio.open_connection(
+            "127.0.0.1",
+            self.port,
+            limit=MAX_RELAY_LINE_BYTES,
+        )
+        mobile_writer.write(
+            json.dumps({"type": "codewhale_connect", "project_id": "codewhale"}).encode(
+                "utf-8"
+            )
+            + b"\n"
+        )
+        await mobile_writer.drain()
+        self.assertEqual((await _read_json(mobile_reader))["type"], "status")
+        self.assertEqual((await _read_json(bridge_reader))["type"], "codewhale_mobile_attached")
+
+        access = build_user_access(
+            "+7 900 000-00-00",
+            profile_key="developer",
+            roles=["workspace_user", "agent_operator"],
+            capabilities=[
+                "tasks.edit",
+                "workspaces.use",
+                "tasks.manage_agent",
+                "ai.use",
+            ],
+        )
+        policy = build_agent_run_policy(
+            access,
+            task_type="feature",
+            requested_mode="executor",
+            workspace_id="weather",
+            task_id="task-1",
+        )
+        ticket = sign_policy_ticket(policy, secret="secret")
+
+        mobile_writer.write(
+            json.dumps({"type": "workspace_list", "policy_ticket": ticket}).encode(
+                "utf-8"
+            )
+            + b"\n"
+        )
+        await mobile_writer.drain()
+
+        relayed = await _read_json(bridge_reader)
+        self.assertEqual(relayed["type"], "workspace_list")
+        self.assertEqual(relayed["policy_ticket"], ticket)
 
         mobile_writer.close()
         bridge_writer.close()

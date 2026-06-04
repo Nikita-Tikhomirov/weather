@@ -15,6 +15,7 @@ import '../../models/family_group.dart';
 import '../../models/task_collaboration.dart';
 import '../../models/task_item.dart';
 import '../../models/task_project.dart';
+import '../../services/codewhale_bridge_service.dart';
 import '../../state/task_store.dart';
 
 const _reminderOptions = <int, String>{
@@ -110,6 +111,11 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   bool _autosaveInFlight = false;
   bool _autosaveAgain = false;
   bool _sendingComment = false;
+  bool _agentLaunching = false;
+  CodeWhaleBridgeService? _agentBridge;
+  String _pendingAgentSessionId = '';
+  String _pendingAgentWorkspaceId = '';
+  String _pendingAgentPrompt = '';
 
   @override
   void initState() {
@@ -166,6 +172,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     for (final controller in _checklistItemControllers.values) {
       controller.dispose();
     }
+    _agentBridge?.dispose();
     super.dispose();
   }
 
@@ -1156,14 +1163,33 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   void _requestNewAgentChat() {
+    unawaited(_startNewAgentChat());
+  }
+
+  Future<void> _startNewAgentChat() async {
     final policy = widget.agentPolicy;
-    if (!_canEdit) return;
+    if (!_canEdit || _agentLaunching) return;
     if (!policy.canStartAgentChat) {
       _showSnack(
         policy.reason.isEmpty ? 'Нет прав на запуск агента' : policy.reason,
       );
       return;
     }
+    if (policy.workspaceId.trim().isEmpty) {
+      _showSnack('Выберите воркспейс для агентского чата');
+      return;
+    }
+    setState(() => _agentLaunching = true);
+    await _persistDraft(automatic: true);
+    final saved = _savedTask ?? widget.existing;
+    if (saved == null || saved.id.trim().isEmpty) {
+      if (mounted) {
+        setState(() => _agentLaunching = false);
+        _showSnack('Сначала сохраните задачу');
+      }
+      return;
+    }
+
     final now = DateTime.now().toIso8601String();
     final title = _titleCtl.text.trim().isEmpty
         ? 'Агентский чат'
@@ -1179,23 +1205,244 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       createdAt: now,
     );
     setState(() {
-      _collaboration = _collaboration.copyWith(
-        agentSessions: [..._collaboration.agentSessions, session],
-        activity: [
-          ..._collaboration.activity,
-          _activity(
-            type: 'agent_session_requested',
-            text: 'запросил новый агентский чат',
-            targetId: session.id,
-          ),
-        ],
+      _upsertAgentSession(session);
+      _appendAgentActivity(
+        type: 'agent_session_requested',
+        text: 'запросил новый агентский чат',
+        targetId: session.id,
       );
       if (_status == WorkflowStatus.todo) {
         _status = WorkflowStatus.in_progress;
       }
     });
     _autosaveNow();
-    _showSnack('Новый агентский чат добавлен к задаче');
+    try {
+      final api = widget.store.repository.api;
+      final ticket = await api.requestAgentTicket(
+        actorProfile: widget.store.owner.value,
+        taskId: saved.id,
+        taskType: _taskTypeForAgent(saved),
+        workspaceId: policy.workspaceId,
+        requestedMode: policy.mode,
+      );
+      final contextPack = await api.fetchAgentContext(
+        actorProfile: widget.store.owner.value,
+        taskId: saved.id,
+        workspaceId: policy.workspaceId,
+        taskType: _taskTypeForAgent(saved),
+        requestedMode: policy.mode,
+      );
+      await api.recordAgentSession(
+        actorProfile: widget.store.owner.value,
+        taskId: saved.id,
+        workspaceId: policy.workspaceId,
+        agentSessionId: session.id,
+        title: title,
+        taskType: _taskTypeForAgent(saved),
+        requestedMode: policy.mode,
+        status: 'pending',
+      );
+
+      _pendingAgentSessionId = session.id;
+      _pendingAgentWorkspaceId = policy.workspaceId;
+      _pendingAgentPrompt = contextPack.toPrompt();
+      final bridge = _ensureAgentBridge();
+      bridge.updatePolicyTicket(ticket.policyTicket);
+      final connected = await bridge.connect();
+      if (!connected) {
+        throw StateError('CodeWhale недоступен');
+      }
+      bridge.createSession(policy.workspaceId, title: title);
+      if (mounted) {
+        _showSnack('Новый агентский чат запускается');
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _upsertAgentSession(session.copyWith(status: 'error'));
+        _appendAgentActivity(
+          type: 'agent_session_error',
+          text: 'не смог запустить агентский чат',
+          targetId: session.id,
+        );
+        _agentLaunching = false;
+      });
+      _autosaveNow();
+      _showSnack('Не удалось запустить агента: $error');
+    }
+  }
+
+  CodeWhaleBridgeService _ensureAgentBridge() {
+    final existing = _agentBridge;
+    if (existing != null) {
+      return existing;
+    }
+    final bridge = CodeWhaleBridgeService(
+      onMessage: _handleAgentBridgeMessage,
+      onStatusChange: (connected, status) {
+        if (!mounted || connected) {
+          return;
+        }
+        _showSnack(status);
+      },
+    );
+    _agentBridge = bridge;
+    return bridge;
+  }
+
+  void _handleAgentBridgeMessage(CodeWhaleBridgeMessage message) {
+    if (!mounted) return;
+    final pendingId = _pendingAgentSessionId;
+    if (message.isError) {
+      if (pendingId.isNotEmpty) {
+        setState(() {
+          _markAgentSession(pendingId, status: 'error');
+          _appendAgentActivity(
+            type: 'agent_session_error',
+            text: 'получил ошибку агентского чата',
+            targetId: pendingId,
+          );
+          _agentLaunching = false;
+        });
+        _autosaveNow();
+      }
+      _showSnack(message.error.isEmpty ? 'Ошибка CodeWhale' : message.error);
+      return;
+    }
+
+    final bridgeSession = message.session;
+    if (bridgeSession != null && pendingId.isNotEmpty) {
+      final workspaceId =
+          bridgeSession.workspaceId.isNotEmpty ? bridgeSession.workspaceId : _pendingAgentWorkspaceId;
+      setState(() {
+        _markAgentSession(
+          pendingId,
+          workspaceId: workspaceId,
+          sessionId: bridgeSession.id,
+          status: 'linked',
+        );
+        _appendAgentActivity(
+          type: 'agent_session_linked',
+          text: 'подключил агентский чат',
+          targetId: pendingId,
+        );
+        _agentLaunching = false;
+      });
+      _autosaveNow();
+      unawaited(
+        widget.store.repository.api.recordAgentSession(
+          actorProfile: widget.store.owner.value,
+          taskId: (_savedTask ?? widget.existing)?.id ?? '',
+          workspaceId: workspaceId,
+          agentSessionId: pendingId,
+          sessionId: bridgeSession.id,
+          title: bridgeSession.title,
+          requestedMode: widget.agentPolicy.mode,
+          status: 'linked',
+        ),
+      );
+      if (_pendingAgentPrompt.trim().isNotEmpty) {
+        _agentBridge?.sendSessionMessage(
+          workspaceId,
+          bridgeSession.id,
+          _pendingAgentPrompt,
+        );
+        unawaited(
+          widget.store.repository.api.recordAgentEvent(
+            actorProfile: widget.store.owner.value,
+            taskId: (_savedTask ?? widget.existing)?.id ?? '',
+            workspaceId: workspaceId,
+            agentSessionId: pendingId,
+            eventType: 'agent_task_started',
+            payload: {'session_id': bridgeSession.id},
+            requestedMode: widget.agentPolicy.mode,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (message.type == 'session_task' && pendingId.isNotEmpty) {
+      unawaited(
+        widget.store.repository.api.recordAgentEvent(
+          actorProfile: widget.store.owner.value,
+          taskId: (_savedTask ?? widget.existing)?.id ?? '',
+          workspaceId: message.workspaceId.isNotEmpty
+              ? message.workspaceId
+              : _pendingAgentWorkspaceId,
+          agentSessionId: pendingId,
+          eventType: 'agent_task_started',
+          payload: {
+            'bridge_task_id': message.taskId,
+            'status': message.taskStatus,
+          },
+          requestedMode: widget.agentPolicy.mode,
+        ),
+      );
+      _pendingAgentSessionId = '';
+      _pendingAgentPrompt = '';
+      _pendingAgentWorkspaceId = '';
+    }
+  }
+
+  void _upsertAgentSession(TaskAgentSession session) {
+    final sessions = List<TaskAgentSession>.from(_collaboration.agentSessions);
+    final index = sessions.indexWhere((item) => item.id == session.id);
+    if (index >= 0) {
+      sessions[index] = session;
+    } else {
+      sessions.add(session);
+    }
+    _collaboration = _collaboration.copyWith(agentSessions: sessions);
+  }
+
+  void _markAgentSession(
+    String id, {
+    String? workspaceId,
+    String? sessionId,
+    String? status,
+  }) {
+    final sessions = _collaboration.agentSessions.map((session) {
+      if (session.id != id) {
+        return session;
+      }
+      return session.copyWith(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+        status: status,
+      );
+    }).toList();
+    _collaboration = _collaboration.copyWith(agentSessions: sessions);
+  }
+
+  void _appendAgentActivity({
+    required String type,
+    required String text,
+    required String targetId,
+  }) {
+    _collaboration = _collaboration.copyWith(
+      activity: [
+        ..._collaboration.activity,
+        _activity(type: type, text: text, targetId: targetId),
+      ],
+    );
+  }
+
+  String _taskTypeForAgent(TaskItem task) {
+    final tags = task.tags.map((item) => item.toLowerCase()).toSet();
+    if (tags.contains('bugfix') || tags.contains('bug')) {
+      return 'bugfix';
+    }
+    if (tags.contains('review')) {
+      return 'review';
+    }
+    if (tags.contains('docs') || tags.contains('doc')) {
+      return 'docs';
+    }
+    if (tags.contains('planning') || tags.contains('plan')) {
+      return 'planning';
+    }
+    return 'feature';
   }
 
   void _connectAgentChat() {

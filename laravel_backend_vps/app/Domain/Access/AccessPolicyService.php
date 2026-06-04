@@ -3,6 +3,7 @@
 namespace App\Domain\Access;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 
 final class AccessPolicyService
@@ -34,6 +35,66 @@ final class AccessPolicyService
         'admin.audit',
     ];
 
+    /** @var array<string, list<string>> */
+    private const DEFAULT_ROLE_CAPABILITIES = [
+        'messenger_user' => ['messenger.use'],
+        'project_member' => ['messenger.use', 'projects.view', 'tasks.view', 'tasks.comment'],
+        'project_admin' => [
+            'messenger.use',
+            'projects.view',
+            'projects.manage',
+            'tasks.view',
+            'tasks.comment',
+            'tasks.edit',
+            'tasks.change_status',
+            'tasks.manage_agent',
+        ],
+        'workspace_user' => [
+            'messenger.use',
+            'projects.view',
+            'tasks.view',
+            'tasks.comment',
+            'workspaces.view',
+            'workspaces.use',
+            'ai.use',
+        ],
+        'agent_operator' => [
+            'messenger.use',
+            'projects.view',
+            'tasks.view',
+            'tasks.comment',
+            'tasks.edit',
+            'tasks.change_status',
+            'tasks.manage_agent',
+            'workspaces.view',
+            'workspaces.use',
+            'ai.use',
+            'ai.write_task_comments',
+            'ai.change_task_status',
+            'ai.manage_checklists',
+            'agent.git_write',
+        ],
+        'workspace_admin' => [
+            'messenger.use',
+            'projects.view',
+            'projects.manage',
+            'tasks.view',
+            'tasks.comment',
+            'tasks.edit',
+            'tasks.change_status',
+            'tasks.manage_agent',
+            'workspaces.view',
+            'workspaces.use',
+            'ai.use',
+            'ai.write_task_comments',
+            'ai.change_task_status',
+            'ai.manage_checklists',
+            'agent.git_write',
+            'agent.github',
+            'agent.browser',
+        ],
+    ];
+
     /** @return array<string, mixed> */
     public function accessForActor(string $actor): array
     {
@@ -55,17 +116,37 @@ final class AccessPolicyService
     {
         $normalizedPhone = $this->normalizePhone($phone);
         $isSuperadmin = $normalizedPhone === $this->superadminPhone();
+        $profile = trim($profileKey) !== ''
+            ? trim($profileKey)
+            : $this->profileKeyForPhone($normalizedPhone);
+
+        if ($isSuperadmin) {
+            return [
+                'phone' => $normalizedPhone,
+                'profile_key' => $profile,
+                'roles' => ['messenger_user', 'superadmin'],
+                'capabilities' => self::ALL_CAPABILITIES,
+                'workspaces' => $this->workspaceAccessForProfile($profile),
+                'is_superadmin' => true,
+            ];
+        }
+
+        $workspaceAccess = $this->workspaceAccessForProfile($profile);
+        $roles = array_values(array_unique(array_merge(
+            ['messenger_user'],
+            $this->rolesForProfile($profile),
+            array_map(static fn (array $row): string => (string)($row['role'] ?? ''), $workspaceAccess),
+            empty($workspaceAccess) ? [] : ['workspace_user'],
+        )));
+        $roles = array_values(array_filter($roles, static fn (string $role): bool => trim($role) !== ''));
 
         return [
             'phone' => $normalizedPhone,
-            'profile_key' => trim($profileKey),
-            'roles' => $isSuperadmin
-                ? ['messenger_user', 'superadmin']
-                : ['messenger_user'],
-            'capabilities' => $isSuperadmin
-                ? self::ALL_CAPABILITIES
-                : ['messenger.use'],
-            'is_superadmin' => $isSuperadmin,
+            'profile_key' => $profile,
+            'roles' => $roles,
+            'capabilities' => $this->capabilitiesForRoles($roles),
+            'workspaces' => $workspaceAccess,
+            'is_superadmin' => false,
         ];
     }
 
@@ -89,9 +170,41 @@ final class AccessPolicyService
         $access = $this->accessForActor($actor);
         $capabilities = array_map('strval', $access['capabilities'] ?? []);
         $mode = $this->normalizeMode($requestedMode) ?: $this->defaultMode($taskType);
+        $workspaceId = trim($workspaceId);
+        $taskId = trim($taskId);
+
+        if ($workspaceId === '') {
+            return $this->deniedPolicy(
+                $access,
+                $taskType,
+                $mode,
+                $workspaceId,
+                $taskId,
+                'Выберите воркспейс для запуска агента.',
+            );
+        }
+
+        if (!$this->hasWorkspaceAccess($actor, $workspaceId)) {
+            $this->writeAudit($actor, 'agent.policy_denied', 'workspace', $workspaceId, [
+                'task_id' => $taskId,
+                'reason' => 'workspace_access_missing',
+            ]);
+            return $this->deniedPolicy(
+                $access,
+                $taskType,
+                $mode,
+                $workspaceId,
+                $taskId,
+                'Нет доступа к выбранному воркспейсу.',
+            );
+        }
 
         foreach (['workspaces.use', 'tasks.manage_agent', 'ai.use'] as $required) {
             if (!in_array($required, $capabilities, true)) {
+                $this->writeAudit($actor, 'agent.policy_denied', 'task', $taskId, [
+                    'workspace_id' => $workspaceId,
+                    'missing_capability' => $required,
+                ]);
                 return $this->deniedPolicy(
                     $access,
                     $taskType,
@@ -136,8 +249,8 @@ final class AccessPolicyService
             'roles' => array_map('strval', $access['roles'] ?? []),
             'capabilities' => $capabilities,
             'task_type' => $this->normalizeTaskType($taskType),
-            'task_id' => trim($taskId),
-            'workspace_id' => trim($workspaceId),
+            'task_id' => $taskId,
+            'workspace_id' => $workspaceId,
             'mode' => $mode,
             'mode_label' => $this->modeLabel($mode),
             'plugins' => $this->pluginsForMode($mode, $capabilities),
@@ -168,7 +281,180 @@ final class AccessPolicyService
         }
 
         $signature = hash_hmac('sha256', $payloadJson, $secret, true);
-        return $this->base64Url($payloadJson).'.'.$this->base64Url($signature);
+        $ticket = $this->base64Url($payloadJson).'.'.$this->base64Url($signature);
+        $this->storePolicyTicket($ticket, $payload);
+        return $ticket;
+    }
+
+    /** @return array<string, mixed> */
+    public function grantWorkspaceAccess(
+        string $actor,
+        string $profileKey,
+        string $workspaceId,
+        string $role = 'workspace_user',
+    ): array {
+        if (!$this->isSuperadminActor($actor)) {
+            $this->writeAudit($actor, 'workspace_access.grant_denied', 'workspace', trim($workspaceId), [
+                'profile_key' => trim($profileKey),
+            ]);
+            throw new InvalidArgumentException('Выдавать доступ к воркспейсам может только суперадмин.');
+        }
+
+        $profileKey = trim($profileKey);
+        $workspaceId = trim($workspaceId);
+        $role = $this->normalizeWorkspaceRole($role);
+        if ($profileKey === '') {
+            throw new InvalidArgumentException('profile_key is required');
+        }
+        if ($workspaceId === '') {
+            throw new InvalidArgumentException('workspace_id is required');
+        }
+        if (!Schema::hasTable('workspace_access')) {
+            throw new InvalidArgumentException('workspace_access table is not ready');
+        }
+
+        $now = $this->nowIso();
+        DB::table('workspace_access')->updateOrInsert(
+            ['workspace_id' => $workspaceId, 'profile_key' => $profileKey],
+            [
+                'role' => $role,
+                'granted_by' => trim($actor),
+                'created_at' => $now,
+                'updated_at' => $now,
+                'revoked_at' => null,
+            ],
+        );
+
+        $grant = [
+            'workspace_id' => $workspaceId,
+            'profile_key' => $profileKey,
+            'role' => $role,
+            'granted_by' => trim($actor),
+            'created_at' => $now,
+            'updated_at' => $now,
+            'revoked_at' => null,
+        ];
+        $this->writeAudit($actor, 'workspace_access.grant', 'workspace', $workspaceId, $grant);
+        return $grant;
+    }
+
+    public function revokeWorkspaceAccess(string $actor, string $profileKey, string $workspaceId): void
+    {
+        if (!$this->isSuperadminActor($actor)) {
+            $this->writeAudit($actor, 'workspace_access.revoke_denied', 'workspace', trim($workspaceId), [
+                'profile_key' => trim($profileKey),
+            ]);
+            throw new InvalidArgumentException('Отзывать доступ к воркспейсам может только суперадмин.');
+        }
+        if (!Schema::hasTable('workspace_access')) {
+            throw new InvalidArgumentException('workspace_access table is not ready');
+        }
+
+        $now = $this->nowIso();
+        DB::table('workspace_access')
+            ->where('workspace_id', trim($workspaceId))
+            ->where('profile_key', trim($profileKey))
+            ->update(['revoked_at' => $now, 'updated_at' => $now]);
+        $this->writeAudit($actor, 'workspace_access.revoke', 'workspace', trim($workspaceId), [
+            'profile_key' => trim($profileKey),
+        ]);
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function listWorkspaceAccess(string $actor, string $workspaceId = ''): array
+    {
+        if (!$this->isSuperadminActor($actor)) {
+            throw new InvalidArgumentException('Просмотр доступов к воркспейсам доступен только суперадмину.');
+        }
+        if (!Schema::hasTable('workspace_access')) {
+            return [];
+        }
+
+        $query = DB::table('workspace_access')->orderBy('workspace_id')->orderBy('profile_key');
+        if (trim($workspaceId) !== '') {
+            $query->where('workspace_id', trim($workspaceId));
+        }
+
+        return $query->get()->map(static fn ($row): array => [
+            'workspace_id' => (string) $row->workspace_id,
+            'profile_key' => (string) $row->profile_key,
+            'role' => (string) $row->role,
+            'granted_by' => (string) ($row->granted_by ?? ''),
+            'created_at' => (string) ($row->created_at ?? ''),
+            'updated_at' => (string) ($row->updated_at ?? ''),
+            'revoked_at' => (string) ($row->revoked_at ?? ''),
+        ])->values()->all();
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function auditLogs(string $actor, int $limit = 100): array
+    {
+        if (!$this->isSuperadminActor($actor)) {
+            throw new InvalidArgumentException('Аудит доступен только суперадмину.');
+        }
+        if (!Schema::hasTable('audit_logs')) {
+            return [];
+        }
+
+        return DB::table('audit_logs')
+            ->orderByDesc('created_at')
+            ->limit(max(1, min(500, $limit)))
+            ->get()
+            ->map(function ($row): array {
+                return [
+                    'id' => (string) $row->id,
+                    'actor_profile' => (string) $row->actor_profile,
+                    'action' => (string) $row->action,
+                    'target_type' => (string) $row->target_type,
+                    'target_id' => (string) $row->target_id,
+                    'payload' => $this->decodeJsonArray($row->payload_json),
+                    'created_at' => (string) $row->created_at,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    public function hasWorkspaceAccess(string $actor, string $workspaceId): bool
+    {
+        $workspaceId = trim($workspaceId);
+        if ($workspaceId === '') {
+            return false;
+        }
+        $access = $this->accessForActor($actor);
+        if ((bool)($access['is_superadmin'] ?? false)) {
+            return true;
+        }
+        $profile = (string)($access['profile_key'] ?? trim($actor));
+        if ($profile === '' || !Schema::hasTable('workspace_access')) {
+            return false;
+        }
+
+        return DB::table('workspace_access')
+            ->where('profile_key', $profile)
+            ->where('workspace_id', $workspaceId)
+            ->whereNull('revoked_at')
+            ->exists();
+    }
+
+    /** @param array<string, mixed> $payload */
+    public function writeAudit(string $actor, string $action, string $targetType, string $targetId, array $payload = []): void
+    {
+        try {
+            if (!Schema::hasTable('audit_logs')) {
+                return;
+            }
+            DB::table('audit_logs')->insert([
+                'id' => 'audit-'.str_replace('.', '', uniqid('', true)),
+                'actor_profile' => trim($actor),
+                'action' => trim($action),
+                'target_type' => trim($targetType),
+                'target_id' => trim($targetId),
+                'payload_json' => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'created_at' => $this->nowIso(),
+            ]);
+        } catch (\Throwable) {
+        }
     }
 
     private function normalizePhone(string $phone): string
@@ -191,10 +477,159 @@ final class AccessPolicyService
         };
     }
 
+    private function profileKeyForPhone(string $phone): string
+    {
+        try {
+            if (!Schema::hasTable('messenger_users')) {
+                return '';
+            }
+            $profile = DB::table('messenger_users')
+                ->where('phone_normalized', $phone)
+                ->value('profile_key');
+            return is_string($profile) ? $profile : '';
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+
     private function superadminPhone(): string
     {
         $configured = (string) config('sync.superadmin_phone', self::SUPERADMIN_PHONE);
         return $this->normalizePhone($configured) ?: self::SUPERADMIN_PHONE;
+    }
+
+    /** @return list<string> */
+    private function rolesForProfile(string $profile): array
+    {
+        if ($profile === '' || !Schema::hasTable('user_roles')) {
+            return [];
+        }
+        try {
+            return DB::table('user_roles')
+                ->where('profile_key', $profile)
+                ->pluck('role')
+                ->map(static fn ($value): string => (string) $value)
+                ->filter(static fn (string $value): bool => trim($value) !== '')
+                ->values()
+                ->all();
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /** @param list<string> $roles @return list<string> */
+    private function capabilitiesForRoles(array $roles): array
+    {
+        if (in_array('superadmin', $roles, true)) {
+            return self::ALL_CAPABILITIES;
+        }
+
+        $capabilities = [];
+        foreach ($roles as $role) {
+            foreach (self::DEFAULT_ROLE_CAPABILITIES[$role] ?? [] as $capability) {
+                $capabilities[] = $capability;
+            }
+        }
+
+        if (Schema::hasTable('role_capabilities')) {
+            try {
+                $dbCaps = DB::table('role_capabilities')
+                    ->whereIn('role', $roles)
+                    ->pluck('capability')
+                    ->map(static fn ($value): string => (string) $value)
+                    ->values()
+                    ->all();
+                $capabilities = array_merge($capabilities, $dbCaps);
+            } catch (\Throwable) {
+            }
+        }
+
+        $allowed = array_flip(self::ALL_CAPABILITIES);
+        return array_values(array_unique(array_filter(
+            $capabilities,
+            static fn (string $capability): bool => isset($allowed[$capability]),
+        )));
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function workspaceAccessForProfile(string $profile): array
+    {
+        if ($profile === '' || !Schema::hasTable('workspace_access')) {
+            return [];
+        }
+        try {
+            return DB::table('workspace_access')
+                ->where('profile_key', $profile)
+                ->whereNull('revoked_at')
+                ->orderBy('workspace_id')
+                ->get()
+                ->map(static fn ($row): array => [
+                    'workspace_id' => (string) $row->workspace_id,
+                    'profile_key' => (string) $row->profile_key,
+                    'role' => (string) $row->role,
+                    'granted_by' => (string) ($row->granted_by ?? ''),
+                    'created_at' => (string) ($row->created_at ?? ''),
+                    'updated_at' => (string) ($row->updated_at ?? ''),
+                    'revoked_at' => (string) ($row->revoked_at ?? ''),
+                ])
+                ->values()
+                ->all();
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    private function normalizeWorkspaceRole(string $role): string
+    {
+        $value = strtolower(trim($role));
+        return in_array($value, ['workspace_user', 'agent_operator', 'workspace_admin'], true)
+            ? $value
+            : 'workspace_user';
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function storePolicyTicket(string $ticket, array $payload): void
+    {
+        try {
+            if (!Schema::hasTable('agent_policy_tickets')) {
+                return;
+            }
+            DB::table('agent_policy_tickets')->updateOrInsert(
+                ['id' => hash('sha256', $ticket)],
+                [
+                    'actor_profile' => (string)($payload['profile_key'] ?? ''),
+                    'task_id' => (string)($payload['task_id'] ?? ''),
+                    'workspace_id' => (string)($payload['workspace_id'] ?? ''),
+                    'mode' => (string)($payload['mode'] ?? ''),
+                    'allowed_commands_json' => json_encode(
+                        array_values(is_array($payload['allowed_commands'] ?? null) ? $payload['allowed_commands'] : []),
+                        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+                    ),
+                    'expires_at' => date('Y-m-d\TH:i:s', (int)($payload['exp'] ?? time())),
+                    'created_at' => $this->nowIso(),
+                    'revoked_at' => null,
+                ],
+            );
+        } catch (\Throwable) {
+        }
+    }
+
+    private function nowIso(): string
+    {
+        return now()->format('Y-m-d\TH:i:s');
+    }
+
+    /** @return array<int|string, mixed> */
+    private function decodeJsonArray(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+        if (!is_string($value) || trim($value) === '') {
+            return [];
+        }
+        $decoded = json_decode($value, true);
+        return is_array($decoded) ? $decoded : [];
     }
 
     private function normalizeTaskType(string $taskType): string

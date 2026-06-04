@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../contracts/sync_api.dart';
+import '../models/agent_policy.dart';
 import '../models/device_snapshots.dart';
 import '../models/family_group.dart';
 import '../models/pending_event.dart';
@@ -212,6 +213,222 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
     return PushDeviceStatus.fromJson(body);
   }
 
+  Future<UserAccessPolicy> fetchAccessPolicy({
+    String actorProfile = '',
+    String phone = '',
+  }) async {
+    final body = await getJsonWithFallback(
+      paths: const ['/me/access', '/me/access/'],
+      query: {
+        if (actorProfile.trim().isNotEmpty) 'actor_profile': actorProfile,
+        if (phone.trim().isNotEmpty) 'phone': phone,
+      },
+    );
+    final raw = body['access'];
+    return raw is Map
+        ? UserAccessPolicy.fromJson(Map<String, dynamic>.from(raw))
+        : const UserAccessPolicy.messengerOnly();
+  }
+
+  Future<AgentRunPolicy> requestAgentPolicy({
+    required String actorProfile,
+    required String taskId,
+    required String taskType,
+    required String workspaceId,
+    String requestedMode = '',
+    String sessionId = '',
+  }) async {
+    final body = await postJsonWithFallback(
+      paths: const ['/agent/policy', '/agent/policy/'],
+      body: jsonEncode(
+        _agentPayload(
+          actorProfile: actorProfile,
+          taskId: taskId,
+          taskType: taskType,
+          workspaceId: workspaceId,
+          requestedMode: requestedMode,
+          sessionId: sessionId,
+        ),
+      ),
+    );
+    final raw = body['policy'];
+    return raw is Map
+        ? AgentRunPolicy.fromJson(Map<String, dynamic>.from(raw))
+        : const AgentRunPolicy.unavailable();
+  }
+
+  Future<AgentTicketResult> requestAgentTicket({
+    required String actorProfile,
+    required String taskId,
+    required String taskType,
+    required String workspaceId,
+    String requestedMode = '',
+    String sessionId = '',
+  }) async {
+    final body = await postJsonWithFallback(
+      paths: const ['/agent/ticket', '/agent/ticket/'],
+      body: jsonEncode(
+        _agentPayload(
+          actorProfile: actorProfile,
+          taskId: taskId,
+          taskType: taskType,
+          workspaceId: workspaceId,
+          requestedMode: requestedMode,
+          sessionId: sessionId,
+        ),
+      ),
+    );
+    return AgentTicketResult.fromJson(body);
+  }
+
+  Future<AgentContextPack> fetchAgentContext({
+    required String actorProfile,
+    required String taskId,
+    required String workspaceId,
+    String taskType = 'feature',
+    String requestedMode = '',
+  }) async {
+    final body = await postJsonWithFallback(
+      paths: const ['/agent/context', '/agent/context/'],
+      body: jsonEncode(
+        _agentPayload(
+          actorProfile: actorProfile,
+          taskId: taskId,
+          taskType: taskType,
+          workspaceId: workspaceId,
+          requestedMode: requestedMode,
+        ),
+      ),
+    );
+    final raw = body['context'];
+    return raw is Map
+        ? AgentContextPack.fromJson(Map<String, dynamic>.from(raw))
+        : AgentContextPack.fromJson(const {});
+  }
+
+  Future<void> recordAgentSession({
+    required String actorProfile,
+    required String taskId,
+    required String workspaceId,
+    required String agentSessionId,
+    String sessionId = '',
+    String title = '',
+    String taskType = 'feature',
+    String requestedMode = '',
+    String status = 'pending',
+  }) async {
+    await postWithFallback(
+      paths: const ['/agent/sessions', '/agent/sessions/'],
+      body: jsonEncode({
+        ..._agentPayload(
+          actorProfile: actorProfile,
+          taskId: taskId,
+          taskType: taskType,
+          workspaceId: workspaceId,
+          requestedMode: requestedMode,
+          sessionId: sessionId,
+        ),
+        'agent_session_id': agentSessionId,
+        'title': title,
+        'status': status,
+      }),
+    );
+  }
+
+  Future<void> recordAgentEvent({
+    required String actorProfile,
+    required String taskId,
+    required String workspaceId,
+    required String agentSessionId,
+    required String eventType,
+    Map<String, dynamic> payload = const {},
+    String taskType = 'feature',
+    String requestedMode = '',
+  }) async {
+    await postWithFallback(
+      paths: const ['/agent/events', '/agent/events/'],
+      body: jsonEncode({
+        ..._agentPayload(
+          actorProfile: actorProfile,
+          taskId: taskId,
+          taskType: taskType,
+          workspaceId: workspaceId,
+          requestedMode: requestedMode,
+        ),
+        'agent_session_id': agentSessionId,
+        'event_type': eventType,
+        'payload': payload,
+      }),
+    );
+  }
+
+  Future<List<WorkspaceAccessGrant>> listWorkspaceAccess({
+    required String actorProfile,
+    String workspaceId = '',
+  }) async {
+    final body = await getJsonWithFallback(
+      paths: const ['/admin/workspace-access', '/admin/workspace-access/'],
+      query: {
+        'actor_profile': actorProfile,
+        if (workspaceId.trim().isNotEmpty) 'workspace_id': workspaceId,
+      },
+    );
+    return (body['access'] as List<dynamic>? ?? const [])
+        .whereType<Map>()
+        .map(
+          (row) => WorkspaceAccessGrant.fromJson(
+            Map<String, dynamic>.from(row),
+          ),
+        )
+        .toList();
+  }
+
+  Future<WorkspaceAccessGrant> grantWorkspaceAccess({
+    required String actorProfile,
+    required String profileKey,
+    required String workspaceId,
+    String role = 'workspace_user',
+  }) async {
+    final body = await postJsonWithFallback(
+      paths: const [
+        '/admin/workspace-access/grant',
+        '/admin/workspace-access/grant/',
+      ],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'profile_key': profileKey,
+        'workspace_id': workspaceId,
+        'role': role,
+      }),
+    );
+    final raw = body['grant'];
+    return raw is Map
+        ? WorkspaceAccessGrant.fromJson(Map<String, dynamic>.from(raw))
+        : WorkspaceAccessGrant(
+            workspaceId: workspaceId,
+            profileKey: profileKey,
+            role: role,
+          );
+  }
+
+  Future<void> revokeWorkspaceAccess({
+    required String actorProfile,
+    required String profileKey,
+    required String workspaceId,
+  }) async {
+    await postWithFallback(
+      paths: const [
+        '/admin/workspace-access/revoke',
+        '/admin/workspace-access/revoke/',
+      ],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'profile_key': profileKey,
+        'workspace_id': workspaceId,
+      }),
+    );
+  }
+
   @override
   Future<void> unregisterDeviceToken({
     required String actorProfile,
@@ -390,5 +607,23 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
       projectGroupMap[projectId] = groupIds;
     }
     return projectGroupMap;
+  }
+
+  Map<String, dynamic> _agentPayload({
+    required String actorProfile,
+    required String taskId,
+    required String taskType,
+    required String workspaceId,
+    String requestedMode = '',
+    String sessionId = '',
+  }) {
+    return {
+      'actor_profile': actorProfile,
+      'task_id': taskId,
+      'task_type': taskType,
+      'workspace_id': workspaceId,
+      if (requestedMode.trim().isNotEmpty) 'requested_mode': requestedMode,
+      if (sessionId.trim().isNotEmpty) 'session_id': sessionId,
+    };
   }
 }

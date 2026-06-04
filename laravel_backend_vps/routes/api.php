@@ -24,6 +24,13 @@ Route::middleware('sync.apikey')->group(function (): void {
     Route::get('/me/access', [AgentPolicyController::class, 'access']);
     Route::post('/agent/policy', [AgentPolicyController::class, 'policy']);
     Route::post('/agent/ticket', [AgentPolicyController::class, 'ticket']);
+    Route::post('/agent/context', [AgentPolicyController::class, 'context']);
+    Route::post('/agent/events', [AgentPolicyController::class, 'event']);
+    Route::post('/agent/sessions', [AgentPolicyController::class, 'session']);
+    Route::get('/admin/workspace-access', [AgentPolicyController::class, 'workspaceAccess']);
+    Route::post('/admin/workspace-access/grant', [AgentPolicyController::class, 'grantWorkspaceAccess']);
+    Route::post('/admin/workspace-access/revoke', [AgentPolicyController::class, 'revokeWorkspaceAccess']);
+    Route::get('/admin/audit', [AgentPolicyController::class, 'audit']);
     Route::post('/contacts/resolve', [ContactController::class, 'resolve']);
     Route::post('/profile/avatar', [ContactController::class, 'updateAvatar']);
     Route::get('/family/members', [ContactController::class, 'familyMembers']);

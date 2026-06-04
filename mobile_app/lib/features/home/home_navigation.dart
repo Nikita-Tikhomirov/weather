@@ -10,6 +10,18 @@ extension _NavigationSection on _HomePageState {
     return ValueListenableBuilder<int>(
       valueListenable: store.pageIndex,
       builder: (context, page, _) {
+        if (!_accessPolicy.canUseTaskManager) {
+          return NavigationBar(
+            selectedIndex: 0,
+            onDestinationSelected: (_) => store.setPage(2),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.forum_outlined),
+                label: 'Мессенджер',
+              ),
+            ],
+          );
+        }
         return NavigationBar(
           selectedIndex: page,
           onDestinationSelected: (index) {
@@ -38,7 +50,7 @@ extension _NavigationSection on _HomePageState {
     return ValueListenableBuilder<int>(
       valueListenable: store.pageIndex,
       builder: (context, page, _) {
-        if (page != 0) {
+        if (!_accessPolicy.canUseTaskManager || page != 0) {
           return const SizedBox.shrink();
         }
         return FloatingActionButton.extended(

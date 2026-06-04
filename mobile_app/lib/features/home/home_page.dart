@@ -30,6 +30,7 @@ import '../tasks/task_editor_sheet.dart';
 import '../tasks/tasks_board.dart';
 import '../workspaces/codewhale_workspaces_page.dart';
 import '../../models/call_models.dart';
+import '../../models/agent_policy.dart';
 import '../../models/chat_models.dart';
 import '../../models/family_group.dart';
 import '../../models/project_contact.dart';
@@ -119,6 +120,7 @@ class _HomePageState extends State<HomePage> {
   String _currentProfileDisplayName = '';
   String _currentProfilePhone = '';
   String? _currentProfileAvatarUrl;
+  UserAccessPolicy _accessPolicy = const UserAccessPolicy.messengerOnly();
   final Map<String, String> _profileAvatarUrls = <String, String>{};
   ChatMessage? _replyToMessage;
   bool _pushAlreadyRouted = false;
@@ -194,6 +196,10 @@ class _HomePageState extends State<HomePage> {
 
     final store = locator.taskStore;
     await store.initialize(initialOwner: owner);
+    await _loadAccessPolicy(api, owner);
+    if (!_accessPolicy.canUseTaskManager) {
+      store.setPage(2);
+    }
     if (_isDesktopWindows) {
       await _initDesktopServices(store, owner);
     }
@@ -360,6 +366,27 @@ class _HomePageState extends State<HomePage> {
       _currentProfileDisplayName = displayName;
       _currentProfilePhone = phone;
     });
+  }
+
+  Future<void> _loadAccessPolicy(ApiClient api, String owner) async {
+    try {
+      final access = await api.fetchAccessPolicy(
+        actorProfile: owner,
+        phone: _currentProfilePhone,
+      );
+      if (!mounted) {
+        _accessPolicy = access;
+        return;
+      }
+      setState(() => _accessPolicy = access);
+    } catch (e, st) {
+      debugPrint('[home] access policy error: $e\n$st');
+      if (!mounted) {
+        _accessPolicy = const UserAccessPolicy.messengerOnly();
+        return;
+      }
+      setState(() => _accessPolicy = const UserAccessPolicy.messengerOnly());
+    }
   }
 
   void _notifyCallEnded() {
@@ -2835,6 +2862,12 @@ class _HomePageState extends State<HomePage> {
     if (!mounted) {
       return;
     }
+    if (!_accessPolicy.canUseWorkspaces) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Нет доступа к воркспейсам')),
+      );
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => const CodeWhaleWorkspacesPage(),
@@ -2905,6 +2938,7 @@ class _HomePageState extends State<HomePage> {
           displayName: _currentProfileDisplayName,
           phone: _currentProfilePhone,
           profileKey: store.owner.value,
+          accessPolicy: _accessPolicy,
           avatarUrl: _currentProfileAvatarUrl,
           onAvatarChanged: (url) {
             setState(() => _currentProfileAvatarUrl = url);
@@ -3106,6 +3140,10 @@ class _HomePageState extends State<HomePage> {
       contacts = _allKnownContacts(store);
     }
 
+    final agentPolicy = await _agentPolicyForEditor(store, existing);
+    if (!mounted) {
+      return;
+    }
     await showTaskEditorSheet(
       context: context,
       store: store,
@@ -3113,8 +3151,57 @@ class _HomePageState extends State<HomePage> {
       contactLabel: contactLabel,
       dateKey: dateKey,
       existing: existing,
+      agentPolicy: agentPolicy,
       onSaved: () => _safeSyncDelta(store, showErrors: true),
     );
+  }
+
+  Future<AgentRunPolicy> _agentPolicyForEditor(
+    TaskStore store,
+    TaskItem? existing,
+  ) async {
+    if (!_accessPolicy.canUseAi || !_accessPolicy.canUseWorkspaces) {
+      return const AgentRunPolicy.unavailable();
+    }
+    final workspaceId = _workspaceIdForTaskEditor(store, existing);
+    if (workspaceId.isEmpty) {
+      return const AgentRunPolicy(
+        allowed: false,
+        mode: '',
+        modeLabel: '',
+        plugins: [],
+        allowedCommands: [],
+        reason: 'Выберите проект, связанный с воркспейсом.',
+      );
+    }
+    try {
+      return await store.repository.api.requestAgentPolicy(
+        actorProfile: store.owner.value,
+        taskId: existing?.id ?? '',
+        taskType: 'feature',
+        workspaceId: workspaceId,
+        requestedMode: 'executor',
+      );
+    } catch (e, st) {
+      debugPrint('[home] agent policy error: $e\n$st');
+      return const AgentRunPolicy.unavailable();
+    }
+  }
+
+  String _workspaceIdForTaskEditor(TaskStore store, TaskItem? existing) {
+    final fromTask = existing?.projectId.trim() ?? '';
+    if (fromTask.isNotEmpty) {
+      return fromTask;
+    }
+    final current = store.currentProjectId.value.trim();
+    if (current.isNotEmpty) {
+      return current;
+    }
+    final workspaces = _accessPolicy.workspaces;
+    if (workspaces.length == 1) {
+      return (workspaces.first['workspace_id'] ?? '').toString();
+    }
+    return '';
   }
 
   Future<void> _setDesktopThemeMode(String mode) async {
@@ -3313,6 +3400,9 @@ class _HomePageState extends State<HomePage> {
                         : ValueListenableBuilder<int>(
                             valueListenable: store.pageIndex,
                             builder: (context, page, ____) {
+                              if (!_accessPolicy.canUseTaskManager) {
+                                return buildMessengerPage(store, compact: true);
+                              }
                               if (page == 0) {
                                 return buildTasksPage(store);
                               }

@@ -2,6 +2,7 @@ import '../contracts/call_api.dart';
 import '../contracts/chat_api.dart';
 import '../contracts/sync_api.dart';
 import '../models/call_models.dart';
+import '../models/agent_policy.dart';
 import '../models/chat_models.dart';
 import '../models/chat_snapshots.dart';
 import '../models/device_snapshots.dart';
@@ -126,6 +127,147 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     required String actorProfile,
   }) {
     return _sync.pushDeviceStatus(actorProfile: actorProfile);
+  }
+
+  Future<UserAccessPolicy> fetchAccessPolicy({
+    String actorProfile = '',
+    String phone = '',
+  }) {
+    return _sync.fetchAccessPolicy(actorProfile: actorProfile, phone: phone);
+  }
+
+  Future<AgentRunPolicy> requestAgentPolicy({
+    required String actorProfile,
+    required String taskId,
+    required String taskType,
+    required String workspaceId,
+    String requestedMode = '',
+    String sessionId = '',
+  }) {
+    return _sync.requestAgentPolicy(
+      actorProfile: actorProfile,
+      taskId: taskId,
+      taskType: taskType,
+      workspaceId: workspaceId,
+      requestedMode: requestedMode,
+      sessionId: sessionId,
+    );
+  }
+
+  Future<AgentTicketResult> requestAgentTicket({
+    required String actorProfile,
+    required String taskId,
+    required String taskType,
+    required String workspaceId,
+    String requestedMode = '',
+    String sessionId = '',
+  }) {
+    return _sync.requestAgentTicket(
+      actorProfile: actorProfile,
+      taskId: taskId,
+      taskType: taskType,
+      workspaceId: workspaceId,
+      requestedMode: requestedMode,
+      sessionId: sessionId,
+    );
+  }
+
+  Future<AgentContextPack> fetchAgentContext({
+    required String actorProfile,
+    required String taskId,
+    required String workspaceId,
+    String taskType = 'feature',
+    String requestedMode = '',
+  }) {
+    return _sync.fetchAgentContext(
+      actorProfile: actorProfile,
+      taskId: taskId,
+      workspaceId: workspaceId,
+      taskType: taskType,
+      requestedMode: requestedMode,
+    );
+  }
+
+  Future<void> recordAgentSession({
+    required String actorProfile,
+    required String taskId,
+    required String workspaceId,
+    required String agentSessionId,
+    String sessionId = '',
+    String title = '',
+    String taskType = 'feature',
+    String requestedMode = '',
+    String status = 'pending',
+  }) {
+    return _sync.recordAgentSession(
+      actorProfile: actorProfile,
+      taskId: taskId,
+      workspaceId: workspaceId,
+      agentSessionId: agentSessionId,
+      sessionId: sessionId,
+      title: title,
+      taskType: taskType,
+      requestedMode: requestedMode,
+      status: status,
+    );
+  }
+
+  Future<void> recordAgentEvent({
+    required String actorProfile,
+    required String taskId,
+    required String workspaceId,
+    required String agentSessionId,
+    required String eventType,
+    Map<String, dynamic> payload = const {},
+    String taskType = 'feature',
+    String requestedMode = '',
+  }) {
+    return _sync.recordAgentEvent(
+      actorProfile: actorProfile,
+      taskId: taskId,
+      workspaceId: workspaceId,
+      agentSessionId: agentSessionId,
+      eventType: eventType,
+      payload: payload,
+      taskType: taskType,
+      requestedMode: requestedMode,
+    );
+  }
+
+  Future<List<WorkspaceAccessGrant>> listWorkspaceAccess({
+    required String actorProfile,
+    String workspaceId = '',
+  }) {
+    return _sync.listWorkspaceAccess(
+      actorProfile: actorProfile,
+      workspaceId: workspaceId,
+    );
+  }
+
+  Future<WorkspaceAccessGrant> grantWorkspaceAccess({
+    required String actorProfile,
+    required String profileKey,
+    required String workspaceId,
+    String role = 'workspace_user',
+  }) {
+    return _sync.grantWorkspaceAccess(
+      actorProfile: actorProfile,
+      profileKey: profileKey,
+      workspaceId: workspaceId,
+      role: role,
+    );
+  }
+
+  Future<void> revokeWorkspaceAccess({
+    required String actorProfile,
+    required String profileKey,
+    required String workspaceId,
+  }) {
+    return _sync.revokeWorkspaceAccess(
+      actorProfile: actorProfile,
+      profileKey: profileKey,
+      workspaceId: workspaceId,
+    );
   }
 
   @override

@@ -12,15 +12,28 @@ Usage: python tunnel_server.py --port 9877
 import argparse
 import asyncio
 import json
+import os
 import uuid
+
+from agent_policy import PROTECTED_COMMANDS, command_allowed_by_policy, validate_policy_ticket
 
 MAX_RELAY_LINE_BYTES = 32 * 1024 * 1024
 LAUNCHER_PONG_TIMEOUT_SECONDS = 2.0
 
 class TunnelServer:
-    def __init__(self, host: str = '0.0.0.0', port: int = 9877):
+    def __init__(
+        self,
+        host: str = '0.0.0.0',
+        port: int = 9877,
+        policy_ticket_secret: str | None = None,
+    ):
         self.host = host
         self.port = port
+        self.policy_ticket_secret = (
+            policy_ticket_secret
+            if policy_ticket_secret is not None
+            else os.environ.get("AGENT_POLICY_TICKET_SECRET", "")
+        ).strip()
         self._server = None
         # project_id -> (bridge_reader, bridge_writer)
         self._bridges: dict[str, tuple] = {}
@@ -80,6 +93,7 @@ class TunnelServer:
                     public_project_id=bridge_id,
                     attached_type='codewhale_mobile_attached',
                     autostart=False,
+                    enforce_policy=True,
                 )
                 return
 
@@ -313,6 +327,7 @@ class TunnelServer:
         public_project_id: str | None = None,
         attached_type: str = 'mobile_attached',
         autostart: bool = True,
+        enforce_policy: bool = False,
     ):
         """Mobile client connects. Messages from mobile go to bridge."""
         visible_project_id = public_project_id or project_id
@@ -363,6 +378,8 @@ class TunnelServer:
                 line = await reader.readline()
                 if not line:
                     break
+                if enforce_policy and not self._authorize_mobile_line(line, writer):
+                    continue
                 try:
                     b_writer.write(line)
                     await b_writer.drain()
@@ -378,6 +395,38 @@ class TunnelServer:
             print(f"[tunnel] Mobile disconnected: {project_id}", flush=True)
             if not writer.is_closing():
                 writer.close()
+
+    def _authorize_mobile_line(self, line: bytes, writer: asyncio.StreamWriter) -> bool:
+        if self.policy_ticket_secret == "":
+            return True
+        try:
+            message = json.loads(line.decode("utf-8", errors="replace").strip())
+        except json.JSONDecodeError:
+            self._send_json(writer, {"type": "error", "error": "policy ticket is required for CodeWhale commands"})
+            return False
+
+        command_type = str(message.get("type") or "").strip()
+        if command_type not in PROTECTED_COMMANDS:
+            return True
+
+        ticket = str(message.get("policy_ticket") or "").strip()
+        if ticket == "":
+            self._send_json(writer, {"type": "error", "error": "policy ticket is required"})
+            return False
+
+        try:
+            policy = validate_policy_ticket(ticket, secret=self.policy_ticket_secret)
+            if not command_allowed_by_policy(command_type, policy):
+                raise ValueError("policy ticket does not allow this command")
+            requested_workspace = str(message.get("workspace_id") or "").strip()
+            policy_workspace = str(policy.get("workspace_id") or "").strip()
+            if requested_workspace and policy_workspace and requested_workspace != policy_workspace:
+                raise ValueError("policy ticket workspace mismatch")
+        except Exception as exc:
+            self._send_json(writer, {"type": "error", "error": f"policy ticket rejected: {exc}"})
+            return False
+
+        return True
 
     @staticmethod
     def _send_json(writer: asyncio.StreamWriter, obj: dict):

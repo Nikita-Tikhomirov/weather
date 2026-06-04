@@ -130,6 +130,99 @@ final class SyncRepository
         ];
     }
 
+    /** @return array<string, mixed>|null */
+    public function contextTask(string $taskId, string $actor = ''): ?array
+    {
+        $taskId = trim($taskId);
+        $actor = trim($actor);
+        if ($taskId === '') {
+            return null;
+        }
+
+        $row = DB::table('tasks')->where('id', $taskId)->first();
+        if ($row === null && $actor !== '') {
+            $row = DB::table('tasks')
+                ->where('id', $this->taskStorageId($actor, $taskId, false))
+                ->first();
+        }
+        if ($row !== null) {
+            return [
+                'id' => $this->taskExternalId((string) $row->owner_key, (string) $row->id, (bool) $row->is_family),
+                'stored_id' => (string) $row->id,
+                'owner_key' => (string) $row->owner_key,
+                'project_id' => (string)($row->project_id ?? ''),
+                'group_id' => (string)($row->group_id ?? ''),
+                'is_family' => (bool) $row->is_family,
+                'title' => (string) $row->title,
+                'details' => (string) $row->details,
+                'due_date' => (string) $row->due_date,
+                'time' => (string) $row->time_value,
+                'workflow_status' => (string) $row->workflow_status,
+                'priority' => (string)($row->priority ?? 'medium'),
+                'participants' => $this->decodeJsonArray($row->participants_json),
+                'collaboration' => $this->normalizeCollaboration($row->collaboration_json ?? []),
+                'updated_at' => (string) $row->updated_at,
+                'version' => (int) $row->version,
+            ];
+        }
+
+        $family = DB::table('family_tasks')->where('id', $taskId)->first();
+        if ($family === null) {
+            return null;
+        }
+
+        $participants = $this->decodeJsonArray($family->participants_json);
+        return [
+            'id' => (string) $family->id,
+            'stored_id' => (string) $family->id,
+            'owner_key' => 'family',
+            'project_id' => (string)($family->project_id ?? ''),
+            'group_id' => (string)($family->group_id ?? ''),
+            'is_family' => true,
+            'title' => (string) $family->title,
+            'details' => (string) $family->details,
+            'due_date' => (string) $family->due_date,
+            'time' => (string) $family->time_value,
+            'workflow_status' => (string) $family->workflow_status,
+            'priority' => 'medium',
+            'participants' => $participants,
+            'assignees' => $participants,
+            'collaboration' => $this->normalizeCollaboration($family->collaboration_json ?? []),
+            'updated_at' => (string) $family->updated_at,
+            'version' => (int) $family->version,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $context
+     * @param array<string, mixed> $collaboration
+     */
+    public function updateTaskCollaboration(array $context, array $collaboration, string $workflowStatus = ''): void
+    {
+        $storedId = (string)($context['stored_id'] ?? $context['id'] ?? '');
+        if ($storedId === '') {
+            return;
+        }
+
+        $normalized = $this->normalizeCollaboration($collaboration);
+        $now = $this->nowIso();
+        $updates = [
+            'collaboration_json' => json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            'updated_at' => $now,
+            'version' => max(1, (int)($context['version'] ?? 1) + 1),
+        ];
+        if ($workflowStatus !== '') {
+            $updates['workflow_status'] = SyncRules::ensureWorkflow($workflowStatus);
+        }
+
+        if ((bool)($context['is_family'] ?? false)) {
+            DB::table('family_tasks')->where('id', $storedId)->update($updates);
+            return;
+        }
+
+        DB::table('tasks')->where('id', $storedId)->update($updates);
+    }
+
     public function upsertTask(array $task): void
     {
         $ownerKey = (string)$task['owner_key'];

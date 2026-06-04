@@ -133,3 +133,197 @@ List<String> _stringList(Object? raw) {
       .where((item) => item.trim().isNotEmpty)
       .toList();
 }
+
+@immutable
+class UserAccessPolicy {
+  const UserAccessPolicy({
+    required this.phone,
+    required this.profileKey,
+    required this.roles,
+    required this.capabilities,
+    required this.workspaces,
+    required this.isSuperadmin,
+  });
+
+  const UserAccessPolicy.messengerOnly()
+      : phone = '',
+        profileKey = '',
+        roles = const ['messenger_user'],
+        capabilities = const ['messenger.use'],
+        workspaces = const [],
+        isSuperadmin = false;
+
+  final String phone;
+  final String profileKey;
+  final List<String> roles;
+  final List<String> capabilities;
+  final List<Map<String, dynamic>> workspaces;
+  final bool isSuperadmin;
+
+  factory UserAccessPolicy.fromJson(Map<String, dynamic> json) {
+    return UserAccessPolicy(
+      phone: (json['phone'] ?? '').toString(),
+      profileKey: (json['profile_key'] ?? json['profileKey'] ?? '').toString(),
+      roles: _stringList(json['roles']),
+      capabilities: _stringList(json['capabilities']),
+      workspaces: (json['workspaces'] as List<dynamic>?)
+              ?.whereType<Map>()
+              .map(Map<String, dynamic>.from)
+              .toList() ??
+          const [],
+      isSuperadmin: json['is_superadmin'] == true || json['isSuperadmin'] == true,
+    );
+  }
+
+  bool hasCapability(String capability) {
+    return capabilities.contains(capability);
+  }
+
+  bool get canUseMessenger => hasCapability('messenger.use');
+  bool get canUseTaskManager {
+    return isSuperadmin ||
+        hasCapability('tasks.view') ||
+        hasCapability('projects.view');
+  }
+
+  bool get canUseWorkspaces {
+    return isSuperadmin || hasCapability('workspaces.use');
+  }
+
+  bool get canUseAi {
+    return isSuperadmin || hasCapability('ai.use');
+  }
+
+  bool get canManageWorkspaceAccess {
+    return isSuperadmin || hasCapability('workspaces.grant_access');
+  }
+}
+
+@immutable
+class AgentTicketResult {
+  const AgentTicketResult({
+    required this.policy,
+    required this.policyTicket,
+  });
+
+  final AgentRunPolicy policy;
+  final String policyTicket;
+
+  factory AgentTicketResult.fromJson(Map<String, dynamic> json) {
+    final rawPolicy = json['policy'];
+    return AgentTicketResult(
+      policy: rawPolicy is Map
+          ? AgentRunPolicy.fromJson(Map<String, dynamic>.from(rawPolicy))
+          : const AgentRunPolicy.unavailable(),
+      policyTicket:
+          (json['policy_ticket'] ?? json['policyTicket'] ?? '').toString(),
+    );
+  }
+}
+
+@immutable
+class AgentContextPack {
+  const AgentContextPack({
+    required this.task,
+    required this.comments,
+    required this.checklists,
+    required this.agentSessions,
+  });
+
+  final Map<String, dynamic> task;
+  final List<Map<String, dynamic>> comments;
+  final List<Map<String, dynamic>> checklists;
+  final List<Map<String, dynamic>> agentSessions;
+
+  factory AgentContextPack.fromJson(Map<String, dynamic> json) {
+    return AgentContextPack(
+      task: _mapFrom(json['task']),
+      comments: _mapList(json['comments']),
+      checklists: _mapList(json['checklists']),
+      agentSessions: _mapList(
+        json['agent_sessions'] ?? json['agentSessions'],
+      ),
+    );
+  }
+
+  String get taskTitle => (task['title'] ?? '').toString();
+
+  String toPrompt() {
+    final lines = <String>[
+      'Контекст задачи для агентского чата.',
+      'Задача: ${taskTitle.isEmpty ? (task['id'] ?? '').toString() : taskTitle}',
+      'Статус: ${(task['workflow_status'] ?? '').toString()}',
+    ];
+    final details = (task['details'] ?? '').toString().trim();
+    if (details.isNotEmpty) {
+      lines.add('Описание: $details');
+    }
+    if (comments.isNotEmpty) {
+      lines.add('Комментарии:');
+      for (final comment in comments.take(12)) {
+        final text = (comment['text'] ?? '').toString().trim();
+        if (text.isNotEmpty) {
+          lines.add('- $text');
+        }
+      }
+    }
+    if (checklists.isNotEmpty) {
+      lines.add('Чеклисты: ${checklists.length}');
+    }
+    if (agentSessions.isNotEmpty) {
+      lines.add('Уже подключенные агентские чаты: ${agentSessions.length}');
+    }
+    lines.add(
+      'Работай строго в рамках задачи и своих прав. Итоги пиши кратко, чтобы их можно было сохранить комментарием.',
+    );
+    return lines.join('\n');
+  }
+}
+
+@immutable
+class WorkspaceAccessGrant {
+  const WorkspaceAccessGrant({
+    required this.workspaceId,
+    required this.profileKey,
+    required this.role,
+    this.grantedBy = '',
+    this.createdAt = '',
+    this.updatedAt = '',
+    this.revokedAt = '',
+  });
+
+  final String workspaceId;
+  final String profileKey;
+  final String role;
+  final String grantedBy;
+  final String createdAt;
+  final String updatedAt;
+  final String revokedAt;
+
+  bool get isActive => revokedAt.trim().isEmpty;
+
+  factory WorkspaceAccessGrant.fromJson(Map<String, dynamic> json) {
+    return WorkspaceAccessGrant(
+      workspaceId:
+          (json['workspace_id'] ?? json['workspaceId'] ?? '').toString(),
+      profileKey: (json['profile_key'] ?? json['profileKey'] ?? '').toString(),
+      role: (json['role'] ?? 'workspace_user').toString(),
+      grantedBy: (json['granted_by'] ?? json['grantedBy'] ?? '').toString(),
+      createdAt: (json['created_at'] ?? json['createdAt'] ?? '').toString(),
+      updatedAt: (json['updated_at'] ?? json['updatedAt'] ?? '').toString(),
+      revokedAt: (json['revoked_at'] ?? json['revokedAt'] ?? '').toString(),
+    );
+  }
+}
+
+Map<String, dynamic> _mapFrom(Object? raw) {
+  return raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+}
+
+List<Map<String, dynamic>> _mapList(Object? raw) {
+  return (raw as List<dynamic>?)
+          ?.whereType<Map>()
+          .map(Map<String, dynamic>.from)
+          .toList() ??
+      const [];
+}
