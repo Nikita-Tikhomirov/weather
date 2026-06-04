@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'dart:typed_data';
+
 import 'package:family_todo_mobile/features/tasks/task_editor_sheet.dart';
 import 'package:family_todo_mobile/models/agent_policy.dart';
 import 'package:family_todo_mobile/models/family_group.dart';
@@ -8,6 +10,7 @@ import 'package:family_todo_mobile/models/task_item.dart';
 import 'package:family_todo_mobile/models/task_project.dart';
 import 'package:family_todo_mobile/repositories/task_repository.dart';
 import 'package:family_todo_mobile/services/api_client.dart';
+import 'package:family_todo_mobile/services/codewhale_bridge_service.dart';
 import 'package:family_todo_mobile/services/local_db.dart';
 import 'package:family_todo_mobile/domain/task_domain_service.dart';
 import 'package:family_todo_mobile/state/task_store.dart';
@@ -20,8 +23,15 @@ class _FakeApiClient extends ApiClient {
 
   int mediaUploadCount = 0;
   int documentUploadCount = 0;
+  int agentTicketCount = 0;
+  int agentContextCount = 0;
+  int agentSessionRecordCount = 0;
+  int agentEventRecordCount = 0;
   Completer<void>? mediaUploadGate;
   Completer<void>? documentUploadGate;
+  bool failAgentContext = false;
+  bool failAgentSessionRecord = false;
+  bool failAgentEventRecord = false;
 
   @override
   Future<ChatUploadResult> chatUploadMedia({
@@ -56,6 +66,183 @@ class _FakeApiClient extends ApiClient {
       imageMeta: {'original_name': filename, 'size_bytes': bytes.length},
     );
   }
+
+  @override
+  Future<AgentTicketResult> requestAgentTicket({
+    required String actorProfile,
+    String actorPhone = '',
+    required String taskId,
+    required String taskType,
+    required String workspaceId,
+    String requestedMode = '',
+    String sessionId = '',
+  }) async {
+    agentTicketCount += 1;
+    return AgentTicketResult(
+      policy: AgentRunPolicy(
+        allowed: true,
+        mode: requestedMode,
+        modeLabel: 'Исполнитель',
+        plugins: const [],
+        allowedCommands: const [
+          'session_create',
+          'session_send',
+        ],
+        reason: '',
+        workspaceId: workspaceId,
+      ),
+      policyTicket: 'test-policy-ticket',
+    );
+  }
+
+  @override
+  Future<AgentContextPack> fetchAgentContext({
+    required String actorProfile,
+    String actorPhone = '',
+    required String taskId,
+    required String workspaceId,
+    String taskType = 'feature',
+    String requestedMode = '',
+  }) async {
+    agentContextCount += 1;
+    if (failAgentContext) {
+      throw StateError('POST failed: 400 {"error":"Task not found"}');
+    }
+    return AgentContextPack.fromJson({
+      'task': {
+        'id': taskId,
+        'title': 'Backend task',
+        'workflow_status': 'todo',
+      },
+    });
+  }
+
+  @override
+  Future<void> recordAgentSession({
+    required String actorProfile,
+    String actorPhone = '',
+    required String taskId,
+    required String workspaceId,
+    required String agentSessionId,
+    String sessionId = '',
+    String title = '',
+    String taskType = 'feature',
+    String requestedMode = '',
+    String status = 'pending',
+  }) async {
+    agentSessionRecordCount += 1;
+    if (failAgentSessionRecord) {
+      throw StateError('POST failed: 400 {"error":"Task not found"}');
+    }
+  }
+
+  @override
+  Future<void> recordAgentEvent({
+    required String actorProfile,
+    String actorPhone = '',
+    required String taskId,
+    required String workspaceId,
+    required String agentSessionId,
+    required String eventType,
+    Map<String, dynamic> payload = const {},
+    String taskType = 'feature',
+    String requestedMode = '',
+  }) async {
+    agentEventRecordCount += 1;
+    if (failAgentEventRecord) {
+      throw StateError('POST failed: 400 {"error":"Task not found"}');
+    }
+  }
+}
+
+class _FakeAgentBridge extends CodeWhaleBridgeService {
+  _FakeAgentBridge({
+    required super.onMessage,
+    required super.onStatusChange,
+  });
+
+  final List<String> sentMessages = [];
+  final List<String> uploadedFiles = [];
+  int connectCount = 0;
+  int commandListRequestCount = 0;
+  int createSessionCount = 0;
+  String policyTicket = '';
+
+  @override
+  Future<bool> connect() async {
+    connectCount += 1;
+    return true;
+  }
+
+  @override
+  void requestCodeWhaleCommands() {
+    commandListRequestCount += 1;
+    onMessage(
+      CodeWhaleBridgeMessage.fromJson({
+        'type': 'codewhale_command_list',
+        'commands': const [],
+      }),
+    );
+  }
+
+  @override
+  void updatePolicyTicket(String policyTicket) {
+    this.policyTicket = policyTicket;
+  }
+
+  @override
+  void createSession(String workspaceId, {String title = ''}) {
+    createSessionCount += 1;
+    onMessage(
+      CodeWhaleBridgeMessage.fromJson({
+        'type': 'session',
+        'session': {
+          'id': 'bridge-session-1',
+          'workspace_id': workspaceId,
+          'title': title,
+          'status': 'idle',
+        },
+      }),
+    );
+  }
+
+  @override
+  void updateSessionSettings({
+    required String workspaceId,
+    required String sessionId,
+    String provider = '',
+    String model = '',
+    String approvalPolicy = '',
+    String sandboxMode = '',
+    bool autoMode = false,
+  }) {}
+
+  @override
+  void uploadSessionFile({
+    required String workspaceId,
+    required String sessionId,
+    required Uint8List bytes,
+    required String filename,
+    required String mimeType,
+    String caption = '',
+  }) {
+    uploadedFiles.add(filename);
+  }
+
+  @override
+  void sendSessionMessage(String workspaceId, String sessionId, String text) {
+    sentMessages.add(text);
+    onMessage(
+      CodeWhaleBridgeMessage.fromJson({
+        'type': 'session_stream_done',
+        'workspace_id': workspaceId,
+        'session_id': sessionId,
+      }),
+    );
+  }
+
+  @override
+  void dispose() {}
 }
 
 class _FakeTaskRepository implements TaskRepository {
@@ -269,7 +456,7 @@ void main() {
       expect(find.text('Агент'), findsOneWidget);
     });
 
-    testWidgets('agent tab shows policy actions and readable abilities',
+    testWidgets('agent tab shows actions without static abilities block',
         (tester) async {
       final store = _FakeTaskStore();
       store.selectedDate.value = DateTime(2026, 5, 31);
@@ -315,10 +502,126 @@ void main() {
       expect(find.text('Подключить чат'), findsOneWidget);
       expect(find.text('Новый чат'), findsOneWidget);
       expect(find.text('Исполнитель'), findsWidgets);
-      expect(find.text('Читает контекст задачи'), findsOneWidget);
-      expect(find.text('Работает в воркспейсе'), findsOneWidget);
+      expect(find.text('Возможности агента'), findsNothing);
+      expect(find.text('Читает контекст задачи'), findsNothing);
+      expect(find.text('Работает в воркспейсе'), findsNothing);
       expect(find.text('Плагины'), findsNothing);
     });
+
+    testWidgets(
+      'agent launch uses local task card context when backend context is 400',
+      (tester) async {
+        final repository = _FakeTaskRepository();
+        repository.fakeApi.failAgentContext = true;
+        repository.fakeApi.failAgentSessionRecord = true;
+        repository.fakeApi.failAgentEventRecord = true;
+        final store = _FakeTaskStore(repository);
+        _seedProjectAccess(store);
+        store.selectedDate.value = DateTime(2026, 5, 31);
+        _FakeAgentBridge? bridge;
+        final task = _editableTask.copyWith(
+          title: 'Разобрать запуск агента',
+          details: 'Ошибка 400 при старте из карточки.',
+          collaboration: const TaskCollaboration(
+            comments: [
+              TaskComment(
+                id: 'comment-agent',
+                authorProfile: 'test_user',
+                text: 'Учитывай свежий комментарий.',
+                createdAt: '2026-06-01T10:00:00',
+              ),
+            ],
+            checklists: [
+              TaskChecklist(
+                id: 'check-agent',
+                title: 'Проверка',
+                createdAt: '2026-06-01T10:01:00',
+                items: [
+                  TaskChecklistItem(
+                    id: 'item-agent',
+                    text: 'Проверить очередь инструментов',
+                    createdAt: '2026-06-01T10:02:00',
+                  ),
+                ],
+              ),
+            ],
+            attachments: [
+              TaskAttachment(
+                id: 'file-agent',
+                kind: 'file',
+                filename: 'report.txt',
+                mimeType: 'text/plain',
+                dataBase64: 'cmVwb3J0',
+                createdAt: '2026-06-01T10:03:00',
+              ),
+            ],
+          ),
+        );
+        const policy = AgentRunPolicy(
+          allowed: true,
+          mode: 'executor',
+          modeLabel: 'Исполнитель',
+          plugins: [],
+          allowedCommands: ['session_create', 'session_send'],
+          reason: '',
+          workspaceId: 'weather',
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(splashFactory: NoSplash.splashFactory),
+            home: TaskEditorScreen(
+              store: store,
+              knownContacts: const [],
+              contactLabel: (c) => c.displayName,
+              dateKey: (d) => d.toIso8601String(),
+              onSaved: () async {},
+              existing: task,
+              agentPolicy: policy,
+              agentBridgeFactory: ({
+                required onMessage,
+                required onStatusChange,
+              }) {
+                bridge = _FakeAgentBridge(
+                  onMessage: onMessage,
+                  onStatusChange: onStatusChange,
+                );
+                return bridge!;
+              },
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Агент'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Новый чат'));
+        await tester.pumpAndSettle();
+
+        expect(repository.fakeApi.agentTicketCount, 1);
+        expect(repository.fakeApi.agentContextCount, 1);
+        final fakeBridge = bridge!;
+        expect(fakeBridge.policyTicket, 'test-policy-ticket');
+        expect(fakeBridge.createSessionCount, 1);
+        expect(fakeBridge.uploadedFiles, contains('report.txt'));
+        expect(
+          fakeBridge.sentMessages.single,
+          contains('Разобрать запуск агента'),
+        );
+        expect(
+          fakeBridge.sentMessages.single,
+          contains('Учитывай свежий комментарий.'),
+        );
+        expect(
+          fakeBridge.sentMessages.single,
+          contains('Проверить очередь инструментов'),
+        );
+        expect(fakeBridge.sentMessages.single, contains('report.txt'));
+        expect(
+          find.textContaining('Не удалось запустить агента'),
+          findsNothing,
+        );
+      },
+    );
 
     testWidgets('work tab supports comments and checklists', (tester) async {
       final store = _FakeTaskStore();

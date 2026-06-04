@@ -30,6 +30,11 @@ const _reminderOptions = <int, String>{
   5: 'За 5 минут',
 };
 
+typedef AgentBridgeFactory = CodeWhaleBridgeService Function({
+  required void Function(CodeWhaleBridgeMessage message) onMessage,
+  required void Function(bool connected, String status) onStatusChange,
+});
+
 Future<void> showTaskEditorSheet({
   required BuildContext context,
   required TaskStore store,
@@ -40,6 +45,7 @@ Future<void> showTaskEditorSheet({
   TaskItem? existing,
   AgentRunPolicy agentPolicy = const AgentRunPolicy.unavailable(),
   String actorPhone = '',
+  AgentBridgeFactory? agentBridgeFactory,
 }) async {
   await Navigator.of(context).push<void>(
     MaterialPageRoute(
@@ -52,6 +58,7 @@ Future<void> showTaskEditorSheet({
         existing: existing,
         agentPolicy: agentPolicy,
         actorPhone: actorPhone,
+        agentBridgeFactory: agentBridgeFactory,
       ),
     ),
   );
@@ -69,6 +76,7 @@ class TaskEditorScreen extends StatefulWidget {
     this.initialPendingAttachments = const <TaskAttachment>[],
     this.agentPolicy = const AgentRunPolicy.unavailable(),
     this.actorPhone = '',
+    this.agentBridgeFactory,
   });
 
   final TaskStore store;
@@ -80,6 +88,7 @@ class TaskEditorScreen extends StatefulWidget {
   final List<TaskAttachment> initialPendingAttachments;
   final AgentRunPolicy agentPolicy;
   final String actorPhone;
+  final AgentBridgeFactory? agentBridgeFactory;
 
   @override
   State<TaskEditorScreen> createState() => _TaskEditorScreenState();
@@ -1234,6 +1243,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       }
       return;
     }
+    await _syncAgentDraftBestEffort();
 
     final now = DateTime.now().toIso8601String();
     final title = _titleCtl.text.trim().isEmpty
@@ -1271,17 +1281,11 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         workspaceId: policy.workspaceId,
         requestedMode: policy.mode,
       );
-      final contextPack = await api.fetchAgentContext(
-        actorProfile: widget.store.owner.value,
-        actorPhone: widget.actorPhone,
-        taskId: saved.id,
-        workspaceId: policy.workspaceId,
-        taskType: _taskTypeForAgent(saved),
-        requestedMode: policy.mode,
+      final backendPrompt = await _fetchAgentContextPromptBestEffort(
+        saved,
+        policy,
       );
-      await api.recordAgentSession(
-        actorProfile: widget.store.owner.value,
-        actorPhone: widget.actorPhone,
+      _recordAgentSessionBestEffort(
         taskId: saved.id,
         workspaceId: policy.workspaceId,
         agentSessionId: session.id,
@@ -1293,7 +1297,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
       _pendingAgentSessionId = session.id;
       _pendingAgentWorkspaceId = policy.workspaceId;
-      final prompt = _buildAgentCardPrompt(contextPack.toPrompt(), saved);
+      final prompt = _buildAgentCardPrompt(backendPrompt, saved);
       final selectedCommands = _selectedAgentCommands();
       final launchPlan = AgentLaunchPlan.build(
         contextPrompt: prompt,
@@ -1342,21 +1346,119 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     if (existing != null) {
       return existing;
     }
-    final bridge = CodeWhaleBridgeService(
-      onMessage: _handleAgentBridgeMessage,
-      onStatusChange: (connected, status) {
-        if (!mounted) {
-          return;
-        }
-        if (connected) {
-          _agentBridge?.requestCodeWhaleCommands();
-          return;
-        }
-        _showSnack(status);
-      },
-    );
+    void handleStatusChange(bool connected, String status) {
+      if (!mounted) {
+        return;
+      }
+      if (connected) {
+        _agentBridge?.requestCodeWhaleCommands();
+        return;
+      }
+      _showSnack(status);
+    }
+
+    final factory = widget.agentBridgeFactory;
+    final bridge = factory == null
+        ? CodeWhaleBridgeService(
+            onMessage: _handleAgentBridgeMessage,
+            onStatusChange: handleStatusChange,
+          )
+        : factory(
+            onMessage: _handleAgentBridgeMessage,
+            onStatusChange: handleStatusChange,
+          );
     _agentBridge = bridge;
     return bridge;
+  }
+
+  Future<void> _syncAgentDraftBestEffort() async {
+    try {
+      await widget.store.syncDelta();
+    } catch (error) {
+      debugPrint('Task agent draft sync skipped: $error');
+    }
+  }
+
+  Future<String> _fetchAgentContextPromptBestEffort(
+    TaskItem task,
+    AgentRunPolicy policy,
+  ) async {
+    try {
+      final contextPack = await widget.store.repository.api.fetchAgentContext(
+        actorProfile: widget.store.owner.value,
+        actorPhone: widget.actorPhone,
+        taskId: task.id,
+        workspaceId: policy.workspaceId,
+        taskType: _taskTypeForAgent(task),
+        requestedMode: policy.mode,
+      );
+      return contextPack.toPrompt();
+    } catch (error) {
+      debugPrint('Task agent backend context skipped: $error');
+      return '';
+    }
+  }
+
+  void _recordAgentSessionBestEffort({
+    required String taskId,
+    required String workspaceId,
+    required String agentSessionId,
+    String sessionId = '',
+    String title = '',
+    String taskType = 'feature',
+    String requestedMode = '',
+    String status = 'pending',
+  }) {
+    if (taskId.trim().isEmpty || workspaceId.trim().isEmpty) {
+      return;
+    }
+    final future = widget.store.repository.api.recordAgentSession(
+      actorProfile: widget.store.owner.value,
+      actorPhone: widget.actorPhone,
+      taskId: taskId,
+      workspaceId: workspaceId,
+      agentSessionId: agentSessionId,
+      sessionId: sessionId,
+      title: title,
+      taskType: taskType,
+      requestedMode: requestedMode,
+      status: status,
+    );
+    unawaited(
+      future.catchError((Object error) {
+        debugPrint('Task agent session record skipped: $error');
+      }),
+    );
+  }
+
+  void _recordAgentEventBestEffort({
+    required String taskId,
+    required String workspaceId,
+    required String agentSessionId,
+    required String eventType,
+    Map<String, dynamic> payload = const {},
+    String taskType = 'feature',
+    String requestedMode = '',
+  }) {
+    if (taskId.trim().isEmpty || workspaceId.trim().isEmpty) {
+      return;
+    }
+    final future = widget.store.repository.api.recordAgentEvent(
+      actorProfile: widget.store.owner.value,
+      actorPhone: widget.actorPhone,
+      taskId: taskId,
+      workspaceId: workspaceId,
+      agentSessionId: agentSessionId,
+      eventType: eventType,
+      payload: payload,
+      taskType: taskType,
+      requestedMode: requestedMode,
+    );
+    unawaited(
+      future.catchError((Object error) {
+        debugPrint('Task agent event record skipped: $error');
+      }),
+    );
   }
 
   void _handleAgentBridgeMessage(CodeWhaleBridgeMessage message) {
@@ -1422,18 +1524,14 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         _agentLaunching = false;
       });
       _autosaveNow();
-      unawaited(
-        widget.store.repository.api.recordAgentSession(
-          actorProfile: widget.store.owner.value,
-          actorPhone: widget.actorPhone,
-          taskId: (_savedTask ?? widget.existing)?.id ?? '',
-          workspaceId: workspaceId,
-          agentSessionId: pendingId,
-          sessionId: bridgeSession.id,
-          title: bridgeSession.title,
-          requestedMode: widget.agentPolicy.mode,
-          status: 'linked',
-        ),
+      _recordAgentSessionBestEffort(
+        taskId: (_savedTask ?? widget.existing)?.id ?? '',
+        workspaceId: workspaceId,
+        agentSessionId: pendingId,
+        sessionId: bridgeSession.id,
+        title: bridgeSession.title,
+        requestedMode: widget.agentPolicy.mode,
+        status: 'linked',
       );
       _pendingAgentBridgeSessionId = bridgeSession.id;
       _agentBridge?.updateSessionSettings(
@@ -1610,22 +1708,18 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     _agentBridge?.sendSessionMessage(workspaceId, sessionId, step.text);
     final pendingId = _pendingAgentSessionId;
     if (pendingId.isNotEmpty) {
-      unawaited(
-        widget.store.repository.api.recordAgentEvent(
-          actorProfile: widget.store.owner.value,
-          actorPhone: widget.actorPhone,
-          taskId: (_savedTask ?? widget.existing)?.id ?? '',
-          workspaceId: workspaceId,
-          agentSessionId: pendingId,
-          eventType: 'agent_queue_step_sent',
-          payload: {
-            'step': stepIndex,
-            'total': _pendingAgentStepTotal,
-            'label': step.label,
-            'kind': step.kind.name,
-          },
-          requestedMode: widget.agentPolicy.mode,
-        ),
+      _recordAgentEventBestEffort(
+        taskId: (_savedTask ?? widget.existing)?.id ?? '',
+        workspaceId: workspaceId,
+        agentSessionId: pendingId,
+        eventType: 'agent_queue_step_sent',
+        payload: {
+          'step': stepIndex,
+          'total': _pendingAgentStepTotal,
+          'label': step.label,
+          'kind': step.kind.name,
+        },
+        requestedMode: widget.agentPolicy.mode,
       );
     }
   }
@@ -1661,17 +1755,13 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   void _completeAgentQueue() {
     final pendingId = _pendingAgentSessionId;
     if (pendingId.isNotEmpty) {
-      unawaited(
-        widget.store.repository.api.recordAgentEvent(
-          actorProfile: widget.store.owner.value,
-          actorPhone: widget.actorPhone,
-          taskId: (_savedTask ?? widget.existing)?.id ?? '',
-          workspaceId: _pendingAgentWorkspaceId,
-          agentSessionId: pendingId,
-          eventType: 'agent_queue_completed',
-          payload: {'steps': _pendingAgentStepTotal},
-          requestedMode: widget.agentPolicy.mode,
-        ),
+      _recordAgentEventBestEffort(
+        taskId: (_savedTask ?? widget.existing)?.id ?? '',
+        workspaceId: _pendingAgentWorkspaceId,
+        agentSessionId: pendingId,
+        eventType: 'agent_queue_completed',
+        payload: {'steps': _pendingAgentStepTotal},
+        requestedMode: widget.agentPolicy.mode,
       );
     }
     setState(() {
@@ -2425,7 +2515,6 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   Widget _buildAgentTab() {
     final policy = widget.agentPolicy;
-    final abilities = _agentAbilityLabels(policy);
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
       children: [
@@ -2485,32 +2574,6 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 22),
-        _SectionHeader(
-          icon: Icons.verified_user_outlined,
-          title: 'Возможности агента',
-          trailing: '${abilities.length}',
-        ),
-        const SizedBox(height: 10),
-        if (abilities.isEmpty)
-          const _EmptyLine(
-            icon: Icons.lock_outline,
-            text: 'Возможности не выданы',
-          )
-        else
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: abilities
-                .map(
-                  (ability) => _MetricChip(
-                    icon: Icons.check_circle_outline,
-                    text: ability,
-                  ),
-                )
-                .toList(),
-          ),
-        const SizedBox(height: 22),
         _buildAgentModePanel(),
         const SizedBox(height: 22),
         _buildAgentToolsPanel(),
@@ -2729,30 +2792,6 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         ),
       ],
     );
-  }
-
-  List<String> _agentAbilityLabels(AgentRunPolicy policy) {
-    final result = <String>[];
-    void add(bool condition, String label) {
-      if (condition && !result.contains(label)) {
-        result.add(label);
-      }
-    }
-
-    add(policy.plugins.contains('task_context'), 'Читает контекст задачи');
-    add(policy.plugins.contains('task_write'), 'Пишет в задачу');
-    add(policy.plugins.contains('workspace_read'), 'Читает воркспейс');
-    add(
-      policy.plugins.contains('workspace_write') ||
-          policy.allowedCommands.contains('session_create'),
-      'Работает в воркспейсе',
-    );
-    add(policy.plugins.contains('git'), 'Git в воркспейсе');
-    add(policy.plugins.contains('github'), 'GitHub');
-    add(policy.plugins.contains('browser'), 'Браузер');
-    add(policy.plugins.contains('deploy'), 'Деплой');
-    add(policy.plugins.contains('audit'), 'Аудит');
-    return result;
   }
 
   String _profileLabel(String profile) {
