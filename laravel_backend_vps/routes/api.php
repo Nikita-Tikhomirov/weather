@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\SyncController;
+use App\Http\Controllers\AgentPolicyController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CallController;
 use App\Http\Controllers\ChatController;
@@ -20,6 +21,9 @@ Route::get('/storage/profile_avatars/{legacyPath}', [ChatController::class, 'leg
 
 Route::middleware('sync.apikey')->group(function (): void {
     Route::post('/auth/device-start', [AuthController::class, 'deviceStart']);
+    Route::get('/me/access', [AgentPolicyController::class, 'access']);
+    Route::post('/agent/policy', [AgentPolicyController::class, 'policy']);
+    Route::post('/agent/ticket', [AgentPolicyController::class, 'ticket']);
     Route::post('/contacts/resolve', [ContactController::class, 'resolve']);
     Route::post('/profile/avatar', [ContactController::class, 'updateAvatar']);
     Route::get('/family/members', [ContactController::class, 'familyMembers']);

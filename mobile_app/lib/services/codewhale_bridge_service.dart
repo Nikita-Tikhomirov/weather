@@ -152,6 +152,7 @@ class CodeWhaleBridgeService {
   bool _disposed = false;
   bool _connecting = false;
   int _reconnectAttempts = 0;
+  String _policyTicket = '';
   final BytesBuilder _buffer = BytesBuilder(copy: false);
   final List<String> _pendingMessages = <String>[];
 
@@ -233,6 +234,10 @@ class CodeWhaleBridgeService {
 
   void requestCodeWhaleCommands() {
     _sendCommand({'type': 'codewhale_command_list'});
+  }
+
+  void updatePolicyTicket(String policyTicket) {
+    _policyTicket = policyTicket.trim();
   }
 
   void requestWorkspaceList() {
@@ -394,7 +399,14 @@ class CodeWhaleBridgeService {
   }
 
   void _sendCommand(Map<String, dynamic> payload) {
-    _sendRaw('${jsonEncode(payload)}\n');
+    final ticket = _policyTicket.trim();
+    final command = ticket.isEmpty || payload.containsKey('policy_ticket')
+        ? payload
+        : {
+            ...payload,
+            'policy_ticket': ticket,
+          };
+    _sendRaw('${jsonEncode(command)}\n');
   }
 
   void _onData(Uint8List data) {

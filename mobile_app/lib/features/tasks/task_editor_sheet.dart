@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../domain/task_draft.dart';
+import '../../models/agent_policy.dart';
 import '../../models/chat_models.dart';
 import '../../models/family_group.dart';
 import '../../models/task_collaboration.dart';
@@ -35,6 +36,7 @@ Future<void> showTaskEditorSheet({
   required String Function(DateTime value) dateKey,
   required Future<void> Function() onSaved,
   TaskItem? existing,
+  AgentRunPolicy agentPolicy = const AgentRunPolicy.unavailable(),
 }) async {
   await Navigator.of(context).push<void>(
     MaterialPageRoute(
@@ -45,6 +47,7 @@ Future<void> showTaskEditorSheet({
         dateKey: dateKey,
         onSaved: onSaved,
         existing: existing,
+        agentPolicy: agentPolicy,
       ),
     ),
   );
@@ -60,6 +63,7 @@ class TaskEditorScreen extends StatefulWidget {
     required this.onSaved,
     this.existing,
     this.initialPendingAttachments = const <TaskAttachment>[],
+    this.agentPolicy = const AgentRunPolicy.unavailable(),
   });
 
   final TaskStore store;
@@ -69,6 +73,7 @@ class TaskEditorScreen extends StatefulWidget {
   final Future<void> Function() onSaved;
   final TaskItem? existing;
   final List<TaskAttachment> initialPendingAttachments;
+  final AgentRunPolicy agentPolicy;
 
   @override
   State<TaskEditorScreen> createState() => _TaskEditorScreenState();
@@ -1150,12 +1155,96 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     }
   }
 
+  void _requestNewAgentChat() {
+    final policy = widget.agentPolicy;
+    if (!_canEdit) return;
+    if (!policy.canStartAgentChat) {
+      _showSnack(
+        policy.reason.isEmpty ? 'Нет прав на запуск агента' : policy.reason,
+      );
+      return;
+    }
+    final now = DateTime.now().toIso8601String();
+    final title = _titleCtl.text.trim().isEmpty
+        ? 'Агентский чат'
+        : 'Агент: ${_titleCtl.text.trim()}';
+    final session = TaskAgentSession(
+      id: _newId('agent-session'),
+      workspaceId: policy.workspaceId,
+      sessionId: '',
+      title: title,
+      mode: policy.mode,
+      status: 'pending',
+      createdBy: widget.store.owner.value,
+      createdAt: now,
+    );
+    setState(() {
+      _collaboration = _collaboration.copyWith(
+        agentSessions: [..._collaboration.agentSessions, session],
+        activity: [
+          ..._collaboration.activity,
+          _activity(
+            type: 'agent_session_requested',
+            text: 'запросил новый агентский чат',
+            targetId: session.id,
+          ),
+        ],
+      );
+      if (_status == WorkflowStatus.todo) {
+        _status = WorkflowStatus.in_progress;
+      }
+    });
+    _autosaveNow();
+    _showSnack('Новый агентский чат добавлен к задаче');
+  }
+
+  void _connectAgentChat() {
+    final policy = widget.agentPolicy;
+    if (!_canEdit) return;
+    if (!policy.canLinkExistingChat) {
+      _showSnack(
+        policy.reason.isEmpty ? 'Нет прав на подключение чата' : policy.reason,
+      );
+      return;
+    }
+    if (policy.sessionId.trim().isEmpty) {
+      _showSnack('Сначала выберите агентский чат в воркспейсе');
+      return;
+    }
+    final now = DateTime.now().toIso8601String();
+    final session = TaskAgentSession(
+      id: _newId('agent-session'),
+      workspaceId: policy.workspaceId,
+      sessionId: policy.sessionId,
+      title: 'Подключенный агентский чат',
+      mode: policy.mode,
+      status: 'linked',
+      createdBy: widget.store.owner.value,
+      createdAt: now,
+    );
+    setState(() {
+      _collaboration = _collaboration.copyWith(
+        agentSessions: [..._collaboration.agentSessions, session],
+        activity: [
+          ..._collaboration.activity,
+          _activity(
+            type: 'agent_session_linked',
+            text: 'подключил агентский чат',
+            targetId: session.id,
+          ),
+        ],
+      );
+    });
+    _autosaveNow();
+    _showSnack('Агентский чат подключен к задаче');
+  }
+
   @override
   Widget build(BuildContext context) {
     final title =
         widget.existing == null ? 'Новая задача' : 'Редактирование задачи';
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text(title),
@@ -1163,6 +1252,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             tabs: [
               Tab(icon: Icon(Icons.tune), text: 'Настройки'),
               Tab(icon: Icon(Icons.forum_outlined), text: 'Работа'),
+              Tab(icon: Icon(Icons.smart_toy_outlined), text: 'Агент'),
             ],
           ),
           actions: [
@@ -1183,6 +1273,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           children: [
             _buildSettingsTab(),
             _buildWorkTab(),
+            _buildAgentTab(),
           ],
         ),
       ),
@@ -1594,6 +1685,112 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                   labelFor: _profileLabel,
                 ),
               ),
+      ],
+    );
+  }
+
+  Widget _buildAgentTab() {
+    final policy = widget.agentPolicy;
+    final plugins = policy.pluginLabels;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+      children: [
+        _SectionHeader(
+          icon: Icons.smart_toy_outlined,
+          title: 'Агент',
+          trailing: policy.allowed
+              ? (policy.modeLabel.isEmpty ? 'Доступ есть' : policy.modeLabel)
+              : 'Нет доступа',
+        ),
+        const SizedBox(height: 10),
+        Text(
+          policy.allowed
+              ? 'Агент может читать задачу, писать в работу и запускаться в воркспейсе.'
+              : policy.reason,
+        ),
+        const SizedBox(height: 14),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _MetricChip(
+              icon: Icons.mode_comment_outlined,
+              text: '${_collaboration.agentSessionCount}',
+            ),
+            if (policy.modeLabel.isNotEmpty)
+              _MetricChip(icon: Icons.bolt_outlined, text: policy.modeLabel),
+            if (policy.workspaceId.isNotEmpty)
+              _MetricChip(
+                icon: Icons.workspaces_outline,
+                text: policy.workspaceId,
+              ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.link),
+                label: const Text('Подключить чат'),
+                onPressed: _canEdit && policy.canLinkExistingChat
+                    ? _connectAgentChat
+                    : null,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: FilledButton.icon(
+                icon: const Icon(Icons.add_comment_outlined),
+                label: const Text('Новый чат'),
+                onPressed: _canEdit && policy.canStartAgentChat
+                    ? _requestNewAgentChat
+                    : null,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 22),
+        _SectionHeader(
+          icon: Icons.extension_outlined,
+          title: 'Плагины',
+          trailing: '${plugins.length}',
+        ),
+        const SizedBox(height: 10),
+        if (plugins.isEmpty)
+          const _EmptyLine(
+            icon: Icons.lock_outline,
+            text: 'Плагины не выданы',
+          )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: plugins
+                .map(
+                  (plugin) => _MetricChip(
+                    icon: Icons.extension_outlined,
+                    text: plugin,
+                  ),
+                )
+                .toList(),
+          ),
+        const SizedBox(height: 22),
+        _SectionHeader(
+          icon: Icons.forum_outlined,
+          title: 'Чаты задачи',
+          trailing: '${_collaboration.agentSessionCount}',
+        ),
+        const SizedBox(height: 10),
+        if (_collaboration.agentSessions.isEmpty)
+          const _EmptyLine(
+            icon: Icons.chat_bubble_outline,
+            text: 'Агентские чаты не подключены',
+          )
+        else
+          ..._collaboration.agentSessions.map(
+            (session) => _AgentSessionRow(session: session),
+          ),
       ],
     );
   }
@@ -2463,6 +2660,34 @@ class _ActivityRow extends StatelessWidget {
   }
 }
 
+class _AgentSessionRow extends StatelessWidget {
+  const _AgentSessionRow({required this.session});
+
+  final TaskAgentSession session;
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle = [
+      if (session.workspaceId.isNotEmpty) session.workspaceId,
+      if (session.mode.isNotEmpty) session.mode,
+      if (session.status.isNotEmpty) _agentStatusText(session.status),
+    ].join(' · ');
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.smart_toy_outlined),
+      title: Text(
+        session.title.isEmpty ? 'Агентский чат' : session.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: subtitle.isEmpty ? null : Text(subtitle),
+      trailing: session.sessionId.isEmpty
+          ? const Icon(Icons.pending_outlined)
+          : const Icon(Icons.link),
+    );
+  }
+}
+
 class _PhotoViewer extends StatelessWidget {
   const _PhotoViewer({
     required this.attachment,
@@ -2502,6 +2727,21 @@ class _PhotoViewer extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+String _agentStatusText(String value) {
+  switch (value) {
+    case 'pending':
+      return 'ожидает запуска';
+    case 'linked':
+      return 'подключен';
+    case 'running':
+      return 'в работе';
+    case 'done':
+      return 'готово';
+    default:
+      return value;
   }
 }
 

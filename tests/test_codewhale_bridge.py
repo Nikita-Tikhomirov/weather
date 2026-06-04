@@ -22,6 +22,7 @@ from codewhale_bridge import (
     _resolve_codewhale_cmd,
     _tunnel_registration_message,
 )
+from agent_policy import build_agent_run_policy, build_user_access, sign_policy_ticket
 
 
 class _FakeProcess:
@@ -287,6 +288,84 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             self.assertEqual(reply["type"], "workspace")
             self.assertEqual(reply["workspace"]["name"], "Demo")
             self.assertTrue(Path(reply["workspace"]["path"]).exists())
+
+    def test_secure_bridge_requires_policy_ticket_for_workspace_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(
+                root / "Desktop",
+                root / "state",
+                require_policy_ticket=True,
+                policy_ticket_secret="secret",
+            )
+
+            reply = bridge.handle_message({"type": "workspace_list"})
+
+            self.assertEqual(reply["type"], "error")
+            self.assertIn("Нет прав", reply["error"])
+
+    def test_secure_bridge_accepts_signed_ticket_for_allowed_workspace_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(
+                root / "Desktop",
+                root / "state",
+                require_policy_ticket=True,
+                policy_ticket_secret="secret",
+            )
+            access = build_user_access(
+                "+7 967 981-24-38",
+                profile_key="nikita",
+            )
+            policy = build_agent_run_policy(
+                access,
+                task_type="feature",
+                requested_mode="executor",
+                workspace_id="weather",
+                task_id="task-1",
+            )
+            ticket = sign_policy_ticket(policy, secret="secret")
+
+            reply = bridge.handle_message(
+                {"type": "workspace_list", "policy_ticket": ticket}
+            )
+
+            self.assertEqual(reply["type"], "workspace_list")
+
+    def test_secure_bridge_rejects_command_not_allowed_by_ticket(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(
+                root / "Desktop",
+                root / "state",
+                require_policy_ticket=True,
+                policy_ticket_secret="secret",
+            )
+            access = build_user_access(
+                "+7 900 000-00-00",
+                profile_key="observer",
+                roles=["workspace_user"],
+                capabilities=["messenger.use", "workspaces.view"],
+            )
+            policy = {
+                **build_agent_run_policy(
+                    access,
+                    task_type="feature",
+                    requested_mode="commentator",
+                    workspace_id="weather",
+                    task_id="task-1",
+                ),
+                "allowed": True,
+                "allowed_commands": ["workspace_list"],
+            }
+            ticket = sign_policy_ticket(policy, secret="secret")
+
+            reply = bridge.handle_message(
+                {"type": "session_create", "workspace_id": "weather", "policy_ticket": ticket}
+            )
+
+            self.assertEqual(reply["type"], "error")
+            self.assertIn("Нет прав", reply["error"])
 
     def test_handle_codewhale_command_list_includes_skills(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

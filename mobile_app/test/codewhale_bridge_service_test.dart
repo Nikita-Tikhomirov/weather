@@ -190,6 +190,43 @@ void main() {
     await server.close();
   });
 
+  test('policy ticket is attached to bridge commands', () async {
+    final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    final received = <Map<String, dynamic>>[];
+    final connected = Completer<void>();
+
+    final sub = server.listen((socket) {
+      connected.complete();
+      utf8.decoder.bind(socket).transform(const LineSplitter()).listen((line) {
+        received.add(jsonDecode(line) as Map<String, dynamic>);
+      });
+    });
+
+    SharedPreferences.setMockInitialValues({
+      'bridge_host': '127.0.0.1:${server.port}',
+    });
+
+    final service = CodeWhaleBridgeService(
+      onMessage: (_) {},
+      onStatusChange: (_, __) {},
+    );
+
+    expect(await service.connect(), isTrue);
+    await connected.future.timeout(const Duration(seconds: 2));
+    service.updatePolicyTicket('signed-ticket');
+    service.requestWorkspaceList();
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    final workspaceList = received.firstWhere(
+      (row) => row['type'] == 'workspace_list',
+    );
+    expect(workspaceList['policy_ticket'], 'signed-ticket');
+
+    service.dispose();
+    await sub.cancel();
+    await server.close();
+  });
+
   test('workspace and session commands are sent as json lines', () async {
     final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
     final received = <Map<String, dynamic>>[];

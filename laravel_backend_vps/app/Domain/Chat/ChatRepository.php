@@ -590,6 +590,13 @@ final class ChatRepository
         if ((string) $conversation->kind !== 'group') {
             throw new InvalidArgumentException('Can only manage group conversations');
         }
+        $isMember = DB::table('chat_conversation_members')
+            ->where('conversation_id', (int) $conversation->id)
+            ->where('profile_key', $actor)
+            ->exists();
+        if (!$isMember) {
+            throw new InvalidArgumentException('Actor is not a member of this conversation');
+        }
         return $conversation;
     }
 

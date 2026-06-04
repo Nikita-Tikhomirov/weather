@@ -171,6 +171,18 @@ void main() {
             ],
           ),
         ],
+        agentSessions: [
+          TaskAgentSession(
+            id: 'agent-session-1',
+            workspaceId: 'weather',
+            sessionId: 'session-1',
+            title: 'Починить задачу',
+            mode: 'executor',
+            status: 'linked',
+            createdBy: 'nik',
+            createdAt: '2026-06-01T12:00:00',
+          ),
+        ],
       );
       const task = TaskItem(
         id: 'task-collab',
@@ -200,6 +212,8 @@ void main() {
       expect(fromDb.collaboration, collaboration);
       expect(fromDb.collaboration.checklistDoneCount, 1);
       expect(fromDb.collaboration.attachmentCount, 1);
+      expect(fromDb.collaboration.agentSessionCount, 1);
+      expect(fromDb.collaboration.agentSessions.single.workspaceId, 'weather');
     });
 
     test('preserves task attachment asset url and metadata', () {

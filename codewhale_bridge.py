@@ -18,6 +18,12 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator
 
+from agent_policy import (
+    PROTECTED_COMMANDS,
+    command_allowed_by_policy,
+    validate_policy_ticket,
+)
+
 
 RECONNECT_DELAY_SECONDS = 5
 TUNNEL_HEARTBEAT_SECONDS = 30
@@ -944,6 +950,8 @@ class CodeWhaleBridge:
         desktop_root: Path,
         state_dir: Path,
         codewhale_cmd: str = "codewhale",
+        require_policy_ticket: bool = False,
+        policy_ticket_secret: str | None = None,
     ) -> None:
         codewhale_cmd = _resolve_codewhale_cmd(codewhale_cmd)
         self.workspaces = WorkspaceRegistry(desktop_root, state_dir)
@@ -959,6 +967,11 @@ class CodeWhaleBridge:
         self._session_stream_locks: dict[tuple[str, str], threading.Lock] = {}
         self._session_stream_locks_guard = threading.Lock()
         self._next_port = 43100
+        self.require_policy_ticket = require_policy_ticket
+        self.policy_ticket_secret = policy_ticket_secret or os.environ.get(
+            "CODEWHALE_POLICY_SECRET",
+            "",
+        )
         self.workspaces.discover_workspaces()
 
     def handle_message(self, message: dict[str, Any]) -> dict[str, Any]:
@@ -973,6 +986,7 @@ class CodeWhaleBridge:
 
     def _handle_message(self, message: dict[str, Any]) -> dict[str, Any]:
         msg_type = str(message.get("type") or "").strip()
+        self._authorize_message(message, msg_type)
         if msg_type == "codewhale_command_list":
             return {
                 "type": "codewhale_command_list",
@@ -1193,6 +1207,7 @@ class CodeWhaleBridge:
         raise ValueError(f"unsupported message type: {msg_type}")
 
     def stream_session_message(self, message: dict[str, Any]) -> Iterator[dict[str, Any]]:
+        self._authorize_message(message, "session_send")
         text = str(message.get("text") or "").strip()
         if not text:
             raise ValueError("message text is required")
@@ -1638,6 +1653,22 @@ class CodeWhaleBridge:
             }
             for name, description in sorted(descriptions.items())
         ]
+
+    def _authorize_message(self, message: dict[str, Any], msg_type: str) -> None:
+        if not self.require_policy_ticket or msg_type not in PROTECTED_COMMANDS:
+            return
+        ticket = str(message.get("policy_ticket") or "").strip()
+        if not ticket:
+            raise ValueError("Нет прав на действие: требуется policy-ticket.")
+        try:
+            policy = validate_policy_ticket(
+                ticket,
+                secret=self.policy_ticket_secret,
+            )
+        except ValueError as exc:
+            raise ValueError(f"Нет прав на действие: {exc}") from exc
+        if not command_allowed_by_policy(msg_type, policy):
+            raise ValueError("Нет прав на это действие в воркспейсе.")
 
     def _workspace_id(self, message: dict[str, Any]) -> str:
         return str(message.get("workspace_id") or "").strip()

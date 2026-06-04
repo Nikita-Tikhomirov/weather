@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Access\AccessPolicyService;
 use App\Domain\Chat\ChatRepository;
 use App\Domain\Sync\ActorProfileGuard;
 use App\Domain\Sync\SyncRepository;
@@ -15,6 +16,7 @@ class ProjectGroupController extends Controller
     public function __construct(
         private readonly SyncRepository $repo,
         private readonly ChatRepository $chat,
+        private readonly AccessPolicyService $access,
     ) {}
     public function listProjects(Request $request): JsonResponse
     {
@@ -61,10 +63,7 @@ class ProjectGroupController extends Controller
     {
         try {
             $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
-            $name = trim((string)$request->input('name', (string)($group['name'] ?? '')));
-            if ($name === '') {
-                throw new InvalidArgumentException('name is required');
-            }
+            $name = trim((string)$request->input('name', ''));
             if ($name === '') {
                 throw new InvalidArgumentException('name is required');
             }
@@ -109,12 +108,12 @@ class ProjectGroupController extends Controller
                 throw new InvalidArgumentException('id is required');
             }
 
-            // Only the project owner can edit
+            // Only the project owner or superadmin can edit.
             $project = $this->repo->findProject($id);
             if ($project === null) {
                 throw new InvalidArgumentException('Project not found');
             }
-            if ($project['owner_key'] !== $actor) {
+            if ($project['owner_key'] !== $actor && !$this->access->isSuperadminActor($actor)) {
                 throw new InvalidArgumentException('Only the project owner can edit');
             }
 
@@ -152,10 +151,13 @@ class ProjectGroupController extends Controller
                 throw new InvalidArgumentException('id is required');
             }
 
-            // Actor must be able to see the project (owner OR member of attached group)
-            $visibleIds = array_column($this->repo->visibleProjectsForActor($actor), 'id');
-            if (!in_array($id, $visibleIds, true)) {
-                throw new InvalidArgumentException('Project not found or access denied');
+            // Members can see projects, but only owner or superadmin can delete.
+            $project = $this->repo->findProject($id);
+            if ($project === null) {
+                throw new InvalidArgumentException('Project not found');
+            }
+            if ($project['owner_key'] !== $actor && !$this->access->isSuperadminActor($actor)) {
+                throw new InvalidArgumentException('Only the project owner can delete');
             }
 
             $this->repo->deleteProject($id);
@@ -176,12 +178,12 @@ class ProjectGroupController extends Controller
                 throw new InvalidArgumentException('project_id is required');
             }
 
-            // Only the project owner can assign groups
+            // Only the project owner or superadmin can assign groups.
             $project = $this->repo->findProject($projectId);
             if ($project === null) {
                 throw new InvalidArgumentException('Project not found');
             }
-            if ($project['owner_key'] !== $actor) {
+            if ($project['owner_key'] !== $actor && !$this->access->isSuperadminActor($actor)) {
                 throw new InvalidArgumentException('Only the project owner can assign groups');
             }
 
@@ -253,12 +255,12 @@ class ProjectGroupController extends Controller
                 throw new InvalidArgumentException('id is required');
             }
 
-            // Only the group owner can edit
+            // Only the group owner or superadmin can edit.
             $group = $this->repo->findGroup($id);
             if ($group === null) {
                 throw new InvalidArgumentException('Group not found');
             }
-            if ($group['owner_key'] !== $actor) {
+            if ($group['owner_key'] !== $actor && !$this->access->isSuperadminActor($actor)) {
                 throw new InvalidArgumentException('Only the group owner can edit');
             }
 
@@ -298,10 +300,13 @@ class ProjectGroupController extends Controller
                 throw new InvalidArgumentException('id is required');
             }
 
-            // Actor must be able to see the group (owner OR member)
-            $visibleIds = array_column($this->repo->visibleGroupsForActor($actor), 'id');
-            if (!in_array($id, $visibleIds, true)) {
-                throw new InvalidArgumentException('Group not found or access denied');
+            // Members can see groups, but only owner or superadmin can delete.
+            $group = $this->repo->findGroup($id);
+            if ($group === null) {
+                throw new InvalidArgumentException('Group not found');
+            }
+            if ($group['owner_key'] !== $actor && !$this->access->isSuperadminActor($actor)) {
+                throw new InvalidArgumentException('Only the group owner can delete');
             }
 
             $this->repo->deleteFamilyGroup($id);

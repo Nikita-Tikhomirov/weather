@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Access\AccessPolicyService;
 use App\Domain\Profiles\PhoneProfileRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -10,7 +11,10 @@ use Throwable;
 
 class AuthController extends Controller
 {
-    public function __construct(private readonly PhoneProfileRepository $profiles)
+    public function __construct(
+        private readonly PhoneProfileRepository $profiles,
+        private readonly AccessPolicyService $access,
+    )
     {
     }
 
@@ -28,6 +32,10 @@ class AuthController extends Controller
             return $this->json(200, [
                 'ok' => true,
                 'user' => $user,
+                'access' => $this->access->accessForPhone(
+                    (string) ($user['phone'] ?? ''),
+                    (string) ($user['profile_key'] ?? ''),
+                ),
                 'family_members' => $this->profiles->familyMembers((string)$user['profile_key']),
             ]);
         } catch (InvalidArgumentException $e) {

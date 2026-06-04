@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:family_todo_mobile/features/tasks/task_editor_sheet.dart';
+import 'package:family_todo_mobile/models/agent_policy.dart';
 import 'package:family_todo_mobile/models/family_group.dart';
 import 'package:family_todo_mobile/models/task_collaboration.dart';
 import 'package:family_todo_mobile/models/task_item.dart';
@@ -265,6 +266,56 @@ void main() {
       expect(find.byType(TabBar), findsOneWidget);
       expect(find.text('Настройки'), findsOneWidget);
       expect(find.text('Работа'), findsOneWidget);
+      expect(find.text('Агент'), findsOneWidget);
+    });
+
+    testWidgets('agent tab shows policy actions and plugins', (tester) async {
+      final store = _FakeTaskStore();
+      store.selectedDate.value = DateTime(2026, 5, 31);
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Исполнитель',
+        plugins: ['task_context', 'task_write', 'workspace_write', 'git'],
+        allowedCommands: ['session_open', 'session_create', 'session_send'],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  showTaskEditorSheet(
+                    context: context,
+                    store: store,
+                    knownContacts: const [],
+                    contactLabel: (c) => c.displayName,
+                    dateKey: (d) => d.toIso8601String(),
+                    onSaved: () async {},
+                    agentPolicy: policy,
+                  );
+                },
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Агент'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Подключить чат'), findsOneWidget);
+      expect(find.text('Новый чат'), findsOneWidget);
+      expect(find.text('Исполнитель'), findsWidgets);
+      expect(find.text('Контекст задачи'), findsOneWidget);
+      expect(find.text('Запись в воркспейс'), findsOneWidget);
     });
 
     testWidgets('work tab supports comments and checklists', (tester) async {

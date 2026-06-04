@@ -462,24 +462,124 @@ class TaskActivityEntry {
 }
 
 @immutable
+class TaskAgentSession {
+  const TaskAgentSession({
+    required this.id,
+    required this.workspaceId,
+    required this.sessionId,
+    required this.title,
+    required this.mode,
+    required this.status,
+    required this.createdBy,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String workspaceId;
+  final String sessionId;
+  final String title;
+  final String mode;
+  final String status;
+  final String createdBy;
+  final String createdAt;
+
+  factory TaskAgentSession.fromJson(Map<String, dynamic> json) {
+    return TaskAgentSession(
+      id: (json['id'] ?? '').toString(),
+      workspaceId: (json['workspace_id'] ?? '').toString(),
+      sessionId: (json['session_id'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      mode: (json['mode'] ?? '').toString(),
+      status: (json['status'] ?? '').toString(),
+      createdBy: (json['created_by'] ?? '').toString(),
+      createdAt: (json['created_at'] ?? '').toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'workspace_id': workspaceId,
+      'session_id': sessionId,
+      'title': title,
+      'mode': mode,
+      'status': status,
+      'created_by': createdBy,
+      'created_at': createdAt,
+    };
+  }
+
+  TaskAgentSession copyWith({
+    String? id,
+    String? workspaceId,
+    String? sessionId,
+    String? title,
+    String? mode,
+    String? status,
+    String? createdBy,
+    String? createdAt,
+  }) {
+    return TaskAgentSession(
+      id: id ?? this.id,
+      workspaceId: workspaceId ?? this.workspaceId,
+      sessionId: sessionId ?? this.sessionId,
+      title: title ?? this.title,
+      mode: mode ?? this.mode,
+      status: status ?? this.status,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TaskAgentSession &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          workspaceId == other.workspaceId &&
+          sessionId == other.sessionId &&
+          title == other.title &&
+          mode == other.mode &&
+          status == other.status &&
+          createdBy == other.createdBy &&
+          createdAt == other.createdAt;
+
+  @override
+  int get hashCode => Object.hash(
+        id,
+        workspaceId,
+        sessionId,
+        title,
+        mode,
+        status,
+        createdBy,
+        createdAt,
+      );
+}
+
+@immutable
 class TaskCollaboration {
   const TaskCollaboration({
     this.comments = const [],
     this.attachments = const [],
     this.checklists = const [],
     this.activity = const [],
+    this.agentSessions = const [],
   });
 
   final List<TaskComment> comments;
   final List<TaskAttachment> attachments;
   final List<TaskChecklist> checklists;
   final List<TaskActivityEntry> activity;
+  final List<TaskAgentSession> agentSessions;
 
   bool get isEmpty =>
       comments.isEmpty &&
       attachments.isEmpty &&
       checklists.isEmpty &&
-      activity.isEmpty;
+      activity.isEmpty &&
+      agentSessions.isEmpty;
 
   int get commentCount => comments.length;
   int get attachmentCount => attachments.length;
@@ -487,6 +587,7 @@ class TaskCollaboration {
       checklists.fold(0, (sum, checklist) => sum + checklist.totalCount);
   int get checklistDoneCount =>
       checklists.fold(0, (sum, checklist) => sum + checklist.doneCount);
+  int get agentSessionCount => agentSessions.length;
 
   factory TaskCollaboration.fromJson(Object? raw) {
     final map = _decodeMap(raw);
@@ -505,6 +606,9 @@ class TaskCollaboration {
       activity: _decodeMapList(map['activity'])
           .map(TaskActivityEntry.fromJson)
           .toList(),
+      agentSessions: _decodeMapList(map['agent_sessions'])
+          .map(TaskAgentSession.fromJson)
+          .toList(),
     );
   }
 
@@ -514,6 +618,7 @@ class TaskCollaboration {
       'attachments': attachments.map((item) => item.toJson()).toList(),
       'checklists': checklists.map((item) => item.toJson()).toList(),
       'activity': activity.map((item) => item.toJson()).toList(),
+      'agent_sessions': agentSessions.map((item) => item.toJson()).toList(),
     };
   }
 
@@ -524,12 +629,14 @@ class TaskCollaboration {
     List<TaskAttachment>? attachments,
     List<TaskChecklist>? checklists,
     List<TaskActivityEntry>? activity,
+    List<TaskAgentSession>? agentSessions,
   }) {
     return TaskCollaboration(
       comments: comments ?? this.comments,
       attachments: attachments ?? this.attachments,
       checklists: checklists ?? this.checklists,
       activity: activity ?? this.activity,
+      agentSessions: agentSessions ?? this.agentSessions,
     );
   }
 
@@ -546,7 +653,8 @@ class TaskCollaboration {
           listEquals(comments, other.comments) &&
           listEquals(attachments, other.attachments) &&
           listEquals(checklists, other.checklists) &&
-          listEquals(activity, other.activity);
+          listEquals(activity, other.activity) &&
+          listEquals(agentSessions, other.agentSessions);
 
   @override
   int get hashCode => Object.hash(
@@ -554,6 +662,7 @@ class TaskCollaboration {
         Object.hashAll(attachments),
         Object.hashAll(checklists),
         Object.hashAll(activity),
+        Object.hashAll(agentSessions),
       );
 }
 
