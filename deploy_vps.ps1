@@ -25,6 +25,11 @@ $env:WEATHER_SKIP_STICKER_IMPORT = if ($SkipStickerImport) { "1" } else { "0" }
 $env:WEATHER_SKIP_STICKER_ASSETS = if ($SkipStickerAssets) { "1" } else { "0" }
 
 $files = @(
+    @{Local="laravel_backend_vps\config\sync.php"; Remote="$RemoteBase/config/sync.php"},
+    @{Local="laravel_backend_vps\app\Domain\Access\AccessPolicyService.php"; Remote="$RemoteBase/app/Domain/Access/AccessPolicyService.php"},
+    @{Local="laravel_backend_vps\app\Domain\Agent\AgentTaskService.php"; Remote="$RemoteBase/app/Domain/Agent/AgentTaskService.php"},
+    @{Local="laravel_backend_vps\app\Http\Controllers\AgentPolicyController.php"; Remote="$RemoteBase/app/Http/Controllers/AgentPolicyController.php"},
+    @{Local="laravel_backend_vps\app\Http\Controllers\AuthController.php"; Remote="$RemoteBase/app/Http/Controllers/AuthController.php"},
     @{Local="laravel_backend_vps\app\Services\Push\FcmPushGateway.php";   Remote="$RemoteBase/app/Services/Push/FcmPushGateway.php"},
     @{Local="laravel_backend_vps\app\Http\Controllers\ChatController.php"; Remote="$RemoteBase/app/Http/Controllers/ChatController.php"},
     @{Local="laravel_backend_vps\app\Domain\Chat\ChatRepository.php";      Remote="$RemoteBase/app/Domain/Chat/ChatRepository.php"},
@@ -38,6 +43,7 @@ $files = @(
     @{Local="laravel_backend_vps\app\Domain\Sync\ActorProfileGuard.php";   Remote="$RemoteBase/app/Domain/Sync/ActorProfileGuard.php"},
     @{Local="laravel_backend_vps\routes\api.php";                          Remote="$RemoteBase/routes/api.php"},
     @{Local="laravel_backend_vps\routes\console.php";                      Remote="$RemoteBase/routes/console.php"},
+    @{Local="laravel_backend_vps\database\migrations\2026_06_04_001000_create_access_and_agent_orchestration_tables.php"; Remote="$RemoteBase/database/migrations/2026_06_04_001000_create_access_and_agent_orchestration_tables.php"},
     @{Local="laravel_backend_vps\database\migrations\2026_06_02_000700_deactivate_legacy_chat_stickers.php"; Remote="$RemoteBase/database/migrations/2026_06_02_000700_deactivate_legacy_chat_stickers.php"},
     @{Local="laravel_backend_vps\database\migrations\2026_05_26_000800_add_projects_and_family_groups.php"; Remote="$RemoteBase/database/migrations/2026_05_26_000800_add_projects_and_family_groups.php"}
 )
