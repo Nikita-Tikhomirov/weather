@@ -269,7 +269,8 @@ void main() {
       expect(find.text('Агент'), findsOneWidget);
     });
 
-    testWidgets('agent tab shows policy actions and plugins', (tester) async {
+    testWidgets('agent tab shows policy actions and readable abilities',
+        (tester) async {
       final store = _FakeTaskStore();
       store.selectedDate.value = DateTime(2026, 5, 31);
       const policy = AgentRunPolicy(
@@ -314,8 +315,9 @@ void main() {
       expect(find.text('Подключить чат'), findsOneWidget);
       expect(find.text('Новый чат'), findsOneWidget);
       expect(find.text('Исполнитель'), findsWidgets);
-      expect(find.text('Контекст задачи'), findsOneWidget);
-      expect(find.text('Запись в воркспейс'), findsOneWidget);
+      expect(find.text('Читает контекст задачи'), findsOneWidget);
+      expect(find.text('Работает в воркспейсе'), findsOneWidget);
+      expect(find.text('Плагины'), findsNothing);
     });
 
     testWidgets('work tab supports comments and checklists', (tester) async {

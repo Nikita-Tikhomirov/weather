@@ -171,7 +171,8 @@ class UserAccessPolicy {
               .map(Map<String, dynamic>.from)
               .toList() ??
           const [],
-      isSuperadmin: json['is_superadmin'] == true || json['isSuperadmin'] == true,
+      isSuperadmin:
+          json['is_superadmin'] == true || json['isSuperadmin'] == true,
     );
   }
 
@@ -263,12 +264,49 @@ class AgentContextPack {
       for (final comment in comments.take(12)) {
         final text = (comment['text'] ?? '').toString().trim();
         if (text.isNotEmpty) {
-          lines.add('- $text');
+          final author = (comment['author_profile'] ?? '').toString().trim();
+          lines.add('- ${author.isEmpty ? 'Пользователь' : author}: $text');
         }
       }
     }
     if (checklists.isNotEmpty) {
-      lines.add('Чеклисты: ${checklists.length}');
+      lines.add('Чеклисты:');
+      for (final checklist in checklists) {
+        final title = (checklist['title'] ?? '').toString().trim();
+        lines.add('- ${title.isEmpty ? 'Без названия' : title}');
+        final rawItems = checklist['items'];
+        final items = rawItems is List
+            ? rawItems.whereType<Map>().toList()
+            : const <Map>[];
+        for (final item in items.take(20)) {
+          final text = (item['text'] ?? '').toString().trim();
+          if (text.isEmpty) {
+            continue;
+          }
+          final done = item['done'] == true || item['done'] == 1;
+          lines.add('  - [${done ? 'x' : ' '}] $text');
+        }
+      }
+    }
+    final attachments = _mapList(task['attachments']).isNotEmpty
+        ? _mapList(task['attachments'])
+        : _mapList(
+            task['collaboration'] is Map
+                ? (task['collaboration'] as Map)['attachments']
+                : null,
+          );
+    if (attachments.isNotEmpty) {
+      lines.add('Вложения:');
+      for (final attachment in attachments.take(20)) {
+        final filename = (attachment['filename'] ?? '').toString().trim();
+        final assetUrl = (attachment['asset_url'] ?? '').toString().trim();
+        final caption = (attachment['caption'] ?? '').toString().trim();
+        lines.add(
+          '- ${filename.isEmpty ? 'Файл' : filename}'
+          '${assetUrl.isEmpty ? '' : ' ($assetUrl)'}'
+          '${caption.isEmpty ? '' : ': $caption'}',
+        );
+      }
     }
     if (agentSessions.isNotEmpty) {
       lines.add('Уже подключенные агентские чаты: ${agentSessions.length}');

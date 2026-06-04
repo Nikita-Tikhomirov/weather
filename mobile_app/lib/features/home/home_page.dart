@@ -16,6 +16,7 @@ import '../../app/app_labels.dart';
 import '../../app/app_theme.dart';
 import '../../shared/utils/avatar_url_resolver.dart';
 import 'home_helpers.dart';
+import '../admin/admin_access_page.dart';
 import '../chat/active_call_banner.dart';
 import '../chat/call_screen.dart';
 import '../chat/chat_photo_viewer.dart';
@@ -2904,8 +2905,9 @@ class _HomePageState extends State<HomePage> {
     final self = ChatContact(
       profileKey: store.owner.value,
       displayName: _profileLabel(store.owner.value),
-      phone: '',
+      phone: _currentProfilePhone,
       conversationKey: '',
+      avatarUrl: _currentProfileAvatarUrl,
     );
     result.add(self);
     seen.add(self.profileKey);
@@ -2928,6 +2930,30 @@ class _HomePageState extends State<HomePage> {
     return _profileLabel(contact.profileKey);
   }
 
+  void _openAdminAccess() {
+    final store = _store;
+    if (store == null || !_accessPolicy.canManageWorkspaceAccess) {
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AdminAccessPage(
+          api: store.repository.api,
+          actorProfile: store.owner.value,
+          actorPhone: _currentProfilePhone,
+          accessPolicy: _accessPolicy,
+          contacts: _allKnownContacts(store),
+          contactLabel: contactLabel,
+          projects: store.projects.value,
+          loadProjects: () async {
+            await store.refreshProjectsAndGroups();
+            return store.projects.value;
+          },
+        ),
+      ),
+    );
+  }
+
   void _openProfile() {
     final store = _store;
     if (store == null) return;
@@ -2946,6 +2972,12 @@ class _HomePageState extends State<HomePage> {
           onDisplayNameChanged: (name) {
             setState(() => _currentProfileDisplayName = name);
           },
+          onOpenAdmin: _accessPolicy.canManageWorkspaceAccess
+              ? () {
+                  Navigator.of(context).pop();
+                  _openAdminAccess();
+                }
+              : null,
         ),
       ),
     );
@@ -3328,6 +3360,14 @@ class _HomePageState extends State<HomePage> {
                       onPressed: _openProfile,
                     ),
                     actions: [
+                      if (_accessPolicy.canManageWorkspaceAccess)
+                        IconButton(
+                          tooltip: 'Администрирование',
+                          icon: const Icon(
+                            Icons.admin_panel_settings_outlined,
+                          ),
+                          onPressed: _openAdminAccess,
+                        ),
                       _themeMenuButton(),
                       ValueListenableBuilder<bool>(
                         valueListenable: store.canUndo,

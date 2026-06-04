@@ -35,6 +35,7 @@ class CodeWhaleBridgeMessage {
     this.sessionId = '',
     this.taskId = '',
     this.taskStatus = '',
+    this.taskResultSummary = '',
     this.isFinal = false,
     this.requestId = '',
   });
@@ -62,6 +63,7 @@ class CodeWhaleBridgeMessage {
   final String sessionId;
   final String taskId;
   final String taskStatus;
+  final String taskResultSummary;
   final bool isFinal;
   final String requestId;
 
@@ -114,6 +116,7 @@ class CodeWhaleBridgeMessage {
       sessionId: (json['session_id'] ?? '').toString(),
       taskId: (json['task_id'] ?? '').toString(),
       taskStatus: (json['status'] ?? '').toString(),
+      taskResultSummary: _taskResultSummary(json['task']),
       isFinal: json['final'] == true,
       requestId: (json['request_id'] ?? '').toString(),
     );
@@ -134,6 +137,13 @@ class CodeWhaleBridgeMessage {
       return WorkspaceSession.fromJson(value);
     }
     return null;
+  }
+
+  static String _taskResultSummary(Object? value) {
+    if (value is Map) {
+      return (value['result_summary'] ?? '').toString();
+    }
+    return '';
   }
 }
 

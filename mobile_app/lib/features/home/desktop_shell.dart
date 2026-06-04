@@ -157,6 +157,14 @@ extension _DesktopShellExtension on _HomePageState {
                             );
                           },
                         ),
+                        if (_accessPolicy.canManageWorkspaceAccess)
+                          IconButton(
+                            tooltip: 'Администрирование',
+                            icon: const Icon(
+                              Icons.admin_panel_settings_outlined,
+                            ),
+                            onPressed: _openAdminAccess,
+                          ),
                         IconButton(
                           tooltip: 'Синхронизация',
                           icon: const Icon(Icons.sync),

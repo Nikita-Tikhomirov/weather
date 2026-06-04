@@ -17,6 +17,7 @@ import '../../models/task_item.dart';
 import '../../models/task_project.dart';
 import '../../services/codewhale_bridge_service.dart';
 import '../../state/task_store.dart';
+import 'agent_launch_plan.dart';
 
 const _reminderOptions = <int, String>{
   1440: 'За 24 часа',
@@ -119,7 +120,21 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   CodeWhaleBridgeService? _agentBridge;
   String _pendingAgentSessionId = '';
   String _pendingAgentWorkspaceId = '';
-  String _pendingAgentPrompt = '';
+  String _pendingAgentBridgeSessionId = '';
+  Timer? _agentTaskPoller;
+  List<AgentLaunchStep> _pendingAgentSteps = const [];
+  AgentLaunchStep? _activeAgentStep;
+  StringBuffer? _agentResultBuffer;
+  int _pendingAgentStepTotal = 0;
+  bool _agentQueueActive = false;
+  List<Map<String, dynamic>> _agentCommands = const [];
+  List<String> _selectedAgentCommandValues = const [];
+  bool _agentCommandsLoading = false;
+  String _agentProvider = '';
+  String _agentModel = '';
+  String _agentApprovalPolicy = '';
+  String _agentSandboxMode = '';
+  bool _agentAutoMode = false;
 
   @override
   void initState() {
@@ -176,6 +191,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     for (final controller in _checklistItemControllers.values) {
       controller.dispose();
     }
+    _agentTaskPoller?.cancel();
     _agentBridge?.dispose();
     super.dispose();
   }
@@ -1170,6 +1186,31 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     unawaited(_startNewAgentChat());
   }
 
+  Future<void> _loadAgentCommands() async {
+    if (_agentCommandsLoading || !widget.agentPolicy.allowed) {
+      return;
+    }
+    setState(() => _agentCommandsLoading = true);
+    final bridge = _ensureAgentBridge();
+    try {
+      final connected = await bridge.connect();
+      if (!connected) {
+        throw StateError('CodeWhale недоступен');
+      }
+      bridge.requestCodeWhaleCommands();
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      if (_agentBridge == bridge) {
+        bridge.dispose();
+        _agentBridge = null;
+      }
+      setState(() => _agentCommandsLoading = false);
+      _showSnack('Не удалось загрузить инструменты агента: $error');
+    }
+  }
+
   Future<void> _startNewAgentChat() async {
     final policy = widget.agentPolicy;
     if (!_canEdit || _agentLaunching) return;
@@ -1252,16 +1293,32 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
       _pendingAgentSessionId = session.id;
       _pendingAgentWorkspaceId = policy.workspaceId;
-      _pendingAgentPrompt = contextPack.toPrompt();
+      final prompt = _buildAgentCardPrompt(contextPack.toPrompt(), saved);
+      final selectedCommands = _selectedAgentCommands();
+      final launchPlan = AgentLaunchPlan.build(
+        contextPrompt: prompt,
+        selectedCommandValues: _selectedAgentCommandValues,
+        commands: _agentCommands,
+      );
+      _pendingAgentSteps = launchPlan.steps;
+      _pendingAgentStepTotal = launchPlan.steps.length;
+      _activeAgentStep = null;
+      _agentResultBuffer = null;
+      _agentQueueActive = true;
       final bridge = _ensureAgentBridge();
       bridge.updatePolicyTicket(ticket.policyTicket);
       final connected = await bridge.connect();
       if (!connected) {
         throw StateError('CodeWhale недоступен');
       }
+      bridge.requestCodeWhaleCommands();
       bridge.createSession(policy.workspaceId, title: title);
       if (mounted) {
-        _showSnack('Новый агентский чат запускается');
+        _showSnack(
+          selectedCommands.isEmpty
+              ? 'Новый агентский чат запускается'
+              : 'Агент запускает очередь: ${selectedCommands.length} инструментов',
+        );
       }
     } catch (error) {
       if (!mounted) return;
@@ -1273,6 +1330,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           targetId: session.id,
         );
         _agentLaunching = false;
+        _agentQueueActive = false;
       });
       _autosaveNow();
       _showSnack('Не удалось запустить агента: $error');
@@ -1287,7 +1345,11 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     final bridge = CodeWhaleBridgeService(
       onMessage: _handleAgentBridgeMessage,
       onStatusChange: (connected, status) {
-        if (!mounted || connected) {
+        if (!mounted) {
+          return;
+        }
+        if (connected) {
+          _agentBridge?.requestCodeWhaleCommands();
           return;
         }
         _showSnack(status);
@@ -1299,6 +1361,22 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   void _handleAgentBridgeMessage(CodeWhaleBridgeMessage message) {
     if (!mounted) return;
+    if (message.type == 'codewhale_command_list') {
+      setState(() {
+        _agentCommands = message.commands;
+        _selectedAgentCommandValues = _selectedAgentCommandValues
+            .where(
+              (value) => _agentCommands.any(
+                (command) {
+                  return _agentCommandValue(command) == value;
+                },
+              ),
+            )
+            .toList();
+        _agentCommandsLoading = false;
+      });
+      return;
+    }
     final pendingId = _pendingAgentSessionId;
     if (message.isError) {
       if (pendingId.isNotEmpty) {
@@ -1314,6 +1392,13 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         _autosaveNow();
       }
       _showSnack(message.error.isEmpty ? 'Ошибка CodeWhale' : message.error);
+      return;
+    }
+
+    if (message.type == 'assistant_delta' && pendingId.isNotEmpty) {
+      final buffer = _agentResultBuffer ?? StringBuffer();
+      buffer.write(message.text);
+      _agentResultBuffer = buffer;
       return;
     }
 
@@ -1350,50 +1435,441 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           status: 'linked',
         ),
       );
-      if (_pendingAgentPrompt.trim().isNotEmpty) {
-        _agentBridge?.sendSessionMessage(
-          workspaceId,
-          bridgeSession.id,
-          _pendingAgentPrompt,
-        );
-        unawaited(
-          widget.store.repository.api.recordAgentEvent(
-            actorProfile: widget.store.owner.value,
-            actorPhone: widget.actorPhone,
-            taskId: (_savedTask ?? widget.existing)?.id ?? '',
-            workspaceId: workspaceId,
-            agentSessionId: pendingId,
-            eventType: 'agent_task_started',
-            payload: {'session_id': bridgeSession.id},
-            requestedMode: widget.agentPolicy.mode,
-          ),
-        );
-      }
+      _pendingAgentBridgeSessionId = bridgeSession.id;
+      _agentBridge?.updateSessionSettings(
+        workspaceId: workspaceId,
+        sessionId: bridgeSession.id,
+        provider: _agentProvider,
+        model: _agentModel,
+        approvalPolicy: _agentApprovalPolicy,
+        sandboxMode: _agentSandboxMode,
+        autoMode: _agentAutoMode,
+      );
+      _uploadAgentCardFiles(workspaceId, bridgeSession.id);
+      _sendNextAgentStep(workspaceId: workspaceId, sessionId: bridgeSession.id);
       return;
     }
 
     if (message.type == 'session_task' && pendingId.isNotEmpty) {
+      final workspaceId = message.workspaceId.isNotEmpty
+          ? message.workspaceId
+          : _pendingAgentWorkspaceId;
+      final sessionId = message.sessionId.isNotEmpty
+          ? message.sessionId
+          : _pendingAgentBridgeSessionId;
+      if (!_isBridgeTaskDone(message.taskStatus)) {
+        _scheduleAgentTaskPoll(workspaceId, sessionId, message.taskId);
+        return;
+      }
+      if (message.taskResultSummary.trim().isNotEmpty) {
+        final buffer = _agentResultBuffer ?? StringBuffer();
+        buffer.write(message.taskResultSummary);
+        _agentResultBuffer = buffer;
+      }
+      _finishActiveAgentStep(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+        taskStatus: message.taskStatus,
+      );
+      return;
+    }
+
+    if (message.type == 'session_stream_done' && pendingId.isNotEmpty) {
+      _finishActiveAgentStep(
+        workspaceId: message.workspaceId.isNotEmpty
+            ? message.workspaceId
+            : _pendingAgentWorkspaceId,
+        sessionId: message.sessionId.isNotEmpty
+            ? message.sessionId
+            : _pendingAgentBridgeSessionId,
+        taskStatus: 'completed',
+      );
+    }
+  }
+
+  String _buildAgentCardPrompt(String backendPrompt, TaskItem task) {
+    final lines = <String>[];
+    final remote = backendPrompt.trim();
+    if (remote.isNotEmpty) {
+      lines.add(remote);
+      lines.add('');
+    }
+    lines.add('Актуальная карточка из мобильного приложения:');
+    lines.add(
+      'Название: ${_titleCtl.text.trim().isEmpty ? task.title : _titleCtl.text.trim()}',
+    );
+    final details = _detailsCtl.text.trim();
+    if (details.isNotEmpty) {
+      lines.add('Описание: $details');
+    }
+    lines.add('Статус: ${_status.name}');
+    lines.add(
+      'Проект: ${_selectedProjectId.isEmpty ? task.projectId : _selectedProjectId}',
+    );
+
+    final comments = _collaboration.comments.where((item) => !item.isDeleted);
+    if (comments.isNotEmpty) {
+      lines.add('');
+      lines.add('Комментарии карточки:');
+      for (final comment in comments.take(30)) {
+        final text = comment.text.trim();
+        if (text.isEmpty) {
+          continue;
+        }
+        lines.add('- ${_profileLabel(comment.authorProfile)}: $text');
+      }
+    }
+
+    if (_collaboration.checklists.isNotEmpty) {
+      lines.add('');
+      lines.add('Чеклисты карточки:');
+      for (final checklist in _collaboration.checklists) {
+        lines.add('- ${checklist.title}');
+        for (final item in checklist.items) {
+          lines.add('  - [${item.done ? 'x' : ' '}] ${item.text}');
+        }
+      }
+    }
+
+    final attachments = _agentCardAttachments();
+    if (attachments.isNotEmpty) {
+      lines.add('');
+      lines.add('Вложения карточки:');
+      for (final attachment in attachments) {
+        final source = attachment.assetUrl.trim().isNotEmpty
+            ? attachment.assetUrl.trim()
+            : 'будет прикреплено в агентский чат';
+        final caption = attachment.caption.trim();
+        lines.add(
+          '- ${attachment.filename} · $source'
+          '${caption.isEmpty ? '' : ' · $caption'}',
+        );
+      }
+    }
+
+    lines.add('');
+    lines.add(
+      'После работы обнови карточку через TASK_CARD_ACTIONS_JSON: добавь комментарий-итог, новые чеклисты/пункты и пути файлов отчета или скриншотов, если они созданы.',
+    );
+    return lines.join('\n');
+  }
+
+  List<TaskAttachment> _agentCardAttachments() {
+    final seen = <String>{};
+    final result = <TaskAttachment>[];
+    for (final attachment in [
+      ..._collaboration.attachments,
+      ..._pendingAttachments,
+    ]) {
+      final key = attachment.id.isNotEmpty
+          ? attachment.id
+          : '${attachment.filename}:${attachment.assetUrl}';
+      if (seen.add(key)) {
+        result.add(attachment);
+      }
+    }
+    return result;
+  }
+
+  void _uploadAgentCardFiles(String workspaceId, String sessionId) {
+    for (final attachment in _agentCardAttachments()) {
+      final bytes = _decodeAttachmentBytes(attachment.dataBase64);
+      if (bytes == null || bytes.isEmpty) {
+        continue;
+      }
+      _agentBridge?.uploadSessionFile(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+        bytes: bytes,
+        filename: attachment.filename.isEmpty
+            ? 'task-attachment.bin'
+            : attachment.filename,
+        mimeType: attachment.mimeType.isEmpty
+            ? _mimeTypeForName(attachment.filename)
+            : attachment.mimeType,
+        caption: attachment.caption.isEmpty
+            ? 'Файл из карточки задачи'
+            : attachment.caption,
+      );
+    }
+  }
+
+  void _sendNextAgentStep({
+    required String workspaceId,
+    required String sessionId,
+  }) {
+    if (_pendingAgentSteps.isEmpty) {
+      _completeAgentQueue();
+      return;
+    }
+    final step = _pendingAgentSteps.first;
+    _pendingAgentSteps = _pendingAgentSteps.skip(1).toList();
+    _activeAgentStep = step;
+    _agentResultBuffer = StringBuffer();
+    final stepIndex = _pendingAgentStepTotal - _pendingAgentSteps.length;
+    _agentBridge?.sendSessionMessage(workspaceId, sessionId, step.text);
+    final pendingId = _pendingAgentSessionId;
+    if (pendingId.isNotEmpty) {
       unawaited(
         widget.store.repository.api.recordAgentEvent(
           actorProfile: widget.store.owner.value,
           actorPhone: widget.actorPhone,
           taskId: (_savedTask ?? widget.existing)?.id ?? '',
-          workspaceId: message.workspaceId.isNotEmpty
-              ? message.workspaceId
-              : _pendingAgentWorkspaceId,
+          workspaceId: workspaceId,
           agentSessionId: pendingId,
-          eventType: 'agent_task_started',
+          eventType: 'agent_queue_step_sent',
           payload: {
-            'bridge_task_id': message.taskId,
-            'status': message.taskStatus,
+            'step': stepIndex,
+            'total': _pendingAgentStepTotal,
+            'label': step.label,
+            'kind': step.kind.name,
           },
           requestedMode: widget.agentPolicy.mode,
         ),
       );
-      _pendingAgentSessionId = '';
-      _pendingAgentPrompt = '';
-      _pendingAgentWorkspaceId = '';
     }
+  }
+
+  void _finishActiveAgentStep({
+    required String workspaceId,
+    required String sessionId,
+    required String taskStatus,
+  }) {
+    if (workspaceId.trim().isEmpty || sessionId.trim().isEmpty) {
+      return;
+    }
+    _agentTaskPoller?.cancel();
+    if (taskStatus == 'failed' || taskStatus == 'canceled') {
+      setState(() {
+        _markAgentSession(_pendingAgentSessionId, status: 'error');
+        _clearAgentQueueState();
+      });
+      _autosaveNow();
+      _showSnack('Один из шагов агента не выполнен: $taskStatus');
+      return;
+    }
+    final step = _activeAgentStep;
+    final resultText = _agentResultBuffer?.toString() ?? '';
+    _activeAgentStep = null;
+    _agentResultBuffer = null;
+    if (step?.kind == AgentLaunchStepKind.taskPrompt) {
+      _applyAgentTaskActionsFromText(resultText);
+    }
+    _sendNextAgentStep(workspaceId: workspaceId, sessionId: sessionId);
+  }
+
+  void _completeAgentQueue() {
+    final pendingId = _pendingAgentSessionId;
+    if (pendingId.isNotEmpty) {
+      unawaited(
+        widget.store.repository.api.recordAgentEvent(
+          actorProfile: widget.store.owner.value,
+          actorPhone: widget.actorPhone,
+          taskId: (_savedTask ?? widget.existing)?.id ?? '',
+          workspaceId: _pendingAgentWorkspaceId,
+          agentSessionId: pendingId,
+          eventType: 'agent_queue_completed',
+          payload: {'steps': _pendingAgentStepTotal},
+          requestedMode: widget.agentPolicy.mode,
+        ),
+      );
+    }
+    setState(() {
+      if (pendingId.isNotEmpty) {
+        _markAgentSession(pendingId, status: 'completed');
+        _appendAgentActivity(
+          type: 'agent_queue_completed',
+          text: 'завершил очередь агента',
+          targetId: pendingId,
+        );
+      }
+      _clearAgentQueueState();
+    });
+    _autosaveNow();
+  }
+
+  void _clearAgentQueueState() {
+    _pendingAgentSessionId = '';
+    _pendingAgentWorkspaceId = '';
+    _pendingAgentBridgeSessionId = '';
+    _pendingAgentSteps = const [];
+    _pendingAgentStepTotal = 0;
+    _activeAgentStep = null;
+    _agentResultBuffer = null;
+    _agentQueueActive = false;
+    _agentLaunching = false;
+  }
+
+  void _scheduleAgentTaskPoll(
+    String workspaceId,
+    String sessionId,
+    String taskId,
+  ) {
+    if (workspaceId.trim().isEmpty ||
+        sessionId.trim().isEmpty ||
+        taskId.trim().isEmpty) {
+      return;
+    }
+    _agentTaskPoller?.cancel();
+    _agentTaskPoller = Timer.periodic(const Duration(seconds: 2), (_) {
+      _agentBridge?.pollSessionTask(workspaceId, sessionId, taskId);
+    });
+  }
+
+  bool _isBridgeTaskDone(String status) {
+    return status == 'completed' || status == 'failed' || status == 'canceled';
+  }
+
+  List<Map<String, dynamic>> _selectedAgentCommands() {
+    return _selectedAgentCommandValues
+        .map(
+          (value) => _agentCommands.cast<Map<String, dynamic>?>().firstWhere(
+                (command) =>
+                    command != null && _agentCommandValue(command) == value,
+                orElse: () => null,
+              ),
+        )
+        .whereType<Map<String, dynamic>>()
+        .toList();
+  }
+
+  String _agentCommandValue(Map<String, dynamic> command) {
+    return (command['value'] ?? '').toString().trim();
+  }
+
+  String _agentCommandLabel(Map<String, dynamic> command) {
+    final label = (command['label'] ?? '').toString().trim();
+    return label.isEmpty ? _agentCommandValue(command) : label;
+  }
+
+  String _agentCommandDescription(Map<String, dynamic> command) {
+    return (command['description'] ?? '').toString().trim();
+  }
+
+  bool _isAgentSkillCommand(Map<String, dynamic> command) {
+    final value = _agentCommandValue(command);
+    final group = (command['group'] ?? '').toString().toLowerCase();
+    return value.startsWith('/skill') || group == 'навыки';
+  }
+
+  void _toggleAgentCommand(String value, bool selected) {
+    setState(() {
+      final next = List<String>.from(_selectedAgentCommandValues);
+      if (selected) {
+        if (!next.contains(value)) {
+          next.add(value);
+        }
+      } else {
+        next.remove(value);
+      }
+      _selectedAgentCommandValues = next;
+    });
+  }
+
+  void _moveAgentCommand(String value, int delta) {
+    final next = List<String>.from(_selectedAgentCommandValues);
+    final index = next.indexOf(value);
+    if (index < 0) {
+      return;
+    }
+    final newIndex = index + delta;
+    if (newIndex < 0 || newIndex >= next.length) {
+      return;
+    }
+    setState(() {
+      next
+        ..removeAt(index)
+        ..insert(newIndex, value);
+      _selectedAgentCommandValues = next;
+    });
+  }
+
+  void _applyAgentTaskActionsFromText(String text) {
+    final actions = AgentTaskActions.parse(text);
+    final summary = AgentTaskActions.stripActionsBlock(text);
+    if (actions.isEmpty && summary.trim().isEmpty) {
+      return;
+    }
+    final now = DateTime.now().toIso8601String();
+    final newAttachments = actions.attachments.map((draft) {
+      final filename = draft.filename.isNotEmpty
+          ? draft.filename
+          : draft.path.split(RegExp(r'[/\\]')).last;
+      final mimeType = draft.mimeType.isNotEmpty
+          ? draft.mimeType
+          : _mimeTypeForName(filename);
+      return TaskAttachment(
+        id: _newId('attachment'),
+        kind: _attachmentKind(filename, mimeType),
+        filename: filename.isEmpty ? 'agent-report' : filename,
+        mimeType: mimeType,
+        assetUrl: draft.path,
+        caption: draft.caption,
+        authorProfile: 'agent',
+        createdAt: now,
+      );
+    }).toList();
+    final newComments = <TaskComment>[];
+    final actionComments = actions.comments.isEmpty && summary.trim().isNotEmpty
+        ? [summary.trim()]
+        : actions.comments;
+    for (final commentText in actionComments) {
+      newComments.add(
+        TaskComment(
+          id: _newId('comment'),
+          authorProfile: 'agent',
+          text: commentText,
+          createdAt: now,
+          attachmentIds: newAttachments.map((item) => item.id).toList(),
+        ),
+      );
+    }
+    final newChecklists = actions.checklists.map((draft) {
+      return TaskChecklist(
+        id: _newId('checklist'),
+        title: draft.title.isEmpty ? 'План агента' : draft.title,
+        createdBy: 'agent',
+        createdAt: now,
+        items: draft.items
+            .map(
+              (text) => TaskChecklistItem(
+                id: _newId('checklist-item'),
+                text: text,
+                createdAt: now,
+                createdBy: 'agent',
+              ),
+            )
+            .toList(),
+      );
+    }).toList();
+    setState(() {
+      _collaboration = _collaboration.copyWith(
+        comments: [..._collaboration.comments, ...newComments],
+        attachments: [..._collaboration.attachments, ...newAttachments],
+        checklists: [..._collaboration.checklists, ...newChecklists],
+        activity: [
+          ..._collaboration.activity,
+          _activity(
+            type: 'agent_card_updated',
+            text: 'обновил карточку задачи',
+            targetId: _pendingAgentSessionId,
+          ),
+        ],
+      );
+    });
+    _autosaveNow();
+  }
+
+  String _attachmentKind(String filename, String mimeType) {
+    final lower = '$filename $mimeType'.toLowerCase();
+    if (lower.contains('image/') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.gif')) {
+      return 'photo';
+    }
+    return 'file';
   }
 
   void _upsertAgentSession(TaskAgentSession session) {
@@ -1949,7 +2425,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   Widget _buildAgentTab() {
     final policy = widget.agentPolicy;
-    final plugins = policy.pluginLabels;
+    final abilities = _agentAbilityLabels(policy);
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
       children: [
@@ -2000,39 +2476,46 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             Expanded(
               child: FilledButton.icon(
                 icon: const Icon(Icons.add_comment_outlined),
-                label: const Text('Новый чат'),
-                onPressed: _canEdit && policy.canStartAgentChat
-                    ? _requestNewAgentChat
-                    : null,
+                label: Text(_agentQueueActive ? 'Очередь идет' : 'Новый чат'),
+                onPressed:
+                    _canEdit && policy.canStartAgentChat && !_agentQueueActive
+                        ? _requestNewAgentChat
+                        : null,
               ),
             ),
           ],
         ),
         const SizedBox(height: 22),
         _SectionHeader(
-          icon: Icons.extension_outlined,
-          title: 'Плагины',
-          trailing: '${plugins.length}',
+          icon: Icons.verified_user_outlined,
+          title: 'Возможности агента',
+          trailing: '${abilities.length}',
         ),
         const SizedBox(height: 10),
-        if (plugins.isEmpty)
+        if (abilities.isEmpty)
           const _EmptyLine(
             icon: Icons.lock_outline,
-            text: 'Плагины не выданы',
+            text: 'Возможности не выданы',
           )
         else
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: plugins
+            children: abilities
                 .map(
-                  (plugin) => _MetricChip(
-                    icon: Icons.extension_outlined,
-                    text: plugin,
+                  (ability) => _MetricChip(
+                    icon: Icons.check_circle_outline,
+                    text: ability,
                   ),
                 )
                 .toList(),
           ),
+        const SizedBox(height: 22),
+        _buildAgentModePanel(),
+        const SizedBox(height: 22),
+        _buildAgentToolsPanel(),
+        const SizedBox(height: 22),
+        _buildAgentQueuePanel(),
         const SizedBox(height: 22),
         _SectionHeader(
           icon: Icons.forum_outlined,
@@ -2053,7 +2536,229 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     );
   }
 
+  Widget _buildAgentModePanel() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(
+          icon: Icons.tune,
+          title: 'Режим запуска',
+          trailing: _agentAutoMode ? 'Авто' : 'Ручной',
+        ),
+        const SizedBox(height: 10),
+        _AgentModeDropdown(
+          label: 'Провайдер',
+          value: _agentProvider,
+          values: const [
+            '',
+            'deepseek',
+            'openrouter',
+            'openai',
+            'nvidia-nim',
+            'ollama',
+            'moonshot',
+            'xiaomi',
+          ],
+          onChanged: (value) => setState(() => _agentProvider = value),
+        ),
+        const SizedBox(height: 8),
+        _AgentModeDropdown(
+          label: 'Модель',
+          value: _agentModel,
+          values: const [
+            '',
+            'deepseek-v4-pro',
+            'deepseek-v4-flash',
+            'deepseek-coder:1.3b',
+            'kimi-k2.6',
+          ],
+          onChanged: (value) => setState(() => _agentModel = value),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _AgentModeDropdown(
+                label: 'Подтверждения',
+                value: _agentApprovalPolicy,
+                values: const ['', 'on-request', 'on-failure', 'never'],
+                onChanged: (value) {
+                  setState(() => _agentApprovalPolicy = value);
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _AgentModeDropdown(
+                label: 'Sandbox',
+                value: _agentSandboxMode,
+                values: const ['', 'read-only', 'workspace-write'],
+                onChanged: (value) => setState(() => _agentSandboxMode = value),
+              ),
+            ),
+          ],
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Авто-режим инструментов'),
+          value: _agentAutoMode,
+          onChanged: (value) => setState(() => _agentAutoMode = value),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAgentToolsPanel() {
+    final skillCommands = _agentCommands.where(_isAgentSkillCommand).toList();
+    final otherCommands = _agentCommands.where((command) {
+      return !_isAgentSkillCommand(command);
+    }).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(
+          icon: Icons.extension_outlined,
+          title: 'Инструменты',
+          trailing: '${_agentCommands.length}',
+        ),
+        const SizedBox(height: 10),
+        if (_agentCommandsLoading) const LinearProgressIndicator(),
+        if (_agentCommands.isEmpty)
+          _EmptyLine(
+            icon: Icons.refresh,
+            text: _agentCommandsLoading
+                ? 'Список инструментов загружается'
+                : 'Инструменты CodeWhale не загружены',
+          )
+        else ...[
+          if (skillCommands.isNotEmpty)
+            _buildAgentCommandGroup('Скиллы', skillCommands),
+          if (otherCommands.isNotEmpty)
+            _buildAgentCommandGroup('Команды', otherCommands),
+        ],
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: _agentCommandsLoading ? null : _loadAgentCommands,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Обновить'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAgentCommandGroup(
+    String title,
+    List<Map<String, dynamic>> commands,
+  ) {
+    return ExpansionTile(
+      tilePadding: EdgeInsets.zero,
+      title: Text(title),
+      subtitle: Text('Доступно: ${commands.length}'),
+      children: [
+        for (final command in commands)
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            value: _selectedAgentCommandValues.contains(
+              _agentCommandValue(command),
+            ),
+            title: Text(_agentCommandLabel(command)),
+            subtitle: _agentCommandDescription(command).isEmpty
+                ? null
+                : Text(_agentCommandDescription(command)),
+            onChanged: (value) {
+              _toggleAgentCommand(_agentCommandValue(command), value == true);
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildAgentQueuePanel() {
+    final selected = _selectedAgentCommands();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(
+          icon: Icons.playlist_play,
+          title: 'Очередь выполнения',
+          trailing: '${selected.length + 1}',
+        ),
+        const SizedBox(height: 10),
+        if (selected.isEmpty)
+          const _EmptyLine(
+            icon: Icons.info_outline,
+            text: 'Выберите инструменты; рабочий шаг пойдет последним',
+          )
+        else
+          ...selected.asMap().entries.map((entry) {
+            final value = _agentCommandValue(entry.value);
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Text('${entry.key + 1}'),
+              title: Text(_agentCommandLabel(entry.value)),
+              subtitle: Text(value),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'Выше',
+                    onPressed: entry.key == 0
+                        ? null
+                        : () => _moveAgentCommand(value, -1),
+                    icon: const Icon(Icons.keyboard_arrow_up),
+                  ),
+                  IconButton(
+                    tooltip: 'Ниже',
+                    onPressed: entry.key == selected.length - 1
+                        ? null
+                        : () => _moveAgentCommand(value, 1),
+                    icon: const Icon(Icons.keyboard_arrow_down),
+                  ),
+                ],
+              ),
+            );
+          }),
+        const ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(Icons.flag_outlined),
+          title: Text('Работа по задаче'),
+          subtitle: Text('Чеклисты, комментарии и файлы карточки обязательны'),
+        ),
+      ],
+    );
+  }
+
+  List<String> _agentAbilityLabels(AgentRunPolicy policy) {
+    final result = <String>[];
+    void add(bool condition, String label) {
+      if (condition && !result.contains(label)) {
+        result.add(label);
+      }
+    }
+
+    add(policy.plugins.contains('task_context'), 'Читает контекст задачи');
+    add(policy.plugins.contains('task_write'), 'Пишет в задачу');
+    add(policy.plugins.contains('workspace_read'), 'Читает воркспейс');
+    add(
+      policy.plugins.contains('workspace_write') ||
+          policy.allowedCommands.contains('session_create'),
+      'Работает в воркспейсе',
+    );
+    add(policy.plugins.contains('git'), 'Git в воркспейсе');
+    add(policy.plugins.contains('github'), 'GitHub');
+    add(policy.plugins.contains('browser'), 'Браузер');
+    add(policy.plugins.contains('deploy'), 'Деплой');
+    add(policy.plugins.contains('audit'), 'Аудит');
+    return result;
+  }
+
   String _profileLabel(String profile) {
+    if (profile == 'agent') {
+      return 'Агент';
+    }
     final contact = widget.knownContacts.cast<ChatContact?>().firstWhere(
           (item) => item?.profileKey == profile,
           orElse: () => null,
@@ -2089,6 +2794,41 @@ class _CollaborationSummary extends StatelessWidget {
         ),
         _MetricChip(icon: Icons.checklist, text: progress),
       ],
+    );
+  }
+}
+
+class _AgentModeDropdown extends StatelessWidget {
+  const _AgentModeDropdown({
+    required this.label,
+    required this.value,
+    required this.values,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String value;
+  final List<String> values;
+  final void Function(String value) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final safeValue = values.contains(value) ? value : '';
+    return DropdownButtonFormField<String>(
+      initialValue: safeValue,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+      ),
+      items: [
+        for (final item in values)
+          DropdownMenuItem<String>(
+            value: item,
+            child: Text(item.isEmpty ? 'по умолчанию' : item),
+          ),
+      ],
+      onChanged: (value) => onChanged(value ?? ''),
     );
   }
 }
