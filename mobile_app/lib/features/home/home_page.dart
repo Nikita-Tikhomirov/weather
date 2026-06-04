@@ -3223,19 +3223,27 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _workspaceIdForTaskEditor(TaskStore store, TaskItem? existing) {
-    final fromTask = existing?.projectId.trim() ?? '';
-    if (fromTask.isNotEmpty) {
-      return fromTask;
+    final workspaceIds = _accessPolicy.workspaces
+        .map((item) => (item['workspace_id'] ?? '').toString().trim())
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+    final workspaceIdSet = workspaceIds.toSet();
+    final candidates = [
+      existing?.projectId.trim() ?? '',
+      store.currentProjectId.value.trim(),
+    ];
+    for (final candidate in candidates) {
+      if (workspaceIdSet.contains(candidate)) {
+        return candidate;
+      }
     }
-    final current = store.currentProjectId.value.trim();
-    if (current.isNotEmpty) {
-      return current;
+    if (workspaceIds.isNotEmpty) {
+      return workspaceIds.first;
     }
-    final workspaces = _accessPolicy.workspaces;
-    if (workspaces.length == 1) {
-      return (workspaces.first['workspace_id'] ?? '').toString();
-    }
-    return '';
+    return candidates.firstWhere(
+      (candidate) => candidate.isNotEmpty,
+      orElse: () => '',
+    );
   }
 
   Future<void> _setDesktopThemeMode(String mode) async {

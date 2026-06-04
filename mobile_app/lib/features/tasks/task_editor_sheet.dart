@@ -15,6 +15,7 @@ import '../../models/family_group.dart';
 import '../../models/task_collaboration.dart';
 import '../../models/task_item.dart';
 import '../../models/task_project.dart';
+import '../../models/workspace_item.dart';
 import '../../services/codewhale_bridge_service.dart';
 import '../../state/task_store.dart';
 import 'agent_launch_plan.dart';
@@ -139,6 +140,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   List<Map<String, dynamic>> _agentCommands = const [];
   List<String> _selectedAgentCommandValues = const [];
   bool _agentCommandsLoading = false;
+  List<WorkspaceItem> _agentWorkspaces = const [];
+  Completer<List<WorkspaceItem>>? _agentWorkspaceListCompleter;
+  bool _agentWorkspacesLoading = false;
+  String _selectedAgentWorkspaceId = '';
   String _agentProvider = '';
   String _agentModel = '';
   String _agentApprovalPolicy = '';
@@ -179,6 +184,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         existing?.projectId ?? widget.store.currentProjectId.value;
     _selectedGroupId = existing?.groupId ?? '';
     _collaboration = existing?.collaboration ?? const TaskCollaboration();
+    _selectedAgentWorkspaceId = widget.agentPolicy.workspaceId.trim();
     _pendingAttachments.addAll(widget.initialPendingAttachments);
     _normalizeProjectSelection();
     _titleCtl.addListener(_queueAutosave);
@@ -1206,6 +1212,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       if (!connected) {
         throw StateError('CodeWhale недоступен');
       }
+      await _requestAgentWorkspaces(bridge);
       bridge.requestCodeWhaleCommands();
     } catch (error) {
       if (!mounted) {
@@ -1220,6 +1227,81 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     }
   }
 
+  Future<void> _refreshAgentWorkspaces() async {
+    final bridge = _ensureAgentBridge();
+    try {
+      final connected = await bridge.connect();
+      if (!connected) {
+        throw StateError('CodeWhale недоступен');
+      }
+      await _requestAgentWorkspaces(bridge);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      _showSnack('Не удалось загрузить воркспейсы: $error');
+    }
+  }
+
+  Future<void> _requestAgentWorkspaces(CodeWhaleBridgeService bridge) async {
+    final existing = _agentWorkspaceListCompleter;
+    if (existing != null) {
+      try {
+        await existing.future.timeout(const Duration(seconds: 3));
+      } on TimeoutException {
+        return;
+      }
+      return;
+    }
+
+    final completer = Completer<List<WorkspaceItem>>();
+    _agentWorkspaceListCompleter = completer;
+    if (mounted) {
+      setState(() => _agentWorkspacesLoading = true);
+    }
+    bridge.requestWorkspaceList();
+    try {
+      await completer.future.timeout(const Duration(seconds: 3));
+    } on TimeoutException {
+      if (!completer.isCompleted) {
+        completer.complete(_agentWorkspaces);
+      }
+    } finally {
+      if (_agentWorkspaceListCompleter == completer) {
+        _agentWorkspaceListCompleter = null;
+      }
+      if (mounted) {
+        setState(() => _agentWorkspacesLoading = false);
+      }
+    }
+  }
+
+  String _effectiveAgentWorkspaceId(AgentRunPolicy policy) {
+    return _normalizeAgentWorkspaceId(_selectedAgentWorkspaceId, policy);
+  }
+
+  String _normalizeAgentWorkspaceId(
+    String candidate,
+    AgentRunPolicy policy,
+  ) {
+    final preferred = candidate.trim().isNotEmpty
+        ? candidate.trim()
+        : policy.workspaceId.trim();
+    final workspaces = _agentWorkspaces
+        .where((item) => item.id.trim().isNotEmpty)
+        .toList(growable: false);
+    if (workspaces.isEmpty) {
+      return preferred;
+    }
+    if (workspaces.any((item) => item.id == preferred)) {
+      return preferred;
+    }
+    final available = workspaces.where((item) {
+      return item.status == WorkspaceStatus.available;
+    }).toList(growable: false);
+    return (available.isEmpty ? workspaces : available).first.id;
+  }
+
   Future<void> _startNewAgentChat() async {
     final policy = widget.agentPolicy;
     if (!_canEdit || _agentLaunching) return;
@@ -1227,10 +1309,6 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       _showSnack(
         policy.reason.isEmpty ? 'Нет прав на запуск агента' : policy.reason,
       );
-      return;
-    }
-    if (policy.workspaceId.trim().isEmpty) {
-      _showSnack('Выберите воркспейс для агентского чата');
       return;
     }
     setState(() => _agentLaunching = true);
@@ -1249,9 +1327,30 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     final title = _titleCtl.text.trim().isEmpty
         ? 'Агентский чат'
         : 'Агент: ${_titleCtl.text.trim()}';
+    final bridge = _ensureAgentBridge();
+    try {
+      final connected = await bridge.connect();
+      if (!connected) {
+        throw StateError('CodeWhale недоступен');
+      }
+      await _requestAgentWorkspaces(bridge);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _agentLaunching = false);
+      _showSnack('Не удалось получить воркспейсы: $error');
+      return;
+    }
+    final workspaceId = _effectiveAgentWorkspaceId(policy);
+    if (workspaceId.trim().isEmpty) {
+      if (mounted) {
+        setState(() => _agentLaunching = false);
+        _showSnack('Выберите воркспейс для агентского чата');
+      }
+      return;
+    }
     final session = TaskAgentSession(
       id: _newId('agent-session'),
-      workspaceId: policy.workspaceId,
+      workspaceId: workspaceId,
       sessionId: '',
       title: title,
       mode: policy.mode,
@@ -1278,16 +1377,17 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         actorPhone: widget.actorPhone,
         taskId: saved.id,
         taskType: _taskTypeForAgent(saved),
-        workspaceId: policy.workspaceId,
+        workspaceId: workspaceId,
         requestedMode: policy.mode,
       );
       final backendPrompt = await _fetchAgentContextPromptBestEffort(
         saved,
         policy,
+        workspaceId,
       );
       _recordAgentSessionBestEffort(
         taskId: saved.id,
-        workspaceId: policy.workspaceId,
+        workspaceId: workspaceId,
         agentSessionId: session.id,
         title: title,
         taskType: _taskTypeForAgent(saved),
@@ -1296,7 +1396,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       );
 
       _pendingAgentSessionId = session.id;
-      _pendingAgentWorkspaceId = policy.workspaceId;
+      _pendingAgentWorkspaceId = workspaceId;
       final prompt = _buildAgentCardPrompt(backendPrompt, saved);
       final selectedCommands = _selectedAgentCommands();
       final launchPlan = AgentLaunchPlan.build(
@@ -1309,14 +1409,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       _activeAgentStep = null;
       _agentResultBuffer = null;
       _agentQueueActive = true;
-      final bridge = _ensureAgentBridge();
       bridge.updatePolicyTicket(ticket.policyTicket);
-      final connected = await bridge.connect();
-      if (!connected) {
-        throw StateError('CodeWhale недоступен');
-      }
       bridge.requestCodeWhaleCommands();
-      bridge.createSession(policy.workspaceId, title: title);
+      bridge.createSession(workspaceId, title: title);
       if (mounted) {
         _showSnack(
           selectedCommands.isEmpty
@@ -1352,6 +1447,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       }
       if (connected) {
         _agentBridge?.requestCodeWhaleCommands();
+        _agentBridge?.requestWorkspaceList();
         return;
       }
       _showSnack(status);
@@ -1382,13 +1478,14 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   Future<String> _fetchAgentContextPromptBestEffort(
     TaskItem task,
     AgentRunPolicy policy,
+    String workspaceId,
   ) async {
     try {
       final contextPack = await widget.store.repository.api.fetchAgentContext(
         actorProfile: widget.store.owner.value,
         actorPhone: widget.actorPhone,
         taskId: task.id,
-        workspaceId: policy.workspaceId,
+        workspaceId: workspaceId,
         taskType: _taskTypeForAgent(task),
         requestedMode: policy.mode,
       );
@@ -1463,6 +1560,23 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   void _handleAgentBridgeMessage(CodeWhaleBridgeMessage message) {
     if (!mounted) return;
+    if (message.type == 'workspace_list' || message.workspaces.isNotEmpty) {
+      final workspaces = message.workspaces;
+      setState(() {
+        _agentWorkspaces = workspaces;
+        _agentWorkspacesLoading = false;
+        _selectedAgentWorkspaceId = _normalizeAgentWorkspaceId(
+          _selectedAgentWorkspaceId,
+          widget.agentPolicy,
+        );
+      });
+      final completer = _agentWorkspaceListCompleter;
+      if (completer != null && !completer.isCompleted) {
+        completer.complete(workspaces);
+      }
+      _agentWorkspaceListCompleter = null;
+      return;
+    }
     if (message.type == 'codewhale_command_list') {
       setState(() {
         _agentCommands = message.commands;
@@ -2035,10 +2149,15 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       _showSnack('Сначала выберите агентский чат в воркспейсе');
       return;
     }
+    final workspaceId = _effectiveAgentWorkspaceId(policy);
+    if (workspaceId.trim().isEmpty) {
+      _showSnack('Выберите воркспейс для агентского чата');
+      return;
+    }
     final now = DateTime.now().toIso8601String();
     final session = TaskAgentSession(
       id: _newId('agent-session'),
-      workspaceId: policy.workspaceId,
+      workspaceId: workspaceId,
       sessionId: policy.sessionId,
       title: 'Подключенный агентский чат',
       mode: policy.mode,
@@ -2515,6 +2634,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   Widget _buildAgentTab() {
     final policy = widget.agentPolicy;
+    final workspaceId = _effectiveAgentWorkspaceId(policy);
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
       children: [
@@ -2526,12 +2646,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
               : 'Нет доступа',
         ),
         const SizedBox(height: 10),
-        Text(
-          policy.allowed
-              ? 'Агент может читать задачу, писать в работу и запускаться в воркспейсе.'
-              : policy.reason,
-        ),
-        const SizedBox(height: 14),
+        if (!policy.allowed && policy.reason.trim().isNotEmpty) ...[
+          Text(policy.reason),
+          const SizedBox(height: 14),
+        ],
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -2542,13 +2660,15 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             ),
             if (policy.modeLabel.isNotEmpty)
               _MetricChip(icon: Icons.bolt_outlined, text: policy.modeLabel),
-            if (policy.workspaceId.isNotEmpty)
+            if (workspaceId.isNotEmpty)
               _MetricChip(
                 icon: Icons.workspaces_outline,
-                text: policy.workspaceId,
+                text: workspaceId,
               ),
           ],
         ),
+        const SizedBox(height: 18),
+        _buildAgentWorkspacePanel(policy),
         const SizedBox(height: 18),
         Row(
           children: [
@@ -2595,6 +2715,67 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           ..._collaboration.agentSessions.map(
             (session) => _AgentSessionRow(session: session),
           ),
+      ],
+    );
+  }
+
+  Widget _buildAgentWorkspacePanel(AgentRunPolicy policy) {
+    final selected = _effectiveAgentWorkspaceId(policy);
+    final ids = _agentWorkspaces.map((item) => item.id).toSet();
+    final selectedValue = ids.contains(selected) ? selected : null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeader(
+          icon: Icons.workspaces_outline,
+          title: 'Воркспейс',
+          trailing: selected.isEmpty ? 'Не выбран' : selected,
+        ),
+        const SizedBox(height: 10),
+        if (_agentWorkspacesLoading) const LinearProgressIndicator(),
+        if (_agentWorkspaces.isEmpty)
+          const _EmptyLine(
+            icon: Icons.cloud_off_outlined,
+            text: 'Список воркспейсов CodeWhale не загружен',
+          )
+        else
+          DropdownButtonFormField<String>(
+            key: ValueKey(
+              'agent-workspace-$selected-${_agentWorkspaces.length}',
+            ),
+            initialValue: selectedValue,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Рабочее пространство',
+              border: OutlineInputBorder(),
+            ),
+            items: _agentWorkspaces.map((workspace) {
+              final label = workspace.name.trim().isEmpty
+                  ? workspace.id
+                  : workspace.name.trim();
+              return DropdownMenuItem<String>(
+                value: workspace.id,
+                child: Text(label, overflow: TextOverflow.ellipsis),
+              );
+            }).toList(),
+            onChanged: !_canEdit
+                ? null
+                : (value) {
+                    setState(() {
+                      _selectedAgentWorkspaceId = value ?? '';
+                    });
+                  },
+          ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: _agentWorkspacesLoading
+                ? null
+                : () => unawaited(_refreshAgentWorkspaces()),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Обновить'),
+          ),
+        ),
       ],
     );
   }

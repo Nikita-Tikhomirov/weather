@@ -1033,14 +1033,17 @@ class CodeWhaleBridge:
             )
             return {"type": "workspace", "workspace": workspace}
         if msg_type == "session_list":
+            workspace = self.workspaces.get_workspace(self._workspace_id(message))
+            workspace_id = str(workspace["id"])
             return {
                 "type": "session_list",
-                "workspace_id": self._workspace_id(message),
-                "sessions": self.sessions.list_sessions(self._workspace_id(message)),
+                "workspace_id": workspace_id,
+                "sessions": self.sessions.list_sessions(workspace_id),
             }
         if msg_type == "session_create":
+            workspace = self.workspaces.get_workspace(self._workspace_id(message))
             session = self.sessions.create_session(
-                self._workspace_id(message),
+                str(workspace["id"]),
                 str(message.get("title") or ""),
             )
             return {"type": "session", "session": session}
@@ -1478,10 +1481,7 @@ class CodeWhaleBridge:
         return _find_codewhale_process_ids(tokens)
 
     def _find_workspace(self, workspace_id: str) -> dict[str, Any]:
-        for workspace in self.workspaces.list_workspaces():
-            if workspace["id"] == workspace_id:
-                return workspace
-        raise KeyError(f"workspace not found: {workspace_id}")
+        return self.workspaces.get_workspace(workspace_id)
 
     def _allocate_port(self) -> int:
         used_ports = self._known_worker_ports()

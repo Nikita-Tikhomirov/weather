@@ -30,6 +30,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
         home: Scaffold(
           body: ActiveCallOverlay(
             session: session(),
@@ -65,6 +66,7 @@ void main() {
       (tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
         home: Scaffold(
           body: ActiveCallOverlay(
             session: session(),
@@ -88,6 +90,7 @@ void main() {
       (tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
         home: Scaffold(
           body: ActiveCallOverlay(
             session: session(callType: 'audio'),

@@ -506,6 +506,23 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             self.assertEqual(created["session"]["title"], "Чат")
             self.assertEqual(len(listed["sessions"]), 1)
 
+    def test_session_create_rejects_unknown_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+
+            reply = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": "project-1",
+                    "title": "Wrong workspace",
+                }
+            )
+
+            self.assertEqual(reply["type"], "error")
+            self.assertIn("workspace not found", reply["error"])
+            self.assertEqual(bridge.sessions.list_sessions("project-1"), [])
+
     def test_handle_session_send_starts_runtime_task(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

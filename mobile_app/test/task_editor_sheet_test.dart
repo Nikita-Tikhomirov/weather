@@ -8,6 +8,7 @@ import 'package:family_todo_mobile/models/family_group.dart';
 import 'package:family_todo_mobile/models/task_collaboration.dart';
 import 'package:family_todo_mobile/models/task_item.dart';
 import 'package:family_todo_mobile/models/task_project.dart';
+import 'package:family_todo_mobile/models/workspace_item.dart';
 import 'package:family_todo_mobile/repositories/task_repository.dart';
 import 'package:family_todo_mobile/services/api_client.dart';
 import 'package:family_todo_mobile/services/codewhale_bridge_service.dart';
@@ -27,6 +28,10 @@ class _FakeApiClient extends ApiClient {
   int agentContextCount = 0;
   int agentSessionRecordCount = 0;
   int agentEventRecordCount = 0;
+  final List<String> agentTicketWorkspaceIds = [];
+  final List<String> agentContextWorkspaceIds = [];
+  final List<String> agentSessionRecordWorkspaceIds = [];
+  final List<String> agentEventRecordWorkspaceIds = [];
   Completer<void>? mediaUploadGate;
   Completer<void>? documentUploadGate;
   bool failAgentContext = false;
@@ -78,6 +83,7 @@ class _FakeApiClient extends ApiClient {
     String sessionId = '',
   }) async {
     agentTicketCount += 1;
+    agentTicketWorkspaceIds.add(workspaceId);
     return AgentTicketResult(
       policy: AgentRunPolicy(
         allowed: true,
@@ -105,6 +111,7 @@ class _FakeApiClient extends ApiClient {
     String requestedMode = '',
   }) async {
     agentContextCount += 1;
+    agentContextWorkspaceIds.add(workspaceId);
     if (failAgentContext) {
       throw StateError('POST failed: 400 {"error":"Task not found"}');
     }
@@ -131,6 +138,7 @@ class _FakeApiClient extends ApiClient {
     String status = 'pending',
   }) async {
     agentSessionRecordCount += 1;
+    agentSessionRecordWorkspaceIds.add(workspaceId);
     if (failAgentSessionRecord) {
       throw StateError('POST failed: 400 {"error":"Task not found"}');
     }
@@ -149,6 +157,7 @@ class _FakeApiClient extends ApiClient {
     String requestedMode = '',
   }) async {
     agentEventRecordCount += 1;
+    agentEventRecordWorkspaceIds.add(workspaceId);
     if (failAgentEventRecord) {
       throw StateError('POST failed: 400 {"error":"Task not found"}');
     }
@@ -163,8 +172,11 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
 
   final List<String> sentMessages = [];
   final List<String> uploadedFiles = [];
+  final List<String> createSessionWorkspaceIds = [];
+  List<WorkspaceItem> workspaces = const [];
   int connectCount = 0;
   int commandListRequestCount = 0;
+  int workspaceListRequestCount = 0;
   int createSessionCount = 0;
   String policyTicket = '';
 
@@ -186,6 +198,17 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
   }
 
   @override
+  void requestWorkspaceList() {
+    workspaceListRequestCount += 1;
+    onMessage(
+      CodeWhaleBridgeMessage.fromJson({
+        'type': 'workspace_list',
+        'workspaces': workspaces.map((item) => item.toJson()).toList(),
+      }),
+    );
+  }
+
+  @override
   void updatePolicyTicket(String policyTicket) {
     this.policyTicket = policyTicket;
   }
@@ -193,6 +216,7 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
   @override
   void createSession(String workspaceId, {String title = ''}) {
     createSessionCount += 1;
+    createSessionWorkspaceIds.add(workspaceId);
     onMessage(
       CodeWhaleBridgeMessage.fromJson({
         'type': 'session',
@@ -622,6 +646,73 @@ void main() {
         );
       },
     );
+
+    testWidgets('agent launch uses selected bridge workspace, not project id',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      store.selectedDate.value = DateTime(2026, 5, 31);
+      _FakeAgentBridge? bridge;
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Исполнитель',
+        plugins: [],
+        allowedCommands: ['session_create', 'session_send'],
+        reason: '',
+        workspaceId: 'project-1',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              )..workspaces = const [
+                  WorkspaceItem(
+                    id: 'weather',
+                    name: 'weather',
+                    path: r'C:\Users\user\Desktop\weather',
+                    status: WorkspaceStatus.available,
+                  ),
+                  WorkspaceItem(
+                    id: 'exp76-ru',
+                    name: 'exp76.ru',
+                    path: r'C:\Users\user\Desktop\exp76.ru',
+                    status: WorkspaceStatus.available,
+                  ),
+                ];
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Агент'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Новый чат'));
+      await tester.pumpAndSettle();
+
+      expect(repository.fakeApi.agentTicketWorkspaceIds.single, 'weather');
+      expect(repository.fakeApi.agentContextWorkspaceIds.single, 'weather');
+      expect(bridge!.workspaceListRequestCount, greaterThanOrEqualTo(1));
+      expect(bridge!.createSessionWorkspaceIds.single, 'weather');
+      expect(find.textContaining('workspace not found'), findsNothing);
+    });
 
     testWidgets('work tab supports comments and checklists', (tester) async {
       final store = _FakeTaskStore();

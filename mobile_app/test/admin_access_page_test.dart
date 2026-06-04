@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('admin page grants workspace access from contacts and projects',
+  testWidgets('admin page grants workspace access only to real workspaces',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1000, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -17,6 +17,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
         home: AdminAccessPage(
           api: client,
           actorProfile: 'nik',
@@ -57,17 +58,13 @@ void main() {
 
     expect(find.text('Администрирование'), findsOneWidget);
     expect(find.text('Разработчик'), findsWidgets);
-    expect(find.text('System'), findsWidgets);
+    expect(find.text('System'), findsNothing);
     expect(find.text('Weather'), findsWidgets);
     expect(find.text('Оператор агентов'), findsWidgets);
     expect(find.text('Плагины'), findsNothing);
 
-    await tester.tap(find.text('Weather').first);
-    await tester.pump(const Duration(milliseconds: 200));
-    await tester.tap(find.text('System').last);
-    await tester.pump(const Duration(milliseconds: 200));
-
     final grantButton = find.widgetWithText(FilledButton, 'Выдать доступ');
+    await tester.ensureVisible(grantButton);
     await tester.tap(grantButton);
     await tester.pump(const Duration(seconds: 2));
 
@@ -79,7 +76,7 @@ void main() {
       (item) => item['path'] == '/admin/workspace-access/grant',
     );
     expect(grant['body']['profile_key'], 'user-dev');
-    expect(grant['body']['workspace_id'], 'project-system');
+    expect(grant['body']['workspace_id'], 'workspace-weather');
     expect(grant['body']['role'], 'agent_operator');
     expect(grant['body']['actor_phone'], '+7 967 981-24-38');
   });

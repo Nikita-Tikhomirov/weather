@@ -140,20 +140,6 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
         ),
       );
     }
-    for (final project in _projects) {
-      final id = project.id.trim();
-      if (id.isEmpty || !seen.add(id)) {
-        continue;
-      }
-      result.add(
-        _AccessTarget(
-          id: id,
-          name: project.name.trim().isEmpty ? id : project.name.trim(),
-          kind: 'Проект',
-          subtitle: project.description,
-        ),
-      );
-    }
     return result;
   }
 
@@ -255,7 +241,7 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
   Future<void> _grantAccess() async {
     final targetId = _effectiveTargetId;
     if (_selectedProfileKey.trim().isEmpty || targetId.trim().isEmpty) {
-      _showError('Выберите пользователя и проект или воркспейс');
+      _showError('Выберите пользователя и воркспейс');
       return;
     }
     setState(() => _saving = true);
@@ -444,7 +430,11 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
         ),
         _InfoChip(
           icon: Icons.workspaces_outline,
-          text: 'Цели: $targetCount',
+          text: 'Воркспейсы: $targetCount',
+        ),
+        _InfoChip(
+          icon: Icons.folder_outlined,
+          text: 'Проекты: ${_projects.length}',
         ),
         _InfoChip(
           icon: _bridgeConnected ? Icons.link : Icons.link_off,
@@ -486,7 +476,7 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
             initialValue: targetId.isEmpty ? null : targetId,
             isExpanded: true,
             decoration: const InputDecoration(
-              labelText: 'Проект или воркспейс',
+              labelText: 'Воркспейс',
               border: OutlineInputBorder(),
             ),
             items: targets
@@ -518,12 +508,7 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
               children: [
                 for (final target in targets)
                   InputChip(
-                    avatar: Icon(
-                      target.kind == 'Проект'
-                          ? Icons.folder_outlined
-                          : Icons.workspaces_outline,
-                      size: 16,
-                    ),
+                    avatar: const Icon(Icons.workspaces_outline, size: 16),
                     label: Text(target.name),
                     selected: target.id == targetId,
                     onPressed: () {
@@ -766,9 +751,7 @@ class _TargetHint extends StatelessWidget {
     return Row(
       children: [
         Icon(
-          target.kind == 'Проект'
-              ? Icons.folder_outlined
-              : Icons.workspaces_outline,
+          Icons.workspaces_outline,
           size: 18,
           color: Theme.of(context).colorScheme.outline,
         ),
