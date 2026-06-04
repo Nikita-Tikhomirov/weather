@@ -5,7 +5,6 @@ namespace App\Domain\Agent;
 use App\Domain\Sync\SyncRepository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use InvalidArgumentException;
 
 final class AgentTaskService
 {
@@ -16,7 +15,7 @@ final class AgentTaskService
     /** @return array<string, mixed> */
     public function buildContextPack(string $actor, string $taskId, string $workspaceId): array
     {
-        $context = $this->requireTaskContext($actor, $taskId);
+        $context = $this->taskContext($actor, $taskId) ?? $this->placeholderContext($taskId);
         $collaboration = $this->collaboration($context);
 
         return [
@@ -58,7 +57,7 @@ final class AgentTaskService
         string $title,
         array $policy = [],
     ): array {
-        $context = $this->requireTaskContext($actor, $taskId);
+        $context = $this->taskContext($actor, $taskId);
         $now = $this->repo->nowIso();
         $id = $agentSessionId !== '' ? $agentSessionId : $this->newId('agent-session');
         $session = [
@@ -90,7 +89,9 @@ final class AgentTaskService
             );
         }
 
-        $this->appendAgentSessionToTask($context, $session, $actor);
+        if ($context !== null) {
+            $this->appendAgentSessionToTask($context, $session, $actor);
+        }
         return $session;
     }
 
@@ -106,7 +107,7 @@ final class AgentTaskService
         string $eventType,
         array $payload,
     ): array {
-        $context = $this->requireTaskContext($actor, $taskId);
+        $context = $this->taskContext($actor, $taskId);
         $now = $this->repo->nowIso();
         $event = [
             'id' => $this->newId('agent-event'),
@@ -132,7 +133,9 @@ final class AgentTaskService
             ]);
         }
 
-        $this->appendAgentEventToTask($context, $event, $actor);
+        if ($context !== null) {
+            $this->appendAgentEventToTask($context, $event, $actor);
+        }
         return $event;
     }
 
@@ -207,13 +210,33 @@ final class AgentTaskService
     }
 
     /** @return array<string, mixed> */
-    private function requireTaskContext(string $actor, string $taskId): array
+    private function taskContext(string $actor, string $taskId): ?array
     {
-        $context = $this->repo->contextTask($taskId, $actor);
-        if ($context === null) {
-            throw new InvalidArgumentException('Task not found');
-        }
-        return $context;
+        return $this->repo->contextTask($taskId, $actor);
+    }
+
+    /** @return array<string, mixed> */
+    private function placeholderContext(string $taskId): array
+    {
+        return [
+            'id' => trim($taskId),
+            'title' => '',
+            'details' => '',
+            'due_date' => '',
+            'time' => '',
+            'workflow_status' => 'todo',
+            'priority' => 'medium',
+            'project_id' => '',
+            'group_id' => '',
+            'participants' => [],
+            'collaboration' => [
+                'comments' => [],
+                'attachments' => [],
+                'checklists' => [],
+                'activity' => [],
+                'agent_sessions' => [],
+            ],
+        ];
     }
 
     /** @param array<string, mixed> $context @return array<string, mixed> */
