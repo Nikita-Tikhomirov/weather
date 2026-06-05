@@ -431,7 +431,13 @@ class SessionRegistry:
         self.sessions_root = self.state_dir / "sessions"
         self.sessions_root.mkdir(parents=True, exist_ok=True)
 
-    def create_session(self, workspace_id: str, title: str) -> dict[str, Any]:
+    def create_session(
+        self,
+        workspace_id: str,
+        title: str,
+        *,
+        task_card: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         workspace_key = self._require_key(workspace_id, "workspace_id")
         display_title = title.strip() or "Новая сессия"
         created_at = _now_ms()
@@ -449,6 +455,7 @@ class SessionRegistry:
             "approval_policy": "",
             "sandbox_mode": "",
             "auto_mode": False,
+            "task_card": dict(task_card or {}),
             "created_at": created_at,
             "updated_at": created_at,
             "last_event_seq": 0,
@@ -584,6 +591,10 @@ class SessionRegistry:
         session.setdefault("approval_policy", "")
         session.setdefault("sandbox_mode", "")
         session.setdefault("auto_mode", False)
+        if not isinstance(session.get("task_card"), dict):
+            session["task_card"] = {}
+        else:
+            session["task_card"] = dict(session["task_card"])
         return session
 
     def _require_key(self, value: str, field_name: str) -> str:
@@ -631,6 +642,13 @@ class CodeWhaleWorkerManager:
 
         env = os.environ.copy()
         env.setdefault("PYTHONIOENCODING", "utf-8:backslashreplace")
+        session = self.sessions.get_session(workspace_id, session_id)
+        task_card = session.get("task_card") if isinstance(session.get("task_card"), dict) else {}
+        if task_card:
+            tool_dir = self._materialize_task_card_tool(workspace, task_card)
+            env.update(self._task_card_env(workspace, workspace_id, task_card))
+            current_path = env.get("PATH") or env.get("Path") or ""
+            env["PATH"] = f"{tool_dir}{os.pathsep}{current_path}" if current_path else str(tool_dir)
         command = [
             self.codewhale_cmd,
             "serve",
@@ -673,6 +691,53 @@ class CodeWhaleWorkerManager:
             },
         )
         return session
+
+    def _materialize_task_card_tool(
+        self,
+        workspace: Path,
+        task_card: dict[str, Any],
+    ) -> Path:
+        tool_dir = workspace / ".family-task-card"
+        tool_dir.mkdir(parents=True, exist_ok=True)
+        cli_path = Path(__file__).resolve().parent / "family_task_card_cli.py"
+        python_path = Path(sys.executable).resolve()
+        cmd_path = tool_dir / "family-task-card.cmd"
+        ps1_path = tool_dir / "family-task-card.ps1"
+        cmd_path.write_text(
+            f'@echo off\r\n"{python_path}" "{cli_path}" %*\r\n',
+            encoding="utf-8",
+        )
+        ps1_path.write_text(
+            f'& "{python_path}" "{cli_path}" @args\r\n',
+            encoding="utf-8",
+        )
+        return tool_dir
+
+    def _task_card_env(
+        self,
+        workspace: Path,
+        workspace_id: str,
+        task_card: dict[str, Any],
+    ) -> dict[str, str]:
+        api_key = (
+            str(task_card.get("api_key") or "").strip()
+            or os.environ.get("FAMILY_TASK_CARD_API_KEY", "").strip()
+            or os.environ.get("TODO_BACKEND_API_KEY", "").strip()
+            or "dev-local-key"
+        )
+        return {
+            "FAMILY_TASK_CARD_API_URL": str(task_card.get("api_url") or ""),
+            "FAMILY_TASK_CARD_API_KEY": api_key,
+            "FAMILY_TASK_CARD_TICKET": str(task_card.get("policy_ticket") or ""),
+            "FAMILY_TASK_CARD_TASK_ID": str(task_card.get("task_id") or ""),
+            "FAMILY_TASK_CARD_WORKSPACE_ID": str(task_card.get("workspace_id") or workspace_id),
+            "FAMILY_TASK_CARD_SESSION_ID": str(task_card.get("agent_session_id") or ""),
+            "FAMILY_TASK_CARD_ACTOR_PROFILE": str(task_card.get("actor_profile") or ""),
+            "FAMILY_TASK_CARD_ACTOR_PHONE": str(task_card.get("actor_phone") or ""),
+            "FAMILY_TASK_CARD_TASK_TYPE": str(task_card.get("task_type") or "feature"),
+            "FAMILY_TASK_CARD_MODE": str(task_card.get("mode") or "executor"),
+            "FAMILY_TASK_CARD_WORKSPACE_PATH": str(workspace),
+        }
 
     def stop_worker(
         self,
@@ -1067,6 +1132,7 @@ class CodeWhaleBridge:
             session = self.sessions.create_session(
                 str(workspace["id"]),
                 str(message.get("title") or ""),
+                task_card=self._task_card_metadata(message, str(workspace["id"])),
             )
             return {"type": "session", "session": session}
         if msg_type == "session_open":
@@ -1625,6 +1691,12 @@ class CodeWhaleBridge:
                 "value": "/skill",
                 "description": "Показать все доступные навыки",
             },
+            {
+                "group": "Навыки",
+                "label": "Карточка задачи",
+                "value": "/skill family-task-card",
+                "description": "Читать и обновлять карточку задачи через family-task-card",
+            },
         ]
         commands.extend(self._list_skill_commands())
         return commands
@@ -1647,6 +1719,33 @@ class CodeWhaleBridge:
             "sandbox_mode": sandbox_mode,
             "auto_mode": bool(message.get("auto_mode")),
         }
+
+    def _task_card_metadata(
+        self,
+        message: dict[str, Any],
+        workspace_id: str,
+    ) -> dict[str, Any]:
+        raw = message.get("task_card")
+        if not isinstance(raw, dict):
+            return {}
+        allowed_keys = {
+            "task_id",
+            "agent_session_id",
+            "actor_profile",
+            "actor_phone",
+            "api_url",
+            "api_key",
+            "policy_ticket",
+            "task_type",
+            "mode",
+        }
+        metadata = {
+            key: str(raw.get(key) or "").strip()
+            for key in allowed_keys
+            if str(raw.get(key) or "").strip()
+        }
+        metadata["workspace_id"] = str(raw.get("workspace_id") or workspace_id).strip()
+        return metadata
 
     def _list_skill_commands(self) -> list[dict[str, str]]:
         descriptions = dict(CODEWHALE_BUILTIN_SKILLS)

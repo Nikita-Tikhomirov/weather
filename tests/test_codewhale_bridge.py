@@ -184,6 +184,30 @@ class SessionRegistryTests(unittest.TestCase):
             self.assertEqual(loaded["sandbox_mode"], "workspace-write")
             self.assertTrue(loaded["auto_mode"])
 
+    def test_create_session_persists_task_card_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp) / "state"
+            registry = SessionRegistry(state)
+
+            session = registry.create_session(
+                "weather",
+                "Агент",
+                task_card={
+                    "task_id": "task-1",
+                    "agent_session_id": "agent-session-1",
+                    "actor_profile": "Nikita",
+                    "actor_phone": "+79679812438",
+                    "api_url": "https://api.example.test",
+                    "policy_ticket": "ticket-1",
+                    "task_type": "feature",
+                    "mode": "executor",
+                },
+            )
+
+            loaded = SessionRegistry(state).get_session("weather", session["id"])
+            self.assertEqual(loaded["task_card"]["task_id"], "task-1")
+            self.assertEqual(loaded["task_card"]["policy_ticket"], "ticket-1")
+
 
 class CodeWhaleWorkerManagerTests(unittest.TestCase):
     def test_start_worker_marks_session_running(self) -> None:
@@ -220,6 +244,39 @@ class CodeWhaleWorkerManagerTests(unittest.TestCase):
                 popen.call_args.kwargs["creationflags"],
                 _background_creation_flags(),
             )
+
+    def test_start_worker_injects_task_card_cli_environment(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace = root / "Desktop" / "Weather"
+            workspace.mkdir(parents=True)
+            registry = SessionRegistry(root / "state")
+            session = registry.create_session(
+                "weather",
+                "Worker",
+                task_card={
+                    "task_id": "task-1",
+                    "agent_session_id": "agent-session-1",
+                    "actor_profile": "Nikita",
+                    "actor_phone": "+79679812438",
+                    "api_url": "https://api.example.test",
+                    "policy_ticket": "ticket-1",
+                    "task_type": "feature",
+                    "mode": "executor",
+                },
+            )
+            process = _FakeProcess()
+
+            with patch("codewhale_bridge.subprocess.Popen", return_value=process) as popen:
+                manager = CodeWhaleWorkerManager(registry, root / "state")
+                manager.start_worker("weather", session["id"], workspace, port=43101)
+
+            env = popen.call_args.kwargs["env"]
+            self.assertEqual(env["FAMILY_TASK_CARD_TASK_ID"], "task-1")
+            self.assertEqual(env["FAMILY_TASK_CARD_TICKET"], "ticket-1")
+            self.assertEqual(env["FAMILY_TASK_CARD_WORKSPACE_PATH"], str(workspace))
+            self.assertIn(str(workspace / ".family-task-card"), env["PATH"])
+            self.assertTrue((workspace / ".family-task-card" / "family-task-card.cmd").exists())
 
     def test_kill_worker_only_kills_target_process(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -507,6 +564,36 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             self.assertEqual(created["type"], "session")
             self.assertEqual(created["session"]["title"], "Чат")
             self.assertEqual(len(listed["sessions"]), 1)
+
+    def test_handle_session_create_accepts_task_card_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+
+            created = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Агент по задаче",
+                    "task_card": {
+                        "task_id": "task-1",
+                        "agent_session_id": "agent-session-1",
+                        "policy_ticket": "ticket-1",
+                        "actor_profile": "Nikita",
+                        "task_type": "feature",
+                        "mode": "executor",
+                    },
+                }
+            )
+
+            self.assertEqual(created["type"], "session")
+            task_card = created["session"]["task_card"]
+            self.assertEqual(task_card["task_id"], "task-1")
+            self.assertEqual(task_card["agent_session_id"], "agent-session-1")
+            self.assertEqual(task_card["workspace_id"], workspace["id"])
 
     def test_session_create_rejects_unknown_workspace(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
