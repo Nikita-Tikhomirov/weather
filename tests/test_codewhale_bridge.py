@@ -448,6 +448,8 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             self.assertEqual(listed["files"][0]["name"], "README.md")
             self.assertEqual(content["type"], "workspace_file_content")
             self.assertEqual(content["text"], "hello")
+            self.assertEqual(content["data_base64"], base64.b64encode(b"hello").decode("ascii"))
+            self.assertEqual(content["mime_type"], "text/markdown")
 
     def test_session_upload_file_saves_attachment_event(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

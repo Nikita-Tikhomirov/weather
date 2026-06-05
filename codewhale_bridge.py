@@ -180,6 +180,21 @@ def _safe_upload_name(filename: str, mime_type: str) -> str:
     return f"{_safe_id(stem)}-{uuid.uuid4().hex[:8]}{suffix.lower()}"
 
 
+def _guess_mime_type(filename: str) -> str:
+    lower = filename.lower()
+    if lower.endswith(".md"):
+        return "text/markdown"
+    if lower.endswith(".txt"):
+        return "text/plain"
+    if lower.endswith(".png"):
+        return "image/png"
+    if lower.endswith(".jpg") or lower.endswith(".jpeg"):
+        return "image/jpeg"
+    if lower.endswith(".pdf"):
+        return "application/pdf"
+    return mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
+
 class WorkspaceRegistry:
     def __init__(self, desktop_root: Path, state_dir: Path) -> None:
         self.desktop_root = desktop_root.resolve()
@@ -292,7 +307,14 @@ class WorkspaceRegistry:
         text = raw[:128 * 1024].decode("utf-8", "replace")
         if len(raw) > 128 * 1024:
             text += "\n... (truncated)"
-        return {"path": target.relative_to(base).as_posix(), "text": text, "size": len(raw)}
+        mime_type = _guess_mime_type(target.name)
+        return {
+            "path": target.relative_to(base).as_posix(),
+            "text": text,
+            "data_base64": base64.b64encode(raw).decode("ascii"),
+            "mime_type": mime_type,
+            "size": len(raw),
+        }
 
     def save_upload(
         self,

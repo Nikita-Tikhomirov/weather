@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('AgentLaunchPlan', () {
-    test('builds ordered command steps before task prompt', () {
+    test('builds ordered command steps, app context and task prompt', () {
       final plan = AgentLaunchPlan.build(
         contextPrompt: 'Контекст задачи',
         selectedCommandValues: const ['/skill tdd', '/skill review'],
@@ -22,11 +22,16 @@ void main() {
       );
 
       expect(plan.steps.map((step) => step.text), [
+        allOf(
+          contains('Family Todo'),
+          contains('Карточка задачи не файл в проекте'),
+        ),
         '/skill tdd',
         '/skill review',
         contains('Контекст задачи'),
       ]);
       expect(plan.steps.map((step) => step.label), [
+        'Контекст приложения',
         'TDD',
         'Review',
         'Работа по задаче',
@@ -47,6 +52,7 @@ void main() {
       );
 
       expect(plan.steps.map((step) => step.text), [
+        contains('Family Todo'),
         '/skill tdd',
         contains('Контекст задачи'),
       ]);
@@ -59,6 +65,7 @@ TASK_CARD_ACTIONS_JSON:
 ```json
 {
   "comments": ["Проверил экран и приложил отчет."],
+  "status": "in_review",
   "checklists": [
     {"title": "QA", "items": ["Открыть экран", "Проверить права"]}
   ],
@@ -70,6 +77,7 @@ TASK_CARD_ACTIONS_JSON:
 ''');
 
       expect(actions.comments, ['Проверил экран и приложил отчет.']);
+      expect(actions.status, 'in_review');
       expect(actions.checklists.single.title, 'QA');
       expect(actions.checklists.single.items, [
         'Открыть экран',
@@ -107,6 +115,20 @@ TASK_CARD_ACTIONS_JSON:
         'reports/agent-report.md',
         'reports/admin-screen.png',
       ]);
+    });
+
+    test('parses workflow status aliases from task card actions', () {
+      final actions = AgentTaskActions.parse('''
+TASK_CARD_ACTIONS_JSON:
+{
+  "task_card_actions": {
+    "move_to": "done"
+  }
+}
+''');
+
+      expect(actions.status, 'done');
+      expect(actions.isEmpty, isFalse);
     });
   });
 }

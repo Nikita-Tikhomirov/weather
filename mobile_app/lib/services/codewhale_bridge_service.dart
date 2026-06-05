@@ -27,6 +27,7 @@ class CodeWhaleBridgeMessage {
     this.folderParent = '',
     this.filePath = '',
     this.fileText = '',
+    this.fileDataBase64 = '',
     this.filename = '',
     this.originalName = '',
     this.mimeType = '',
@@ -55,6 +56,7 @@ class CodeWhaleBridgeMessage {
   final String folderParent;
   final String filePath;
   final String fileText;
+  final String fileDataBase64;
   final String filename;
   final String originalName;
   final String mimeType;
@@ -108,6 +110,8 @@ class CodeWhaleBridgeMessage {
       folderParent: (json['parent'] ?? '').toString(),
       filePath: (json['path'] ?? '').toString(),
       fileText: (json['text'] ?? '').toString(),
+      fileDataBase64:
+          (json['data_base64'] ?? json['dataBase64'] ?? '').toString(),
       filename: (json['name'] ?? json['filename'] ?? '').toString(),
       originalName: (json['original_name'] ?? '').toString(),
       mimeType: (json['mime_type'] ?? '').toString(),

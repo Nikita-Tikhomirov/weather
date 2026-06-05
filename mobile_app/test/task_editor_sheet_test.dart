@@ -172,8 +172,11 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
 
   final List<String> sentMessages = [];
   final List<String> uploadedFiles = [];
+  final List<String> readFilePaths = [];
   final List<String> createSessionWorkspaceIds = [];
+  final Map<String, String> fileReadDataBase64ByPath = {};
   List<WorkspaceItem> workspaces = const [];
+  String taskPromptReply = '';
   int connectCount = 0;
   int commandListRequestCount = 0;
   int workspaceListRequestCount = 0;
@@ -204,6 +207,22 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
       CodeWhaleBridgeMessage.fromJson({
         'type': 'workspace_list',
         'workspaces': workspaces.map((item) => item.toJson()).toList(),
+      }),
+    );
+  }
+
+  @override
+  void requestWorkspaceFileRead(String workspaceId, String path) {
+    readFilePaths.add(path);
+    onMessage(
+      CodeWhaleBridgeMessage.fromJson({
+        'type': 'workspace_file_content',
+        'workspace_id': workspaceId,
+        'path': path,
+        'text': 'Файл агента: $path',
+        'data_base64': fileReadDataBase64ByPath[path] ?? '',
+        'mime_type': path.endsWith('.png') ? 'image/png' : 'text/markdown',
+        'size': fileReadDataBase64ByPath[path]?.length ?? 0,
       }),
     );
   }
@@ -256,6 +275,17 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
   @override
   void sendSessionMessage(String workspaceId, String sessionId, String text) {
     sentMessages.add(text);
+    if (taskPromptReply.trim().isNotEmpty &&
+        text.contains('Выполни задачу по карточке.')) {
+      onMessage(
+        CodeWhaleBridgeMessage.fromJson({
+          'type': 'assistant_delta',
+          'workspace_id': workspaceId,
+          'session_id': sessionId,
+          'text': taskPromptReply,
+        }),
+      );
+    }
     onMessage(
       CodeWhaleBridgeMessage.fromJson({
         'type': 'session_stream_done',
@@ -630,19 +660,25 @@ void main() {
         expect(fakeBridge.policyTicket, 'test-policy-ticket');
         expect(fakeBridge.createSessionCount, 1);
         expect(fakeBridge.uploadedFiles, contains('report.txt'));
+        expect(fakeBridge.sentMessages.first, contains('Family Todo'));
         expect(
-          fakeBridge.sentMessages.single,
+          fakeBridge.sentMessages.first,
+          contains('Карточка задачи не файл в проекте'),
+        );
+        final taskPrompt = fakeBridge.sentMessages.last;
+        expect(
+          taskPrompt,
           contains('Разобрать запуск агента'),
         );
         expect(
-          fakeBridge.sentMessages.single,
+          taskPrompt,
           contains('Учитывай свежий комментарий.'),
         );
         expect(
-          fakeBridge.sentMessages.single,
+          taskPrompt,
           contains('Проверить очередь инструментов'),
         );
-        expect(fakeBridge.sentMessages.single, contains('report.txt'));
+        expect(taskPrompt, contains('report.txt'));
         expect(
           find.textContaining('Не удалось запустить агента'),
           findsNothing,
@@ -788,6 +824,107 @@ void main() {
       expect(repository.fakeApi.agentContextCount, 0);
       expect(bridge!.createSessionCount, 0);
       expect(find.textContaining('Выберите воркспейс'), findsWidgets);
+    });
+
+    testWidgets('agent task actions update card status and attach report',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      repository.tasks.add(_editableTask);
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      store.selectedDate.value = DateTime(2026, 5, 31);
+      _FakeAgentBridge? bridge;
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Исполнитель',
+        plugins: [],
+        allowedCommands: ['session_create', 'session_send'],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              )
+                ..fileReadDataBase64ByPath.addAll({
+                  'reports/form-report.md': 'cmVwb3J0LWFnZW50YQ==',
+                  'vision/form-screen.png': 'iVBORw0KGgo=',
+                })
+                ..taskPromptReply = '''
+Работу выполнил, отчет приложил.
+TASK_CARD_ACTIONS_JSON:
+{
+  "status": "in_review",
+  "comments": ["Готово к проверке, отчет и скрин приложены."],
+  "checklists": [
+    {"title": "Проверка агента", "items": ["Проверить отчет", "Принять работу"]}
+  ],
+  "attachments": [
+    {"path": "reports/form-report.md", "filename": "form-report.md", "caption": "Отчет агента"},
+    {"path": "vision/form-screen.png", "filename": "form-screen.png", "caption": "Скрин формы"}
+  ]
+}
+''';
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Агент'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Новый чат'));
+      await tester.pumpAndSettle();
+
+      expect(repository.upserts, isNotEmpty);
+      final saved = repository.upserts.last;
+      expect(saved.workflowStatus, WorkflowStatus.in_review);
+      expect(saved.collaboration.comments.last.authorProfile, 'agent');
+      expect(
+        saved.collaboration.comments.last.text,
+        'Готово к проверке, отчет и скрин приложены.',
+      );
+      expect(saved.collaboration.attachments.map((item) => item.assetUrl), [
+        'reports/form-report.md',
+        'vision/form-screen.png',
+      ]);
+      expect(bridge!.readFilePaths, [
+        'reports/form-report.md',
+        'vision/form-screen.png',
+      ]);
+      expect(saved.collaboration.attachments.map((item) => item.dataBase64), [
+        'cmVwb3J0LWFnZW50YQ==',
+        'iVBORw0KGgo=',
+      ]);
+      expect(
+        saved.collaboration.comments.last.attachmentIds,
+        saved.collaboration.attachments.map((item) => item.id).toList(),
+      );
+      expect(saved.collaboration.checklists.last.title, 'Проверка агента');
+      expect(
+        saved.collaboration.checklists.last.items.map((item) => item.text),
+        [
+          'Проверить отчет',
+          'Принять работу',
+        ],
+      );
     });
 
     testWidgets('work tab supports comments and checklists', (tester) async {

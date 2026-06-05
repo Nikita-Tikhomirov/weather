@@ -137,6 +137,8 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   StringBuffer? _agentResultBuffer;
   int _pendingAgentStepTotal = 0;
   bool _agentQueueActive = false;
+  final Map<String, String> _pendingAgentAttachmentReads = {};
+  int _localIdSequence = 0;
   List<Map<String, dynamic>> _agentCommands = const [];
   List<String> _selectedAgentCommandValues = const [];
   bool _agentCommandsLoading = false;
@@ -410,7 +412,8 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   String _newId(String prefix) {
-    return '$prefix-${DateTime.now().microsecondsSinceEpoch}';
+    _localIdSequence += 1;
+    return '$prefix-${DateTime.now().microsecondsSinceEpoch}-$_localIdSequence';
   }
 
   TaskActivityEntry _activity({
@@ -1739,6 +1742,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       });
       return;
     }
+    if (message.type == 'workspace_file_content') {
+      _applyAgentWorkspaceFileContent(message);
+      return;
+    }
     final pendingId = _pendingAgentSessionId;
     if (message.isError) {
       final errorText =
@@ -2144,6 +2151,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       return;
     }
     final now = DateTime.now().toIso8601String();
+    final nextStatus = _agentActionStatus(actions.status);
     final newAttachments = actions.attachments.map((draft) {
       final filename = draft.filename.isNotEmpty
           ? draft.filename
@@ -2195,22 +2203,132 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             .toList(),
       );
     }).toList();
+    final activity = [
+      ..._collaboration.activity,
+      if (nextStatus != null && nextStatus != _status)
+        _activity(
+          type: 'agent_status_changed',
+          text:
+              'перевел карточку в статус ${_agentWorkflowStatusLabel(nextStatus)}',
+          targetId: _pendingAgentSessionId,
+        ),
+      _activity(
+        type: 'agent_card_updated',
+        text: 'обновил карточку задачи',
+        targetId: _pendingAgentSessionId,
+      ),
+    ];
     setState(() {
+      if (nextStatus != null) {
+        _status = nextStatus;
+      }
       _collaboration = _collaboration.copyWith(
         comments: [..._collaboration.comments, ...newComments],
         attachments: [..._collaboration.attachments, ...newAttachments],
         checklists: [..._collaboration.checklists, ...newChecklists],
-        activity: [
-          ..._collaboration.activity,
-          _activity(
-            type: 'agent_card_updated',
-            text: 'обновил карточку задачи',
-            targetId: _pendingAgentSessionId,
-          ),
-        ],
+        activity: activity,
+      );
+    });
+    _requestAgentActionAttachmentFiles(newAttachments);
+    _autosaveNow();
+  }
+
+  void _requestAgentActionAttachmentFiles(List<TaskAttachment> attachments) {
+    final workspaceId = _pendingAgentWorkspaceId.trim();
+    if (workspaceId.isEmpty || attachments.isEmpty) {
+      return;
+    }
+    for (final attachment in attachments) {
+      final path = attachment.assetUrl.trim();
+      if (!_isWorkspaceAttachmentPath(path)) {
+        continue;
+      }
+      _pendingAgentAttachmentReads[_agentAttachmentReadKey(workspaceId, path)] =
+          attachment.id;
+      _agentBridge?.requestWorkspaceFileRead(workspaceId, path);
+    }
+  }
+
+  void _applyAgentWorkspaceFileContent(CodeWhaleBridgeMessage message) {
+    final workspaceId = message.workspaceId.trim();
+    final path = message.filePath.trim();
+    if (workspaceId.isEmpty || path.isEmpty) {
+      return;
+    }
+    final attachmentId = _pendingAgentAttachmentReads.remove(
+      _agentAttachmentReadKey(
+        workspaceId,
+        path,
+      ),
+    );
+    if (attachmentId == null || attachmentId.isEmpty) {
+      return;
+    }
+    final dataBase64 = message.fileDataBase64.trim().isNotEmpty
+        ? message.fileDataBase64.trim()
+        : message.fileText.trim().isEmpty
+            ? ''
+            : base64Encode(utf8.encode(message.fileText));
+    setState(() {
+      _collaboration = _collaboration.copyWith(
+        attachments: _collaboration.attachments.map((attachment) {
+          if (attachment.id != attachmentId) {
+            return attachment;
+          }
+          return attachment.copyWith(
+            dataBase64: dataBase64,
+            mimeType: message.mimeType.trim().isNotEmpty
+                ? message.mimeType.trim()
+                : attachment.mimeType,
+            sizeBytes:
+                message.fileSize > 0 ? message.fileSize : attachment.sizeBytes,
+          );
+        }).toList(),
       );
     });
     _autosaveNow();
+  }
+
+  bool _isWorkspaceAttachmentPath(String path) {
+    final value = path.trim();
+    if (value.isEmpty) {
+      return false;
+    }
+    return !value.startsWith('http://') &&
+        !value.startsWith('https://') &&
+        !value.startsWith('file://') &&
+        !value.startsWith('content://') &&
+        !value.startsWith('/');
+  }
+
+  String _agentAttachmentReadKey(String workspaceId, String path) {
+    return '${workspaceId.trim()}::${path.trim().replaceAll('\\', '/')}';
+  }
+
+  WorkflowStatus? _agentActionStatus(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) {
+      return null;
+    }
+    return WorkflowStatus.values.cast<WorkflowStatus?>().firstWhere(
+          (item) => item?.name == value,
+          orElse: () => null,
+        );
+  }
+
+  String _agentWorkflowStatusLabel(WorkflowStatus status) {
+    switch (status) {
+      case WorkflowStatus.todo:
+        return 'К выполнению';
+      case WorkflowStatus.in_progress:
+        return 'В работе';
+      case WorkflowStatus.in_review:
+        return 'На проверке';
+      case WorkflowStatus.done:
+        return 'Выполнено';
+      case WorkflowStatus.archive:
+        return 'Архив';
+    }
   }
 
   String _attachmentKind(String filename, String mimeType) {
