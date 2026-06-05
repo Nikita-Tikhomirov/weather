@@ -137,6 +137,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   StringBuffer? _agentResultBuffer;
   int _pendingAgentStepTotal = 0;
   bool _agentQueueActive = false;
+  Map<String, dynamic> _pendingAgentTaskCard = const {};
   final Map<String, String> _pendingAgentAttachmentReads = {};
   int _localIdSequence = 0;
   List<Map<String, dynamic>> _agentCommands = const [];
@@ -1554,22 +1555,24 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       _activeAgentStep = null;
       _agentResultBuffer = null;
       _agentQueueActive = true;
+      final taskCard = {
+        'task_id': saved.id,
+        'agent_session_id': session.id,
+        'actor_profile': widget.store.owner.value,
+        'actor_phone': widget.actorPhone,
+        'api_url': api.baseUrl,
+        'policy_ticket': ticket.policyTicket,
+        'task_type': taskType,
+        'mode': policy.mode,
+        'workspace_id': workspaceId,
+      };
+      _pendingAgentTaskCard = taskCard;
       bridge.updatePolicyTicket(ticket.policyTicket);
       bridge.requestCodeWhaleCommands();
       bridge.createSession(
         workspaceId,
         title: title,
-        taskCard: {
-          'task_id': saved.id,
-          'agent_session_id': session.id,
-          'actor_profile': widget.store.owner.value,
-          'actor_phone': widget.actorPhone,
-          'api_url': api.baseUrl,
-          'policy_ticket': ticket.policyTicket,
-          'task_type': taskType,
-          'mode': policy.mode,
-          'workspace_id': workspaceId,
-        },
+        taskCard: taskCard,
       );
       if (mounted) {
         _showSnack(
@@ -1761,6 +1764,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       _applyAgentWorkspaceFileContent(message);
       return;
     }
+    if (message.type == 'session_task_card') {
+      return;
+    }
     final pendingId = _pendingAgentSessionId;
     if (message.isError) {
       final errorText =
@@ -1819,6 +1825,11 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         status: 'linked',
       );
       _pendingAgentBridgeSessionId = bridgeSession.id;
+      _agentBridge?.updateSessionTaskCard(
+        workspaceId: workspaceId,
+        sessionId: bridgeSession.id,
+        taskCard: _pendingAgentTaskCard,
+      );
       _agentBridge?.updateSessionSettings(
         workspaceId: workspaceId,
         sessionId: bridgeSession.id,
@@ -2117,6 +2128,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     _agentResultBuffer = null;
     _agentQueueActive = false;
     _agentLaunching = false;
+    _pendingAgentTaskCard = const {};
   }
 
   void _scheduleAgentTaskPoll(
@@ -4301,9 +4313,8 @@ class _AgentQuestionTile extends StatelessWidget {
           Icon(
             blocking ? Icons.priority_high : Icons.help_outline,
             size: 18,
-            color: blocking
-                ? theme.colorScheme.error
-                : theme.colorScheme.primary,
+            color:
+                blocking ? theme.colorScheme.error : theme.colorScheme.primary,
           ),
           const SizedBox(width: 10),
           Expanded(

@@ -513,6 +513,18 @@ class SessionRegistry:
         self._save_session(session)
         return dict(session)
 
+    def update_task_card(
+        self,
+        workspace_id: str,
+        session_id: str,
+        task_card: dict[str, Any],
+    ) -> dict[str, Any]:
+        session = self.get_session(workspace_id, session_id)
+        session["task_card"] = dict(task_card)
+        session["updated_at"] = _now_ms()
+        self._save_session(session)
+        return dict(session)
+
     def append_event(
         self,
         workspace_id: str,
@@ -643,6 +655,16 @@ class CodeWhaleWorkerManager:
         if not workspace.exists() or not workspace.is_dir():
             raise ValueError("workspace path does not exist")
 
+        session = self.sessions.get_session(workspace_id, session_id)
+        task_card = session.get("task_card") if isinstance(session.get("task_card"), dict) else {}
+        task_card_runtime = None
+        if task_card:
+            task_card_runtime = self._prepare_task_card_runtime(
+                workspace,
+                workspace_id,
+                task_card,
+            )
+
         key = self._key(workspace_id, session_id)
         existing = self._workers.get(key)
         if existing is not None and existing.poll() is None:
@@ -656,12 +678,9 @@ class CodeWhaleWorkerManager:
 
         env = os.environ.copy()
         env.setdefault("PYTHONIOENCODING", "utf-8:backslashreplace")
-        session = self.sessions.get_session(workspace_id, session_id)
-        task_card = session.get("task_card") if isinstance(session.get("task_card"), dict) else {}
-        if task_card:
-            tool_dir = self._materialize_task_card_tool(workspace, task_card)
-            global_bin = self._materialize_global_task_card_tool()
-            env.update(self._task_card_env(workspace, workspace_id, task_card))
+        if task_card_runtime is not None:
+            tool_dir, global_bin, task_card_env = task_card_runtime
+            env.update(task_card_env)
             current_path = env.get("PATH") or env.get("Path") or ""
             env["PATH"] = self._prepend_path_entries(
                 current_path,
@@ -710,6 +729,35 @@ class CodeWhaleWorkerManager:
         )
         return session
 
+    def _prepare_task_card_runtime(
+        self,
+        workspace: Path,
+        workspace_id: str,
+        task_card: dict[str, Any],
+    ) -> tuple[Path, Path, dict[str, str]]:
+        tool_dir = self._materialize_task_card_tool(workspace, task_card)
+        global_bin = self._materialize_global_task_card_tool()
+        task_card_env = self._task_card_env(workspace, workspace_id, task_card)
+        context_path = self._write_task_card_context(workspace, task_card_env)
+        task_card_env["FAMILY_TASK_CARD_CONTEXT_FILE"] = str(context_path)
+        return tool_dir, global_bin, task_card_env
+
+    def refresh_task_card_runtime(
+        self,
+        workspace_id: str,
+        session_id: str,
+        workspace_path: Path,
+    ) -> bool:
+        workspace = workspace_path.resolve()
+        if not workspace.exists() or not workspace.is_dir():
+            raise ValueError("workspace path does not exist")
+        session = self.sessions.get_session(workspace_id, session_id)
+        task_card = session.get("task_card") if isinstance(session.get("task_card"), dict) else {}
+        if not task_card:
+            return False
+        self._prepare_task_card_runtime(workspace, workspace_id, task_card)
+        return True
+
     def _materialize_task_card_tool(
         self,
         workspace: Path,
@@ -721,6 +769,25 @@ class CodeWhaleWorkerManager:
         python_path = Path(sys.executable).resolve()
         self._write_task_card_wrappers(tool_dir, python_path, cli_path)
         return tool_dir
+
+    def _write_task_card_context(
+        self,
+        workspace: Path,
+        task_card_env: dict[str, str],
+    ) -> Path:
+        context_dir = workspace / ".family-task-card"
+        context_dir.mkdir(parents=True, exist_ok=True)
+        context_path = context_dir / "context.json"
+        payload = {
+            **task_card_env,
+            "FAMILY_TASK_CARD_CONTEXT_FILE": str(context_path),
+        }
+        tmp = context_path.with_suffix(".json.tmp")
+        with tmp.open("w", encoding="utf-8") as file:
+            json.dump(payload, file, ensure_ascii=False, indent=2)
+            file.write("\n")
+        tmp.replace(context_path)
+        return context_path
 
     def _materialize_global_task_card_tool(self) -> Path:
         cli_path = Path(__file__).resolve().parent / "family_task_card_cli.py"
@@ -1270,6 +1337,23 @@ class CodeWhaleBridge:
                 task_card=self._task_card_metadata(message, str(workspace["id"])),
             )
             return {"type": "session", "session": session}
+        if msg_type == "session_update_task_card":
+            workspace = self.workspaces.get_workspace(self._workspace_id(message))
+            session_id = self._session_id(message)
+            task_card = self._task_card_metadata(message, str(workspace["id"]))
+            if not task_card:
+                raise ValueError("task_card is required")
+            session = self.sessions.update_task_card(
+                str(workspace["id"]),
+                session_id,
+                task_card,
+            )
+            self.workers.refresh_task_card_runtime(
+                str(workspace["id"]),
+                session_id,
+                Path(str(workspace["path"])),
+            )
+            return {"type": "session_task_card", "session": session}
         if msg_type == "session_open":
             session = self.sessions.get_session(
                 self._workspace_id(message),

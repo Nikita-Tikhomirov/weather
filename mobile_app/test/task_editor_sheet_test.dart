@@ -183,6 +183,7 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
   int commandListRequestCount = 0;
   int workspaceListRequestCount = 0;
   int createSessionCount = 0;
+  int updateTaskCardCount = 0;
   String policyTicket = '';
 
   @override
@@ -266,6 +267,16 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
     String sandboxMode = '',
     bool autoMode = false,
   }) {}
+
+  @override
+  void updateSessionTaskCard({
+    required String workspaceId,
+    required String sessionId,
+    Map<String, dynamic> taskCard = const {},
+  }) {
+    updateTaskCardCount += 1;
+    lastTaskCard = Map<String, dynamic>.from(taskCard);
+  }
 
   @override
   void uploadSessionFile({
@@ -715,6 +726,7 @@ void main() {
         final fakeBridge = bridge!;
         expect(fakeBridge.policyTicket, 'test-policy-ticket');
         expect(fakeBridge.createSessionCount, 1);
+        expect(fakeBridge.updateTaskCardCount, 1);
         expect(fakeBridge.lastTaskCard['task_id'], task.id);
         expect(fakeBridge.lastTaskCard['agent_session_id'], isNotEmpty);
         expect(fakeBridge.lastTaskCard['policy_ticket'], 'test-policy-ticket');
@@ -785,8 +797,7 @@ void main() {
               bridge = _FakeAgentBridge(
                 onMessage: onMessage,
                 onStatusChange: onStatusChange,
-              )..familyTaskCardSkillReply =
-                  'Skill family-task-card not found';
+              )..familyTaskCardSkillReply = 'Skill family-task-card not found';
               return bridge!;
             },
           ),

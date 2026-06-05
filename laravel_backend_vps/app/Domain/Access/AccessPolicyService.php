@@ -779,6 +779,7 @@ final class AccessPolicyService
                 'session_start',
                 'session_stop',
                 'session_task_poll',
+                'session_update_task_card',
                 'session_upload_file',
             );
         }

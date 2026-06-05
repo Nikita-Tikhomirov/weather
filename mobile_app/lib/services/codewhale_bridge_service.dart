@@ -310,6 +310,22 @@ class CodeWhaleBridgeService {
     });
   }
 
+  void updateSessionTaskCard({
+    required String workspaceId,
+    required String sessionId,
+    Map<String, dynamic> taskCard = const {},
+  }) {
+    if (taskCard.isEmpty) {
+      return;
+    }
+    _sendCommand({
+      'type': 'session_update_task_card',
+      'workspace_id': workspaceId,
+      'session_id': sessionId,
+      'task_card': taskCard,
+    });
+  }
+
   void openSession(String workspaceId, String sessionId) {
     _sendCommand({
       'type': 'session_open',

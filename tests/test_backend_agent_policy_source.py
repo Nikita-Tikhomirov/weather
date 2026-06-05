@@ -53,6 +53,7 @@ def test_access_policy_service_declares_superadmin_agent_capabilities_and_ticket
     assert "hash_hmac('sha256'" in service
     assert "'session_create'" in service
     assert "'session_send'" in service
+    assert "'session_update_task_card'" in service
     assert "workspace_access" in service
     assert "grantWorkspaceAccess" in service
     assert "revokeWorkspaceAccess" in service

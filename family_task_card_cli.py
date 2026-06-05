@@ -12,6 +12,32 @@ from typing import Any, Callable
 
 
 PostJson = Callable[[str, dict[str, Any]], dict[str, Any]]
+ENV_KEYS = {
+    "FAMILY_TASK_CARD_API_URL",
+    "FAMILY_TASK_CARD_API_KEY",
+    "FAMILY_TASK_CARD_TICKET",
+    "FAMILY_TASK_CARD_TASK_ID",
+    "FAMILY_TASK_CARD_WORKSPACE_ID",
+    "FAMILY_TASK_CARD_SESSION_ID",
+    "FAMILY_TASK_CARD_ACTOR_PROFILE",
+    "FAMILY_TASK_CARD_ACTOR_PHONE",
+    "FAMILY_TASK_CARD_TASK_TYPE",
+    "FAMILY_TASK_CARD_MODE",
+    "FAMILY_TASK_CARD_WORKSPACE_PATH",
+}
+CONTEXT_KEY_ALIASES = {
+    "api_url": "FAMILY_TASK_CARD_API_URL",
+    "api_key": "FAMILY_TASK_CARD_API_KEY",
+    "policy_ticket": "FAMILY_TASK_CARD_TICKET",
+    "task_id": "FAMILY_TASK_CARD_TASK_ID",
+    "workspace_id": "FAMILY_TASK_CARD_WORKSPACE_ID",
+    "agent_session_id": "FAMILY_TASK_CARD_SESSION_ID",
+    "actor_profile": "FAMILY_TASK_CARD_ACTOR_PROFILE",
+    "actor_phone": "FAMILY_TASK_CARD_ACTOR_PHONE",
+    "task_type": "FAMILY_TASK_CARD_TASK_TYPE",
+    "mode": "FAMILY_TASK_CARD_MODE",
+    "workspace_path": "FAMILY_TASK_CARD_WORKSPACE_PATH",
+}
 
 
 def run(
@@ -20,7 +46,7 @@ def run(
     env: dict[str, str] | None = None,
     post_json: PostJson | None = None,
 ) -> int:
-    env_map = env if env is not None else os.environ
+    env_map = _effective_env(env if env is not None else os.environ)
     args = _parser().parse_args(argv)
     payload = _base_payload(env_map)
 
@@ -30,7 +56,7 @@ def run(
         print(str(exc), file=sys.stderr)
         return 2
 
-    poster = post_json or _post_json
+    poster = post_json or (lambda url, request_payload: _post_json(url, request_payload, env_map))
     try:
         response = poster(_url(env_map, endpoint), payload)
     except Exception as exc:
@@ -145,6 +171,62 @@ def _base_payload(env: dict[str, str]) -> dict[str, Any]:
     }
 
 
+def _effective_env(env: dict[str, str]) -> dict[str, str]:
+    result = {str(key): str(value) for key, value in env.items()}
+    context = _load_context_env(result)
+    for key, value in context.items():
+        if not result.get(key):
+            result[key] = value
+    return result
+
+
+def _load_context_env(env: dict[str, str]) -> dict[str, str]:
+    for path in _context_candidates(env):
+        if not path.exists() or not path.is_file():
+            continue
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(raw, dict):
+            continue
+        return _normalize_context(raw)
+    return {}
+
+
+def _context_candidates(env: dict[str, str]) -> list[Path]:
+    candidates = []
+    explicit = env.get("FAMILY_TASK_CARD_CONTEXT_FILE", "").strip()
+    if explicit:
+        candidates.append(Path(explicit).expanduser())
+    workspace_path = env.get("FAMILY_TASK_CARD_WORKSPACE_PATH", "").strip()
+    start = Path(workspace_path).expanduser() if workspace_path else Path.cwd()
+    start = start.resolve()
+    for folder in [start, *start.parents]:
+        candidates.append(folder / ".family-task-card" / "context.json")
+    unique = []
+    seen = set()
+    for candidate in candidates:
+        key = str(candidate.resolve()) if candidate.exists() else str(candidate)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(candidate)
+    return unique
+
+
+def _normalize_context(raw: dict[str, Any]) -> dict[str, str]:
+    result = {}
+    for key, value in raw.items():
+        env_key = key if key in ENV_KEYS else CONTEXT_KEY_ALIASES.get(str(key))
+        if not env_key:
+            continue
+        text = "" if value is None else str(value)
+        if text:
+            result[env_key] = text
+    return result
+
+
 def _attachment_payload(path: str, caption: str, env: dict[str, str]) -> dict[str, Any]:
     base = Path(env.get("FAMILY_TASK_CARD_WORKSPACE_PATH") or os.getcwd()).resolve()
     target = (base / path).resolve()
@@ -170,14 +252,19 @@ def _url(env: dict[str, str], endpoint: str) -> str:
     return f"{base}/agent/task-card/{endpoint}"
 
 
-def _post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
+def _post_json(
+    url: str,
+    payload: dict[str, Any],
+    env: dict[str, str] | None = None,
+) -> dict[str, Any]:
     data = json.dumps(payload).encode("utf-8")
+    env_map = env or os.environ
     request = urllib.request.Request(
         url,
         data=data,
         headers={
             "Content-Type": "application/json",
-            "X-Api-Key": os.environ.get("FAMILY_TASK_CARD_API_KEY", "dev-local-key"),
+            "X-Api-Key": env_map.get("FAMILY_TASK_CARD_API_KEY", "dev-local-key"),
         },
         method="POST",
     )

@@ -124,6 +124,7 @@ PROTECTED_COMMANDS = {
     "session_list",
     "session_create",
     "session_open",
+    "session_update_task_card",
     "session_update_settings",
     "session_send",
     "session_upload_file",
@@ -148,6 +149,7 @@ READ_COMMANDS = {
 RUN_COMMANDS = {
     "session_create",
     "session_send",
+    "session_update_task_card",
     "session_upload_file",
     "session_task_poll",
     "session_stop",
