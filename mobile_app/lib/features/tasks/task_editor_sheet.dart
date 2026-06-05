@@ -2930,6 +2930,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       });
     }
     final workspaceId = _effectiveAgentWorkspaceId(policy);
+    final openQuestions = _collaboration.questions
+        .where((question) => question.isOpen)
+        .toList(growable: false);
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
       children: [
@@ -2963,6 +2966,18 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           ],
         ),
         const SizedBox(height: 18),
+        if (openQuestions.isNotEmpty) ...[
+          _SectionHeader(
+            icon: Icons.help_outline,
+            title: 'Вопросы агента',
+            trailing: '${openQuestions.length}',
+          ),
+          const SizedBox(height: 10),
+          ...openQuestions.map((question) {
+            return _AgentQuestionTile(question: question);
+          }),
+          const SizedBox(height: 18),
+        ],
         _buildAgentWorkspacePanel(policy),
         const SizedBox(height: 18),
         Row(
@@ -4209,6 +4224,63 @@ class _AgentSessionRow extends StatelessWidget {
       trailing: session.sessionId.isEmpty
           ? const Icon(Icons.pending_outlined)
           : const Icon(Icons.link),
+    );
+  }
+}
+
+class _AgentQuestionTile extends StatelessWidget {
+  const _AgentQuestionTile({required this.question});
+
+  final TaskAgentQuestion question;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final blocking = question.blocking;
+    final borderColor = blocking
+        ? theme.colorScheme.error.withOpacity(0.35)
+        : theme.colorScheme.outlineVariant;
+    final background = blocking
+        ? theme.colorScheme.errorContainer.withOpacity(0.35)
+        : theme.colorScheme.surfaceContainerHighest.withOpacity(0.45);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            blocking ? Icons.priority_high : Icons.help_outline,
+            size: 18,
+            color: blocking
+                ? theme.colorScheme.error
+                : theme.colorScheme.primary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(question.text),
+                if (blocking) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Блокирует работу',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

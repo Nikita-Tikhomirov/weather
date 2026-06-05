@@ -571,6 +571,44 @@ void main() {
       expect(find.text('Плагины'), findsNothing);
     });
 
+    testWidgets('agent tab displays open agent questions', (tester) async {
+      final task = _editableTask.copyWith(
+        collaboration: const TaskCollaboration(
+          questions: [
+            TaskAgentQuestion(
+              id: 'question-1',
+              text: 'Нужен макет формы?',
+              status: 'open',
+              createdAt: '2026-06-05T10:00:00Z',
+              blocking: true,
+            ),
+          ],
+        ),
+      );
+      final store = _FakeTaskStore();
+      store.selectedDate.value = DateTime(2026, 5, 31);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: task,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Агент'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Вопросы агента'), findsOneWidget);
+      expect(find.text('Нужен макет формы?'), findsOneWidget);
+    });
+
     testWidgets(
       'agent launch uses local task card context when backend context is 400',
       (tester) async {
