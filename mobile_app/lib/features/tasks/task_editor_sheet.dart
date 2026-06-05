@@ -4238,11 +4238,11 @@ class _AgentQuestionTile extends StatelessWidget {
     final theme = Theme.of(context);
     final blocking = question.blocking;
     final borderColor = blocking
-        ? theme.colorScheme.error.withOpacity(0.35)
+        ? theme.colorScheme.error.withValues(alpha: 0.35)
         : theme.colorScheme.outlineVariant;
     final background = blocking
-        ? theme.colorScheme.errorContainer.withOpacity(0.35)
-        : theme.colorScheme.surfaceContainerHighest.withOpacity(0.45);
+        ? theme.colorScheme.errorContainer.withValues(alpha: 0.35)
+        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45);
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
