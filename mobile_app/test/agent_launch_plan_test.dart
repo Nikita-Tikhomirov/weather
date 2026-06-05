@@ -3,6 +3,20 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('AgentLaunchPlan', () {
+    test('always starts with family task card skill and read', () {
+      final plan = AgentLaunchPlan.build(
+        contextPrompt: 'Контекст задачи',
+        selectedCommandValues: const ['/skill tdd'],
+        commands: const [
+          {'label': 'TDD', 'value': '/skill tdd'},
+        ],
+      );
+
+      expect(plan.steps[0].text, '/skill family-task-card');
+      expect(plan.steps[1].text, contains('family-task-card read'));
+      expect(plan.steps[2].text, '/skill tdd');
+    });
+
     test('builds ordered command steps, app context and task prompt', () {
       final plan = AgentLaunchPlan.build(
         contextPrompt: 'Контекст задачи',
@@ -22,18 +36,22 @@ void main() {
       );
 
       expect(plan.steps.map((step) => step.text), [
+        '/skill family-task-card',
+        contains('family-task-card read'),
+        '/skill tdd',
+        '/skill review',
         allOf(
           contains('Family Todo'),
           contains('Карточка задачи не файл в проекте'),
         ),
-        '/skill tdd',
-        '/skill review',
         contains('Контекст задачи'),
       ]);
       expect(plan.steps.map((step) => step.label), [
-        'Контекст приложения',
+        'Карточка задачи',
+        'Чтение карточки',
         'TDD',
         'Review',
+        'Контекст приложения',
         'Работа по задаче',
       ]);
     });
@@ -52,8 +70,10 @@ void main() {
       );
 
       expect(plan.steps.map((step) => step.text), [
-        contains('Family Todo'),
+        '/skill family-task-card',
+        contains('family-task-card read'),
         '/skill tdd',
+        contains('Family Todo'),
         contains('Контекст задачи'),
       ]);
     });

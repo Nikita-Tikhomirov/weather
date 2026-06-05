@@ -669,9 +669,14 @@ void main() {
         expect(fakeBridge.lastTaskCard['agent_session_id'], isNotEmpty);
         expect(fakeBridge.lastTaskCard['policy_ticket'], 'test-policy-ticket');
         expect(fakeBridge.uploadedFiles, contains('report.txt'));
-        expect(fakeBridge.sentMessages.first, contains('Family Todo'));
+        expect(fakeBridge.sentMessages[0], '/skill family-task-card');
+        expect(fakeBridge.sentMessages[1], contains('family-task-card read'));
+        final appContext = fakeBridge.sentMessages.firstWhere(
+          (message) => message.contains('Family Todo'),
+        );
+        expect(appContext, contains('Family Todo'));
         expect(
-          fakeBridge.sentMessages.first,
+          appContext,
           contains('Карточка задачи не файл в проекте'),
         );
         final taskPrompt = fakeBridge.sentMessages.last;

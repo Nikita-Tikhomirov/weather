@@ -19,12 +19,18 @@ class AgentLaunchPlan {
       commandByValue[value] = command;
     }
 
-    final seen = <String>{};
+    final seen = <String>{'/skill family-task-card'};
     final steps = <AgentLaunchStep>[
       const AgentLaunchStep(
-        label: 'Контекст приложения',
-        text: _appContextPrompt,
-        kind: AgentLaunchStepKind.appContext,
+        label: 'Карточка задачи',
+        text: '/skill family-task-card',
+        kind: AgentLaunchStepKind.command,
+      ),
+      const AgentLaunchStep(
+        label: 'Чтение карточки',
+        text:
+            'Выполни команду family-task-card read. Изучи snapshot карточки: описание, комментарии, чеклисты, вопросы и вложения. Если команда недоступна или вернула ошибку, остановись и напиши, что карточка задачи недоступна.',
+        kind: AgentLaunchStepKind.taskCardRead,
       ),
     ];
     for (final value in selectedCommandValues) {
@@ -42,6 +48,13 @@ class AgentLaunchPlan {
     }
 
     steps.add(
+      const AgentLaunchStep(
+        label: 'Контекст приложения',
+        text: _appContextPrompt,
+        kind: AgentLaunchStepKind.appContext,
+      ),
+    );
+    steps.add(
       AgentLaunchStep(
         label: 'Работа по задаче',
         text: _taskPrompt(contextPrompt),
@@ -56,7 +69,8 @@ class AgentLaunchPlan {
     final instructions = [
       'Обязательно учитывай описание, комментарии, чеклисты и вложения карточки.',
       'Если для отчета нужны новые списки, пункты, файлы или скриншоты, создай их в воркспейсе.',
-      'В конце ответа верни блок TASK_CARD_ACTIONS_JSON с действиями для карточки.',
+      'Основной способ обновления карточки - команда family-task-card: comment add, checklist create, attachment add-from-workspace, status set, finish.',
+      'TASK_CARD_ACTIONS_JSON разрешен только если команда family-task-card недоступна.',
       'Формат: {"status":"in_review","comments":["итог"],"checklists":[{"title":"Проверка","items":["пункт"]}],"attachments":[{"path":"vision/screen.png","filename":"screen.png","caption":"скрин"}]}.',
       'Для движения карточки укажи status/workflow_status/move_to: todo, in_progress, in_review, done или archive.',
       'Для созданных отчетов и скриншотов обязательно указывай путь в attachments, files или screenshots, чтобы мобильная карточка прикрепила их автоматически.',
@@ -92,11 +106,11 @@ class AgentLaunchPlan {
 const _appContextPrompt = '''
 Системный контекст Family Todo.
 Ты запущен из мобильного приложения Family Todo из карточки задачи.
-Карточка задачи не файл в проекте: приложение уже передает ее структуру в следующем сообщении.
+Карточка задачи не файл в проекте: читай и обновляй ее через команду family-task-card.
 Не ищи карточку задачи в репозитории и не проси пользователя прислать ее отдельно.
 Работай в текущем CodeWhale workspace только для файлов проекта, отчетов, скриншотов и анализа.
-Любые изменения карточки возвращай только через TASK_CARD_ACTIONS_JSON в финальном ответе.
-Приложение само применит эти действия к карточке: сменит статус, добавит комментарии, чеклисты и вложения.
+Комментарии, вопросы, чеклисты, статусы и вложения карточки меняй через family-task-card.
+TASK_CARD_ACTIONS_JSON используй только как аварийный fallback, если команда family-task-card недоступна.
 ''';
 
 class AgentLaunchStep {
@@ -111,7 +125,7 @@ class AgentLaunchStep {
   final AgentLaunchStepKind kind;
 }
 
-enum AgentLaunchStepKind { command, appContext, taskPrompt }
+enum AgentLaunchStepKind { command, taskCardRead, appContext, taskPrompt }
 
 class AgentTaskActions {
   const AgentTaskActions({
