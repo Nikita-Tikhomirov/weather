@@ -183,6 +183,15 @@ void main() {
             createdAt: '2026-06-01T12:00:00',
           ),
         ],
+        questions: [
+          TaskAgentQuestion(
+            id: 'question-1',
+            text: 'Нужен макет формы?',
+            status: 'open',
+            createdAt: '2026-06-05T10:00:00',
+            blocking: true,
+          ),
+        ],
       );
       const task = TaskItem(
         id: 'task-collab',
@@ -214,6 +223,8 @@ void main() {
       expect(fromDb.collaboration.attachmentCount, 1);
       expect(fromDb.collaboration.agentSessionCount, 1);
       expect(fromDb.collaboration.agentSessions.single.workspaceId, 'weather');
+      expect(fromDb.collaboration.questions.single.id, 'question-1');
+      expect(fromDb.collaboration.questions.single.blocking, isTrue);
     });
 
     test('preserves task attachment asset url and metadata', () {

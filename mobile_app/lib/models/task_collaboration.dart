@@ -559,11 +559,95 @@ class TaskAgentSession {
 }
 
 @immutable
+class TaskAgentQuestion {
+  const TaskAgentQuestion({
+    required this.id,
+    required this.text,
+    required this.status,
+    required this.createdAt,
+    this.blocking = false,
+    this.answerText = '',
+    this.answeredAt = '',
+    this.relatedChecklistId = '',
+    this.relatedAttachmentId = '',
+  });
+
+  final String id;
+  final String text;
+  final String status;
+  final String createdAt;
+  final bool blocking;
+  final String answerText;
+  final String answeredAt;
+  final String relatedChecklistId;
+  final String relatedAttachmentId;
+
+  bool get isOpen => status == 'open' && answeredAt.trim().isEmpty;
+
+  factory TaskAgentQuestion.fromJson(Map<String, dynamic> json) {
+    return TaskAgentQuestion(
+      id: (json['id'] ?? '').toString(),
+      text: (json['text'] ?? '').toString(),
+      status: (json['status'] ?? 'open').toString(),
+      createdAt: (json['created_at'] ?? '').toString(),
+      blocking: json['blocking'] == true || json['blocking'] == 1,
+      answerText: (json['answer_text'] ?? '').toString(),
+      answeredAt: (json['answered_at'] ?? '').toString(),
+      relatedChecklistId: (json['related_checklist_id'] ?? '').toString(),
+      relatedAttachmentId: (json['related_attachment_id'] ?? '').toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'text': text,
+      'status': status,
+      'created_at': createdAt,
+      'blocking': blocking,
+      'answer_text': answerText,
+      'answered_at': answeredAt,
+      'related_checklist_id': relatedChecklistId,
+      'related_attachment_id': relatedAttachmentId,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TaskAgentQuestion &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          text == other.text &&
+          status == other.status &&
+          createdAt == other.createdAt &&
+          blocking == other.blocking &&
+          answerText == other.answerText &&
+          answeredAt == other.answeredAt &&
+          relatedChecklistId == other.relatedChecklistId &&
+          relatedAttachmentId == other.relatedAttachmentId;
+
+  @override
+  int get hashCode => Object.hash(
+        id,
+        text,
+        status,
+        createdAt,
+        blocking,
+        answerText,
+        answeredAt,
+        relatedChecklistId,
+        relatedAttachmentId,
+      );
+}
+
+@immutable
 class TaskCollaboration {
   const TaskCollaboration({
     this.comments = const [],
     this.attachments = const [],
     this.checklists = const [],
+    this.questions = const [],
     this.activity = const [],
     this.agentSessions = const [],
   });
@@ -571,6 +655,7 @@ class TaskCollaboration {
   final List<TaskComment> comments;
   final List<TaskAttachment> attachments;
   final List<TaskChecklist> checklists;
+  final List<TaskAgentQuestion> questions;
   final List<TaskActivityEntry> activity;
   final List<TaskAgentSession> agentSessions;
 
@@ -578,6 +663,7 @@ class TaskCollaboration {
       comments.isEmpty &&
       attachments.isEmpty &&
       checklists.isEmpty &&
+      questions.isEmpty &&
       activity.isEmpty &&
       agentSessions.isEmpty;
 
@@ -587,6 +673,7 @@ class TaskCollaboration {
       checklists.fold(0, (sum, checklist) => sum + checklist.totalCount);
   int get checklistDoneCount =>
       checklists.fold(0, (sum, checklist) => sum + checklist.doneCount);
+  int get questionCount => questions.length;
   int get agentSessionCount => agentSessions.length;
 
   factory TaskCollaboration.fromJson(Object? raw) {
@@ -603,6 +690,9 @@ class TaskCollaboration {
       checklists: _decodeMapList(map['checklists'])
           .map(TaskChecklist.fromJson)
           .toList(),
+      questions: _decodeMapList(map['questions'])
+          .map(TaskAgentQuestion.fromJson)
+          .toList(),
       activity: _decodeMapList(map['activity'])
           .map(TaskActivityEntry.fromJson)
           .toList(),
@@ -617,6 +707,7 @@ class TaskCollaboration {
       'comments': comments.map((item) => item.toJson()).toList(),
       'attachments': attachments.map((item) => item.toJson()).toList(),
       'checklists': checklists.map((item) => item.toJson()).toList(),
+      'questions': questions.map((item) => item.toJson()).toList(),
       'activity': activity.map((item) => item.toJson()).toList(),
       'agent_sessions': agentSessions.map((item) => item.toJson()).toList(),
     };
@@ -628,6 +719,7 @@ class TaskCollaboration {
     List<TaskComment>? comments,
     List<TaskAttachment>? attachments,
     List<TaskChecklist>? checklists,
+    List<TaskAgentQuestion>? questions,
     List<TaskActivityEntry>? activity,
     List<TaskAgentSession>? agentSessions,
   }) {
@@ -635,6 +727,7 @@ class TaskCollaboration {
       comments: comments ?? this.comments,
       attachments: attachments ?? this.attachments,
       checklists: checklists ?? this.checklists,
+      questions: questions ?? this.questions,
       activity: activity ?? this.activity,
       agentSessions: agentSessions ?? this.agentSessions,
     );
@@ -653,6 +746,7 @@ class TaskCollaboration {
           listEquals(comments, other.comments) &&
           listEquals(attachments, other.attachments) &&
           listEquals(checklists, other.checklists) &&
+          listEquals(questions, other.questions) &&
           listEquals(activity, other.activity) &&
           listEquals(agentSessions, other.agentSessions);
 
@@ -661,6 +755,7 @@ class TaskCollaboration {
         Object.hashAll(comments),
         Object.hashAll(attachments),
         Object.hashAll(checklists),
+        Object.hashAll(questions),
         Object.hashAll(activity),
         Object.hashAll(agentSessions),
       );

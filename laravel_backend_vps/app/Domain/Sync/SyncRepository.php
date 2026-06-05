@@ -579,6 +579,7 @@ final class SyncRepository
             'comments' => array_values(is_array($value['comments'] ?? null) ? $value['comments'] : []),
             'attachments' => array_values(is_array($value['attachments'] ?? null) ? $value['attachments'] : []),
             'checklists' => array_values(is_array($value['checklists'] ?? null) ? $value['checklists'] : []),
+            'questions' => array_values(is_array($value['questions'] ?? null) ? $value['questions'] : []),
             'activity' => array_values(is_array($value['activity'] ?? null) ? $value['activity'] : []),
             'agent_sessions' => array_values(is_array($value['agent_sessions'] ?? null) ? $value['agent_sessions'] : []),
         ];

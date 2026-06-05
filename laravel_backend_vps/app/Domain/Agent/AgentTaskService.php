@@ -37,6 +37,7 @@ final class AgentTaskService
             'comments' => array_values(is_array($collaboration['comments'] ?? null) ? $collaboration['comments'] : []),
             'checklists' => array_values(is_array($collaboration['checklists'] ?? null) ? $collaboration['checklists'] : []),
             'attachments' => array_values(is_array($collaboration['attachments'] ?? null) ? $collaboration['attachments'] : []),
+            'questions' => array_values(is_array($collaboration['questions'] ?? null) ? $collaboration['questions'] : []),
             'activity' => array_values(is_array($collaboration['activity'] ?? null) ? $collaboration['activity'] : []),
             'agent_sessions' => array_values(is_array($collaboration['agent_sessions'] ?? null) ? $collaboration['agent_sessions'] : []),
         ];
@@ -233,6 +234,7 @@ final class AgentTaskService
                 'comments' => [],
                 'attachments' => [],
                 'checklists' => [],
+                'questions' => [],
                 'activity' => [],
                 'agent_sessions' => [],
             ],
@@ -249,6 +251,7 @@ final class AgentTaskService
                 'comments' => [],
                 'attachments' => [],
                 'checklists' => [],
+                'questions' => [],
                 'activity' => [],
                 'agent_sessions' => [],
             ];

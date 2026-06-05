@@ -106,3 +106,11 @@ def test_task_collaboration_keeps_agent_sessions_on_backend() -> None:
     assert "'agent_sessions'" in repo
     assert "updateTaskCollaboration" in repo
     assert "contextTask" in repo
+
+
+def test_task_collaboration_keeps_agent_questions_on_backend() -> None:
+    repo = read_backend("app/Domain/Sync/SyncRepository.php")
+    service = read_backend("app/Domain/Agent/AgentTaskService.php")
+
+    assert "'questions'" in repo
+    assert "'questions'" in service
