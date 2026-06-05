@@ -27,6 +27,15 @@ Route::middleware('sync.apikey')->group(function (): void {
     Route::post('/agent/context', [AgentPolicyController::class, 'context']);
     Route::post('/agent/events', [AgentPolicyController::class, 'event']);
     Route::post('/agent/sessions', [AgentPolicyController::class, 'session']);
+    Route::post('/agent/task-card/read', [AgentPolicyController::class, 'taskCardRead']);
+    Route::post('/agent/task-card/comment', [AgentPolicyController::class, 'taskCardComment']);
+    Route::post('/agent/task-card/question', [AgentPolicyController::class, 'taskCardQuestion']);
+    Route::post('/agent/task-card/checklist', [AgentPolicyController::class, 'taskCardChecklist']);
+    Route::post('/agent/task-card/checklist-item', [AgentPolicyController::class, 'taskCardChecklistItem']);
+    Route::post('/agent/task-card/attachment', [AgentPolicyController::class, 'taskCardAttachment']);
+    Route::post('/agent/task-card/status', [AgentPolicyController::class, 'taskCardStatus']);
+    Route::post('/agent/task-card/finish', [AgentPolicyController::class, 'taskCardFinish']);
+    Route::post('/agent/task-card/refresh', [AgentPolicyController::class, 'taskCardRead']);
     Route::get('/admin/workspace-access', [AgentPolicyController::class, 'workspaceAccess']);
     Route::post('/admin/workspace-access/grant', [AgentPolicyController::class, 'grantWorkspaceAccess']);
     Route::post('/admin/workspace-access/revoke', [AgentPolicyController::class, 'revokeWorkspaceAccess']);

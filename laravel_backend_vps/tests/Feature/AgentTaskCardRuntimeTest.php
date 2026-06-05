@@ -49,6 +49,66 @@ class AgentTaskCardRuntimeTest extends TestCase
             ->assertJsonPath('context.questions.0.blocking', true);
     }
 
+    #[Test]
+    public function task_card_question_adds_blocking_question_and_activity(): void
+    {
+        $this->seedTask(['id' => 'task-card-question']);
+
+        $response = $this->withHeaders(['X-Api-Key' => 'dev-local-key'])
+            ->postJson('/agent/task-card/question', [
+                ...$this->agentPayloadWithTicket('task-card-question'),
+                'agent_session_id' => 'agent-session-1',
+                'text' => 'Нужен макет формы?',
+                'blocking' => true,
+            ]);
+
+        $response
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('snapshot.questions.0.text', 'Нужен макет формы?')
+            ->assertJsonPath('snapshot.questions.0.status', 'open')
+            ->assertJsonPath('snapshot.questions.0.blocking', true)
+            ->assertJsonPath('snapshot.agent_session.status', 'blocked');
+    }
+
+    #[Test]
+    public function task_card_finish_moves_executor_task_to_review(): void
+    {
+        $this->seedTask(['id' => 'task-card-finish']);
+
+        $response = $this->withHeaders(['X-Api-Key' => 'dev-local-key'])
+            ->postJson('/agent/task-card/finish', [
+                ...$this->agentPayloadWithTicket('task-card-finish'),
+                'agent_session_id' => 'agent-session-1',
+                'summary' => 'Форма готова к проверке.',
+                'result_status' => 'ready_for_review',
+            ]);
+
+        $response
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('snapshot.task.workflow_status', 'in_review')
+            ->assertJsonPath('snapshot.comments.0.text', 'Форма готова к проверке.');
+    }
+
+    #[Test]
+    public function task_card_status_rejects_done_for_executor_without_superadmin_override(): void
+    {
+        $this->seedTask(['id' => 'task-card-status']);
+
+        $response = $this->withHeaders(['X-Api-Key' => 'dev-local-key'])
+            ->postJson('/agent/task-card/status', [
+                ...$this->agentPayloadWithTicket('task-card-status'),
+                'agent_session_id' => 'agent-session-1',
+                'status' => 'done',
+                'reason' => 'Сам закрыл',
+            ]);
+
+        $response
+            ->assertStatus(403)
+            ->assertJsonPath('ok', false);
+    }
+
     /** @param array<string, mixed> $overrides */
     private function seedTask(array $overrides): void
     {
@@ -81,6 +141,19 @@ class AgentTaskCardRuntimeTest extends TestCase
             'task_type' => 'feature',
             'workspace_id' => 'weather',
             'requested_mode' => 'executor',
+        ];
+    }
+
+    /** @return array<string, string> */
+    private function agentPayloadWithTicket(string $taskId): array
+    {
+        $payload = $this->agentPayload($taskId);
+        $ticket = $this->withHeaders(['X-Api-Key' => 'dev-local-key'])
+            ->postJson('/agent/ticket', $payload)
+            ->json('policy_ticket');
+        return [
+            ...$payload,
+            'policy_ticket' => (string)$ticket,
         ];
     }
 }

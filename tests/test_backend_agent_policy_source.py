@@ -114,3 +114,51 @@ def test_task_collaboration_keeps_agent_questions_on_backend() -> None:
 
     assert "'questions'" in repo
     assert "'questions'" in service
+
+
+def test_laravel_task_card_tool_runtime_routes_and_handlers_exist() -> None:
+    routes = read_backend("routes/api.php")
+    controller = read_backend("app/Http/Controllers/AgentPolicyController.php")
+    service = read_backend("app/Domain/Agent/AgentTaskService.php")
+
+    for route in [
+        "/agent/task-card/read",
+        "/agent/task-card/comment",
+        "/agent/task-card/question",
+        "/agent/task-card/checklist",
+        "/agent/task-card/checklist-item",
+        "/agent/task-card/attachment",
+        "/agent/task-card/status",
+        "/agent/task-card/finish",
+        "/agent/task-card/refresh",
+    ]:
+        assert route in routes
+
+    for method in [
+        "taskCardRead",
+        "taskCardComment",
+        "taskCardQuestion",
+        "taskCardChecklist",
+        "taskCardChecklistItem",
+        "taskCardAttachment",
+        "taskCardStatus",
+        "taskCardFinish",
+        "taskCardOperation",
+    ]:
+        assert method in controller
+
+    for method in [
+        "applyTaskCardOperation",
+        "askTaskCardQuestion",
+        "finishTaskCardRun",
+        "setTaskCardStatus",
+        "addTaskCardAttachment",
+    ]:
+        assert method in service
+
+    assert "agent_question_added" in service
+    assert "ready_for_review" in service
+    assert "Агент не может закрыть задачу без подтверждения" in service
+    assert "validatePolicyTicket" in read_backend("app/Domain/Access/AccessPolicyService.php")
+    assert "policy_ticket" in controller
+    assert "validateTaskCardPolicyTicket" in controller

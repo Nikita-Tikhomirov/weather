@@ -291,6 +291,35 @@ final class AccessPolicyService
     }
 
     /** @return array<string, mixed> */
+    public function validatePolicyTicket(string $ticket, string $secret): array
+    {
+        $ticket = trim($ticket);
+        $secret = trim($secret);
+        if ($ticket === '' || $secret === '') {
+            throw new InvalidArgumentException('policy ticket is required');
+        }
+        $parts = explode('.', $ticket);
+        if (count($parts) !== 2) {
+            throw new InvalidArgumentException('policy ticket format is invalid');
+        }
+        [$payloadPart, $signaturePart] = $parts;
+        $payloadJson = $this->base64UrlDecode($payloadPart);
+        $expected = hash_hmac('sha256', $payloadJson, $secret, true);
+        $actual = $this->base64UrlDecode($signaturePart);
+        if (!hash_equals($expected, $actual)) {
+            throw new InvalidArgumentException('policy ticket signature is invalid');
+        }
+        $payload = json_decode($payloadJson, true);
+        if (!is_array($payload)) {
+            throw new InvalidArgumentException('policy ticket payload is invalid');
+        }
+        if ((int)($payload['exp'] ?? 0) < time()) {
+            throw new InvalidArgumentException('policy ticket expired');
+        }
+        return $payload;
+    }
+
+    /** @return array<string, mixed> */
     public function grantWorkspaceAccess(
         string $actor,
         string $profileKey,
@@ -793,5 +822,15 @@ final class AccessPolicyService
     private function base64Url(string $value): string
     {
         return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+    }
+
+    private function base64UrlDecode(string $value): string
+    {
+        $padded = $value.str_repeat('=', (4 - strlen($value) % 4) % 4);
+        $decoded = base64_decode(strtr($padded, '-_', '+/'), true);
+        if (!is_string($decoded)) {
+            throw new InvalidArgumentException('policy ticket base64 is invalid');
+        }
+        return $decoded;
     }
 }

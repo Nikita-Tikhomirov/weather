@@ -171,6 +171,46 @@ class AgentPolicyController extends Controller
         }
     }
 
+    public function taskCardRead(Request $request): JsonResponse
+    {
+        return $this->taskCardOperation($request, 'read');
+    }
+
+    public function taskCardComment(Request $request): JsonResponse
+    {
+        return $this->taskCardOperation($request, 'comment');
+    }
+
+    public function taskCardQuestion(Request $request): JsonResponse
+    {
+        return $this->taskCardOperation($request, 'question');
+    }
+
+    public function taskCardChecklist(Request $request): JsonResponse
+    {
+        return $this->taskCardOperation($request, 'checklist');
+    }
+
+    public function taskCardChecklistItem(Request $request): JsonResponse
+    {
+        return $this->taskCardOperation($request, 'checklist_item');
+    }
+
+    public function taskCardAttachment(Request $request): JsonResponse
+    {
+        return $this->taskCardOperation($request, 'attachment');
+    }
+
+    public function taskCardStatus(Request $request): JsonResponse
+    {
+        return $this->taskCardOperation($request, 'status');
+    }
+
+    public function taskCardFinish(Request $request): JsonResponse
+    {
+        return $this->taskCardOperation($request, 'finish');
+    }
+
     public function workspaceAccess(Request $request): JsonResponse
     {
         try {
@@ -253,6 +293,59 @@ class AgentPolicyController extends Controller
             (string) $request->input('task_id', ''),
             $this->actorPhone($request),
         );
+    }
+
+    private function taskCardOperation(Request $request, string $operation): JsonResponse
+    {
+        try {
+            $policy = $this->buildPolicy($request);
+            if (!((bool)($policy['allowed'] ?? false))) {
+                return $this->json(403, [
+                    'ok' => false,
+                    'policy' => $policy,
+                    'error' => (string)($policy['reason'] ?? 'Нет прав на операцию карточки.'),
+                ]);
+            }
+            $this->validateTaskCardPolicyTicket($request, $policy);
+
+            $snapshot = $this->agentTasks->applyTaskCardOperation(
+                (string)$request->input('actor_profile', ''),
+                (string)$request->input('task_id', ''),
+                (string)$request->input('workspace_id', ''),
+                (string)$request->input('agent_session_id', ''),
+                $operation,
+                $request->all(),
+                $policy,
+            );
+
+            return $this->json(200, [
+                'ok' => true,
+                'policy' => $policy,
+                'snapshot' => $snapshot,
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(403, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /** @param array<string, mixed> $policy */
+    private function validateTaskCardPolicyTicket(Request $request, array $policy): void
+    {
+        $ticketPolicy = $this->access->validatePolicyTicket(
+            (string)$request->input('policy_ticket', ''),
+            (string)config('sync.agent_policy_ticket_secret', ''),
+        );
+        foreach (['task_id', 'workspace_id', 'mode'] as $key) {
+            if ((string)($ticketPolicy[$key] ?? '') !== (string)($policy[$key] ?? '')) {
+                throw new InvalidArgumentException('policy ticket does not match task card request');
+            }
+        }
+        $ticketProfile = (string)($ticketPolicy['profile_key'] ?? '');
+        if ($ticketProfile !== '' && $ticketProfile !== (string)($policy['profile_key'] ?? '')) {
+            throw new InvalidArgumentException('policy ticket does not match actor');
+        }
     }
 
     private function json(int $status, array $payload): JsonResponse
