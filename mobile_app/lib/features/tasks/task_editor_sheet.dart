@@ -143,7 +143,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   List<WorkspaceItem> _agentWorkspaces = const [];
   Completer<List<WorkspaceItem>>? _agentWorkspaceListCompleter;
   bool _agentWorkspacesLoading = false;
+  bool _agentWorkspaceManuallySelected = false;
+  bool _agentWorkspaceAutoRequested = false;
   String _selectedAgentWorkspaceId = '';
+  String _agentLaunchError = '';
   String _agentProvider = '';
   String _agentModel = '';
   String _agentApprovalPolicy = '';
@@ -1277,29 +1280,160 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   String _effectiveAgentWorkspaceId(AgentRunPolicy policy) {
-    return _normalizeAgentWorkspaceId(_selectedAgentWorkspaceId, policy);
+    return _resolveAgentWorkspaceId(policy);
   }
 
-  String _normalizeAgentWorkspaceId(
-    String candidate,
-    AgentRunPolicy policy,
-  ) {
-    final preferred = candidate.trim().isNotEmpty
-        ? candidate.trim()
-        : policy.workspaceId.trim();
+  String _resolveAgentWorkspaceId(AgentRunPolicy policy) {
     final workspaces = _agentWorkspaces
         .where((item) => item.id.trim().isNotEmpty)
         .toList(growable: false);
     if (workspaces.isEmpty) {
-      return preferred;
+      return _selectedAgentWorkspaceId.trim().isNotEmpty
+          ? _selectedAgentWorkspaceId.trim()
+          : policy.workspaceId.trim();
     }
-    if (workspaces.any((item) => item.id == preferred)) {
-      return preferred;
+    final preferredWorkspaces = _availableAgentWorkspaces(workspaces);
+    if (_agentWorkspaceManuallySelected) {
+      final selected = _selectedAgentWorkspaceId.trim();
+      return _findAgentWorkspace(
+            preferredWorkspaces,
+            [selected],
+            allowLooseMatch: false,
+          )?.id ??
+          _findAgentWorkspace(
+            preferredWorkspaces,
+            [selected],
+            allowLooseMatch: true,
+          )?.id ??
+          selected;
     }
+    final projectMatch = _findAgentWorkspace(
+      preferredWorkspaces,
+      _agentProjectWorkspaceCandidates(),
+      allowLooseMatch: true,
+    );
+    if (projectMatch != null) {
+      return projectMatch.id;
+    }
+    if (_hasAgentProjectContext()) {
+      return preferredWorkspaces.length == 1
+          ? preferredWorkspaces.first.id
+          : '';
+    }
+    final policyWorkspace = _findAgentWorkspace(
+      preferredWorkspaces,
+      [policy.workspaceId],
+      allowLooseMatch: false,
+    );
+    if (policyWorkspace != null) {
+      return policyWorkspace.id;
+    }
+    return preferredWorkspaces.length == 1 ? preferredWorkspaces.first.id : '';
+  }
+
+  List<WorkspaceItem> _availableAgentWorkspaces(
+    List<WorkspaceItem> workspaces,
+  ) {
     final available = workspaces.where((item) {
       return item.status == WorkspaceStatus.available;
     }).toList(growable: false);
-    return (available.isEmpty ? workspaces : available).first.id;
+    return available.isEmpty ? workspaces : available;
+  }
+
+  bool _hasAgentProjectContext() {
+    return _agentProjectWorkspaceCandidates().isNotEmpty;
+  }
+
+  List<String> _agentProjectWorkspaceCandidates() {
+    final values = <String>[];
+    void add(String value) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty || values.contains(trimmed)) {
+        return;
+      }
+      values.add(trimmed);
+    }
+
+    final projectIds = <String>[
+      _selectedProjectId,
+      _savedTask?.projectId ?? '',
+      widget.existing?.projectId ?? '',
+      widget.store.currentProjectId.value,
+    ];
+    for (final id in projectIds) {
+      add(id);
+      final project = _projectList.cast<TaskProject?>().firstWhere(
+            (item) => item?.id == id,
+            orElse: () => null,
+          );
+      if (project == null) {
+        continue;
+      }
+      add(project.id);
+      add(project.name);
+      add(project.description);
+    }
+    return values;
+  }
+
+  WorkspaceItem? _findAgentWorkspace(
+    List<WorkspaceItem> workspaces,
+    Iterable<String> candidates, {
+    required bool allowLooseMatch,
+  }) {
+    for (final candidate in candidates) {
+      final candidateKey = _workspaceLookupKey(candidate);
+      if (candidateKey.isEmpty) {
+        continue;
+      }
+      for (final workspace in workspaces) {
+        final keys = _workspaceLookupKeys(workspace);
+        if (keys.contains(candidateKey)) {
+          return workspace;
+        }
+        if (!allowLooseMatch) {
+          continue;
+        }
+        if (keys.any((key) => _workspaceKeysCompatible(key, candidateKey))) {
+          return workspace;
+        }
+      }
+    }
+    return null;
+  }
+
+  Set<String> _workspaceLookupKeys(WorkspaceItem workspace) {
+    return {
+      _workspaceLookupKey(workspace.id),
+      _workspaceLookupKey(workspace.name),
+      _workspaceLookupKey(_lastPathSegment(workspace.path)),
+    }.where((item) => item.isNotEmpty).toSet();
+  }
+
+  bool _workspaceKeysCompatible(String key, String candidate) {
+    if (key == candidate) {
+      return true;
+    }
+    if (key.length < 3 || candidate.length < 3) {
+      return false;
+    }
+    return key.startsWith('$candidate-') || candidate.startsWith('$key-');
+  }
+
+  String _workspaceLookupKey(String value) {
+    final lower = value.trim().toLowerCase();
+    if (lower.isEmpty) {
+      return '';
+    }
+    return lower
+        .replaceAll(RegExp(r'[\s_./\\]+'), '-')
+        .replaceAll(RegExp(r'-+'), '-')
+        .replaceAll(RegExp(r'^-|-$'), '');
+  }
+
+  String _lastPathSegment(String path) {
+    final parts = path.split(RegExp(r'[\\/]+'));
+    return parts.isEmpty ? path : parts.last;
   }
 
   Future<void> _startNewAgentChat() async {
@@ -1311,7 +1445,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       );
       return;
     }
-    setState(() => _agentLaunching = true);
+    setState(() {
+      _agentLaunching = true;
+      _agentLaunchError = '';
+    });
     await _persistDraft(automatic: true);
     final saved = _savedTask ?? widget.existing;
     if (saved == null || saved.id.trim().isEmpty) {
@@ -1343,8 +1480,12 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     final workspaceId = _effectiveAgentWorkspaceId(policy);
     if (workspaceId.trim().isEmpty) {
       if (mounted) {
-        setState(() => _agentLaunching = false);
-        _showSnack('Выберите воркспейс для агентского чата');
+        const message = 'Выберите воркспейс для агентского чата';
+        setState(() {
+          _agentLaunching = false;
+          _agentLaunchError = message;
+        });
+        _showSnack(message);
       }
       return;
     }
@@ -1421,6 +1562,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       }
     } catch (error) {
       if (!mounted) return;
+      final message = 'Не удалось запустить агента: $error';
       setState(() {
         _upsertAgentSession(session.copyWith(status: 'error'));
         _appendAgentActivity(
@@ -1430,9 +1572,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         );
         _agentLaunching = false;
         _agentQueueActive = false;
+        _agentLaunchError = message;
       });
       _autosaveNow();
-      _showSnack('Не удалось запустить агента: $error');
+      _showSnack(message);
     }
   }
 
@@ -1565,10 +1708,13 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       setState(() {
         _agentWorkspaces = workspaces;
         _agentWorkspacesLoading = false;
-        _selectedAgentWorkspaceId = _normalizeAgentWorkspaceId(
-          _selectedAgentWorkspaceId,
-          widget.agentPolicy,
-        );
+        final resolved = _resolveAgentWorkspaceId(widget.agentPolicy);
+        if (!_agentWorkspaceManuallySelected) {
+          _selectedAgentWorkspaceId = resolved;
+        }
+        if (resolved.isNotEmpty) {
+          _agentLaunchError = '';
+        }
       });
       final completer = _agentWorkspaceListCompleter;
       if (completer != null && !completer.isCompleted) {
@@ -1595,6 +1741,8 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     }
     final pendingId = _pendingAgentSessionId;
     if (message.isError) {
+      final errorText =
+          message.error.isEmpty ? 'Ошибка CodeWhale' : message.error;
       if (pendingId.isNotEmpty) {
         setState(() {
           _markAgentSession(pendingId, status: 'error');
@@ -1604,10 +1752,11 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             targetId: pendingId,
           );
           _agentLaunching = false;
+          _agentLaunchError = errorText;
         });
         _autosaveNow();
       }
-      _showSnack(message.error.isEmpty ? 'Ошибка CodeWhale' : message.error);
+      _showSnack(errorText);
       return;
     }
 
@@ -2151,7 +2300,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     }
     final workspaceId = _effectiveAgentWorkspaceId(policy);
     if (workspaceId.trim().isEmpty) {
-      _showSnack('Выберите воркспейс для агентского чата');
+      const message = 'Выберите воркспейс для агентского чата';
+      setState(() => _agentLaunchError = message);
+      _showSnack(message);
       return;
     }
     final now = DateTime.now().toIso8601String();
@@ -2634,6 +2785,17 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   Widget _buildAgentTab() {
     final policy = widget.agentPolicy;
+    if (policy.allowed &&
+        !_agentWorkspaceAutoRequested &&
+        !_agentWorkspacesLoading &&
+        _agentWorkspaces.isEmpty) {
+      _agentWorkspaceAutoRequested = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          unawaited(_refreshAgentWorkspaces());
+        }
+      });
+    }
     final workspaceId = _effectiveAgentWorkspaceId(policy);
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
@@ -2750,9 +2912,11 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
               border: OutlineInputBorder(),
             ),
             items: _agentWorkspaces.map((workspace) {
-              final label = workspace.name.trim().isEmpty
+              final title = workspace.name.trim().isEmpty
                   ? workspace.id
                   : workspace.name.trim();
+              final label =
+                  title == workspace.id ? title : '$title · ${workspace.id}';
               return DropdownMenuItem<String>(
                 value: workspace.id,
                 child: Text(label, overflow: TextOverflow.ellipsis),
@@ -2763,9 +2927,19 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                 : (value) {
                     setState(() {
                       _selectedAgentWorkspaceId = value ?? '';
+                      _agentWorkspaceManuallySelected =
+                          _selectedAgentWorkspaceId.trim().isNotEmpty;
+                      _agentLaunchError = '';
                     });
                   },
           ),
+        if (_agentLaunchError.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            _agentLaunchError,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ],
         Align(
           alignment: Alignment.centerRight,
           child: TextButton.icon(

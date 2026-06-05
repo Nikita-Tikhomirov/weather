@@ -328,11 +328,14 @@ class _FakeTaskStore extends TaskStore {
   final _FakeTaskRepository fakeRepository;
 }
 
-void _seedProjectAccess(_FakeTaskStore store) {
+void _seedProjectAccess(
+  _FakeTaskStore store, {
+  String projectName = 'Project',
+}) {
   store.owner.value = 'test_user';
-  const project = TaskProject(
+  final project = TaskProject(
     id: 'project-1',
-    name: 'Project',
+    name: projectName,
     ownerKey: 'test_user',
   );
   const group = FamilyGroup(
@@ -340,7 +343,7 @@ void _seedProjectAccess(_FakeTaskStore store) {
     name: 'Team',
     members: ['test_user'],
   );
-  store.projects.value = const [project];
+  store.projects.value = [project];
   store.familyGroups.value = const [group];
   store.projectGroupMap.value = const {
     'project-1': ['group-1'],
@@ -647,7 +650,81 @@ void main() {
       },
     );
 
-    testWidgets('agent launch uses selected bridge workspace, not project id',
+    testWidgets('agent launch matches project name to bridge workspace',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store, projectName: 'Exp76');
+      store.selectedDate.value = DateTime(2026, 5, 31);
+      _FakeAgentBridge? bridge;
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Исполнитель',
+        plugins: [],
+        allowedCommands: ['session_create', 'session_send'],
+        reason: '',
+        workspaceId: 'workspace-pups',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              )..workspaces = const [
+                  WorkspaceItem(
+                    id: 'workspace-pups',
+                    name: 'пупс',
+                    path: r'C:\Users\user\Desktop\пупс',
+                    status: WorkspaceStatus.available,
+                  ),
+                  WorkspaceItem(
+                    id: 'weather',
+                    name: 'weather',
+                    path: r'C:\Users\user\Desktop\weather',
+                    status: WorkspaceStatus.available,
+                  ),
+                  WorkspaceItem(
+                    id: 'exp76-ru',
+                    name: 'exp76.ru',
+                    path: r'C:\Users\user\Desktop\exp76.ru',
+                    status: WorkspaceStatus.available,
+                  ),
+                ];
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Агент'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Новый чат'));
+      await tester.pumpAndSettle();
+
+      expect(repository.fakeApi.agentTicketWorkspaceIds.single, 'exp76-ru');
+      expect(repository.fakeApi.agentContextWorkspaceIds.single, 'exp76-ru');
+      expect(bridge!.workspaceListRequestCount, greaterThanOrEqualTo(1));
+      expect(bridge!.createSessionWorkspaceIds.single, 'exp76-ru');
+      expect(find.textContaining('workspace not found'), findsNothing);
+    });
+
+    testWidgets(
+        'agent launch requires explicit workspace when project is ambiguous',
         (tester) async {
       final repository = _FakeTaskRepository();
       final store = _FakeTaskStore(repository);
@@ -684,15 +761,15 @@ void main() {
                 onStatusChange: onStatusChange,
               )..workspaces = const [
                   WorkspaceItem(
-                    id: 'weather',
-                    name: 'weather',
-                    path: r'C:\Users\user\Desktop\weather',
+                    id: 'workspace-pups',
+                    name: 'пупс',
+                    path: r'C:\Users\user\Desktop\пупс',
                     status: WorkspaceStatus.available,
                   ),
                   WorkspaceItem(
-                    id: 'exp76-ru',
-                    name: 'exp76.ru',
-                    path: r'C:\Users\user\Desktop\exp76.ru',
+                    id: 'weather',
+                    name: 'weather',
+                    path: r'C:\Users\user\Desktop\weather',
                     status: WorkspaceStatus.available,
                   ),
                 ];
@@ -707,11 +784,10 @@ void main() {
       await tester.tap(find.text('Новый чат'));
       await tester.pumpAndSettle();
 
-      expect(repository.fakeApi.agentTicketWorkspaceIds.single, 'weather');
-      expect(repository.fakeApi.agentContextWorkspaceIds.single, 'weather');
-      expect(bridge!.workspaceListRequestCount, greaterThanOrEqualTo(1));
-      expect(bridge!.createSessionWorkspaceIds.single, 'weather');
-      expect(find.textContaining('workspace not found'), findsNothing);
+      expect(repository.fakeApi.agentTicketCount, 0);
+      expect(repository.fakeApi.agentContextCount, 0);
+      expect(bridge!.createSessionCount, 0);
+      expect(find.textContaining('Выберите воркспейс'), findsWidgets);
     });
 
     testWidgets('work tab supports comments and checklists', (tester) async {
