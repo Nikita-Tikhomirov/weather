@@ -1642,8 +1642,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   Future<String> _fetchAgentContextPromptBestEffort(
     TaskItem task,
     AgentRunPolicy policy,
-    String workspaceId,
-  ) async {
+    String workspaceId, [
+    String requestedMode = '',
+  ]) async {
     try {
       final contextPack = await widget.store.repository.api.fetchAgentContext(
         actorProfile: widget.store.owner.value,
@@ -1651,7 +1652,8 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         taskId: task.id,
         workspaceId: workspaceId,
         taskType: _taskTypeForAgent(task),
-        requestedMode: policy.mode,
+        requestedMode:
+            requestedMode.trim().isEmpty ? policy.mode : requestedMode.trim(),
       );
       return contextPack.toPrompt();
     } catch (error) {
@@ -1720,6 +1722,169 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         debugPrint('Task agent event record skipped: $error');
       }),
     );
+  }
+
+  Future<void> _continueAgentSession(TaskAgentSession session) async {
+    final policy = widget.agentPolicy;
+    if (!_canEdit || !_canContinueAgentSession(session, policy)) {
+      _showSnack(
+        policy.reason.isEmpty
+            ? 'Нет прав на продолжение агента'
+            : policy.reason,
+      );
+      return;
+    }
+    if (_agentQueueActive || _agentLaunching) {
+      return;
+    }
+    final workspaceId = session.workspaceId.trim().isNotEmpty
+        ? session.workspaceId.trim()
+        : _effectiveAgentWorkspaceId(policy);
+    final bridgeSessionId = session.sessionId.trim();
+    if (workspaceId.isEmpty || bridgeSessionId.isEmpty) {
+      _showSnack('Агентский чат не связан с воркспейсом');
+      return;
+    }
+    setState(() {
+      _agentLaunching = true;
+      _agentLaunchError = '';
+    });
+    await _persistDraft(automatic: true);
+    final saved = _savedTask ?? widget.existing;
+    if (saved == null || saved.id.trim().isEmpty) {
+      if (mounted) {
+        setState(() => _agentLaunching = false);
+        _showSnack('Сначала сохраните задачу');
+      }
+      return;
+    }
+    await _syncAgentDraftBestEffort();
+    final bridge = _ensureAgentBridge();
+    try {
+      final connected = await bridge.connect();
+      if (!connected) {
+        throw StateError('CodeWhale недоступен');
+      }
+      final api = widget.store.repository.api;
+      final taskType = _taskTypeForAgent(saved);
+      final requestedMode =
+          session.mode.trim().isNotEmpty ? session.mode.trim() : policy.mode;
+      final ticket = await api.requestAgentTicket(
+        actorProfile: widget.store.owner.value,
+        actorPhone: widget.actorPhone,
+        taskId: saved.id,
+        taskType: taskType,
+        workspaceId: workspaceId,
+        requestedMode: requestedMode,
+      );
+      final backendPrompt = await _fetchAgentContextPromptBestEffort(
+        saved,
+        policy,
+        workspaceId,
+        requestedMode,
+      );
+      final prompt = _buildAgentCardPrompt(backendPrompt, saved);
+      final launchPlan = AgentLaunchPlan.buildContinuation(
+        contextPrompt: prompt,
+        selectedCommandValues: _selectedAgentCommandValues,
+        commands: _agentCommands,
+      );
+      final taskCard = {
+        'task_id': saved.id,
+        'agent_session_id': session.id,
+        'actor_profile': widget.store.owner.value,
+        'actor_phone': widget.actorPhone,
+        'api_url': api.baseUrl,
+        'policy_ticket': ticket.policyTicket,
+        'task_type': taskType,
+        'mode': requestedMode,
+        'workspace_id': workspaceId,
+      };
+      setState(() {
+        _pendingAgentSessionId = session.id;
+        _pendingAgentWorkspaceId = workspaceId;
+        _pendingAgentBridgeSessionId = bridgeSessionId;
+        _pendingAgentSteps = launchPlan.steps;
+        _pendingAgentStepTotal = launchPlan.steps.length;
+        _activeAgentStep = null;
+        _agentResultBuffer = null;
+        _agentQueueActive = true;
+        _pendingAgentTaskCard = taskCard;
+        _agentLaunching = false;
+        _markAgentSession(session.id, status: 'running');
+        _appendAgentActivity(
+          type: 'agent_session_resumed',
+          text: 'продолжил агентский чат',
+          targetId: session.id,
+        );
+      });
+      _autosaveNow();
+      _recordAgentSessionBestEffort(
+        taskId: saved.id,
+        workspaceId: workspaceId,
+        agentSessionId: session.id,
+        sessionId: bridgeSessionId,
+        title: session.title,
+        taskType: taskType,
+        requestedMode: requestedMode,
+        status: 'running',
+      );
+      bridge.updatePolicyTicket(ticket.policyTicket);
+      bridge.requestCodeWhaleCommands();
+      bridge.updateSessionTaskCard(
+        workspaceId: workspaceId,
+        sessionId: bridgeSessionId,
+        taskCard: taskCard,
+      );
+      bridge.updateSessionSettings(
+        workspaceId: workspaceId,
+        sessionId: bridgeSessionId,
+        provider: _agentProvider,
+        model: _agentModel,
+        approvalPolicy: _agentApprovalPolicy,
+        sandboxMode: _agentSandboxMode,
+        autoMode: _agentAutoMode,
+      );
+      _uploadAgentCardFiles(workspaceId, bridgeSessionId);
+      _sendNextAgentStep(workspaceId: workspaceId, sessionId: bridgeSessionId);
+      if (mounted) {
+        _showSnack('Агент продолжает работу по свежей карточке');
+      }
+    } catch (error) {
+      if (!mounted) return;
+      final message = 'Не удалось продолжить агента: $error';
+      setState(() {
+        _markAgentSession(session.id, status: 'error');
+        _appendAgentActivity(
+          type: 'agent_session_error',
+          text: 'не смог продолжить агентский чат',
+          targetId: session.id,
+        );
+        _agentLaunchError = message;
+        _clearAgentQueueState();
+      });
+      _autosaveNow();
+      _showSnack(message);
+    }
+  }
+
+  bool _canContinueAgentSession(
+    TaskAgentSession session,
+    AgentRunPolicy policy,
+  ) {
+    if (!policy.allowed || session.sessionId.trim().isEmpty) {
+      return false;
+    }
+    if (_status == WorkflowStatus.done || _status == WorkflowStatus.archive) {
+      return false;
+    }
+    if (!policy.allowedCommands.contains('session_send')) {
+      return false;
+    }
+    if (!policy.allowedCommands.contains('session_update_task_card')) {
+      return false;
+    }
+    return session.status != 'error' && session.status != 'running';
   }
 
   void _handleAgentBridgeMessage(CodeWhaleBridgeMessage message) {
@@ -2094,6 +2259,8 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   void _completeAgentQueue() {
     final pendingId = _pendingAgentSessionId;
+    final sessionStatus = _agentSessionStatusAfterQueue();
+    final activityText = _agentQueueCompletionText(sessionStatus);
     if (pendingId.isNotEmpty) {
       _recordAgentEventBestEffort(
         taskId: (_savedTask ?? widget.existing)?.id ?? '',
@@ -2106,16 +2273,37 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     }
     setState(() {
       if (pendingId.isNotEmpty) {
-        _markAgentSession(pendingId, status: 'completed');
+        _markAgentSession(pendingId, status: sessionStatus);
         _appendAgentActivity(
           type: 'agent_queue_completed',
-          text: 'завершил очередь агента',
+          text: activityText,
           targetId: pendingId,
         );
       }
       _clearAgentQueueState();
     });
     _autosaveNow();
+  }
+
+  String _agentSessionStatusAfterQueue() {
+    if (_status == WorkflowStatus.in_review) {
+      return 'waiting_review';
+    }
+    if (_status == WorkflowStatus.done || _status == WorkflowStatus.archive) {
+      return 'completed';
+    }
+    return 'linked';
+  }
+
+  String _agentQueueCompletionText(String status) {
+    switch (status) {
+      case 'waiting_review':
+        return 'ждет проверки карточки';
+      case 'completed':
+        return 'завершил очередь агента';
+      default:
+        return 'ждет дальнейших правок';
+    }
   }
 
   void _clearAgentQueueState() {
@@ -2129,6 +2317,44 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     _agentQueueActive = false;
     _agentLaunching = false;
     _pendingAgentTaskCard = const {};
+  }
+
+  void _changeWorkflowStatus(WorkflowStatus nextStatus) {
+    final previousStatus = _status;
+    setState(() {
+      _status = nextStatus;
+      if (nextStatus == WorkflowStatus.done ||
+          nextStatus == WorkflowStatus.archive) {
+        _markOpenAgentSessionsCompleted();
+      }
+    });
+    _scheduleAutosave();
+    if (previousStatus == WorkflowStatus.in_review &&
+        nextStatus == WorkflowStatus.in_progress) {
+      final session = _latestContinuableAgentSession(widget.agentPolicy);
+      if (session != null) {
+        unawaited(_continueAgentSession(session));
+      }
+    }
+  }
+
+  TaskAgentSession? _latestContinuableAgentSession(AgentRunPolicy policy) {
+    for (final session in _collaboration.agentSessions.reversed) {
+      if (_canContinueAgentSession(session, policy)) {
+        return session;
+      }
+    }
+    return null;
+  }
+
+  void _markOpenAgentSessionsCompleted() {
+    final sessions = _collaboration.agentSessions.map((session) {
+      if (session.status == 'completed' || session.status == 'error') {
+        return session;
+      }
+      return session.copyWith(status: 'completed');
+    }).toList();
+    _collaboration = _collaboration.copyWith(agentSessions: sessions);
   }
 
   void _scheduleAgentTaskPoll(
@@ -2764,8 +2990,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           onChanged: !_canEdit
               ? null
               : (value) {
-                  setState(() => _status = value ?? WorkflowStatus.todo);
-                  _scheduleAutosave();
+                  _changeWorkflowStatus(value ?? WorkflowStatus.todo);
                 },
         ),
         const SizedBox(height: 16),
@@ -3079,7 +3304,13 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           )
         else
           ..._collaboration.agentSessions.map(
-            (session) => _AgentSessionRow(session: session),
+            (session) => _AgentSessionRow(
+              session: session,
+              canContinue: _canContinueAgentSession(session, policy) &&
+                  !_agentQueueActive &&
+                  !_agentLaunching,
+              onContinue: () => _continueAgentSession(session),
+            ),
           ),
       ],
     );
@@ -4257,9 +4488,15 @@ class _ActivityRow extends StatelessWidget {
 }
 
 class _AgentSessionRow extends StatelessWidget {
-  const _AgentSessionRow({required this.session});
+  const _AgentSessionRow({
+    required this.session,
+    this.canContinue = false,
+    this.onContinue,
+  });
 
   final TaskAgentSession session;
+  final bool canContinue;
+  final VoidCallback? onContinue;
 
   @override
   Widget build(BuildContext context) {
@@ -4277,9 +4514,15 @@ class _AgentSessionRow extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: subtitle.isEmpty ? null : Text(subtitle),
-      trailing: session.sessionId.isEmpty
-          ? const Icon(Icons.pending_outlined)
-          : const Icon(Icons.link),
+      trailing: canContinue
+          ? IconButton(
+              tooltip: 'Продолжить работу',
+              icon: const Icon(Icons.play_arrow_outlined),
+              onPressed: onContinue,
+            )
+          : session.sessionId.isEmpty
+              ? const Icon(Icons.pending_outlined)
+              : const Icon(Icons.link),
     );
   }
 }

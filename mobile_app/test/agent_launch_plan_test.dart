@@ -56,6 +56,28 @@ void main() {
       ]);
     });
 
+    test('builds continuation steps for existing task chat', () {
+      final plan = AgentLaunchPlan.buildContinuation(
+        contextPrompt: 'Свежий комментарий: поправить валидацию.',
+        selectedCommandValues: const ['/skill review'],
+        commands: const [
+          {'label': 'Review', 'value': '/skill review'},
+        ],
+      );
+
+      expect(plan.steps.map((step) => step.text), [
+        '/skill family-task-card',
+        contains('family-task-card read'),
+        '/skill review',
+        contains('Family Todo'),
+        allOf(
+          contains('Продолжи работу по этой же карточке'),
+          contains('Свежий комментарий: поправить валидацию.'),
+        ),
+      ]);
+      expect(plan.steps.last.label, 'Продолжение работы');
+    });
+
     test('ignores unknown and duplicate command values', () {
       final plan = AgentLaunchPlan.build(
         contextPrompt: 'Контекст задачи',

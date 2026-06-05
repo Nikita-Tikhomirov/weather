@@ -167,6 +167,104 @@ class FamilyTaskCardCliTests(unittest.TestCase):
         self.assertEqual(sent["api_key"], "context-key")
         self.assertEqual(sent["timeout"], 30)
 
+    def test_read_refreshes_expired_policy_ticket_and_updates_context(self):
+        calls = []
+
+        def fake_post(url, payload):
+            calls.append((url, dict(payload)))
+            if url.endswith("/agent/task-card/read") and len(calls) == 1:
+                raise cli.TaskCardHttpError(
+                    403,
+                    {"ok": False, "error": "policy ticket expired"},
+                )
+            if url.endswith("/agent/ticket"):
+                return {"ok": True, "policy_ticket": "ticket-refreshed"}
+            return {"ok": True, "snapshot": {"task": {"id": "task-from-file"}}}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            context_dir = workspace / ".family-task-card"
+            context_dir.mkdir()
+            context_path = context_dir / "context.json"
+            context_path.write_text(
+                json.dumps(
+                    {
+                        "api_url": "https://api.example.test",
+                        "api_key": "context-key",
+                        "policy_ticket": "ticket-expired",
+                        "task_id": "task-from-file",
+                        "workspace_id": "exp76-ru",
+                        "agent_session_id": "agent-session-file",
+                        "actor_profile": "Nikita",
+                        "actor_phone": "+79679812438",
+                        "task_type": "feature",
+                        "mode": "executor",
+                        "workspace_path": str(workspace),
+                    }
+                ),
+                encoding="utf-8",
+            )
+            previous = Path.cwd()
+            try:
+                os.chdir(workspace)
+                code = cli.run(["read"], env={}, post_json=fake_post)
+            finally:
+                os.chdir(previous)
+
+            saved = json.loads(context_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            [url for url, _ in calls],
+            [
+                "https://api.example.test/agent/task-card/read",
+                "https://api.example.test/agent/ticket",
+                "https://api.example.test/agent/task-card/read",
+            ],
+        )
+        self.assertEqual(calls[0][1]["policy_ticket"], "ticket-expired")
+        self.assertEqual(calls[1][1]["task_id"], "task-from-file")
+        self.assertEqual(calls[1][1]["requested_mode"], "executor")
+        self.assertEqual(calls[2][1]["policy_ticket"], "ticket-refreshed")
+        self.assertEqual(saved["FAMILY_TASK_CARD_TICKET"], "ticket-refreshed")
+
+    def test_context_ticket_overrides_stale_env_for_same_task_scope(self):
+        sent = {}
+
+        def fake_post(url, payload):
+            sent["payload"] = payload
+            return {"ok": True, "snapshot": {"task": {"id": "task-1"}}}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            context_dir = workspace / ".family-task-card"
+            context_dir.mkdir()
+            (context_dir / "context.json").write_text(
+                json.dumps(
+                    {
+                        "api_url": "https://api.example.test",
+                        "api_key": "context-key",
+                        "policy_ticket": "ticket-refreshed",
+                        "task_id": "task-1",
+                        "workspace_id": "weather",
+                        "agent_session_id": "agent-session-1",
+                        "actor_profile": "Nikita",
+                        "actor_phone": "+79679812438",
+                        "task_type": "feature",
+                        "mode": "executor",
+                        "workspace_path": str(workspace),
+                    }
+                ),
+                encoding="utf-8",
+            )
+            env = self._env(workspace_path=str(workspace))
+            env["FAMILY_TASK_CARD_TICKET"] = "ticket-expired"
+
+            code = cli.run(["read"], env=env, post_json=fake_post)
+
+        self.assertEqual(code, 0)
+        self.assertEqual(sent["payload"]["policy_ticket"], "ticket-refreshed")
+
     def _env(self, workspace_path=""):
         return {
             "FAMILY_TASK_CARD_API_URL": "https://api.example.test",

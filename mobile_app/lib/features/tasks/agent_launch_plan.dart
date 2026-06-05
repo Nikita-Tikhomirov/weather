@@ -10,6 +10,43 @@ class AgentLaunchPlan {
     required List<String> selectedCommandValues,
     required List<Map<String, dynamic>> commands,
   }) {
+    final steps = _baseSteps(
+      selectedCommandValues: selectedCommandValues,
+      commands: commands,
+    );
+    steps.add(
+      AgentLaunchStep(
+        label: 'Работа по задаче',
+        text: _taskPrompt(contextPrompt),
+        kind: AgentLaunchStepKind.taskPrompt,
+      ),
+    );
+    return AgentLaunchPlan(steps: steps);
+  }
+
+  static AgentLaunchPlan buildContinuation({
+    required String contextPrompt,
+    required List<String> selectedCommandValues,
+    required List<Map<String, dynamic>> commands,
+  }) {
+    final steps = _baseSteps(
+      selectedCommandValues: selectedCommandValues,
+      commands: commands,
+    );
+    steps.add(
+      AgentLaunchStep(
+        label: 'Продолжение работы',
+        text: _continuationPrompt(contextPrompt),
+        kind: AgentLaunchStepKind.taskPrompt,
+      ),
+    );
+    return AgentLaunchPlan(steps: steps);
+  }
+
+  static List<AgentLaunchStep> _baseSteps({
+    required List<String> selectedCommandValues,
+    required List<Map<String, dynamic>> commands,
+  }) {
     final commandByValue = <String, Map<String, dynamic>>{};
     for (final command in commands) {
       final value = _valueOf(command);
@@ -54,14 +91,7 @@ class AgentLaunchPlan {
         kind: AgentLaunchStepKind.appContext,
       ),
     );
-    steps.add(
-      AgentLaunchStep(
-        label: 'Работа по задаче',
-        text: _taskPrompt(contextPrompt),
-        kind: AgentLaunchStepKind.taskPrompt,
-      ),
-    );
-    return AgentLaunchPlan(steps: steps);
+    return steps;
   }
 
   static String _taskPrompt(String contextPrompt) {
@@ -85,6 +115,25 @@ class AgentLaunchPlan {
     return [
       'Выполни задачу по карточке.',
       instructions,
+      '',
+      prompt,
+    ].join('\n');
+  }
+
+  static String _continuationPrompt(String contextPrompt) {
+    final prompt = contextPrompt.trim();
+    final base = [
+      'Продолжи работу по этой же карточке задачи.',
+      'Сначала учитывай новые комментарии, чеклисты, вопросы, вложения и текущий статус из family-task-card read.',
+      'Не создавай новый агентский чат и не начинай задачу заново: продолжай этот же ход работы.',
+      'После правок снова обнови карточку через family-task-card: добавь комментарий-итог, файлы/скриншоты отчета и переведи в in_review, когда снова нужна проверка.',
+      'Если карточка уже в done или archive, не выполняй новые правки и напиши, что задача закрыта.',
+    ];
+    if (prompt.isEmpty) {
+      return base.join('\n');
+    }
+    return [
+      ...base,
       '',
       prompt,
     ].join('\n');

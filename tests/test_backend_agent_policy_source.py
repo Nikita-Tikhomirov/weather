@@ -159,6 +159,7 @@ def test_laravel_task_card_tool_runtime_routes_and_handlers_exist() -> None:
 
     assert "agent_question_added" in service
     assert "ready_for_review" in service
+    assert "waiting_review" in service
     assert "Агент не может закрыть задачу без подтверждения" in service
     assert "validatePolicyTicket" in read_backend("app/Domain/Access/AccessPolicyService.php")
     assert "policy_ticket" in controller

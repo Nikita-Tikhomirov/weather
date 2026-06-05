@@ -184,6 +184,7 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
   int workspaceListRequestCount = 0;
   int createSessionCount = 0;
   int updateTaskCardCount = 0;
+  int updateSessionSettingsCount = 0;
   String policyTicket = '';
 
   @override
@@ -266,7 +267,9 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
     String approvalPolicy = '',
     String sandboxMode = '',
     bool autoMode = false,
-  }) {}
+  }) {
+    updateSessionSettingsCount += 1;
+  }
 
   @override
   void updateSessionTaskCard({
@@ -1055,6 +1058,191 @@ TASK_CARD_ACTIONS_JSON:
           'Проверить отчет',
           'Принять работу',
         ],
+      );
+    });
+
+    testWidgets(
+        'agent continuation reuses existing chat after task returns to work',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      store.selectedDate.value = DateTime(2026, 5, 31);
+      _FakeAgentBridge? bridge;
+      final task = _editableTask.copyWith(
+        workflowStatus: WorkflowStatus.in_progress,
+        collaboration: const TaskCollaboration(
+          comments: [
+            TaskComment(
+              id: 'comment-review',
+              authorProfile: 'test_user',
+              text: 'Правка после проверки: поправить валидацию формы.',
+              createdAt: '2026-06-01T11:00:00',
+            ),
+          ],
+          agentSessions: [
+            TaskAgentSession(
+              id: 'agent-session-1',
+              workspaceId: 'weather',
+              sessionId: 'bridge-session-1',
+              title: 'Агент: Формы',
+              mode: 'executor',
+              status: 'waiting_review',
+              createdBy: 'test_user',
+              createdAt: '2026-06-01T10:00:00',
+            ),
+          ],
+        ),
+      );
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Исполнитель',
+        plugins: [],
+        allowedCommands: ['session_send', 'session_update_task_card'],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: task,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              );
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Агент'));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byTooltip('Продолжить работу'),
+        500,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.ensureVisible(find.byTooltip('Продолжить работу'));
+      await tester.pump();
+      await tester.tap(find.byTooltip('Продолжить работу'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      final fakeBridge = bridge!;
+      expect(repository.fakeApi.agentTicketCount, 1);
+      expect(fakeBridge.createSessionCount, 0);
+      expect(fakeBridge.updateTaskCardCount, 1);
+      expect(fakeBridge.updateSessionSettingsCount, 1);
+      expect(fakeBridge.lastTaskCard['task_id'], task.id);
+      expect(fakeBridge.lastTaskCard['agent_session_id'], 'agent-session-1');
+      expect(fakeBridge.sentMessages[0], '/skill family-task-card');
+      expect(fakeBridge.sentMessages[1], contains('family-task-card read'));
+      expect(fakeBridge.sentMessages.last, contains('Продолжи работу'));
+      expect(
+        fakeBridge.sentMessages.last,
+        contains('поправить валидацию формы'),
+      );
+      expect(
+        repository.upserts.last.collaboration.agentSessions.single.status,
+        isNot('completed'),
+      );
+    });
+
+    testWidgets('moving reviewed task back to work resumes latest agent chat',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      store.selectedDate.value = DateTime(2026, 5, 31);
+      _FakeAgentBridge? bridge;
+      final task = _editableTask.copyWith(
+        workflowStatus: WorkflowStatus.in_review,
+        collaboration: const TaskCollaboration(
+          comments: [
+            TaskComment(
+              id: 'comment-review',
+              authorProfile: 'test_user',
+              text: 'Нужно поправить сообщение об ошибке.',
+              createdAt: '2026-06-01T11:00:00',
+            ),
+          ],
+          agentSessions: [
+            TaskAgentSession(
+              id: 'agent-session-1',
+              workspaceId: 'weather',
+              sessionId: 'bridge-session-1',
+              title: 'Агент: Формы',
+              mode: 'executor',
+              status: 'waiting_review',
+              createdBy: 'test_user',
+              createdAt: '2026-06-01T10:00:00',
+            ),
+          ],
+        ),
+      );
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Исполнитель',
+        plugins: [],
+        allowedCommands: ['session_send', 'session_update_task_card'],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: task,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              );
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('На проверке').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('В работе').last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      final fakeBridge = bridge!;
+      expect(repository.fakeApi.agentTicketCount, 1);
+      expect(fakeBridge.createSessionCount, 0);
+      expect(fakeBridge.updateTaskCardCount, 1);
+      expect(fakeBridge.sentMessages.last, contains('Продолжи работу'));
+      expect(
+        fakeBridge.sentMessages.last,
+        contains('поправить сообщение об ошибке'),
       );
     });
 

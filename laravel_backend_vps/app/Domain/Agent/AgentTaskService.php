@@ -545,7 +545,11 @@ final class AgentTaskService
             'deleted_at' => '',
         ];
         $collaboration['comments'] = $comments;
-        $sessionStatus = $resultStatus === 'blocked' ? 'blocked' : 'completed';
+        $sessionStatus = match ($resultStatus) {
+            'blocked' => 'blocked',
+            'ready_for_review' => 'waiting_review',
+            default => 'completed',
+        };
         $collaboration = $this->upsertAgentSessionStatus($collaboration, $agentSessionId, $workspaceId, $sessionStatus, $actor);
         $collaboration = $this->appendActivity($collaboration, 'agent_completed', 'завершил агентскую работу', $actor, $agentSessionId);
         $workflow = $resultStatus === 'ready_for_review' ? 'in_review' : '';

@@ -88,6 +88,7 @@ class AgentTaskCardRuntimeTest extends TestCase
             ->assertStatus(200)
             ->assertJsonPath('ok', true)
             ->assertJsonPath('snapshot.task.workflow_status', 'in_review')
+            ->assertJsonPath('snapshot.agent_session.status', 'waiting_review')
             ->assertJsonPath('snapshot.comments.0.text', 'Форма готова к проверке.');
     }
 
