@@ -1516,11 +1516,12 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     _autosaveNow();
     try {
       final api = widget.store.repository.api;
+      final taskType = _taskTypeForAgent(saved);
       final ticket = await api.requestAgentTicket(
         actorProfile: widget.store.owner.value,
         actorPhone: widget.actorPhone,
         taskId: saved.id,
-        taskType: _taskTypeForAgent(saved),
+        taskType: taskType,
         workspaceId: workspaceId,
         requestedMode: policy.mode,
       );
@@ -1534,7 +1535,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         workspaceId: workspaceId,
         agentSessionId: session.id,
         title: title,
-        taskType: _taskTypeForAgent(saved),
+        taskType: taskType,
         requestedMode: policy.mode,
         status: 'pending',
       );
@@ -1555,7 +1556,21 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       _agentQueueActive = true;
       bridge.updatePolicyTicket(ticket.policyTicket);
       bridge.requestCodeWhaleCommands();
-      bridge.createSession(workspaceId, title: title);
+      bridge.createSession(
+        workspaceId,
+        title: title,
+        taskCard: {
+          'task_id': saved.id,
+          'agent_session_id': session.id,
+          'actor_profile': widget.store.owner.value,
+          'actor_phone': widget.actorPhone,
+          'api_url': api.baseUrl,
+          'policy_ticket': ticket.policyTicket,
+          'task_type': taskType,
+          'mode': policy.mode,
+          'workspace_id': workspaceId,
+        },
+      );
       if (mounted) {
         _showSnack(
           selectedCommands.isEmpty

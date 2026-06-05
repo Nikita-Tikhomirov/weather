@@ -297,11 +297,16 @@ class CodeWhaleBridgeService {
     _sendCommand({'type': 'session_list', 'workspace_id': workspaceId});
   }
 
-  void createSession(String workspaceId, {String title = ''}) {
+  void createSession(
+    String workspaceId, {
+    String title = '',
+    Map<String, dynamic> taskCard = const {},
+  }) {
     _sendCommand({
       'type': 'session_create',
       'workspace_id': workspaceId,
       'title': title.trim(),
+      if (taskCard.isNotEmpty) 'task_card': taskCard,
     });
   }
 

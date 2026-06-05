@@ -175,6 +175,7 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
   final List<String> readFilePaths = [];
   final List<String> createSessionWorkspaceIds = [];
   final Map<String, String> fileReadDataBase64ByPath = {};
+  Map<String, dynamic> lastTaskCard = const {};
   List<WorkspaceItem> workspaces = const [];
   String taskPromptReply = '';
   int connectCount = 0;
@@ -233,9 +234,14 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
   }
 
   @override
-  void createSession(String workspaceId, {String title = ''}) {
+  void createSession(
+    String workspaceId, {
+    String title = '',
+    Map<String, dynamic> taskCard = const {},
+  }) {
     createSessionCount += 1;
     createSessionWorkspaceIds.add(workspaceId);
+    lastTaskCard = Map<String, dynamic>.from(taskCard);
     onMessage(
       CodeWhaleBridgeMessage.fromJson({
         'type': 'session',
@@ -659,6 +665,9 @@ void main() {
         final fakeBridge = bridge!;
         expect(fakeBridge.policyTicket, 'test-policy-ticket');
         expect(fakeBridge.createSessionCount, 1);
+        expect(fakeBridge.lastTaskCard['task_id'], task.id);
+        expect(fakeBridge.lastTaskCard['agent_session_id'], isNotEmpty);
+        expect(fakeBridge.lastTaskCard['policy_ticket'], 'test-policy-ticket');
         expect(fakeBridge.uploadedFiles, contains('report.txt'));
         expect(fakeBridge.sentMessages.first, contains('Family Todo'));
         expect(

@@ -307,6 +307,49 @@ void main() {
     await server.close();
   });
 
+  test('createSession sends task card runtime metadata', () async {
+    final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    final received = <Map<String, dynamic>>[];
+    final connected = Completer<void>();
+
+    final sub = server.listen((socket) {
+      connected.complete();
+      utf8.decoder.bind(socket).transform(const LineSplitter()).listen((line) {
+        received.add(jsonDecode(line) as Map<String, dynamic>);
+      });
+    });
+
+    SharedPreferences.setMockInitialValues({
+      'bridge_host': '127.0.0.1:${server.port}',
+    });
+
+    final service = CodeWhaleBridgeService(
+      onMessage: (_) {},
+      onStatusChange: (_, __) {},
+    );
+
+    expect(await service.connect(), isTrue);
+    await connected.future.timeout(const Duration(seconds: 2));
+    service.createSession(
+      'weather',
+      title: 'Агент',
+      taskCard: const {
+        'task_id': 'task-1',
+        'agent_session_id': 'agent-session-1',
+        'policy_ticket': 'ticket-1',
+      },
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    final sent = received.firstWhere((row) => row['type'] == 'session_create');
+    expect(sent['task_card']['task_id'], 'task-1');
+    expect(sent['task_card']['policy_ticket'], 'ticket-1');
+
+    service.dispose();
+    await sub.cancel();
+    await server.close();
+  });
+
   test('incoming utf8 split across tcp chunks is decoded after full line',
       () async {
     final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
