@@ -1773,8 +1773,8 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             text: 'получил ошибку агентского чата',
             targetId: pendingId,
           );
-          _agentLaunching = false;
           _agentLaunchError = errorText;
+          _clearAgentQueueState();
         });
         _autosaveNow();
       }
@@ -2019,22 +2019,66 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     }
     _agentTaskPoller?.cancel();
     if (taskStatus == 'failed' || taskStatus == 'canceled') {
-      setState(() {
-        _markAgentSession(_pendingAgentSessionId, status: 'error');
-        _clearAgentQueueState();
-      });
-      _autosaveNow();
-      _showSnack('Один из шагов агента не выполнен: $taskStatus');
+      _failAgentQueue('Один из шагов агента не выполнен: $taskStatus');
       return;
     }
     final step = _activeAgentStep;
     final resultText = _agentResultBuffer?.toString() ?? '';
+    if (_mandatoryAgentStepFailed(step, resultText)) {
+      _failAgentQueue(
+        'family-task-card недоступен. Очередь агента остановлена.',
+      );
+      return;
+    }
     _activeAgentStep = null;
     _agentResultBuffer = null;
     if (step?.kind == AgentLaunchStepKind.taskPrompt) {
       _applyAgentTaskActionsFromText(resultText);
     }
     _sendNextAgentStep(workspaceId: workspaceId, sessionId: sessionId);
+  }
+
+  bool _mandatoryAgentStepFailed(AgentLaunchStep? step, String resultText) {
+    if (step == null) {
+      return false;
+    }
+    final mandatory = step.kind == AgentLaunchStepKind.taskCardRead ||
+        step.text.trim() == '/skill family-task-card';
+    if (!mandatory) {
+      return false;
+    }
+    final lower = resultText.toLowerCase();
+    if (lower.trim().isEmpty) {
+      return false;
+    }
+    return lower.contains('not found') ||
+        lower.contains('unknown skill') ||
+        lower.contains('command not found') ||
+        lower.contains('no such file') ||
+        lower.contains('не найден') ||
+        lower.contains('не найдена') ||
+        lower.contains('недоступ') ||
+        lower.contains('ошибка') ||
+        lower.contains('error') ||
+        lower.contains('/familly-task-card');
+  }
+
+  void _failAgentQueue(String message) {
+    final pendingId = _pendingAgentSessionId;
+    setState(() {
+      if (pendingId.isNotEmpty) {
+        _markAgentSession(pendingId, status: 'error');
+        _appendAgentActivity(
+          type: 'agent_session_error',
+          text: message,
+          targetId: pendingId,
+        );
+      }
+      _agentLaunchError = message;
+      _clearAgentQueueState();
+    });
+    _autosaveNow();
+    _showSnack(message);
   }
 
   void _completeAgentQueue() {

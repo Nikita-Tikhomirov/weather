@@ -178,6 +178,7 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
   Map<String, dynamic> lastTaskCard = const {};
   List<WorkspaceItem> workspaces = const [];
   String taskPromptReply = '';
+  String familyTaskCardSkillReply = '';
   int connectCount = 0;
   int commandListRequestCount = 0;
   int workspaceListRequestCount = 0;
@@ -281,6 +282,17 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
   @override
   void sendSessionMessage(String workspaceId, String sessionId, String text) {
     sentMessages.add(text);
+    if (familyTaskCardSkillReply.trim().isNotEmpty &&
+        text.trim() == '/skill family-task-card') {
+      onMessage(
+        CodeWhaleBridgeMessage.fromJson({
+          'type': 'assistant_delta',
+          'workspace_id': workspaceId,
+          'session_id': sessionId,
+          'text': familyTaskCardSkillReply,
+        }),
+      );
+    }
     if (taskPromptReply.trim().isNotEmpty &&
         text.contains('Выполни задачу по карточке.')) {
       onMessage(
@@ -737,6 +749,62 @@ void main() {
         );
       },
     );
+
+    testWidgets('agent launch stops when task card skill is missing',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      store.selectedDate.value = DateTime(2026, 5, 31);
+      _FakeAgentBridge? bridge;
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Исполнитель',
+        plugins: [],
+        allowedCommands: ['session_create', 'session_send'],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              )..familyTaskCardSkillReply =
+                  'Skill family-task-card not found';
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Агент'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Новый чат'));
+      await tester.pumpAndSettle();
+
+      expect(bridge!.sentMessages, ['/skill family-task-card']);
+      expect(
+        bridge!.sentMessages.any((text) => text.contains('Выполни задачу')),
+        isFalse,
+      );
+      expect(find.textContaining('family-task-card'), findsWidgets);
+    });
 
     testWidgets('agent launch matches project name to bridge workspace',
         (tester) async {

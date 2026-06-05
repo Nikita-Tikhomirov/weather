@@ -612,10 +612,16 @@ class CodeWhaleWorkerManager:
         sessions: SessionRegistry,
         state_dir: Path,
         codewhale_cmd: str = "codewhale",
+        skills_root: Path | None = None,
     ) -> None:
         self.sessions = sessions
         self.state_dir = state_dir.resolve()
         self.codewhale_cmd = codewhale_cmd
+        self.skills_root = (
+            skills_root.resolve()
+            if skills_root is not None
+            else (Path.home() / ".deepseek" / "skills").resolve()
+        )
         self._workers: dict[tuple[str, str], subprocess.Popen] = {}
 
     def start_worker(
@@ -703,6 +709,7 @@ class CodeWhaleWorkerManager:
         python_path = Path(sys.executable).resolve()
         cmd_path = tool_dir / "family-task-card.cmd"
         ps1_path = tool_dir / "family-task-card.ps1"
+        shell_path = tool_dir / "family-task-card"
         cmd_path.write_text(
             f'@echo off\r\n"{python_path}" "{cli_path}" %*\r\n',
             encoding="utf-8",
@@ -711,7 +718,63 @@ class CodeWhaleWorkerManager:
             f'& "{python_path}" "{cli_path}" @args\r\n',
             encoding="utf-8",
         )
+        shell_path.write_text(
+            f'#!/usr/bin/env sh\n"{python_path}" "{cli_path}" "$@"\n',
+            encoding="utf-8",
+        )
+        for alias in ("familly-task-card",):
+            (tool_dir / f"{alias}.cmd").write_text(
+                f'@echo off\r\n"{python_path}" "{cli_path}" %*\r\n',
+                encoding="utf-8",
+            )
+            (tool_dir / alias).write_text(
+                f'#!/usr/bin/env sh\n"{python_path}" "{cli_path}" "$@"\n',
+                encoding="utf-8",
+            )
+        self._materialize_task_card_skill()
         return tool_dir
+
+    def _materialize_task_card_skill(self) -> Path:
+        skill_dir = self.skills_root / "family-task-card"
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text(
+            """---
+name: family-task-card
+description: Work with the current Family Todo task card through the family-task-card CLI
+---
+
+# Family Task Card
+
+You are running from a Family Todo task card. The task card is not a file in the repository.
+
+Use the `family-task-card` CLI to read and update the card. Do not type `/familly-task-card`, `/family-task-card`, or any other slash command. Do not type /familly-task-card. The slash command is only `/skill family-task-card` to load this skill.
+
+First command for every task-card run:
+
+```sh
+family-task-card read
+```
+
+If `family-task-card read` fails, stop and report that the task card is unavailable. Do not continue with project work.
+
+Use these commands for card updates:
+
+```sh
+family-task-card comment add --text "..."
+family-task-card question ask --text "..." --blocking
+family-task-card checklist create --title "..." --item "..."
+family-task-card checklist item-done --checklist-id "..." --item-id "..."
+family-task-card attachment add-from-workspace --path "reports/file.md" --caption "..."
+family-task-card status set in_progress --reason "..."
+family-task-card finish --summary "..." --result-status ready_for_review
+```
+
+Always attach only files that really exist in the workspace.
+""",
+            encoding="utf-8",
+        )
+        return skill_md
 
     def _task_card_env(
         self,

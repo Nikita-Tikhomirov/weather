@@ -268,7 +268,12 @@ class CodeWhaleWorkerManagerTests(unittest.TestCase):
             process = _FakeProcess()
 
             with patch("codewhale_bridge.subprocess.Popen", return_value=process) as popen:
-                manager = CodeWhaleWorkerManager(registry, root / "state")
+                skills_root = root / "home" / ".deepseek" / "skills"
+                manager = CodeWhaleWorkerManager(
+                    registry,
+                    root / "state",
+                    skills_root=skills_root,
+                )
                 manager.start_worker("weather", session["id"], workspace, port=43101)
 
             env = popen.call_args.kwargs["env"]
@@ -277,6 +282,11 @@ class CodeWhaleWorkerManagerTests(unittest.TestCase):
             self.assertEqual(env["FAMILY_TASK_CARD_WORKSPACE_PATH"], str(workspace))
             self.assertIn(str(workspace / ".family-task-card"), env["PATH"])
             self.assertTrue((workspace / ".family-task-card" / "family-task-card.cmd").exists())
+            skill_md = skills_root / "family-task-card" / "SKILL.md"
+            self.assertTrue(skill_md.exists())
+            skill_text = skill_md.read_text(encoding="utf-8")
+            self.assertIn("family-task-card read", skill_text)
+            self.assertIn("Do not type /familly-task-card", skill_text)
 
     def test_kill_worker_only_kills_target_process(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
