@@ -462,6 +462,114 @@ class TaskActivityEntry {
 }
 
 @immutable
+class TaskAgentSettings {
+  const TaskAgentSettings({
+    this.workspaceId = '',
+    this.provider = '',
+    this.model = '',
+    this.approvalPolicy = '',
+    this.sandboxMode = '',
+    this.autoMode = false,
+    this.commandValues = const [],
+  });
+
+  final String workspaceId;
+  final String provider;
+  final String model;
+  final String approvalPolicy;
+  final String sandboxMode;
+  final bool autoMode;
+  final List<String> commandValues;
+
+  bool get isEmpty {
+    return workspaceId.trim().isEmpty &&
+        provider.trim().isEmpty &&
+        model.trim().isEmpty &&
+        approvalPolicy.trim().isEmpty &&
+        sandboxMode.trim().isEmpty &&
+        !autoMode &&
+        commandValues.isEmpty;
+  }
+
+  factory TaskAgentSettings.fromJson(Object? raw) {
+    final json = _decodeMap(raw);
+    if (json.isEmpty) {
+      return const TaskAgentSettings();
+    }
+    return TaskAgentSettings(
+      workspaceId:
+          (json['workspace_id'] ?? json['workspaceId'] ?? '').toString(),
+      provider: (json['provider'] ?? '').toString(),
+      model: (json['model'] ?? '').toString(),
+      approvalPolicy:
+          (json['approval_policy'] ?? json['approvalPolicy'] ?? '').toString(),
+      sandboxMode:
+          (json['sandbox_mode'] ?? json['sandboxMode'] ?? '').toString(),
+      autoMode: json['auto_mode'] == true || json['autoMode'] == true,
+      commandValues: _decodeStringList(
+        json['command_values'] ?? json['commandValues'],
+      ),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'workspace_id': workspaceId,
+      'provider': provider,
+      'model': model,
+      'approval_policy': approvalPolicy,
+      'sandbox_mode': sandboxMode,
+      'auto_mode': autoMode,
+      'command_values': commandValues,
+    };
+  }
+
+  TaskAgentSettings copyWith({
+    String? workspaceId,
+    String? provider,
+    String? model,
+    String? approvalPolicy,
+    String? sandboxMode,
+    bool? autoMode,
+    List<String>? commandValues,
+  }) {
+    return TaskAgentSettings(
+      workspaceId: workspaceId ?? this.workspaceId,
+      provider: provider ?? this.provider,
+      model: model ?? this.model,
+      approvalPolicy: approvalPolicy ?? this.approvalPolicy,
+      sandboxMode: sandboxMode ?? this.sandboxMode,
+      autoMode: autoMode ?? this.autoMode,
+      commandValues: commandValues ?? this.commandValues,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TaskAgentSettings &&
+          runtimeType == other.runtimeType &&
+          workspaceId == other.workspaceId &&
+          provider == other.provider &&
+          model == other.model &&
+          approvalPolicy == other.approvalPolicy &&
+          sandboxMode == other.sandboxMode &&
+          autoMode == other.autoMode &&
+          listEquals(commandValues, other.commandValues);
+
+  @override
+  int get hashCode => Object.hash(
+        workspaceId,
+        provider,
+        model,
+        approvalPolicy,
+        sandboxMode,
+        autoMode,
+        Object.hashAll(commandValues),
+      );
+}
+
+@immutable
 class TaskAgentSession {
   const TaskAgentSession({
     required this.id,
@@ -472,6 +580,12 @@ class TaskAgentSession {
     required this.status,
     required this.createdBy,
     required this.createdAt,
+    this.provider = '',
+    this.model = '',
+    this.approvalPolicy = '',
+    this.sandboxMode = '',
+    this.autoMode = false,
+    this.commandValues = const [],
   });
 
   final String id;
@@ -482,6 +596,12 @@ class TaskAgentSession {
   final String status;
   final String createdBy;
   final String createdAt;
+  final String provider;
+  final String model;
+  final String approvalPolicy;
+  final String sandboxMode;
+  final bool autoMode;
+  final List<String> commandValues;
 
   factory TaskAgentSession.fromJson(Map<String, dynamic> json) {
     return TaskAgentSession(
@@ -493,6 +613,16 @@ class TaskAgentSession {
       status: (json['status'] ?? '').toString(),
       createdBy: (json['created_by'] ?? '').toString(),
       createdAt: (json['created_at'] ?? '').toString(),
+      provider: (json['provider'] ?? '').toString(),
+      model: (json['model'] ?? '').toString(),
+      approvalPolicy:
+          (json['approval_policy'] ?? json['approvalPolicy'] ?? '').toString(),
+      sandboxMode:
+          (json['sandbox_mode'] ?? json['sandboxMode'] ?? '').toString(),
+      autoMode: json['auto_mode'] == true || json['autoMode'] == true,
+      commandValues: _decodeStringList(
+        json['command_values'] ?? json['commandValues'],
+      ),
     );
   }
 
@@ -506,6 +636,12 @@ class TaskAgentSession {
       'status': status,
       'created_by': createdBy,
       'created_at': createdAt,
+      'provider': provider,
+      'model': model,
+      'approval_policy': approvalPolicy,
+      'sandbox_mode': sandboxMode,
+      'auto_mode': autoMode,
+      'command_values': commandValues,
     };
   }
 
@@ -518,6 +654,12 @@ class TaskAgentSession {
     String? status,
     String? createdBy,
     String? createdAt,
+    String? provider,
+    String? model,
+    String? approvalPolicy,
+    String? sandboxMode,
+    bool? autoMode,
+    List<String>? commandValues,
   }) {
     return TaskAgentSession(
       id: id ?? this.id,
@@ -528,6 +670,12 @@ class TaskAgentSession {
       status: status ?? this.status,
       createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
+      provider: provider ?? this.provider,
+      model: model ?? this.model,
+      approvalPolicy: approvalPolicy ?? this.approvalPolicy,
+      sandboxMode: sandboxMode ?? this.sandboxMode,
+      autoMode: autoMode ?? this.autoMode,
+      commandValues: commandValues ?? this.commandValues,
     );
   }
 
@@ -543,7 +691,13 @@ class TaskAgentSession {
           mode == other.mode &&
           status == other.status &&
           createdBy == other.createdBy &&
-          createdAt == other.createdAt;
+          createdAt == other.createdAt &&
+          provider == other.provider &&
+          model == other.model &&
+          approvalPolicy == other.approvalPolicy &&
+          sandboxMode == other.sandboxMode &&
+          autoMode == other.autoMode &&
+          listEquals(commandValues, other.commandValues);
 
   @override
   int get hashCode => Object.hash(
@@ -555,6 +709,12 @@ class TaskAgentSession {
         status,
         createdBy,
         createdAt,
+        provider,
+        model,
+        approvalPolicy,
+        sandboxMode,
+        autoMode,
+        Object.hashAll(commandValues),
       );
 }
 
@@ -650,6 +810,7 @@ class TaskCollaboration {
     this.questions = const [],
     this.activity = const [],
     this.agentSessions = const [],
+    this.agentSettings = const TaskAgentSettings(),
   });
 
   final List<TaskComment> comments;
@@ -658,6 +819,7 @@ class TaskCollaboration {
   final List<TaskAgentQuestion> questions;
   final List<TaskActivityEntry> activity;
   final List<TaskAgentSession> agentSessions;
+  final TaskAgentSettings agentSettings;
 
   bool get isEmpty =>
       comments.isEmpty &&
@@ -665,7 +827,8 @@ class TaskCollaboration {
       checklists.isEmpty &&
       questions.isEmpty &&
       activity.isEmpty &&
-      agentSessions.isEmpty;
+      agentSessions.isEmpty &&
+      agentSettings.isEmpty;
 
   int get commentCount => comments.length;
   int get attachmentCount => attachments.length;
@@ -699,6 +862,9 @@ class TaskCollaboration {
       agentSessions: _decodeMapList(map['agent_sessions'])
           .map(TaskAgentSession.fromJson)
           .toList(),
+      agentSettings: TaskAgentSettings.fromJson(
+        map['agent_settings'] ?? map['agentSettings'],
+      ),
     );
   }
 
@@ -710,6 +876,7 @@ class TaskCollaboration {
       'questions': questions.map((item) => item.toJson()).toList(),
       'activity': activity.map((item) => item.toJson()).toList(),
       'agent_sessions': agentSessions.map((item) => item.toJson()).toList(),
+      'agent_settings': agentSettings.toJson(),
     };
   }
 
@@ -722,6 +889,7 @@ class TaskCollaboration {
     List<TaskAgentQuestion>? questions,
     List<TaskActivityEntry>? activity,
     List<TaskAgentSession>? agentSessions,
+    TaskAgentSettings? agentSettings,
   }) {
     return TaskCollaboration(
       comments: comments ?? this.comments,
@@ -730,6 +898,7 @@ class TaskCollaboration {
       questions: questions ?? this.questions,
       activity: activity ?? this.activity,
       agentSessions: agentSessions ?? this.agentSessions,
+      agentSettings: agentSettings ?? this.agentSettings,
     );
   }
 
@@ -748,7 +917,8 @@ class TaskCollaboration {
           listEquals(checklists, other.checklists) &&
           listEquals(questions, other.questions) &&
           listEquals(activity, other.activity) &&
-          listEquals(agentSessions, other.agentSessions);
+          listEquals(agentSessions, other.agentSessions) &&
+          agentSettings == other.agentSettings;
 
   @override
   int get hashCode => Object.hash(
@@ -758,6 +928,7 @@ class TaskCollaboration {
         Object.hashAll(questions),
         Object.hashAll(activity),
         Object.hashAll(agentSessions),
+        agentSettings,
       );
 }
 

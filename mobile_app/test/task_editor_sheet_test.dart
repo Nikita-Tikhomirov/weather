@@ -9,6 +9,7 @@ import 'package:family_todo_mobile/models/task_collaboration.dart';
 import 'package:family_todo_mobile/models/task_item.dart';
 import 'package:family_todo_mobile/models/task_project.dart';
 import 'package:family_todo_mobile/models/workspace_item.dart';
+import 'package:family_todo_mobile/models/workspace_session.dart';
 import 'package:family_todo_mobile/repositories/task_repository.dart';
 import 'package:family_todo_mobile/services/api_client.dart';
 import 'package:family_todo_mobile/services/codewhale_bridge_service.dart';
@@ -32,6 +33,7 @@ class _FakeApiClient extends ApiClient {
   final List<String> agentContextWorkspaceIds = [];
   final List<String> agentSessionRecordWorkspaceIds = [];
   final List<String> agentEventRecordWorkspaceIds = [];
+  final List<Map<String, dynamic>> agentContextResponses = [];
   Completer<void>? mediaUploadGate;
   Completer<void>? documentUploadGate;
   bool failAgentContext = false;
@@ -115,6 +117,9 @@ class _FakeApiClient extends ApiClient {
     if (failAgentContext) {
       throw StateError('POST failed: 400 {"error":"Task not found"}');
     }
+    if (agentContextResponses.isNotEmpty) {
+      return AgentContextPack.fromJson(agentContextResponses.removeAt(0));
+    }
     return AgentContextPack.fromJson({
       'task': {
         'id': taskId,
@@ -174,14 +179,19 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
   final List<String> uploadedFiles = [];
   final List<String> readFilePaths = [];
   final List<String> createSessionWorkspaceIds = [];
+  final List<Map<String, dynamic>> sessionSettingsUpdates = [];
   final Map<String, String> fileReadDataBase64ByPath = {};
   Map<String, dynamic> lastTaskCard = const {};
   List<WorkspaceItem> workspaces = const [];
+  List<WorkspaceSession> sessions = const [];
   String taskPromptReply = '';
   String familyTaskCardSkillReply = '';
+  List<Map<String, dynamic>> commands = const [];
   int connectCount = 0;
   int commandListRequestCount = 0;
   int workspaceListRequestCount = 0;
+  int sessionListRequestCount = 0;
+  int openSessionCount = 0;
   int createSessionCount = 0;
   int updateTaskCardCount = 0;
   int updateSessionSettingsCount = 0;
@@ -199,7 +209,7 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
     onMessage(
       CodeWhaleBridgeMessage.fromJson({
         'type': 'codewhale_command_list',
-        'commands': const [],
+        'commands': commands,
       }),
     );
   }
@@ -211,6 +221,21 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
       CodeWhaleBridgeMessage.fromJson({
         'type': 'workspace_list',
         'workspaces': workspaces.map((item) => item.toJson()).toList(),
+      }),
+    );
+  }
+
+  @override
+  void requestSessionList(String workspaceId) {
+    sessionListRequestCount += 1;
+    onMessage(
+      CodeWhaleBridgeMessage.fromJson({
+        'type': 'session_list',
+        'workspace_id': workspaceId,
+        'sessions': sessions
+            .where((session) => session.workspaceId == workspaceId)
+            .map((session) => session.toJson())
+            .toList(),
       }),
     );
   }
@@ -269,6 +294,31 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
     bool autoMode = false,
   }) {
     updateSessionSettingsCount += 1;
+    sessionSettingsUpdates.add({
+      'workspace_id': workspaceId,
+      'session_id': sessionId,
+      'provider': provider,
+      'model': model,
+      'approval_policy': approvalPolicy,
+      'sandbox_mode': sandboxMode,
+      'auto_mode': autoMode,
+    });
+    onMessage(
+      CodeWhaleBridgeMessage.fromJson({
+        'type': 'session',
+        'session': {
+          'id': sessionId,
+          'workspace_id': workspaceId,
+          'title': 'Updated session',
+          'status': 'idle',
+          'provider': provider,
+          'model': model,
+          'approval_policy': approvalPolicy,
+          'sandbox_mode': sandboxMode,
+          'auto_mode': autoMode,
+        },
+      }),
+    );
   }
 
   @override
@@ -279,6 +329,27 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
   }) {
     updateTaskCardCount += 1;
     lastTaskCard = Map<String, dynamic>.from(taskCard);
+  }
+
+  @override
+  void openSession(String workspaceId, String sessionId) {
+    openSessionCount += 1;
+    final session = sessions.firstWhere(
+      (item) => item.workspaceId == workspaceId && item.id == sessionId,
+      orElse: () => WorkspaceSession(
+        id: sessionId,
+        workspaceId: workspaceId,
+        title: 'Агентский чат',
+        status: WorkspaceSessionStatus.idle,
+      ),
+    );
+    onMessage(
+      CodeWhaleBridgeMessage.fromJson({
+        'type': 'session_open',
+        'session': session.toJson(),
+        'events': const [],
+      }),
+    );
   }
 
   @override
@@ -635,6 +706,86 @@ void main() {
       expect(find.text('Нужен макет формы?'), findsOneWidget);
     });
 
+    testWidgets('connect chat picks existing workspace session and links card',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      store.selectedDate.value = DateTime(2026, 5, 31);
+      _FakeAgentBridge? bridge;
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Исполнитель',
+        plugins: [],
+        allowedCommands: [
+          'session_open',
+          'session_send',
+          'session_update_task_card',
+        ],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              )..sessions = const [
+                  WorkspaceSession(
+                    id: 'bridge-session-existing',
+                    workspaceId: 'weather',
+                    title: 'Агент: Формы',
+                    status: WorkspaceSessionStatus.idle,
+                    provider: 'deepseek',
+                    model: 'deepseek-v4-pro',
+                    approvalPolicy: 'on-request',
+                    sandboxMode: 'workspace-write',
+                    autoMode: true,
+                  ),
+                ];
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Агент'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Подключить чат'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Агент: Формы').last);
+      await tester.pumpAndSettle();
+
+      final fakeBridge = bridge!;
+      expect(fakeBridge.sessionListRequestCount, 1);
+      expect(fakeBridge.openSessionCount, 1);
+      expect(fakeBridge.updateTaskCardCount, 1);
+      expect(repository.fakeApi.agentTicketCount, 1);
+      final saved = repository.upserts.last;
+      expect(
+        saved.collaboration.agentSessions.single.sessionId,
+        'bridge-session-existing',
+      );
+      expect(saved.collaboration.agentSessions.single.provider, 'deepseek');
+      expect(saved.collaboration.agentSessions.single.model, 'deepseek-v4-pro');
+      expect(find.text('Продолжить работу'), findsOneWidget);
+    });
+
     testWidgets(
       'agent launch uses local task card context when backend context is 400',
       (tester) async {
@@ -725,7 +876,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(repository.fakeApi.agentTicketCount, 1);
-        expect(repository.fakeApi.agentContextCount, 1);
+        expect(repository.fakeApi.agentContextCount, 2);
         final fakeBridge = bridge!;
         expect(fakeBridge.policyTicket, 'test-policy-ticket');
         expect(fakeBridge.createSessionCount, 1);
@@ -887,7 +1038,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repository.fakeApi.agentTicketWorkspaceIds.single, 'exp76-ru');
-      expect(repository.fakeApi.agentContextWorkspaceIds.single, 'exp76-ru');
+      expect(
+        repository.fakeApi.agentContextWorkspaceIds,
+        everyElement('exp76-ru'),
+      );
       expect(bridge!.workspaceListRequestCount, greaterThanOrEqualTo(1));
       expect(bridge!.createSessionWorkspaceIds.single, 'exp76-ru');
       expect(find.textContaining('workspace not found'), findsNothing);
@@ -1087,7 +1241,7 @@ TASK_CARD_ACTIONS_JSON:
               sessionId: 'bridge-session-1',
               title: 'Агент: Формы',
               mode: 'executor',
-              status: 'waiting_review',
+              status: 'linked',
               createdBy: 'test_user',
               createdAt: '2026-06-01T10:00:00',
             ),
@@ -1131,14 +1285,8 @@ TASK_CARD_ACTIONS_JSON:
 
       await tester.tap(find.text('Агент'));
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.byTooltip('Продолжить работу'),
-        500,
-        scrollable: find.byType(Scrollable).last,
-      );
-      await tester.ensureVisible(find.byTooltip('Продолжить работу'));
-      await tester.pump();
-      await tester.tap(find.byTooltip('Продолжить работу'));
+      expect(find.text('Продолжить работу'), findsOneWidget);
+      await tester.tap(find.text('Продолжить работу'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
@@ -1160,6 +1308,117 @@ TASK_CARD_ACTIONS_JSON:
         repository.upserts.last.collaboration.agentSessions.single.status,
         isNot('completed'),
       );
+      expect(
+        fakeBridge.sentMessages
+            .where((text) => text == '/skill family-task-card'),
+        hasLength(1),
+      );
+    });
+
+    testWidgets('opening returned task auto resumes latest waiting agent chat',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      store.selectedDate.value = DateTime(2026, 5, 31);
+      _FakeAgentBridge? bridge;
+      final task = _editableTask.copyWith(
+        workflowStatus: WorkflowStatus.in_progress,
+        collaboration: const TaskCollaboration(
+          comments: [
+            TaskComment(
+              id: 'comment-review',
+              authorProfile: 'test_user',
+              text: 'На проверке нашел баг: поле email не валидируется.',
+              createdAt: '2026-06-01T11:00:00',
+            ),
+          ],
+          agentSessions: [
+            TaskAgentSession(
+              id: 'agent-session-1',
+              workspaceId: 'weather',
+              sessionId: 'bridge-session-1',
+              title: 'Агент: Формы',
+              mode: 'executor',
+              status: 'waiting_review',
+              createdBy: 'test_user',
+              createdAt: '2026-06-01T10:00:00',
+              provider: 'deepseek',
+              model: 'deepseek-v4-pro',
+              approvalPolicy: 'on-request',
+              sandboxMode: 'workspace-write',
+              autoMode: true,
+              commandValues: ['/skill browser'],
+            ),
+          ],
+        ),
+      );
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Исполнитель',
+        plugins: [],
+        allowedCommands: ['session_send', 'session_update_task_card'],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: task,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              )..commands = const [
+                  {
+                    'group': 'Навыки',
+                    'label': 'Браузер',
+                    'value': '/skill browser',
+                  },
+                ];
+              return bridge!;
+            },
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 80));
+
+      final fakeBridge = bridge!;
+      expect(repository.fakeApi.agentTicketCount, 1);
+      expect(fakeBridge.createSessionCount, 0);
+      expect(fakeBridge.updateTaskCardCount, 1);
+      expect(fakeBridge.sessionSettingsUpdates.single['provider'], 'deepseek');
+      expect(
+        fakeBridge.sessionSettingsUpdates.single['model'],
+        'deepseek-v4-pro',
+      );
+      expect(
+        fakeBridge.sessionSettingsUpdates.single['approval_policy'],
+        'on-request',
+      );
+      expect(
+        fakeBridge.sessionSettingsUpdates.single['sandbox_mode'],
+        'workspace-write',
+      );
+      expect(fakeBridge.sessionSettingsUpdates.single['auto_mode'], true);
+      expect(fakeBridge.sentMessages[0], '/skill family-task-card');
+      expect(fakeBridge.sentMessages[1], contains('family-task-card read'));
+      expect(fakeBridge.sentMessages[2], '/skill browser');
+      expect(fakeBridge.sentMessages.last, contains('Продолжи работу'));
+      expect(fakeBridge.sentMessages.last, contains('email не валидируется'));
     });
 
     testWidgets('moving reviewed task back to work resumes latest agent chat',
@@ -1243,6 +1502,152 @@ TASK_CARD_ACTIONS_JSON:
       expect(
         fakeBridge.sentMessages.last,
         contains('поправить сообщение об ошибке'),
+      );
+    });
+
+    testWidgets(
+        'agent queue applies backend card snapshot after finish command',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      repository.fakeApi.agentContextResponses.addAll([
+        {
+          'task': {
+            'id': _editableTask.id,
+            'title': 'Формы',
+            'workflow_status': 'in_progress',
+          },
+        },
+        {
+          'task': {
+            'id': _editableTask.id,
+            'title': 'Формы',
+            'workflow_status': 'in_review',
+          },
+          'comments': const [
+            {
+              'id': 'agent-comment-1',
+              'author_profile': 'agent',
+              'text': 'Готово к проверке через family-task-card finish.',
+              'created_at': '2026-06-01T12:00:00',
+              'attachment_ids': [],
+            },
+          ],
+          'checklists': const [
+            {
+              'id': 'agent-checklist-1',
+              'title': 'Проверка агента',
+              'created_by': 'agent',
+              'created_at': '2026-06-01T12:00:00',
+              'items': [
+                {
+                  'id': 'agent-checklist-item-1',
+                  'text': 'Проверить форму',
+                  'done': false,
+                  'created_by': 'agent',
+                  'created_at': '2026-06-01T12:00:00',
+                },
+              ],
+            },
+          ],
+          'attachments': const [
+            {
+              'id': 'agent-attachment-1',
+              'kind': 'file',
+              'filename': 'report.md',
+              'mime_type': 'text/markdown',
+              'asset_url': 'reports/report.md',
+              'caption': 'Отчет',
+              'author_profile': 'agent',
+              'created_at': '2026-06-01T12:00:00',
+            },
+          ],
+          'agent_sessions': const [
+            {
+              'id': 'agent-session-1',
+              'workspace_id': 'weather',
+              'session_id': 'bridge-session-1',
+              'title': 'Агент: Формы',
+              'mode': 'executor',
+              'status': 'waiting_review',
+              'created_by': 'test_user',
+              'created_at': '2026-06-01T10:00:00',
+            },
+          ],
+        },
+      ]);
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      store.selectedDate.value = DateTime(2026, 5, 31);
+      _FakeAgentBridge? bridge;
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Исполнитель',
+        plugins: [],
+        allowedCommands: [
+          'session_create',
+          'session_send',
+          'session_update_task_card',
+        ],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              )
+                ..workspaces = const [
+                  WorkspaceItem(
+                    id: 'weather',
+                    name: 'weather',
+                    path: 'C:/workspace/weather',
+                    status: WorkspaceStatus.available,
+                  ),
+                ]
+                ..taskPromptReply =
+                    'Готово. Использовал family-task-card finish.';
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Агент'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Новый чат'));
+      await tester.pumpAndSettle();
+
+      final saved = repository.upserts.last;
+      expect(saved.workflowStatus, WorkflowStatus.in_review);
+      expect(
+        saved.collaboration.comments.last.text,
+        contains('family-task-card finish'),
+      );
+      expect(saved.collaboration.checklists.last.title, 'Проверка агента');
+      expect(
+        saved.collaboration.attachments.last.assetUrl,
+        'reports/report.md',
+      );
+      expect(saved.collaboration.agentSessions.last.status, 'waiting_review');
+      expect(
+        bridge!.sentMessages.where((text) => text == '/skill family-task-card'),
+        hasLength(1),
       );
     });
 

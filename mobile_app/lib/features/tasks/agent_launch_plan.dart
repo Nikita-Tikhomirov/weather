@@ -71,14 +71,18 @@ class AgentLaunchPlan {
       ),
     ];
     for (final value in selectedCommandValues) {
-      final command = commandByValue[value.trim()];
-      if (command == null || !seen.add(value.trim())) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty || !seen.add(trimmed)) {
+        continue;
+      }
+      final command = commandByValue[trimmed];
+      if (command == null && commands.isNotEmpty) {
         continue;
       }
       steps.add(
         AgentLaunchStep(
-          label: _labelOf(command),
-          text: _valueOf(command),
+          label: command == null ? trimmed : _labelOf(command),
+          text: command == null ? trimmed : _valueOf(command),
           kind: AgentLaunchStepKind.command,
         ),
       );

@@ -228,12 +228,18 @@ class AgentContextPack {
     required this.task,
     required this.comments,
     required this.checklists,
+    required this.attachments,
+    required this.questions,
+    required this.activity,
     required this.agentSessions,
   });
 
   final Map<String, dynamic> task;
   final List<Map<String, dynamic>> comments;
   final List<Map<String, dynamic>> checklists;
+  final List<Map<String, dynamic>> attachments;
+  final List<Map<String, dynamic>> questions;
+  final List<Map<String, dynamic>> activity;
   final List<Map<String, dynamic>> agentSessions;
 
   factory AgentContextPack.fromJson(Map<String, dynamic> json) {
@@ -241,6 +247,9 @@ class AgentContextPack {
       task: _mapFrom(json['task']),
       comments: _mapList(json['comments']),
       checklists: _mapList(json['checklists']),
+      attachments: _mapList(json['attachments']),
+      questions: _mapList(json['questions']),
+      activity: _mapList(json['activity']),
       agentSessions: _mapList(
         json['agent_sessions'] ?? json['agentSessions'],
       ),
@@ -288,16 +297,18 @@ class AgentContextPack {
         }
       }
     }
-    final attachments = _mapList(task['attachments']).isNotEmpty
+    final taskAttachments = _mapList(task['attachments']).isNotEmpty
         ? _mapList(task['attachments'])
         : _mapList(
             task['collaboration'] is Map
                 ? (task['collaboration'] as Map)['attachments']
                 : null,
           );
-    if (attachments.isNotEmpty) {
+    final allAttachments =
+        attachments.isNotEmpty ? attachments : taskAttachments;
+    if (allAttachments.isNotEmpty) {
       lines.add('Вложения:');
-      for (final attachment in attachments.take(20)) {
+      for (final attachment in allAttachments.take(20)) {
         final filename = (attachment['filename'] ?? '').toString().trim();
         final assetUrl = (attachment['asset_url'] ?? '').toString().trim();
         final caption = (attachment['caption'] ?? '').toString().trim();
