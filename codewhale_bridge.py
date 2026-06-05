@@ -613,6 +613,8 @@ class CodeWhaleWorkerManager:
         state_dir: Path,
         codewhale_cmd: str = "codewhale",
         skills_root: Path | None = None,
+        global_task_card_bin: Path | None = None,
+        persist_global_path: bool = True,
     ) -> None:
         self.sessions = sessions
         self.state_dir = state_dir.resolve()
@@ -622,6 +624,12 @@ class CodeWhaleWorkerManager:
             if skills_root is not None
             else (Path.home() / ".deepseek" / "skills").resolve()
         )
+        self.global_task_card_bin = (
+            global_task_card_bin.resolve()
+            if global_task_card_bin is not None
+            else self._default_global_task_card_bin()
+        )
+        self.persist_global_path = persist_global_path
         self._workers: dict[tuple[str, str], subprocess.Popen] = {}
 
     def start_worker(
@@ -652,9 +660,13 @@ class CodeWhaleWorkerManager:
         task_card = session.get("task_card") if isinstance(session.get("task_card"), dict) else {}
         if task_card:
             tool_dir = self._materialize_task_card_tool(workspace, task_card)
+            global_bin = self._materialize_global_task_card_tool()
             env.update(self._task_card_env(workspace, workspace_id, task_card))
             current_path = env.get("PATH") or env.get("Path") or ""
-            env["PATH"] = f"{tool_dir}{os.pathsep}{current_path}" if current_path else str(tool_dir)
+            env["PATH"] = self._prepend_path_entries(
+                current_path,
+                [tool_dir, global_bin],
+            )
         command = [
             self.codewhale_cmd,
             "serve",
@@ -707,32 +719,92 @@ class CodeWhaleWorkerManager:
         tool_dir.mkdir(parents=True, exist_ok=True)
         cli_path = Path(__file__).resolve().parent / "family_task_card_cli.py"
         python_path = Path(sys.executable).resolve()
-        cmd_path = tool_dir / "family-task-card.cmd"
-        ps1_path = tool_dir / "family-task-card.ps1"
-        shell_path = tool_dir / "family-task-card"
-        cmd_path.write_text(
-            f'@echo off\r\n"{python_path}" "{cli_path}" %*\r\n',
-            encoding="utf-8",
+        self._write_task_card_wrappers(tool_dir, python_path, cli_path)
+        return tool_dir
+
+    def _materialize_global_task_card_tool(self) -> Path:
+        cli_path = Path(__file__).resolve().parent / "family_task_card_cli.py"
+        python_path = Path(sys.executable).resolve()
+        self._write_task_card_wrappers(
+            self.global_task_card_bin,
+            python_path,
+            cli_path,
         )
-        ps1_path.write_text(
-            f'& "{python_path}" "{cli_path}" @args\r\n',
-            encoding="utf-8",
-        )
-        shell_path.write_text(
-            f'#!/usr/bin/env sh\n"{python_path}" "{cli_path}" "$@"\n',
-            encoding="utf-8",
-        )
-        for alias in ("familly-task-card",):
-            (tool_dir / f"{alias}.cmd").write_text(
+        self._materialize_task_card_skill()
+        self._ensure_global_bin_on_path(self.global_task_card_bin)
+        return self.global_task_card_bin
+
+    def _write_task_card_wrappers(
+        self,
+        tool_dir: Path,
+        python_path: Path,
+        cli_path: Path,
+    ) -> None:
+        tool_dir.mkdir(parents=True, exist_ok=True)
+        for command_name in ("family-task-card", "familly-task-card"):
+            (tool_dir / f"{command_name}.cmd").write_text(
                 f'@echo off\r\n"{python_path}" "{cli_path}" %*\r\n',
                 encoding="utf-8",
             )
-            (tool_dir / alias).write_text(
+            (tool_dir / f"{command_name}.ps1").write_text(
+                f'& "{python_path}" "{cli_path}" @args\r\n',
+                encoding="utf-8",
+            )
+            (tool_dir / command_name).write_text(
                 f'#!/usr/bin/env sh\n"{python_path}" "{cli_path}" "$@"\n',
                 encoding="utf-8",
             )
-        self._materialize_task_card_skill()
-        return tool_dir
+
+    def _prepend_path_entries(
+        self,
+        current_path: str,
+        entries: Iterable[Path],
+    ) -> str:
+        existing = [item for item in current_path.split(os.pathsep) if item]
+        seen = {self._path_key(Path(item)) for item in existing}
+        prefix = []
+        for entry in entries:
+            key = self._path_key(entry)
+            if key in seen:
+                continue
+            prefix.append(str(entry))
+            seen.add(key)
+        return os.pathsep.join([*prefix, *existing])
+
+    def _ensure_global_bin_on_path(self, bin_dir: Path) -> None:
+        current = os.environ.get("PATH", "")
+        os.environ["PATH"] = self._prepend_path_entries(current, [bin_dir])
+        if not self.persist_global_path or sys.platform != "win32":
+            return
+        try:
+            import winreg
+
+            with winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                "Environment",
+                0,
+                winreg.KEY_READ | winreg.KEY_WRITE,
+            ) as key:
+                try:
+                    user_path, value_type = winreg.QueryValueEx(key, "Path")
+                except FileNotFoundError:
+                    user_path, value_type = "", winreg.REG_EXPAND_SZ
+                next_path = self._prepend_path_entries(str(user_path), [bin_dir])
+                if next_path != str(user_path):
+                    winreg.SetValueEx(key, "Path", 0, value_type, next_path)
+        except Exception:
+            return
+
+    def _path_key(self, path: Path) -> str:
+        value = str(path)
+        return value.lower() if sys.platform == "win32" else value
+
+    def _default_global_task_card_bin(self) -> Path:
+        if sys.platform == "win32":
+            python_scripts = Path(sys.executable).resolve().parent / "Scripts"
+            if python_scripts.exists():
+                return python_scripts.resolve()
+        return (Path.home() / ".family-task-card" / "bin").resolve()
 
     def _materialize_task_card_skill(self) -> Path:
         skill_dir = self.skills_root / "family-task-card"

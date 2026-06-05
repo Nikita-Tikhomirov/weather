@@ -269,10 +269,13 @@ class CodeWhaleWorkerManagerTests(unittest.TestCase):
 
             with patch("codewhale_bridge.subprocess.Popen", return_value=process) as popen:
                 skills_root = root / "home" / ".deepseek" / "skills"
+                global_bin = root / "home" / ".family-task-card" / "bin"
                 manager = CodeWhaleWorkerManager(
                     registry,
                     root / "state",
                     skills_root=skills_root,
+                    global_task_card_bin=global_bin,
+                    persist_global_path=False,
                 )
                 manager.start_worker("weather", session["id"], workspace, port=43101)
 
@@ -281,7 +284,10 @@ class CodeWhaleWorkerManagerTests(unittest.TestCase):
             self.assertEqual(env["FAMILY_TASK_CARD_TICKET"], "ticket-1")
             self.assertEqual(env["FAMILY_TASK_CARD_WORKSPACE_PATH"], str(workspace))
             self.assertIn(str(workspace / ".family-task-card"), env["PATH"])
+            self.assertIn(str(global_bin), env["PATH"])
             self.assertTrue((workspace / ".family-task-card" / "family-task-card.cmd").exists())
+            self.assertTrue((global_bin / "family-task-card.cmd").exists())
+            self.assertTrue((global_bin / "familly-task-card.cmd").exists())
             skill_md = skills_root / "family-task-card" / "SKILL.md"
             self.assertTrue(skill_md.exists())
             skill_text = skill_md.read_text(encoding="utf-8")
