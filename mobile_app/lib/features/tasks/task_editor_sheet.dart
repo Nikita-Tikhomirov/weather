@@ -194,7 +194,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         existing?.projectId ?? widget.store.currentProjectId.value;
     _selectedGroupId = existing?.groupId ?? '';
     _collaboration = existing?.collaboration ?? const TaskCollaboration();
-    final agentSettings = _collaboration.agentSettings;
+    final agentSettings = _restoredAgentSettings();
     _selectedAgentWorkspaceId = agentSettings.workspaceId.trim().isNotEmpty
         ? agentSettings.workspaceId.trim()
         : widget.agentPolicy.workspaceId.trim();
@@ -207,6 +207,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     _agentAutoMode = agentSettings.autoMode;
     _selectedAgentCommandValues =
         List<String>.from(agentSettings.commandValues);
+    if (!agentSettings.isEmpty) {
+      _storeCurrentAgentSettings();
+    }
     _pendingAttachments.addAll(widget.initialPendingAttachments);
     _normalizeProjectSelection();
     _titleCtl.addListener(_queueAutosave);
@@ -305,6 +308,28 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         agentSettings: _currentAgentSettings(),
       ),
     );
+  }
+
+  TaskAgentSettings _restoredAgentSettings() {
+    final explicit = _collaboration.agentSettings;
+    if (!explicit.isEmpty) {
+      return explicit;
+    }
+    for (final session in _collaboration.agentSessions.reversed) {
+      final settings = TaskAgentSettings(
+        workspaceId: session.workspaceId,
+        provider: session.provider,
+        model: session.model,
+        approvalPolicy: session.approvalPolicy,
+        sandboxMode: session.sandboxMode,
+        autoMode: session.autoMode,
+        commandValues: List<String>.from(session.commandValues),
+      );
+      if (!settings.isEmpty) {
+        return settings;
+      }
+    }
+    return const TaskAgentSettings();
   }
 
   Future<void> _save() async {
@@ -2333,7 +2358,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     _activeAgentStep = null;
     _agentResultBuffer = null;
     if (step?.kind == AgentLaunchStepKind.taskPrompt) {
-      _applyAgentTaskActionsFromText(resultText);
+      _applyAgentResultToCard(resultText);
     }
     _sendNextAgentStep(workspaceId: workspaceId, sessionId: sessionId);
   }
@@ -2647,14 +2672,25 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   TaskAgentSession? _latestAutoContinuableAgentSession(AgentRunPolicy policy) {
     for (final session in _collaboration.agentSessions.reversed) {
-      final status = session.status.trim();
-      final shouldAutoResume =
-          status == 'waiting_review' || status == 'completed';
-      if (shouldAutoResume && _canContinueAgentSession(session, policy)) {
+      if (_shouldAutoResumeAgentSession(session) &&
+          _canContinueAgentSession(session, policy)) {
         return session;
       }
     }
     return null;
+  }
+
+  bool _shouldAutoResumeAgentSession(TaskAgentSession session) {
+    switch (session.status.trim()) {
+      case 'pending':
+      case 'linked':
+      case 'waiting_review':
+      case 'blocked':
+      case 'completed':
+        return true;
+      default:
+        return false;
+    }
   }
 
   void _markOpenAgentSessionsCompleted() {
@@ -2842,6 +2878,89 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     });
     _requestAgentActionAttachmentFiles(newAttachments);
     _autosaveNow();
+  }
+
+  void _applyAgentResultToCard(String text) {
+    if (_applyAgentContextPackFromText(text)) {
+      _autosaveNow();
+      return;
+    }
+    _applyAgentTaskActionsFromText(text);
+  }
+
+  bool _applyAgentContextPackFromText(String text) {
+    for (final json in _jsonMapsFromText(text)) {
+      final rawSnapshot = json['snapshot'] ?? json['context'];
+      if (rawSnapshot is! Map && json['task'] is! Map) {
+        continue;
+      }
+      final rawPack = rawSnapshot is Map ? rawSnapshot : json;
+      final pack = AgentContextPack.fromJson(
+        Map<String, dynamic>.from(rawPack),
+      );
+      if (!_hasAgentContextPayload(pack)) {
+        continue;
+      }
+      setState(() => _applyAgentContextPack(pack));
+      return true;
+    }
+    return false;
+  }
+
+  bool _hasAgentContextPayload(AgentContextPack pack) {
+    return (pack.task['workflow_status'] ?? '').toString().trim().isNotEmpty ||
+        pack.comments.isNotEmpty ||
+        pack.checklists.isNotEmpty ||
+        pack.attachments.isNotEmpty ||
+        pack.questions.isNotEmpty ||
+        pack.activity.isNotEmpty ||
+        pack.agentSessions.isNotEmpty;
+  }
+
+  Iterable<Map<String, dynamic>> _jsonMapsFromText(String text) sync* {
+    for (var start = 0; start < text.length; start += 1) {
+      if (text.codeUnitAt(start) != 123) {
+        continue;
+      }
+      var depth = 0;
+      var inString = false;
+      var escaped = false;
+      for (var index = start; index < text.length; index += 1) {
+        final unit = text.codeUnitAt(index);
+        if (inString) {
+          if (escaped) {
+            escaped = false;
+          } else if (unit == 92) {
+            escaped = true;
+          } else if (unit == 34) {
+            inString = false;
+          }
+          continue;
+        }
+        if (unit == 34) {
+          inString = true;
+          continue;
+        }
+        if (unit == 123) {
+          depth += 1;
+        } else if (unit == 125) {
+          depth -= 1;
+          if (depth == 0) {
+            final candidate = text.substring(start, index + 1);
+            try {
+              final decoded = jsonDecode(candidate);
+              if (decoded is Map) {
+                yield Map<String, dynamic>.from(decoded);
+              }
+            } on FormatException {
+              // Ignore non-JSON braces from the agent output.
+            }
+            start = index;
+            break;
+          }
+        }
+      }
+    }
   }
 
   void _requestAgentActionAttachmentFiles(List<TaskAttachment> attachments) {
@@ -3196,6 +3315,17 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         'workspace_id': workspaceId,
       };
       setState(() {
+        _selectedAgentWorkspaceId = workspaceId;
+        _agentWorkspaceManuallySelected = true;
+        _agentProvider = session.provider;
+        _agentModel = session.model;
+        _agentApprovalPolicy = session.approvalPolicy;
+        _agentSandboxMode = session.sandboxMode;
+        _agentAutoMode = session.autoMode;
+        _selectedAgentCommandValues = List<String>.from(
+          session.commandValues,
+        );
+        _storeCurrentAgentSettings();
         _upsertAgentSession(session);
         _appendAgentActivity(
           type: 'agent_session_linked',
@@ -4200,6 +4330,7 @@ class _AgentModeDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     final safeValue = values.contains(value) ? value : '';
     return DropdownButtonFormField<String>(
+      key: ValueKey('agent-mode-$label-$safeValue'),
       initialValue: safeValue,
       isExpanded: true,
       decoration: InputDecoration(

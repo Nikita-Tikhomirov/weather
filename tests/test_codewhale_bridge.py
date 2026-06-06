@@ -300,6 +300,7 @@ class CodeWhaleWorkerManagerTests(unittest.TestCase):
             self.assertTrue(skill_md.exists())
             skill_text = skill_md.read_text(encoding="utf-8")
             self.assertIn("family-task-card read", skill_text)
+            self.assertIn("family-task-card checklist item-add", skill_text)
             self.assertIn("Do not type /familly-task-card", skill_text)
 
     def test_start_worker_materializes_task_card_context_for_existing_worker(self) -> None:

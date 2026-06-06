@@ -68,7 +68,7 @@ final class AgentTaskService
             'comment' => $this->addTaskCardComment($context, $actor, $workspaceId, $agentSessionId, $payload),
             'question' => $this->askTaskCardQuestion($context, $actor, $workspaceId, $agentSessionId, $payload),
             'checklist' => $this->createTaskCardChecklist($context, $actor, $workspaceId, $agentSessionId, $payload),
-            'checklist_item' => $this->updateTaskCardChecklistItem($context, $actor, $workspaceId, $agentSessionId, $payload),
+            'checklist_item' => $this->applyTaskCardChecklistItem($context, $actor, $workspaceId, $agentSessionId, $payload),
             'attachment' => $this->addTaskCardAttachment($context, $actor, $workspaceId, $agentSessionId, $payload),
             'status' => $this->setTaskCardStatus($context, $actor, $workspaceId, $agentSessionId, $payload, $policy),
             'finish' => $this->finishTaskCardRun($context, $actor, $workspaceId, $agentSessionId, $payload, $policy),
@@ -387,6 +387,75 @@ final class AgentTaskService
         ];
         $collaboration['checklists'] = $checklists;
         $collaboration = $this->appendActivity($collaboration, 'agent_checklist_created', 'создал чеклист', $actor, $agentSessionId);
+        $this->repo->updateTaskCollaboration($context, $collaboration);
+        $context['collaboration'] = $collaboration;
+        return $this->snapshot($context, $workspaceId, $agentSessionId);
+    }
+
+    /**
+     * @param array<string, mixed> $context
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    public function applyTaskCardChecklistItem(
+        array $context,
+        string $actor,
+        string $workspaceId,
+        string $agentSessionId,
+        array $payload,
+    ): array {
+        $action = trim((string)($payload['action'] ?? ''));
+        if ($action === 'add' || (($payload['text'] ?? '') !== '' && ($payload['item_id'] ?? '') === '')) {
+            return $this->addTaskCardChecklistItem($context, $actor, $workspaceId, $agentSessionId, $payload);
+        }
+        return $this->updateTaskCardChecklistItem($context, $actor, $workspaceId, $agentSessionId, $payload);
+    }
+
+    /**
+     * @param array<string, mixed> $context
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    public function addTaskCardChecklistItem(
+        array $context,
+        string $actor,
+        string $workspaceId,
+        string $agentSessionId,
+        array $payload,
+    ): array {
+        $checklistId = trim((string)($payload['checklist_id'] ?? ''));
+        $text = trim((string)($payload['text'] ?? ''));
+        if ($checklistId === '' || $text === '') {
+            throw new InvalidArgumentException('Нужны checklist_id и text.');
+        }
+        $collaboration = $this->collaboration($context);
+        $checklists = array_values(is_array($collaboration['checklists'] ?? null) ? $collaboration['checklists'] : []);
+        $found = false;
+        $now = $this->repo->nowIso();
+        foreach ($checklists as $checklistIndex => $checklist) {
+            if (!is_array($checklist) || (string)($checklist['id'] ?? '') !== $checklistId) {
+                continue;
+            }
+            $items = array_values(is_array($checklist['items'] ?? null) ? $checklist['items'] : []);
+            $items[] = [
+                'id' => $this->newId('checklist-item'),
+                'text' => $text,
+                'done' => false,
+                'created_by' => 'agent',
+                'created_at' => $now,
+                'completed_by' => '',
+                'completed_at' => '',
+            ];
+            $checklist['items'] = $items;
+            $checklists[$checklistIndex] = $checklist;
+            $found = true;
+            break;
+        }
+        if (!$found) {
+            throw new InvalidArgumentException('Чеклист не найден.');
+        }
+        $collaboration['checklists'] = $checklists;
+        $collaboration = $this->appendActivity($collaboration, 'agent_checklist_updated', 'добавил пункт чеклиста', $actor, $agentSessionId);
         $this->repo->updateTaskCollaboration($context, $collaboration);
         $context['collaboration'] = $collaboration;
         return $this->snapshot($context, $workspaceId, $agentSessionId);

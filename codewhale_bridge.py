@@ -903,12 +903,14 @@ Use these commands for card updates:
 family-task-card comment add --text "..."
 family-task-card question ask --text "..." --blocking
 family-task-card checklist create --title "..." --item "..."
+family-task-card checklist item-add --checklist-id "..." --text "..."
 family-task-card checklist item-done --checklist-id "..." --item-id "..."
 family-task-card attachment add-from-workspace --path "reports/file.md" --caption "..."
 family-task-card status set in_progress --reason "..."
 family-task-card finish --summary "..." --result-status ready_for_review
 ```
 
+Prefer adding items to existing checklists by ID from `family-task-card read`. Create a new checklist only when no existing checklist matches the work.
 Always attach only files that really exist in the workspace.
 """,
             encoding="utf-8",

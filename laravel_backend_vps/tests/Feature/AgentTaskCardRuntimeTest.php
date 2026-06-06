@@ -93,6 +93,50 @@ class AgentTaskCardRuntimeTest extends TestCase
     }
 
     #[Test]
+    public function task_card_checklist_item_add_appends_to_existing_checklist(): void
+    {
+        $this->seedTask([
+            'id' => 'task-card-checklist-item-add',
+            'collaboration_json' => json_encode([
+                'checklists' => [
+                    [
+                        'id' => 'checklist-existing',
+                        'title' => 'Проверка формы',
+                        'created_by' => 'user',
+                        'created_at' => '2026-06-01T10:00:00',
+                        'items' => [
+                            [
+                                'id' => 'checklist-item-existing',
+                                'text' => 'Проверить отправку',
+                                'done' => false,
+                                'created_by' => 'user',
+                                'created_at' => '2026-06-01T10:00:00',
+                            ],
+                        ],
+                    ],
+                ],
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        ]);
+
+        $response = $this->withHeaders(['X-Api-Key' => 'dev-local-key'])
+            ->postJson('/agent/task-card/checklist-item', [
+                ...$this->agentPayloadWithTicket('task-card-checklist-item-add'),
+                'agent_session_id' => 'agent-session-1',
+                'action' => 'add',
+                'checklist_id' => 'checklist-existing',
+                'text' => 'Проверить новую правку',
+            ]);
+
+        $response
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('snapshot.checklists.0.id', 'checklist-existing')
+            ->assertJsonPath('snapshot.checklists.0.items.0.text', 'Проверить отправку')
+            ->assertJsonPath('snapshot.checklists.0.items.1.text', 'Проверить новую правку')
+            ->assertJsonPath('snapshot.checklists.0.items.1.created_by', 'agent');
+    }
+
+    #[Test]
     public function task_card_status_rejects_done_for_executor_without_superadmin_override(): void
     {
         $this->seedTask(['id' => 'task-card-status']);

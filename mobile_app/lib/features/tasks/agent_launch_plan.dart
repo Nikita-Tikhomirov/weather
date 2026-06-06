@@ -102,8 +102,10 @@ class AgentLaunchPlan {
     final prompt = contextPrompt.trim();
     final instructions = [
       'Обязательно учитывай описание, комментарии, чеклисты и вложения карточки.',
-      'Если для отчета нужны новые списки, пункты, файлы или скриншоты, создай их в воркспейсе.',
-      'Основной способ обновления карточки - команда family-task-card: comment add, checklist create, attachment add-from-workspace, status set, finish.',
+      'Если нужно добавить проверку или подпункт, сначала используй существующий чеклист из family-task-card read: family-task-card checklist item-add --checklist-id "<id>" --text "...".',
+      'Не создавай новый чеклист, если в карточке уже есть подходящий чеклист; новый создавай только для отдельного нового блока работ.',
+      'Если для отчета нужны новые файлы или скриншоты, создай их в воркспейсе.',
+      'Основной способ обновления карточки - команда family-task-card: comment add, checklist item-add, checklist create, attachment add-from-workspace, status set, finish.',
       'TASK_CARD_ACTIONS_JSON разрешен только если команда family-task-card недоступна.',
       'Формат: {"status":"in_review","comments":["итог"],"checklists":[{"title":"Проверка","items":["пункт"]}],"attachments":[{"path":"vision/screen.png","filename":"screen.png","caption":"скрин"}]}.',
       'Для движения карточки укажи status/workflow_status/move_to: todo, in_progress, in_review, done или archive.',
@@ -130,6 +132,7 @@ class AgentLaunchPlan {
       'Продолжи работу по этой же карточке задачи.',
       'Сначала учитывай новые комментарии, чеклисты, вопросы, вложения и текущий статус из family-task-card read.',
       'Не создавай новый агентский чат и не начинай задачу заново: продолжай этот же ход работы.',
+      'Если нужно добавить пункт проверки, допиши его в существующий чеклист через family-task-card checklist item-add --checklist-id "<id>" --text "..."; не создавай новый чеклист без необходимости.',
       'После правок снова обнови карточку через family-task-card: добавь комментарий-итог, файлы/скриншоты отчета и переведи в in_review, когда снова нужна проверка.',
       'Если карточка уже в done или archive, не выполняй новые правки и напиши, что задача закрыта.',
     ];

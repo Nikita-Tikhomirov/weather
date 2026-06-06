@@ -105,7 +105,13 @@ def _apply_args_to_payload(
         payload["title"] = args.title
         payload["items"] = list(args.item or [])
         return "checklist"
+    if args.command == "checklist" and args.checklist_action == "item-add":
+        payload["action"] = "add"
+        payload["checklist_id"] = args.checklist_id
+        payload["text"] = args.text
+        return "checklist-item"
     if args.command == "checklist" and args.checklist_action == "item-done":
+        payload["action"] = "done"
         payload["checklist_id"] = args.checklist_id
         payload["item_id"] = args.item_id
         payload["done"] = not bool(args.no_done)
@@ -152,6 +158,9 @@ def _parser() -> argparse.ArgumentParser:
     checklist_create = checklist.add_parser("create")
     checklist_create.add_argument("--title", required=True)
     checklist_create.add_argument("--item", action="append", default=[])
+    checklist_add = checklist.add_parser("item-add")
+    checklist_add.add_argument("--checklist-id", required=True)
+    checklist_add.add_argument("--text", required=True)
     checklist_done = checklist.add_parser("item-done")
     checklist_done.add_argument("--checklist-id", required=True)
     checklist_done.add_argument("--item-id", required=True)

@@ -1241,7 +1241,7 @@ TASK_CARD_ACTIONS_JSON:
               sessionId: 'bridge-session-1',
               title: 'Агент: Формы',
               mode: 'executor',
-              status: 'linked',
+              status: 'manual_waiting',
               createdBy: 'test_user',
               createdAt: '2026-06-01T10:00:00',
             ),
@@ -1419,6 +1419,175 @@ TASK_CARD_ACTIONS_JSON:
       expect(fakeBridge.sentMessages[2], '/skill browser');
       expect(fakeBridge.sentMessages.last, contains('Продолжи работу'));
       expect(fakeBridge.sentMessages.last, contains('email не валидируется'));
+    });
+
+    testWidgets('opening returned pending agent chat auto resumes it',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      store.selectedDate.value = DateTime(2026, 5, 31);
+      _FakeAgentBridge? bridge;
+      final task = _editableTask.copyWith(
+        workflowStatus: WorkflowStatus.in_progress,
+        collaboration: const TaskCollaboration(
+          comments: [
+            TaskComment(
+              id: 'comment-review',
+              authorProfile: 'test_user',
+              text: 'Правка после проверки: обновить маску телефона.',
+              createdAt: '2026-06-01T11:00:00',
+            ),
+          ],
+          agentSessions: [
+            TaskAgentSession(
+              id: 'agent-session-1',
+              workspaceId: 'weather',
+              sessionId: 'bridge-session-1',
+              title: 'Агент: Формы',
+              mode: 'executor',
+              status: 'pending',
+              createdBy: 'test_user',
+              createdAt: '2026-06-01T10:00:00',
+              provider: 'deepseek',
+              model: 'deepseek-v4-pro',
+              approvalPolicy: 'on-request',
+              sandboxMode: 'workspace-write',
+              autoMode: true,
+              commandValues: ['/skill browser'],
+            ),
+          ],
+        ),
+      );
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Исполнитель',
+        plugins: [],
+        allowedCommands: ['session_send', 'session_update_task_card'],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: task,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              )..commands = const [
+                  {
+                    'group': 'Навыки',
+                    'label': 'Браузер',
+                    'value': '/skill browser',
+                  },
+                ];
+              return bridge!;
+            },
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 80));
+
+      final fakeBridge = bridge!;
+      expect(repository.fakeApi.agentTicketCount, 1);
+      expect(fakeBridge.createSessionCount, 0);
+      expect(fakeBridge.updateTaskCardCount, 1);
+      expect(fakeBridge.sessionSettingsUpdates.single['provider'], 'deepseek');
+      expect(fakeBridge.sentMessages[2], '/skill browser');
+      expect(fakeBridge.sentMessages.last, contains('Продолжи работу'));
+      expect(fakeBridge.sentMessages.last, contains('маску телефона'));
+    });
+
+    testWidgets('agent settings panel restores values from latest session',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      store.selectedDate.value = DateTime(2026, 5, 31);
+      final task = _editableTask.copyWith(
+        workflowStatus: WorkflowStatus.in_progress,
+        collaboration: const TaskCollaboration(
+          agentSessions: [
+            TaskAgentSession(
+              id: 'agent-session-1',
+              workspaceId: 'weather',
+              sessionId: 'bridge-session-1',
+              title: 'Агент: Формы',
+              mode: 'executor',
+              status: 'linked',
+              createdBy: 'test_user',
+              createdAt: '2026-06-01T10:00:00',
+              provider: 'deepseek',
+              model: 'deepseek-v4-pro',
+              approvalPolicy: 'on-request',
+              sandboxMode: 'workspace-write',
+              autoMode: true,
+              commandValues: ['/skill browser'],
+            ),
+          ],
+        ),
+      );
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Исполнитель',
+        plugins: [],
+        allowedCommands: ['session_send', 'session_update_task_card'],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: task,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              return _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              );
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Агент'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('deepseek'), findsOneWidget);
+      expect(find.text('deepseek-v4-pro'), findsOneWidget);
+      expect(find.text('on-request'), findsOneWidget);
+      expect(find.text('workspace-write'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate((widget) {
+          return widget is SwitchListTile && widget.value;
+        }),
+        findsOneWidget,
+      );
     });
 
     testWidgets('moving reviewed task back to work resumes latest agent chat',
@@ -1649,6 +1818,115 @@ TASK_CARD_ACTIONS_JSON:
         bridge!.sentMessages.where((text) => text == '/skill family-task-card'),
         hasLength(1),
       );
+    });
+
+    testWidgets('agent queue applies family-task-card cli snapshot from output',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      store.selectedDate.value = DateTime(2026, 5, 31);
+      _FakeAgentBridge? bridge;
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Исполнитель',
+        plugins: [],
+        allowedCommands: [
+          'session_create',
+          'session_send',
+          'session_update_task_card',
+        ],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              )
+                ..workspaces = const [
+                  WorkspaceItem(
+                    id: 'weather',
+                    name: 'weather',
+                    path: 'C:/workspace/weather',
+                    status: WorkspaceStatus.available,
+                  ),
+                ]
+                ..taskPromptReply = '''
+Готово, карточку обновил.
+{
+  "ok": true,
+  "snapshot": {
+    "task": {
+      "id": "task-1",
+      "title": "Формы",
+      "workflow_status": "in_review"
+    },
+    "comments": [
+      {
+        "id": "agent-comment-cli",
+        "author_profile": "agent",
+        "text": "Готово к проверке через family-task-card finish.",
+        "created_at": "2026-06-01T12:00:00",
+        "attachment_ids": []
+      }
+    ],
+    "checklists": [
+      {
+        "id": "agent-checklist-cli",
+        "title": "Проверка агента",
+        "created_by": "agent",
+        "created_at": "2026-06-01T12:00:00",
+        "items": [
+          {
+            "id": "agent-checklist-item-cli",
+            "text": "Проверить форму",
+            "done": false,
+            "created_by": "agent",
+            "created_at": "2026-06-01T12:00:00"
+          }
+        ]
+      }
+    ],
+    "agent_sessions": []
+  }
+}
+''';
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Агент'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Новый чат'));
+      await tester.pumpAndSettle();
+
+      final saved = repository.upserts.last;
+      expect(saved.workflowStatus, WorkflowStatus.in_review);
+      expect(
+        saved.collaboration.comments.last.text,
+        'Готово к проверке через family-task-card finish.',
+      );
+      expect(saved.collaboration.checklists.last.title, 'Проверка агента');
+      expect(saved.collaboration.agentSessions.last.status, 'waiting_review');
     });
 
     testWidgets('work tab supports comments and checklists', (tester) async {

@@ -150,6 +150,8 @@ def test_laravel_task_card_tool_runtime_routes_and_handlers_exist() -> None:
 
     for method in [
         "applyTaskCardOperation",
+        "applyTaskCardChecklistItem",
+        "addTaskCardChecklistItem",
         "askTaskCardQuestion",
         "finishTaskCardRun",
         "setTaskCardStatus",
@@ -158,6 +160,8 @@ def test_laravel_task_card_tool_runtime_routes_and_handlers_exist() -> None:
         assert method in service
 
     assert "agent_question_added" in service
+    assert "agent_checklist_updated" in service
+    assert "добавил пункт чеклиста" in service
     assert "ready_for_review" in service
     assert "waiting_review" in service
     assert "Агент не может закрыть задачу без подтверждения" in service

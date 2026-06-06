@@ -54,6 +54,14 @@ void main() {
         'Контекст приложения',
         'Работа по задаче',
       ]);
+      expect(
+        plan.steps.last.text,
+        contains('checklist item-add --checklist-id'),
+      );
+      expect(
+        plan.steps.last.text,
+        contains('Не создавай новый чеклист'),
+      );
     });
 
     test('builds continuation steps for existing task chat', () {

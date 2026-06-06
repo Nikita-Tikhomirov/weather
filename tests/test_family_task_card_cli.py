@@ -30,6 +30,33 @@ class FamilyTaskCardCliTests(unittest.TestCase):
         self.assertEqual(sent["payload"]["policy_ticket"], "ticket-1")
         self.assertEqual(sent["payload"]["reason"], "Готово")
 
+    def test_checklist_item_add_posts_to_backend(self):
+        sent = {}
+
+        def fake_post(url, payload):
+            sent["url"] = url
+            sent["payload"] = payload
+            return {"ok": True, "snapshot": {"checklists": []}}
+
+        code = cli.run(
+            [
+                "checklist",
+                "item-add",
+                "--checklist-id",
+                "checklist-1",
+                "--text",
+                "Проверить новую правку",
+            ],
+            env=self._env(),
+            post_json=fake_post,
+        )
+
+        self.assertEqual(code, 0)
+        self.assertEqual(sent["url"], "https://api.example.test/agent/task-card/checklist-item")
+        self.assertEqual(sent["payload"]["action"], "add")
+        self.assertEqual(sent["payload"]["checklist_id"], "checklist-1")
+        self.assertEqual(sent["payload"]["text"], "Проверить новую правку")
+
     def test_attachment_rejects_path_outside_workspace(self):
         with tempfile.TemporaryDirectory() as tmp:
             outside = Path(tmp).parent / "secret.txt"
