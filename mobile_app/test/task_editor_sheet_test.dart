@@ -1675,6 +1675,98 @@ TASK_CARD_ACTIONS_JSON:
     });
 
     testWidgets(
+        'successful agent queue moves task to review without explicit status',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      repository.fakeApi.agentContextResponses.addAll([
+        {
+          'task': {
+            'id': _editableTask.id,
+            'title': 'Формы',
+            'workflow_status': 'in_progress',
+          },
+        },
+        {
+          'task': {
+            'id': _editableTask.id,
+            'title': 'Формы',
+            'workflow_status': 'in_progress',
+          },
+        },
+      ]);
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      store.selectedDate.value = DateTime(2026, 5, 31);
+      _FakeAgentBridge? bridge;
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Исполнитель',
+        plugins: [],
+        allowedCommands: [
+          'session_create',
+          'session_send',
+          'session_update_task_card',
+        ],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              )
+                ..workspaces = const [
+                  WorkspaceItem(
+                    id: 'weather',
+                    name: 'weather',
+                    path: 'C:/workspace/weather',
+                    status: WorkspaceStatus.available,
+                  ),
+                ]
+                ..taskPromptReply =
+                    'Готово. Исправил форму и подготовил отчет без JSON.';
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Агент'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Новый чат'));
+      await tester.pumpAndSettle();
+
+      final saved = repository.upserts.last;
+      expect(saved.workflowStatus, WorkflowStatus.in_review);
+      expect(
+        saved.collaboration.comments.last.text,
+        contains('Исправил форму'),
+      );
+      expect(saved.collaboration.agentSessions.last.status, 'waiting_review');
+      expect(
+        saved.collaboration.activity.map((item) => item.text),
+        contains('автоматически перевел карточку в статус На проверке'),
+      );
+      expect(bridge!.sentMessages.last, contains('Выполни задачу по карточке'));
+    });
+
+    testWidgets(
         'agent queue applies backend card snapshot after finish command',
         (tester) async {
       final repository = _FakeTaskRepository();

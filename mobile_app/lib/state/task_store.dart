@@ -13,6 +13,11 @@ import '../services/local_db.dart';
 import '../services/project_selection_storage.dart';
 import 'desktop_state.dart';
 
+typedef TaskWorkflowMoveHandler = Future<void> Function(
+  TaskItem previous,
+  TaskItem current,
+);
+
 class DashboardVm {
   const DashboardVm({
     required this.todayKey,
@@ -91,6 +96,7 @@ class TaskStore {
   final TaskRepository repository;
   final TaskDomainService domainService;
   final ProjectSelectionStorage projectSelectionStorage;
+  TaskWorkflowMoveHandler? onWorkflowMoved;
   final List<TaskItem> _allTasks = <TaskItem>[];
 
   _UndoAction? _lastUndoAction;
@@ -516,6 +522,14 @@ class TaskStore {
     await repository.upsert(changed);
     _rememberUndo(_UndoRestoreTask(item));
     await refreshLocal();
+    final handler = onWorkflowMoved;
+    if (handler != null) {
+      unawaited(
+        handler(item, changed).catchError((Object error) {
+          debugPrint('Task workflow move handler skipped: $error');
+        }),
+      );
+    }
   }
 
   Future<void> moveToDate(TaskItem item, String nextDate) async {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:family_todo_mobile/domain/task_domain_service.dart';
@@ -337,6 +338,34 @@ void main() {
         tasks = await ds.readTasks(ownerKey: 'nik');
         updated = tasks.firstWhere((t) => t.id == 'toggle-1');
         expect(updated.workflowStatus, WorkflowStatus.todo);
+      });
+    });
+
+    group('workflow automation', () {
+      test('notifies handler when task moves to another workflow column',
+          () async {
+        final task = _task(
+          'agent-move-1',
+          workflowStatus: WorkflowStatus.in_review,
+        );
+        await ds.upsertTask(task);
+        await store.refreshLocal();
+
+        final moved = <TaskItem>[];
+        final previous = <TaskItem>[];
+        final notified = Completer<void>();
+        store.onWorkflowMoved = (oldTask, newTask) async {
+          previous.add(oldTask);
+          moved.add(newTask);
+          notified.complete();
+        };
+
+        await store.move(task, WorkflowStatus.in_progress);
+        await notified.future;
+
+        expect(previous.single.workflowStatus, WorkflowStatus.in_review);
+        expect(moved.single.workflowStatus, WorkflowStatus.in_progress);
+        expect(moved.single.id, task.id);
       });
     });
 

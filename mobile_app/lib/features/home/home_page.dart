@@ -50,6 +50,7 @@ import '../../services/project_bridge_service.dart';
 import '../../services/push_notification_handler.dart';
 import '../../services/service_locator.dart';
 import '../../services/sync_loop_service.dart';
+import '../../services/task_agent_automation_service.dart';
 import '../../services/voice_recorder_service.dart';
 import '../../state/task_store.dart';
 
@@ -79,6 +80,7 @@ class _HomePageState extends State<HomePage> {
   DesktopThemeService? _desktopThemeService;
   DesktopProcessHostService? _desktopProcessHostService;
   SyncLoopService? _syncLoops;
+  TaskAgentAutomationService? _taskAgentAutomation;
   PushNotificationHandler? _pushHandler;
   VoiceRecorderService? _voiceRecorder;
   bool _desktopLogExpanded = false;
@@ -198,6 +200,7 @@ class _HomePageState extends State<HomePage> {
     final store = locator.taskStore;
     await store.initialize(initialOwner: owner);
     await _loadAccessPolicy(api, owner);
+    store.onWorkflowMoved = _handleTaskWorkflowMoved;
     if (!_accessPolicy.canUseTaskManager) {
       store.setPage(2);
     }
@@ -3222,6 +3225,38 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _handleTaskWorkflowMoved(
+    TaskItem previous,
+    TaskItem current,
+  ) async {
+    if (previous.workflowStatus == current.workflowStatus ||
+        current.workflowStatus != WorkflowStatus.in_progress ||
+        !_accessPolicy.canUseAi ||
+        !_accessPolicy.canUseWorkspaces) {
+      return;
+    }
+    final store = _store;
+    if (store == null) {
+      return;
+    }
+    final policy = await _agentPolicyForEditor(store, current);
+    if (!policy.allowed) {
+      return;
+    }
+    final service = _taskAgentAutomation ??= TaskAgentAutomationService(
+      store: store,
+      actorPhone: () => _currentProfilePhone,
+      onLog: (message) => debugPrint('[task-agent-auto] $message'),
+    );
+    final started = await service.continueLatestForInProgressTask(
+      task: current,
+      policy: policy,
+    );
+    if (started) {
+      await _safeSyncDelta(store, showErrors: false);
+    }
+  }
+
   String _workspaceIdForTaskEditor(TaskStore store, TaskItem? existing) {
     final workspaceIds = _accessPolicy.workspaces
         .map((item) => (item['workspace_id'] ?? '').toString().trim())
@@ -3559,6 +3594,7 @@ class _HomePageState extends State<HomePage> {
     _chatInputCtl.dispose();
     _pushHandler?.dispose();
     _syncLoops?.dispose();
+    _taskAgentAutomation?.dispose();
     _voiceRecorder?.dispose();
     unawaited(_desktopProcessHostService?.stopAll());
     _desktopThemeService?.state.dispose();

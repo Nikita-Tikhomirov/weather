@@ -2412,6 +2412,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     if (!mounted) {
       return;
     }
+    _forceReviewAfterSuccessfulAgentQueue(pendingId);
     final sessionStatus = _agentSessionStatusAfterQueue();
     final activityText = _agentQueueCompletionText(sessionStatus);
     if (pendingId.isNotEmpty) {
@@ -2436,6 +2437,29 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       _clearAgentQueueState();
     });
     _autosaveNow();
+  }
+
+  void _forceReviewAfterSuccessfulAgentQueue(String agentSessionId) {
+    if (_status == WorkflowStatus.in_review ||
+        _status == WorkflowStatus.done ||
+        _status == WorkflowStatus.archive ||
+        _hasOpenBlockingAgentQuestion()) {
+      return;
+    }
+    setState(() {
+      _status = WorkflowStatus.in_review;
+      _appendAgentActivity(
+        type: 'agent_status_changed',
+        text: 'автоматически перевел карточку в статус На проверке',
+        targetId: agentSessionId,
+      );
+    });
+  }
+
+  bool _hasOpenBlockingAgentQuestion() {
+    return _collaboration.questions.any((question) {
+      return question.blocking && question.isOpen;
+    });
   }
 
   Future<void> _refreshAgentCardFromBackendBestEffort() async {
