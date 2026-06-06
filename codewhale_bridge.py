@@ -4,6 +4,8 @@ import argparse
 import asyncio
 import json
 import base64
+import contextlib
+import io
 import mimetypes
 import os
 import re
@@ -897,6 +899,20 @@ family-task-card read
 
 If `family-task-card read` fails, stop and report that the task card is unavailable. Do not continue with project work.
 
+Do not ask the user to confirm moving the card. When the work is complete and no blocking answer is needed, immediately run:
+
+```sh
+family-task-card finish --summary "..." --result-status ready_for_review
+```
+
+If you cannot continue without the user's answer, do not ask in a normal chat message. Create a blocking task-card question instead:
+
+```sh
+family-task-card question ask --text "..." --blocking
+```
+
+Never answer with "Should I move it to ready_for_review?", "Move to review?", or similar confirmation prompts.
+
 Use these commands for card updates:
 
 ```sh
@@ -1669,6 +1685,20 @@ class CodeWhaleBridge:
                     "final": True,
                 },
             )
+        auto_finish_event = self._auto_finish_task_card_if_confirmation_prompt(
+            workspace,
+            session,
+            full_text,
+        )
+        if auto_finish_event is not None:
+            yield {
+                "type": "session_process_event",
+                "workspace_id": workspace_id,
+                "session_id": session_id,
+                "event": auto_finish_event,
+                "text": str(auto_finish_event.get("text") or ""),
+                "event_type": str(auto_finish_event.get("event_type") or ""),
+            }
         self.sessions.update_session(
             workspace_id,
             session_id,
@@ -1682,6 +1712,133 @@ class CodeWhaleBridge:
             "status": final_status,
             "runtime_session_id": runtime_session_id or "",
         }
+
+    def _auto_finish_task_card_if_confirmation_prompt(
+        self,
+        workspace: dict[str, Any],
+        session: dict[str, Any],
+        full_text: str,
+    ) -> dict[str, Any] | None:
+        if not self._looks_like_review_confirmation_prompt(full_text):
+            return None
+        task_card = session.get("task_card")
+        if not isinstance(task_card, dict) or not task_card:
+            return None
+        workspace_id = str(session.get("workspace_id") or workspace.get("id") or "").strip()
+        session_id = str(session.get("id") or "").strip()
+        if not workspace_id or not session_id:
+            return None
+        env = self.workers._task_card_env(
+            Path(str(workspace["path"])),
+            workspace_id,
+            task_card,
+        )
+        summary = self._task_card_finish_summary(full_text)
+        try:
+            import family_task_card_cli
+
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                exit_code = family_task_card_cli.run(
+                    [
+                        "finish",
+                        "--summary",
+                        summary,
+                        "--result-status",
+                        "ready_for_review",
+                    ],
+                    env=env,
+                )
+        except Exception as exc:
+            return self.sessions.append_event(
+                workspace_id,
+                session_id,
+                {
+                    "type": "session_process_event",
+                    "text": f"Автоперевод карточки на проверку не выполнен: {exc}",
+                    "event_type": "task_card_auto_finish_error",
+                },
+            )
+        if exit_code != 0:
+            error_text = stderr.getvalue().strip() or stdout.getvalue().strip()
+            return self.sessions.append_event(
+                workspace_id,
+                session_id,
+                {
+                    "type": "session_process_event",
+                    "text": (
+                        "Автоперевод карточки на проверку не выполнен"
+                        f"{': ' + error_text if error_text else ''}"
+                    ),
+                    "event_type": "task_card_auto_finish_error",
+                },
+            )
+        return self.sessions.append_event(
+            workspace_id,
+            session_id,
+            {
+                "type": "session_process_event",
+                "text": "Карточка автоматически переведена в На проверке без подтверждения.",
+                "event_type": "task_card_auto_finish",
+            },
+        )
+
+    @staticmethod
+    def _looks_like_review_confirmation_prompt(text: str) -> bool:
+        normalized = re.sub(r"\s+", " ", text.strip().lower())
+        if "?" not in normalized:
+            return False
+        has_review_target = any(
+            token in normalized
+            for token in ("ready_for_review", "на проверк", "review")
+        )
+        has_move_intent = any(
+            token in normalized
+            for token in (
+                "перенести",
+                "перевести",
+                "переместить",
+                "move",
+                "send",
+                "transfer",
+            )
+        )
+        has_ready_signal = any(
+            token in normalized
+            for token in (
+                "готов",
+                "выполн",
+                "ready",
+                "complete",
+                "done",
+            )
+        )
+        has_blocker_signal = any(
+            token in normalized
+            for token in (
+                "не готов",
+                "не выполн",
+                "не могу",
+                "нельзя",
+                "blocked",
+                "blocker",
+            )
+        )
+        return has_review_target and has_move_intent and has_ready_signal and not has_blocker_signal
+
+    @staticmethod
+    def _task_card_finish_summary(text: str) -> str:
+        cleaned = re.sub(r"\s+", " ", text.strip())
+        if not cleaned:
+            return "Агент завершил работу и перевел карточку на проверку."
+        cut = re.split(
+            r"(?i)\b(перенести|перевести|переместить|move|send|transfer)\b",
+            cleaned,
+            maxsplit=1,
+        )[0].strip(" .?!")
+        summary = cut or "Агент завершил работу и перевел карточку на проверку."
+        return summary[:900]
 
     def _session_stream_lock(self, workspace_id: str, session_id: str) -> threading.Lock:
         key = (workspace_id, session_id)

@@ -2257,7 +2257,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
     lines.add('');
     lines.add(
-      'После работы обнови карточку через TASK_CARD_ACTIONS_JSON: добавь комментарий-итог, новые чеклисты/пункты и пути файлов отчета или скриншотов, если они созданы.',
+      'После работы обнови карточку через family-task-card и не спрашивай подтверждение на перевод: если работа готова и нет блокирующего вопроса, сразу выполни family-task-card finish --summary "<краткий итог>" --result-status ready_for_review.',
+    );
+    lines.add(
+      'Если family-task-card недоступен, используй TASK_CARD_ACTIONS_JSON: добавь комментарий-итог, новые чеклисты/пункты, пути файлов отчета или скриншотов и status=in_review.',
     );
     return lines.join('\n');
   }

@@ -301,6 +301,9 @@ class CodeWhaleWorkerManagerTests(unittest.TestCase):
             skill_text = skill_md.read_text(encoding="utf-8")
             self.assertIn("family-task-card read", skill_text)
             self.assertIn("family-task-card checklist item-add", skill_text)
+            self.assertIn("family-task-card finish --summary", skill_text)
+            self.assertIn("--result-status ready_for_review", skill_text)
+            self.assertIn("Do not ask the user to confirm moving the card", skill_text)
             self.assertIn("Do not type /familly-task-card", skill_text)
 
     def test_start_worker_materializes_task_card_context_for_existing_worker(self) -> None:
@@ -986,6 +989,78 @@ class CodeWhaleBridgeTests(unittest.TestCase):
                 )
 
             self.assertEqual(stream_prompt.call_args.kwargs["session_id"], "cw-session-1")
+
+    def test_stream_session_message_auto_finishes_review_confirmation_prompt(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            session = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Агент",
+                    "task_card": {
+                        "task_id": "task-1",
+                        "agent_session_id": "agent-session-1",
+                        "actor_profile": "Nikita",
+                        "actor_phone": "+79679812438",
+                        "api_url": "https://api.example.test",
+                        "policy_ticket": "ticket-1",
+                        "task_type": "feature",
+                        "mode": "executor",
+                    },
+                }
+            )["session"]
+
+            with (
+                patch.object(
+                    bridge.exec_client,
+                    "stream_prompt",
+                    return_value=iter(
+                        [
+                            {
+                                "type": "content",
+                                "content": (
+                                    "Задача по сути готова. Перенести в "
+                                    "ready_for_review или есть что добавить?"
+                                ),
+                            },
+                            {"type": "done"},
+                        ]
+                    ),
+                ),
+                patch(
+                    "family_task_card_cli.run",
+                    return_value=0,
+                ) as task_card_run,
+            ):
+                replies = list(
+                    bridge.stream_session_message(
+                        {
+                            "type": "session_send",
+                            "workspace_id": workspace["id"],
+                            "session_id": session["id"],
+                            "text": "Проверь",
+                        }
+                    )
+                )
+
+            task_card_run.assert_called_once()
+            args = task_card_run.call_args.args[0]
+            env = task_card_run.call_args.kwargs["env"]
+            self.assertEqual(args[0], "finish")
+            self.assertIn("--result-status", args)
+            self.assertIn("ready_for_review", args)
+            self.assertEqual(env["FAMILY_TASK_CARD_TASK_ID"], "task-1")
+            self.assertEqual(env["FAMILY_TASK_CARD_TICKET"], "ticket-1")
+            self.assertIn("session_process_event", [reply["type"] for reply in replies])
+            events = bridge.sessions.load_events(workspace["id"], session["id"])
+            self.assertEqual(events[-1]["type"], "session_process_event")
+            self.assertEqual(events[-1]["event_type"], "task_card_auto_finish")
+            self.assertIn("без подтверждения", events[-1]["text"])
 
     def test_stream_session_message_serializes_concurrent_sends_to_reuse_runtime_session(
         self,

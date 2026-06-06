@@ -62,6 +62,18 @@ void main() {
         plan.steps.last.text,
         contains('Не создавай новый чеклист'),
       );
+      expect(
+        plan.steps.last.text,
+        contains('Не спрашивай подтверждение'),
+      );
+      expect(
+        plan.steps.last.text,
+        contains('family-task-card finish --summary'),
+      );
+      expect(
+        plan.steps.last.text,
+        contains('--result-status ready_for_review'),
+      );
     });
 
     test('builds continuation steps for existing task chat', () {
@@ -84,6 +96,18 @@ void main() {
         ),
       ]);
       expect(plan.steps.last.label, 'Продолжение работы');
+      expect(
+        plan.steps.last.text,
+        contains('Не спрашивай подтверждение'),
+      );
+      expect(
+        plan.steps.last.text,
+        contains('family-task-card finish --summary'),
+      );
+      expect(
+        plan.steps.last.text,
+        contains('--result-status ready_for_review'),
+      );
     });
 
     test('ignores unknown and duplicate command values', () {

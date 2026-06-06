@@ -838,7 +838,10 @@ class TaskAgentAutomationService {
     }
     lines.add('');
     lines.add(
-      'После работы обнови карточку через family-task-card и доведи ее до На проверке, если не нужен ответ пользователя.',
+      'После работы обнови карточку через family-task-card и не спрашивай подтверждение на перевод: если работа готова и нет блокирующего вопроса, сразу выполни family-task-card finish --summary "<краткий итог>" --result-status ready_for_review.',
+    );
+    lines.add(
+      'Если без ответа пользователя продолжать нельзя, задай блокирующий вопрос через family-task-card question ask --text "..." --blocking.',
     );
     return lines.join('\n');
   }
