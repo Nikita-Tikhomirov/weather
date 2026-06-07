@@ -283,9 +283,14 @@ class CodeWhaleWorkerManagerTests(unittest.TestCase):
             self.assertEqual(env["FAMILY_TASK_CARD_TASK_ID"], "task-1")
             self.assertEqual(env["FAMILY_TASK_CARD_TICKET"], "ticket-1")
             self.assertEqual(env["FAMILY_TASK_CARD_WORKSPACE_PATH"], str(workspace))
+            self.assertEqual(env["PYTHONIOENCODING"], "utf-8")
             self.assertIn(str(workspace / ".family-task-card"), env["PATH"])
             self.assertIn(str(global_bin), env["PATH"])
-            self.assertTrue((workspace / ".family-task-card" / "family-task-card.cmd").exists())
+            wrapper_cmd = workspace / ".family-task-card" / "family-task-card.cmd"
+            wrapper_ps1 = workspace / ".family-task-card" / "family-task-card.ps1"
+            self.assertTrue(wrapper_cmd.exists())
+            self.assertIn("PYTHONIOENCODING=utf-8", wrapper_cmd.read_text(encoding="utf-8"))
+            self.assertIn("PYTHONIOENCODING", wrapper_ps1.read_text(encoding="utf-8"))
             context = json.loads(
                 (workspace / ".family-task-card" / "context.json").read_text(
                     encoding="utf-8",

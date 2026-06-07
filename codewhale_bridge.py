@@ -812,15 +812,26 @@ class CodeWhaleWorkerManager:
         tool_dir.mkdir(parents=True, exist_ok=True)
         for command_name in ("family-task-card", "familly-task-card"):
             (tool_dir / f"{command_name}.cmd").write_text(
-                f'@echo off\r\n"{python_path}" "{cli_path}" %*\r\n',
+                (
+                    "@echo off\r\n"
+                    "set PYTHONIOENCODING=utf-8\r\n"
+                    f'"{python_path}" "{cli_path}" %*\r\n'
+                ),
                 encoding="utf-8",
             )
             (tool_dir / f"{command_name}.ps1").write_text(
-                f'& "{python_path}" "{cli_path}" @args\r\n',
+                (
+                    '$env:PYTHONIOENCODING = "utf-8"\r\n'
+                    f'& "{python_path}" "{cli_path}" @args\r\n'
+                ),
                 encoding="utf-8",
             )
             (tool_dir / command_name).write_text(
-                f'#!/usr/bin/env sh\n"{python_path}" "{cli_path}" "$@"\n',
+                (
+                    "#!/usr/bin/env sh\n"
+                    "export PYTHONIOENCODING=utf-8\n"
+                    f'"{python_path}" "{cli_path}" "$@"\n'
+                ),
                 encoding="utf-8",
             )
 
@@ -957,6 +968,7 @@ Always attach only files that really exist in the workspace.
             "FAMILY_TASK_CARD_TASK_TYPE": str(task_card.get("task_type") or "feature"),
             "FAMILY_TASK_CARD_MODE": str(task_card.get("mode") or "executor"),
             "FAMILY_TASK_CARD_WORKSPACE_PATH": str(workspace),
+            "PYTHONIOENCODING": "utf-8",
         }
 
     def stop_worker(
