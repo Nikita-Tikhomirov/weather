@@ -24,6 +24,7 @@ import '../chat/messenger_page.dart';
 import '../chat/sticker_picker_sheet.dart';
 import '../projects/project_file_browser.dart';
 import '../projects/project_chat_view.dart';
+import '../projects/chat_task_draft_editor_sheet.dart';
 import '../projects/projects_and_groups_screen.dart';
 import '../profile/profile_page.dart';
 import '../tasks/calendar_view.dart';
@@ -46,6 +47,7 @@ import '../../services/desktop_process_host_service.dart';
 import '../../services/local_db.dart';
 import '../../services/desktop_theme_service.dart';
 import '../../services/project_access.dart';
+import '../../services/project_chat_agent_service.dart';
 import '../../services/profile_init_service.dart';
 import '../../services/project_bridge_service.dart';
 import '../../services/push_notification_handler.dart';
@@ -107,6 +109,8 @@ class _HomePageState extends State<HomePage> {
   String _projectChatAgentSessionId = '';
   String _pendingProjectChatAgentPrompt = '';
   String _pendingProjectChatAgentWorkspaceId = '';
+  Completer<String>? _projectChatAgentResponseCompleter;
+  StringBuffer _projectChatAgentResponseBuffer = StringBuffer();
   final Map<String, ProjectControlSnapshot> _projectControlSnapshots =
       <String, ProjectControlSnapshot>{};
   final List<BridgeMessage> _projectMessages = <BridgeMessage>[];
@@ -1385,6 +1389,17 @@ class _HomePageState extends State<HomePage> {
       }
       _chatMessagesByConversation[conversationKey] = updated;
       if (mounted) setState(() {});
+      final boundProject = _projectForBoundGroupConversation(
+        store,
+        conversationKey,
+      );
+      if (editingId == null &&
+          boundProject != null &&
+          ProjectChatAgentService.isAddressed(finalText)) {
+        unawaited(
+          _handleProjectChatAgentMention(store, boundProject, finalText),
+        );
+      }
     } catch (e, st) {
       debugPrint('[chat] send message error: $e\n$st');
       // Message stays in 'sending' state — retry on next sync

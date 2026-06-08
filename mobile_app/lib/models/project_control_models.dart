@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../domain/task_draft.dart';
 import 'agent_policy.dart';
 import 'chat_models.dart';
+import 'task_collaboration.dart';
 import 'task_item.dart';
 import 'task_project.dart';
 
@@ -253,9 +254,14 @@ class ChatTaskDraft {
     required String projectId,
     String groupId = '',
   }) {
+    final cleanChecklist = checklist
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+    final now = DateTime.now().toIso8601String();
     return TaskDraft(
       title: title,
-      details: composedDetails,
+      details: _composeDetails(includeChecklist: false),
       dueDate: '',
       time: '',
       priority: priority,
@@ -264,12 +270,37 @@ class ChatTaskDraft {
       assignees: assignees,
       durationMinutes: 0,
       reminderOffsetsMinutes: const [],
+      collaboration: cleanChecklist.isEmpty
+          ? const TaskCollaboration()
+          : TaskCollaboration(
+              checklists: [
+                TaskChecklist(
+                  id: 'chat-checklist-${DateTime.now().microsecondsSinceEpoch}',
+                  title: 'Чеклист',
+                  createdBy: 'agent',
+                  createdAt: now,
+                  items: [
+                    for (var index = 0; index < cleanChecklist.length; index++)
+                      TaskChecklistItem(
+                        id: 'chat-checklist-item-${DateTime.now().microsecondsSinceEpoch}-$index',
+                        text: cleanChecklist[index],
+                        createdBy: 'agent',
+                        createdAt: now,
+                      ),
+                  ],
+                ),
+              ],
+            ),
       projectId: projectId,
       groupId: groupId,
     );
   }
 
   String get composedDetails {
+    return _composeDetails();
+  }
+
+  String _composeDetails({bool includeChecklist = true}) {
     final lines = <String>[];
     final rawDetails = details.trim();
     if (rawDetails.isNotEmpty) lines.add(rawDetails);
@@ -277,7 +308,9 @@ class ChatTaskDraft {
     _appendList(lines, 'Решения', decisions);
     _appendList(lines, 'Action items', actionItems);
     _appendList(lines, 'Блокеры', blockers);
-    _appendList(lines, 'Чеклист', checklist);
+    if (includeChecklist) {
+      _appendList(lines, 'Чеклист', checklist);
+    }
     if (sourceMessageIds.isNotEmpty) {
       lines.add('Источники: ${sourceMessageIds.join(', ')}');
     }

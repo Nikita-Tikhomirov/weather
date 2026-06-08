@@ -9,7 +9,7 @@ final class Profiles
     /** @deprecated No longer used — any registered user has full permissions. */
     public const ADULTS = [];
     /** @deprecated No longer used — replaced by dynamic messenger_users lookup. */
-    public const ALLOWED = ['nik', 'nastya', 'misha', 'arisha'];
+    public const ALLOWED = ['nik', 'nastya', 'misha', 'arisha', 'tudushker'];
     public const ALLOWED_WORKFLOW = ['todo', 'in_progress', 'in_review', 'done', 'archive'];
 
     /** Any registered user is considered "adult" — no permission restrictions. */

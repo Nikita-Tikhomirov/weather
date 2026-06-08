@@ -185,43 +185,39 @@ extension _ChatSection on _HomePageState {
     TaskStore store,
     TaskProject project,
   ) async {
-    final workspaceId = await _workspaceIdForProjectChat(store, project);
-    if (workspaceId.isEmpty) {
-      _showSnack('Выберите workspace проекта в Project Control Center.');
-      return;
-    }
     try {
-      final group = _familyGroupForConversation(store, _activeConversationKey);
-      final contextPack = await store.repository.api.fetchProjectChatContext(
-        actorProfile: store.owner.value,
-        actorPhone: _currentProfilePhone,
-        projectId: project.id,
-        conversationKey: _activeConversationKey,
-        workspaceId: workspaceId,
-      );
-      final ticket = await store.repository.api.requestProjectChatAgentTicket(
-        actorProfile: store.owner.value,
-        actorPhone: _currentProfilePhone,
-        projectId: project.id,
-        conversationKey: _activeConversationKey,
-        workspaceId: workspaceId,
-        requestedMode: contextPack.automation.defaultAgentMode,
-      );
-      await _queueProjectChatAgentPrompt(
-        workspaceId: workspaceId,
+      final request = await _prepareProjectChatAgentRequest(
+        store: store,
         project: project,
-        contextPack: contextPack,
-        policyTicket: ticket.policyTicket,
+        userMessage: 'Пользователь нажал кнопку создания черновика задачи.',
+        forcedAction: ProjectChatAgentAction.taskDraft,
       );
-      final draft = _draftFromProjectChatContext(contextPack);
+      if (request == null) {
+        return;
+      }
+      _showSnack('Тудушкер анализирует чат.');
+      final output = await _runProjectChatAgentPrompt(
+        workspaceId: request.workspaceId,
+        project: project,
+        contextPack: request.contextPack,
+        policyTicket: request.policyTicket,
+        prompt: request.prompt,
+        title: 'Черновик задачи: ${project.name}',
+      );
+      if (output.trim().isEmpty) {
+        throw StateError('Тудушкер не вернул черновик');
+      }
+      final directive = ProjectChatAgentService.parseModelDirective(output);
       if (!mounted) {
         return;
       }
-      await _showChatTaskDraftPreview(
+      await _applyProjectChatAgentDirective(
         store: store,
-        draft: draft,
         project: project,
-        groupId: group?.id ?? '',
+        contextPack: request.contextPack,
+        directive: directive,
+        groupId: request.groupId,
+        policyTicket: request.policyTicket,
       );
     } catch (e, st) {
       debugPrint('[project-chat-agent] analyze error: $e\n$st');
@@ -259,6 +255,8 @@ extension _ChatSection on _HomePageState {
         project: project,
         contextPack: contextPack,
         policyTicket: ticket.policyTicket,
+        prompt: contextPack.toPrompt(),
+        title: 'Анализ чата: ${project.name}',
       );
       _showSnack('Агент проекта запускается в CodeWhale.');
     } catch (e, st) {
@@ -267,19 +265,61 @@ extension _ChatSection on _HomePageState {
     }
   }
 
+  Future<_ProjectChatAgentRequest?> _prepareProjectChatAgentRequest({
+    required TaskStore store,
+    required TaskProject project,
+    required String userMessage,
+    ProjectChatAgentAction? forcedAction,
+  }) async {
+    final workspaceId = await _workspaceIdForProjectChat(store, project);
+    if (workspaceId.isEmpty) {
+      _showSnack('Выберите workspace проекта в Project Control Center.');
+      return null;
+    }
+    final group = _familyGroupForConversation(store, _activeConversationKey);
+    final contextPack = await store.repository.api.fetchProjectChatContext(
+      actorProfile: store.owner.value,
+      actorPhone: _currentProfilePhone,
+      projectId: project.id,
+      conversationKey: _activeConversationKey,
+      workspaceId: workspaceId,
+    );
+    final ticket = await store.repository.api.requestProjectChatAgentTicket(
+      actorProfile: store.owner.value,
+      actorPhone: _currentProfilePhone,
+      projectId: project.id,
+      conversationKey: _activeConversationKey,
+      workspaceId: workspaceId,
+      requestedMode: contextPack.automation.defaultAgentMode,
+    );
+    return _ProjectChatAgentRequest(
+      workspaceId: workspaceId,
+      contextPack: contextPack,
+      policyTicket: ticket.policyTicket,
+      groupId: group?.id ?? '',
+      prompt: ProjectChatAgentService.buildIntentPrompt(
+        context: contextPack,
+        userMessage: userMessage,
+        forcedAction: forcedAction,
+      ),
+    );
+  }
+
   Future<void> _queueProjectChatAgentPrompt({
     required String workspaceId,
     required TaskProject project,
     required ProjectChatContextPack contextPack,
     required String policyTicket,
+    required String prompt,
+    String title = '',
   }) async {
     final bridge = _ensureProjectChatAgentBridge();
     bridge.updatePolicyTicket(policyTicket);
     _pendingProjectChatAgentWorkspaceId = workspaceId;
-    _pendingProjectChatAgentPrompt = contextPack.toPrompt();
+    _pendingProjectChatAgentPrompt = prompt;
     bridge.createSession(
       workspaceId,
-      title: 'Анализ чата: ${project.name}',
+      title: title.trim().isEmpty ? 'Тудушкер: ${project.name}' : title.trim(),
       taskCard: {
         'scope': 'project_chat',
         'project_id': project.id,
@@ -294,6 +334,47 @@ extension _ChatSection on _HomePageState {
     await bridge.connect();
   }
 
+  Future<String> _runProjectChatAgentPrompt({
+    required String workspaceId,
+    required TaskProject project,
+    required ProjectChatContextPack contextPack,
+    required String policyTicket,
+    required String prompt,
+    String title = '',
+  }) async {
+    final previous = _projectChatAgentResponseCompleter;
+    if (previous != null && !previous.isCompleted) {
+      previous.completeError(StateError('Предыдущий запрос Тудушкера отменен'));
+    }
+    final completer = Completer<String>();
+    _projectChatAgentResponseCompleter = completer;
+    _projectChatAgentResponseBuffer = StringBuffer();
+    await _queueProjectChatAgentPrompt(
+      workspaceId: workspaceId,
+      project: project,
+      contextPack: contextPack,
+      policyTicket: policyTicket,
+      prompt: prompt,
+      title: title,
+    );
+    try {
+      return await completer.future.timeout(
+        const Duration(seconds: 90),
+        onTimeout: () {
+          if (_projectChatAgentResponseCompleter == completer) {
+            _projectChatAgentResponseCompleter = null;
+            _projectChatAgentResponseBuffer = StringBuffer();
+          }
+          return '';
+        },
+      );
+    } finally {
+      if (_projectChatAgentResponseCompleter == completer) {
+        _projectChatAgentResponseCompleter = null;
+      }
+    }
+  }
+
   CodeWhaleBridgeService _ensureProjectChatAgentBridge() {
     final existing = _projectChatAgentBridge;
     if (existing != null) {
@@ -301,6 +382,14 @@ extension _ChatSection on _HomePageState {
     }
     final bridge = CodeWhaleBridgeService(
       onMessage: (message) {
+        if (message.isError) {
+          _completeProjectChatAgentResponse(
+            error: StateError(
+              message.error.isEmpty ? 'Ошибка CodeWhale' : message.error,
+            ),
+          );
+          return;
+        }
         final session = message.session;
         if (session != null) {
           _projectChatAgentSessionId = session.id;
@@ -310,6 +399,32 @@ extension _ChatSection on _HomePageState {
             _pendingProjectChatAgentPrompt = '';
             _bridgeSendProjectChatPrompt(workspaceId, session.id, prompt);
           }
+          return;
+        }
+        if (message.type == 'assistant_delta') {
+          if (_projectChatAgentResponseCompleter != null) {
+            _projectChatAgentResponseBuffer.write(message.text);
+          }
+          return;
+        }
+        if (message.type == 'session_task') {
+          if (_isProjectChatBridgeTaskDone(message.taskStatus)) {
+            if (_projectChatAgentResponseCompleter != null &&
+                message.taskResultSummary.trim().isNotEmpty) {
+              _projectChatAgentResponseBuffer.write(message.taskResultSummary);
+            }
+            _completeProjectChatAgentResponse();
+          }
+          return;
+        }
+        if (message.type == 'session_stream_done') {
+          _completeProjectChatAgentResponse();
+          return;
+        }
+        if (message.type == 'output' && message.text.trim().isNotEmpty) {
+          if (_projectChatAgentResponseCompleter != null) {
+            _projectChatAgentResponseBuffer.write(message.text);
+          }
         }
       },
       onStatusChange: (connected, status) {
@@ -318,6 +433,30 @@ extension _ChatSection on _HomePageState {
     );
     _projectChatAgentBridge = bridge;
     return bridge;
+  }
+
+  bool _isProjectChatBridgeTaskDone(String status) {
+    return const {
+      'completed',
+      'succeeded',
+      'success',
+      'failed',
+      'canceled',
+      'cancelled',
+    }.contains(status.trim().toLowerCase());
+  }
+
+  void _completeProjectChatAgentResponse({Object? error}) {
+    final completer = _projectChatAgentResponseCompleter;
+    if (completer == null || completer.isCompleted) {
+      return;
+    }
+    if (error != null) {
+      completer.completeError(error);
+      return;
+    }
+    completer.complete(_projectChatAgentResponseBuffer.toString());
+    _projectChatAgentResponseBuffer = StringBuffer();
   }
 
   void _bridgeSendProjectChatPrompt(
@@ -333,96 +472,28 @@ extension _ChatSection on _HomePageState {
     bridge.sendSessionMessage(workspaceId, sessionId, prompt);
   }
 
-  ChatTaskDraft _draftFromProjectChatContext(ProjectChatContextPack context) {
-    final textMessages =
-        context.messages.where((message) => message.text.trim().isNotEmpty);
-    final sourceIds = textMessages.map((message) => message.id).toList();
-    final actionItems = <String>[];
-    for (final message in textMessages) {
-      final text = message.text.trim();
-      if (text.isEmpty) {
-        continue;
-      }
-      actionItems.add('${message.senderProfile}: $text');
-    }
-    final titleSource = actionItems.isEmpty
-        ? 'Задача из чата'
-        : actionItems.last.replaceFirst(RegExp(r'^[^:]+:\s*'), '');
-    final title = titleSource.length > 80
-        ? '${titleSource.substring(0, 77)}...'
-        : titleSource;
-    return ChatTaskDraft(
-      title: title,
-      summary: 'Черновик создан из последних сообщений чата проекта.',
-      actionItems: actionItems.take(8).toList(),
-      sourceMessageIds: sourceIds.take(12).toList(),
-    );
-  }
-
   Future<void> _showChatTaskDraftPreview({
     required TaskStore store,
     required ChatTaskDraft draft,
     required TaskProject project,
     required String groupId,
   }) async {
-    final confirmed = await showModalBottomSheet<bool>(
+    final editedDraft = await showModalBottomSheet<ChatTaskDraft>(
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.fromLTRB(
-            16,
-            16,
-            16,
-            16 + MediaQuery.of(sheetContext).viewInsets.bottom,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Черновик задачи',
-                style: Theme.of(sheetContext).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                draft.title,
-                style: Theme.of(sheetContext).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 260),
-                child: SingleChildScrollView(
-                  child: Text(draft.composedDetails),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  TextButton(
-                    key: const ValueKey('chat-draft-cancel'),
-                    onPressed: () => Navigator.of(sheetContext).pop(false),
-                    child: const Text('Отмена'),
-                  ),
-                  const Spacer(),
-                  FilledButton.icon(
-                    key: const ValueKey('chat-draft-confirm'),
-                    icon: const Icon(Icons.check),
-                    onPressed: () => Navigator.of(sheetContext).pop(true),
-                    label: const Text('Создать задачу'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+        return ChatTaskDraftEditorSheet(
+          initialDraft: draft,
+          onCancel: () => Navigator.of(sheetContext).pop(),
+          onConfirm: (value) => Navigator.of(sheetContext).pop(value),
         );
       },
     );
-    if (confirmed != true) {
+    if (editedDraft == null) {
       return;
     }
     final result = await store.saveDraftWithResult(
-      draft: draft.toTaskDraft(projectId: project.id, groupId: groupId),
+      draft: editedDraft.toTaskDraft(projectId: project.id, groupId: groupId),
     );
     if (result.error != null) {
       _showSnack(result.error!);
@@ -430,6 +501,149 @@ extension _ChatSection on _HomePageState {
     }
     await _safeSyncDelta(store, showErrors: true);
     _showSnack('Задача создана в проекте ${project.name}.');
+  }
+
+  Future<void> _handleProjectChatAgentMention(
+    TaskStore store,
+    TaskProject project,
+    String userMessage,
+  ) async {
+    try {
+      final request = await _prepareProjectChatAgentRequest(
+        store: store,
+        project: project,
+        userMessage: userMessage,
+      );
+      if (request == null) {
+        return;
+      }
+      final output = await _runProjectChatAgentPrompt(
+        workspaceId: request.workspaceId,
+        project: project,
+        contextPack: request.contextPack,
+        policyTicket: request.policyTicket,
+        prompt: request.prompt,
+        title: 'Тудушкер: ${project.name}',
+      );
+      if (!mounted) {
+        return;
+      }
+      await _applyProjectChatAgentDirective(
+        store: store,
+        project: project,
+        contextPack: request.contextPack,
+        directive: ProjectChatAgentService.parseModelDirective(output),
+        groupId: request.groupId,
+        policyTicket: request.policyTicket,
+      );
+    } catch (e, st) {
+      debugPrint('[project-chat-agent] mention error: $e\n$st');
+      await _sendProjectChatAgentMessage(
+        store,
+        'Не смог обработать запрос. Проверьте workspace проекта и доступность CodeWhale.',
+      );
+    }
+  }
+
+  Future<void> _applyProjectChatAgentDirective({
+    required TaskStore store,
+    required TaskProject project,
+    required ProjectChatContextPack contextPack,
+    required ProjectChatAgentDirective directive,
+    required String groupId,
+    String policyTicket = '',
+  }) async {
+    switch (directive.action) {
+      case ProjectChatAgentAction.taskDraft:
+        final draft = directive.draft;
+        if (draft == null) {
+          await _sendProjectChatAgentMessage(
+            store,
+            'Я понял, что нужна карточка, но не смог собрать структурированный черновик.',
+          );
+          return;
+        }
+        await _showChatTaskDraftPreview(
+          store: store,
+          draft: draft,
+          project: project,
+          groupId: groupId,
+        );
+        return;
+      case ProjectChatAgentAction.startAgent:
+        final launchPrompt = directive.launchPrompt.trim().isNotEmpty
+            ? directive.launchPrompt.trim()
+            : contextPack.toPrompt();
+        await _queueProjectChatAgentPrompt(
+          workspaceId: contextPack.workspaceId.trim().isNotEmpty
+              ? contextPack.workspaceId.trim()
+              : contextPack.automation.primaryWorkspaceId,
+          project: project,
+          contextPack: contextPack,
+          policyTicket: policyTicket,
+          prompt: launchPrompt,
+          title: 'Работа агента: ${project.name}',
+        );
+        await _sendProjectChatAgentMessage(
+          store,
+          'Запустил рабочую сессию в workspace проекта.',
+        );
+        return;
+      case ProjectChatAgentAction.status:
+      case ProjectChatAgentAction.clarify:
+      case ProjectChatAgentAction.reply:
+        final text = directive.replyText.trim().isNotEmpty
+            ? directive.replyText.trim()
+            : 'Я посмотрел контекст, но не смог сформулировать полезный ответ.';
+        await _sendProjectChatAgentMessage(store, text);
+        return;
+    }
+  }
+
+  Future<void> _sendProjectChatAgentMessage(
+    TaskStore store,
+    String text,
+  ) async {
+    final clean = text.trim();
+    if (clean.isEmpty) {
+      return;
+    }
+    final conversationKey = _activeConversationKey;
+    try {
+      final message = await store.repository.api.chatSendMessage(
+        actorProfile: 'tudushker',
+        conversationKey: conversationKey,
+        messageType: 'text',
+        text: clean,
+        clientMessageId: 'tudushker-${DateTime.now().microsecondsSinceEpoch}',
+      );
+      await store.repository.db.upsertMessages([message]);
+      final messages = List<ChatMessage>.from(
+        _chatMessagesByConversation[conversationKey] ?? const [],
+      )..add(message);
+      _chatMessagesByConversation[conversationKey] = messages;
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (error, stackTrace) {
+      debugPrint('[project-chat-agent] bot send failed: $error\n$stackTrace');
+      final fallback = await store.repository.api.chatSendMessage(
+        actorProfile: store.owner.value,
+        conversationKey: conversationKey,
+        messageType: 'text',
+        text: 'Тудушкер: $clean',
+        clientMessageId:
+            'tudushker-fallback-${DateTime.now().microsecondsSinceEpoch}',
+      );
+      await store.repository.db.upsertMessages([fallback]);
+      final messages = List<ChatMessage>.from(
+        _chatMessagesByConversation[conversationKey] ?? const [],
+      )..add(fallback);
+      _chatMessagesByConversation[conversationKey] = messages;
+      if (mounted) {
+        setState(() {});
+      }
+    }
   }
 
   Future<void> _showProjectChatStatus(
@@ -610,4 +824,20 @@ extension _ChatSection on _HomePageState {
     }
     return '';
   }
+}
+
+class _ProjectChatAgentRequest {
+  const _ProjectChatAgentRequest({
+    required this.workspaceId,
+    required this.contextPack,
+    required this.policyTicket,
+    required this.groupId,
+    required this.prompt,
+  });
+
+  final String workspaceId;
+  final ProjectChatContextPack contextPack;
+  final String policyTicket;
+  final String groupId;
+  final String prompt;
 }

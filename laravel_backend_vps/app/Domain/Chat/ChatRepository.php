@@ -115,6 +115,9 @@ final class ChatRepository
         $owner = $this->resolveLegacyProfile($owner);
         $this->ensureActor($owner);
         $profiles = [$owner];
+        if ($owner !== 'tudushker') {
+            $profiles[] = 'tudushker';
+        }
         foreach ($members as $member) {
             $profile = $this->resolveLegacyProfile(trim((string) $member));
             if ($profile === '') {

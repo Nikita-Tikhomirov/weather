@@ -202,7 +202,7 @@ class ProjectGroupChatSyncTest extends TestCase
             ->json();
 
         $this->assertEqualsCanonicalizing(
-            ['nik', 'nastya'],
+            ['nik', 'nastya', 'tudushker'],
             $response['conversation']['members'],
         );
         $this->assertDatabaseHas('chat_conversations', [
@@ -217,6 +217,16 @@ class ProjectGroupChatSyncTest extends TestCase
             'source' => 'project_group',
             'is_primary' => 1,
         ]);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/chat/messages/send', [
+                'actor_profile' => 'tudushker',
+                'conversation_key' => 'grp:project:'.$project['id'],
+                'message_type' => 'text',
+                'text' => 'Готов помочь по проекту.',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('message.sender_profile', 'tudushker');
     }
 
     #[Test]
