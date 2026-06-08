@@ -984,6 +984,46 @@ final class SyncRepository
         ];
     }
 
+    /** @param array<string, mixed> $values */
+    public function upsertProjectAutomationConfig(string $projectId, array $values): array
+    {
+        $projectId = trim($projectId);
+        if ($projectId === '' || !Schema::hasTable('project_automation_configs')) {
+            return $this->projectAutomationConfig($projectId);
+        }
+
+        $current = $this->projectAutomationConfig($projectId);
+        $primaryWorkspaceId = array_key_exists('primary_workspace_id', $values)
+            ? trim((string)$values['primary_workspace_id'])
+            : (string)($current['primary_workspace_id'] ?? '');
+        $agentEnabled = array_key_exists('agent_enabled', $values)
+            ? (bool)$values['agent_enabled']
+            : $primaryWorkspaceId !== '';
+        $defaultAgentMode = trim((string)($values['default_agent_mode'] ?? $current['default_agent_mode'] ?? 'planner'));
+        if ($defaultAgentMode === '') {
+            $defaultAgentMode = 'planner';
+        }
+        $limit = array_key_exists('chat_analysis_message_limit', $values)
+            ? (int)$values['chat_analysis_message_limit']
+            : (int)($current['chat_analysis_message_limit'] ?? 40);
+        $limit = max(1, min(100, $limit));
+        $now = $this->nowIso();
+
+        DB::table('project_automation_configs')->updateOrInsert(
+            ['project_id' => $projectId],
+            [
+                'primary_workspace_id' => $primaryWorkspaceId,
+                'agent_enabled' => $agentEnabled,
+                'default_agent_mode' => $defaultAgentMode,
+                'chat_analysis_message_limit' => $limit,
+                'updated_at' => $now,
+                'created_at' => (string)($current['created_at'] ?? '') === '' ? $now : $current['created_at'],
+            ],
+        );
+
+        return $this->projectAutomationConfig($projectId);
+    }
+
     private function normalizeReminderOffsets(mixed $raw): array
     {
         if (!is_array($raw)) {

@@ -49,6 +49,33 @@ void main() {
       );
     });
 
+    test('keeps workspace empty when backend did not configure it', () {
+      final snapshot = ProjectControlSnapshot.fromJson(const {
+        'snapshot': {
+          'project': {
+            'id': 'project-1',
+            'name': 'Weather',
+            'owner_key': 'nik',
+          },
+          'chat_bindings': [],
+          'automation': {
+            'project_id': 'project-1',
+            'primary_workspace_id': '',
+          },
+          'primary_workspace': {'id': ''},
+          'permissions': {
+            'can_manage_project': true,
+            'can_use_agent': false,
+            'can_use_workspace': false,
+          },
+        },
+      });
+
+      expect(snapshot.primaryWorkspaceId, isEmpty);
+      expect(snapshot.automation.primaryWorkspaceId, isEmpty);
+      expect(snapshot.canUseAgent, isFalse);
+    });
+
     test('parse chat task draft and convert to task draft', () {
       final draft = ChatTaskDraft.fromJson(const {
         'draft': {

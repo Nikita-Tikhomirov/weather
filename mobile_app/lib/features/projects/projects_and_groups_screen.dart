@@ -1,14 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../models/agent_policy.dart';
 import '../../models/chat_models.dart';
 import '../../models/family_group.dart';
+import '../../models/project_control_models.dart';
 import '../../models/task_project.dart';
 import '../../state/task_store.dart';
 import 'project_edit_sheet.dart';
 import 'family_group_edit_sheet.dart';
 
-class ProjectsAndGroupsScreen extends StatelessWidget {
+class ProjectsAndGroupsScreen extends StatefulWidget {
   const ProjectsAndGroupsScreen({
     super.key,
     required this.store,
@@ -27,6 +30,16 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
   static String _defaultContactLabel(ChatContact c) => c.displayName.isNotEmpty
       ? c.displayName
       : (c.phone.isNotEmpty ? c.phone : c.profileKey);
+
+  @override
+  State<ProjectsAndGroupsScreen> createState() =>
+      _ProjectsAndGroupsScreenState();
+}
+
+class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
+  final Map<String, ProjectControlSnapshot> _snapshots =
+      <String, ProjectControlSnapshot>{};
+  final Set<String> _loadingSnapshots = <String>{};
 
   @override
   Widget build(BuildContext context) {
@@ -49,20 +62,20 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
 
   Widget _buildControlCenter(BuildContext context) {
     return ValueListenableBuilder<List<TaskProject>>(
-      valueListenable: store.projects,
+      valueListenable: widget.store.projects,
       builder: (context, projects, _) {
         return ValueListenableBuilder<String>(
-          valueListenable: store.currentProjectId,
+          valueListenable: widget.store.currentProjectId,
           builder: (context, currentProjectId, __) {
             final project = projects.cast<TaskProject?>().firstWhere(
                   (item) => item?.id == currentProjectId,
                   orElse: () => projects.isEmpty ? null : projects.first,
                 );
             return ValueListenableBuilder<Map<String, List<String>>>(
-              valueListenable: store.projectGroupMap,
+              valueListenable: widget.store.projectGroupMap,
               builder: (context, pgMap, ___) {
                 return ValueListenableBuilder<List<FamilyGroup>>(
-                  valueListenable: store.familyGroups,
+                  valueListenable: widget.store.familyGroups,
                   builder: (context, groups, ____) {
                     if (project == null) {
                       return const Card(
@@ -78,13 +91,37 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
                     final boundGroups = groups
                         .where((group) => groupIds.contains(group.id))
                         .toList();
-                    final workspaceId = _primaryWorkspaceId(project.id);
-                    final canUseAgent = accessPolicy.canUseAi &&
-                        accessPolicy.canUseWorkspaces &&
-                        workspaceId.isNotEmpty;
+                    _ensureProjectSnapshot(project.id);
+                    final snapshot = _snapshots[project.id];
+                    final workspaceId =
+                        (snapshot?.primaryWorkspaceId ?? '').trim();
+                    final canManageProject = snapshot?.canManageProject ??
+                        project.ownerKey ==
+                            (widget.actorProfile ?? widget.store.owner.value);
+                    final canUseAgent = (snapshot?.canUseAgent ?? false) ||
+                        (widget.accessPolicy.canUseAi &&
+                            widget.accessPolicy.canUseWorkspaces &&
+                            _workspaceIsAvailable(workspaceId) &&
+                            workspaceId.isNotEmpty);
+                    final canUseWorkspace =
+                        (snapshot?.canUseWorkspace ?? false) ||
+                            (widget.accessPolicy.canUseWorkspaces &&
+                                _workspaceIsAvailable(workspaceId) &&
+                                workspaceId.isNotEmpty);
+                    final isLoadingSnapshot =
+                        _loadingSnapshots.contains(project.id);
+                    final workspaceLabel = workspaceId.isEmpty
+                        ? 'Workspace не выбран'
+                        : canUseWorkspace
+                            ? 'Workspace: $workspaceId'
+                            : 'Workspace: $workspaceId (нет доступа)';
                     final agentBlockedReason = workspaceId.isEmpty
-                        ? 'Нет доступного workspace'
+                        ? 'Workspace не выбран'
                         : 'Нет прав на агента';
+                    final canPickWorkspace =
+                        canManageProject && _availableWorkspaceIds.isNotEmpty;
+                    final canUseProjectAgent =
+                        canUseAgent && workspaceId.isNotEmpty;
 
                     return Card(
                       child: Padding(
@@ -125,17 +162,30 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
                                 ),
                                 _InfoChip(
                                   icon: Icons.workspaces_outline,
-                                  label: workspaceId.isEmpty
-                                      ? 'Workspace не выбран'
-                                      : 'Workspace: $workspaceId',
+                                  label: isLoadingSnapshot
+                                      ? 'Workspace загружается'
+                                      : workspaceLabel,
                                 ),
                                 _InfoChip(
                                   icon: Icons.smart_toy_outlined,
-                                  label: canUseAgent
+                                  label: canUseProjectAgent
                                       ? 'Агент доступен'
                                       : agentBlockedReason,
                                 ),
                               ],
+                            ),
+                            const SizedBox(height: 12),
+                            _WorkspaceControl(
+                              workspaceId: workspaceId,
+                              isLoading: isLoadingSnapshot,
+                              canPick: canPickWorkspace,
+                              onPick: canPickWorkspace
+                                  ? () => _pickPrimaryWorkspace(
+                                        context,
+                                        project,
+                                        snapshot,
+                                      )
+                                  : null,
                             ),
                             const SizedBox(height: 16),
                             Text(
@@ -173,7 +223,7 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
                                   ),
                                   icon: const Icon(Icons.auto_awesome_outlined),
                                   label: const Text('Анализ чата'),
-                                  onPressed: canUseAgent &&
+                                  onPressed: canUseProjectAgent &&
                                           boundGroups.isNotEmpty
                                       ? () => _showControlActionHint(context)
                                       : null,
@@ -184,7 +234,7 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
                                   ),
                                   icon: const Icon(Icons.note_add_outlined),
                                   label: const Text('Черновик задачи'),
-                                  onPressed: canUseAgent &&
+                                  onPressed: canUseProjectAgent &&
                                           boundGroups.isNotEmpty
                                       ? () => _showControlActionHint(context)
                                       : null,
@@ -195,7 +245,7 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
                                   ),
                                   icon: const Icon(Icons.play_arrow_outlined),
                                   label: const Text('Запустить агента'),
-                                  onPressed: canUseAgent
+                                  onPressed: canUseProjectAgent
                                       ? () => _showControlActionHint(context)
                                       : null,
                                 ),
@@ -217,13 +267,13 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
 
   Widget _buildProjectsSection(BuildContext context) {
     return ValueListenableBuilder<List<TaskProject>>(
-      valueListenable: store.projects,
+      valueListenable: widget.store.projects,
       builder: (context, projects, _) {
         return ValueListenableBuilder<Map<String, List<String>>>(
-          valueListenable: store.projectGroupMap,
+          valueListenable: widget.store.projectGroupMap,
           builder: (context, pgMap, _) {
             return ValueListenableBuilder<List<FamilyGroup>>(
-              valueListenable: store.familyGroups,
+              valueListenable: widget.store.familyGroups,
               builder: (context, groups, __) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,7 +315,7 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
 
   Widget _buildGroupsSection(BuildContext context) {
     return ValueListenableBuilder<List<FamilyGroup>>(
-      valueListenable: store.familyGroups,
+      valueListenable: widget.store.familyGroups,
       builder: (context, groups, _) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,7 +359,7 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
         groups.where((g) => projectGroupIds.contains(g.id)).toList();
 
     return ValueListenableBuilder<String>(
-      valueListenable: store.currentProjectId,
+      valueListenable: widget.store.currentProjectId,
       builder: (context, currentId, _) {
         final isCurrent = currentId == project.id;
         return Card(
@@ -341,7 +391,7 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
             trailing: PopupMenuButton<String>(
               onSelected: (action) {
                 if (action == 'select') {
-                  store.setCurrentProject(project.id);
+                  widget.store.setCurrentProject(project.id);
                 } else if (action == 'edit') {
                   _editProject(context, project, projectGroupIds);
                 } else if (action == 'delete') {
@@ -361,7 +411,7 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
                 const PopupMenuItem(value: 'delete', child: Text('Удалить')),
               ],
             ),
-            onTap: () => store.setCurrentProject(project.id),
+            onTap: () => widget.store.setCurrentProject(project.id),
           ),
         );
       },
@@ -396,7 +446,7 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
   Future<void> _createProject(BuildContext context) async {
     await showProjectEditSheet(
       context: context,
-      store: store,
+      store: widget.store,
       isCreate: true,
     );
   }
@@ -408,7 +458,7 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
   ) async {
     await showProjectEditSheet(
       context: context,
-      store: store,
+      store: widget.store,
       isCreate: false,
       project: project,
       initialGroupIds: currentGroupIds,
@@ -434,29 +484,29 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
       ),
     );
     if (confirmed != true) return;
-    await store.deleteProject(id);
+    await widget.store.deleteProject(id);
   }
 
   Future<void> _createGroup(BuildContext context) async {
     await showFamilyGroupEditSheet(
       context: context,
-      store: store,
+      store: widget.store,
       isCreate: true,
-      contacts: contacts,
-      contactLabel: contactLabel,
-      actorProfile: actorProfile,
+      contacts: widget.contacts,
+      contactLabel: widget.contactLabel,
+      actorProfile: widget.actorProfile,
     );
   }
 
   Future<void> _editGroup(BuildContext context, FamilyGroup group) async {
     await showFamilyGroupEditSheet(
       context: context,
-      store: store,
+      store: widget.store,
       isCreate: false,
       group: group,
-      contacts: contacts,
-      contactLabel: contactLabel,
-      actorProfile: actorProfile,
+      contacts: widget.contacts,
+      contactLabel: widget.contactLabel,
+      actorProfile: widget.actorProfile,
     );
   }
 
@@ -479,23 +529,185 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
       ),
     );
     if (confirmed != true) return;
-    await store.deleteFamilyGroup(id);
+    await widget.store.deleteFamilyGroup(id);
   }
 
-  String _primaryWorkspaceId(String projectId) {
-    final workspaces = accessPolicy.workspaces
-        .map((item) => (item['workspace_id'] ?? '').toString().trim())
-        .where((item) => item.isNotEmpty)
-        .toList();
-    if (workspaces.contains(projectId)) {
-      return projectId;
+  List<String> get _availableWorkspaceIds => widget.accessPolicy.workspaces
+      .map((item) => (item['workspace_id'] ?? '').toString().trim())
+      .where((item) => item.isNotEmpty)
+      .toList(growable: false);
+
+  bool _workspaceIsAvailable(String workspaceId) {
+    final id = workspaceId.trim();
+    return id.isNotEmpty && _availableWorkspaceIds.contains(id);
+  }
+
+  void _ensureProjectSnapshot(String projectId) {
+    if (projectId.isEmpty ||
+        _snapshots.containsKey(projectId) ||
+        _loadingSnapshots.contains(projectId)) {
+      return;
     }
-    return workspaces.isEmpty ? '' : workspaces.first;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(_loadProjectSnapshot(projectId));
+    });
+  }
+
+  Future<void> _loadProjectSnapshot(String projectId) async {
+    if (_loadingSnapshots.contains(projectId)) {
+      return;
+    }
+    setState(() => _loadingSnapshots.add(projectId));
+    try {
+      final snapshot =
+          await widget.store.repository.api.fetchProjectControlSnapshot(
+        actorProfile: widget.actorProfile ?? widget.store.owner.value,
+        projectId: projectId,
+      );
+      if (!mounted) return;
+      setState(() => _snapshots[projectId] = snapshot);
+    } catch (_) {
+      // The local project/group lists still render; controls stay disabled.
+    } finally {
+      if (mounted) {
+        setState(() => _loadingSnapshots.remove(projectId));
+      }
+    }
+  }
+
+  Future<void> _pickPrimaryWorkspace(
+    BuildContext context,
+    TaskProject project,
+    ProjectControlSnapshot? snapshot,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) {
+        final currentId = (snapshot?.primaryWorkspaceId ?? '').trim();
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  'Основной workspace',
+                  style: Theme.of(sheetContext).textTheme.titleLarge,
+                ),
+              ),
+              if (currentId.isNotEmpty)
+                ListTile(
+                  leading: const Icon(Icons.link_off_outlined),
+                  title: const Text('Снять привязку'),
+                  onTap: () => Navigator.of(sheetContext).pop(''),
+                ),
+              for (final workspaceId in _availableWorkspaceIds)
+                ListTile(
+                  leading: Icon(
+                    workspaceId == currentId
+                        ? Icons.check_circle
+                        : Icons.workspaces_outline,
+                  ),
+                  title: Text(workspaceId),
+                  onTap: () => Navigator.of(sheetContext).pop(workspaceId),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+    if (selected == null) {
+      return;
+    }
+    try {
+      final automation =
+          await widget.store.repository.api.updateProjectAutomationConfig(
+        actorProfile: widget.actorProfile ?? widget.store.owner.value,
+        projectId: project.id,
+        primaryWorkspaceId: selected,
+      );
+      if (!mounted) return;
+      final current = _snapshots[project.id] ?? snapshot;
+      setState(() {
+        _snapshots[project.id] = ProjectControlSnapshot(
+          project: current?.project ?? project,
+          chatBindings: current?.chatBindings ?? const [],
+          automation: automation,
+          primaryWorkspaceId: automation.primaryWorkspaceId,
+          canManageProject: current?.canManageProject ?? true,
+          canUseWorkspace: automation.primaryWorkspaceId.isNotEmpty &&
+              widget.accessPolicy.canUseWorkspaces &&
+              _workspaceIsAvailable(automation.primaryWorkspaceId),
+          canUseAgent: automation.primaryWorkspaceId.isNotEmpty &&
+              widget.accessPolicy.canUseWorkspaces &&
+              widget.accessPolicy.canUseAi &&
+              _workspaceIsAvailable(automation.primaryWorkspaceId),
+        );
+      });
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            selected.isEmpty
+                ? 'Workspace проекта очищен.'
+                : 'Workspace проекта сохранён.',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось сохранить workspace проекта.'),
+        ),
+      );
+    }
   }
 
   void _showControlActionHint(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Откройте связанный групповой чат.')),
+    );
+  }
+}
+
+class _WorkspaceControl extends StatelessWidget {
+  const _WorkspaceControl({
+    required this.workspaceId,
+    required this.isLoading,
+    required this.canPick,
+    required this.onPick,
+  });
+
+  final String workspaceId;
+  final bool isLoading;
+  final bool canPick;
+  final VoidCallback? onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final label =
+        workspaceId.trim().isEmpty ? 'Выбрать workspace' : 'Сменить workspace';
+    final hint = canPick
+        ? 'Свяжите проект с конкретным workspace для агента.'
+        : 'Нет доступных workspace для выбора.';
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            isLoading ? 'Загружаю настройку workspace...' : hint,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+        const SizedBox(width: 8),
+        OutlinedButton.icon(
+          key: const ValueKey('project-workspace-picker'),
+          icon: const Icon(Icons.account_tree_outlined),
+          label: Text(label),
+          onPressed: isLoading ? null : onPick,
+        ),
+      ],
     );
   }
 }

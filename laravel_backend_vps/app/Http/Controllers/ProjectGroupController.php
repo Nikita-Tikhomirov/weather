@@ -81,11 +81,9 @@ class ProjectGroupController extends Controller
 
             $access = $this->access->accessForActor($actor, $this->actorPhone($request));
             $automation = $this->repo->projectAutomationConfig($projectId);
-            $workspaceId = $this->primaryWorkspaceId(
-                $projectId,
-                (string)($automation['primary_workspace_id'] ?? ''),
-                is_array($access['workspaces'] ?? null) ? $access['workspaces'] : [],
-            );
+            $workspaces = is_array($access['workspaces'] ?? null) ? $access['workspaces'] : [];
+            $workspaceId = trim((string)($automation['primary_workspace_id'] ?? ''));
+            $workspaceIsAccessible = $workspaceId !== '' && $this->workspaceIsAccessible($workspaceId, $workspaces);
             $automation['primary_workspace_id'] = $workspaceId;
             $capabilities = array_map('strval', $access['capabilities'] ?? []);
 
@@ -97,18 +95,70 @@ class ProjectGroupController extends Controller
                     'automation' => $automation,
                     'primary_workspace' => [
                         'id' => $workspaceId,
+                        'has_access' => $workspaceIsAccessible,
                     ],
+                    'available_workspaces' => $workspaces,
                     'permissions' => [
                         'can_manage_project' => (string)($project['owner_key'] ?? '') === $actor
                             || (bool)($access['is_superadmin'] ?? false),
-                        'can_use_agent' => $workspaceId !== ''
+                        'can_use_agent' => $workspaceIsAccessible
                             && in_array('workspaces.use', $capabilities, true)
                             && in_array('ai.use', $capabilities, true),
-                        'can_use_workspace' => $workspaceId !== ''
+                        'can_use_workspace' => $workspaceIsAccessible
                             && in_array('workspaces.use', $capabilities, true),
                     ],
                 ],
             ]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(403, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function updateProjectAutomation(Request $request): JsonResponse
+    {
+        try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
+            $projectId = trim((string)$request->input('project_id', ''));
+            if ($projectId === '') {
+                throw new InvalidArgumentException('project_id is required');
+            }
+
+            $project = $this->repo->findProject($projectId);
+            if ($project === null) {
+                throw new InvalidArgumentException('Project not found');
+            }
+            if ((string)($project['owner_key'] ?? '') !== $actor && !$this->access->isSuperadminActor($actor)) {
+                throw new InvalidArgumentException('Only the project owner can edit automation');
+            }
+
+            $primaryWorkspaceId = trim((string)$request->input('primary_workspace_id', ''));
+            if ($primaryWorkspaceId !== '' && !$this->access->hasWorkspaceAccess(
+                $actor,
+                $primaryWorkspaceId,
+                $this->actorPhone($request),
+            )) {
+                throw new InvalidArgumentException('Нет доступа к выбранному workspace.');
+            }
+
+            $values = ['primary_workspace_id' => $primaryWorkspaceId];
+            if ($request->has('agent_enabled')) {
+                $values['agent_enabled'] = filter_var(
+                    $request->input('agent_enabled'),
+                    FILTER_VALIDATE_BOOLEAN,
+                    FILTER_NULL_ON_FAILURE,
+                ) ?? false;
+            }
+            if ($request->has('default_agent_mode')) {
+                $values['default_agent_mode'] = trim((string)$request->input('default_agent_mode', 'planner'));
+            }
+            if ($request->has('chat_analysis_message_limit')) {
+                $values['chat_analysis_message_limit'] = (int)$request->input('chat_analysis_message_limit', 40);
+            }
+
+            $automation = $this->repo->upsertProjectAutomationConfig($projectId, $values);
+            return $this->json(200, ['ok' => true, 'automation' => $automation]);
         } catch (InvalidArgumentException $e) {
             return $this->json(403, ['ok' => false, 'error' => $e->getMessage()]);
         } catch (Throwable $e) {
@@ -415,25 +465,14 @@ class ProjectGroupController extends Controller
     }
 
     /** @param list<array<string, mixed>> $workspaces */
-    private function primaryWorkspaceId(string $projectId, string $configured, array $workspaces): string
+    private function workspaceIsAccessible(string $workspaceId, array $workspaces): bool
     {
-        $configured = trim($configured);
-        if ($configured !== '') {
-            return $configured;
-        }
         foreach ($workspaces as $workspace) {
-            $workspaceId = (string)($workspace['workspace_id'] ?? '');
-            if ($workspaceId === $projectId) {
-                return $workspaceId;
+            if (trim((string)($workspace['workspace_id'] ?? '')) === trim($workspaceId)) {
+                return true;
             }
         }
-        foreach ($workspaces as $workspace) {
-            $workspaceId = trim((string)($workspace['workspace_id'] ?? ''));
-            if ($workspaceId !== '') {
-                return $workspaceId;
-            }
-        }
-        return '';
+        return false;
     }
 
     /** @param list<string> $groupIds */

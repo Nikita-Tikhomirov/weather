@@ -544,6 +544,39 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
     return ProjectControlSnapshot.fromJson(body);
   }
 
+  Future<ProjectAutomationConfig> updateProjectAutomationConfig({
+    required String actorProfile,
+    String actorPhone = '',
+    required String projectId,
+    required String primaryWorkspaceId,
+    bool? agentEnabled,
+    String? defaultAgentMode,
+    int? chatAnalysisMessageLimit,
+  }) async {
+    final body = await postJsonWithFallback(
+      paths: const ['/projects/automation', '/projects/automation/'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        if (actorPhone.trim().isNotEmpty) 'actor_phone': actorPhone,
+        'project_id': projectId,
+        'primary_workspace_id': primaryWorkspaceId,
+        if (agentEnabled != null) 'agent_enabled': agentEnabled,
+        if (defaultAgentMode != null && defaultAgentMode.trim().isNotEmpty)
+          'default_agent_mode': defaultAgentMode.trim(),
+        if (chatAnalysisMessageLimit != null)
+          'chat_analysis_message_limit': chatAnalysisMessageLimit,
+      }),
+    );
+    final raw = body['automation'];
+    return raw is Map
+        ? ProjectAutomationConfig.fromJson(Map<String, dynamic>.from(raw))
+        : ProjectAutomationConfig(
+            projectId: projectId,
+            primaryWorkspaceId: primaryWorkspaceId,
+            agentEnabled: primaryWorkspaceId.trim().isNotEmpty,
+          );
+  }
+
   Future<TaskProject> createProject({
     required String actorProfile,
     required String name,

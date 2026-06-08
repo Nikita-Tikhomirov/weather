@@ -94,19 +94,21 @@ extension _DashboardSection on _HomePageState {
                     icon: const Icon(Icons.settings, size: 20),
                     tooltip: 'Управление проектами и группами',
                     onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => ProjectsAndGroupsScreen(
-                            store: store,
-                            contacts: _allKnownContacts(store),
-                            contactLabel: (c) => c.displayName.isNotEmpty
-                                ? c.displayName
-                                : c.profileKey,
-                            actorProfile: store.owner.value,
-                            accessPolicy: _accessPolicy,
-                          ),
-                        ),
-                      );
+                      Navigator.of(context)
+                          .push(
+                            MaterialPageRoute(
+                              builder: (_) => ProjectsAndGroupsScreen(
+                                store: store,
+                                contacts: _allKnownContacts(store),
+                                contactLabel: (c) => c.displayName.isNotEmpty
+                                    ? c.displayName
+                                    : c.profileKey,
+                                actorProfile: store.owner.value,
+                                accessPolicy: _accessPolicy,
+                              ),
+                            ),
+                          )
+                          .then((_) => _projectControlSnapshots.clear());
                     },
                   ),
                 ],

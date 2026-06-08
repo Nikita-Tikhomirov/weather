@@ -107,6 +107,8 @@ class _HomePageState extends State<HomePage> {
   String _projectChatAgentSessionId = '';
   String _pendingProjectChatAgentPrompt = '';
   String _pendingProjectChatAgentWorkspaceId = '';
+  final Map<String, ProjectControlSnapshot> _projectControlSnapshots =
+      <String, ProjectControlSnapshot>{};
   final List<BridgeMessage> _projectMessages = <BridgeMessage>[];
   List<ProjectFileNode> _projectFiles = const <ProjectFileNode>[];
   String _projectFileTreePath = '';

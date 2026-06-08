@@ -154,6 +154,18 @@ void main() {
                 },
               };
               break;
+            case '/projects/automation':
+              payload = {
+                'ok': true,
+                'automation': {
+                  'project_id': decodedBody['project_id'],
+                  'primary_workspace_id': decodedBody['primary_workspace_id'],
+                  'agent_enabled': true,
+                  'default_agent_mode': 'planner',
+                  'chat_analysis_message_limit': 40,
+                },
+              };
+              break;
             case '/admin/workspace-access':
               payload = {
                 'ok': true,
@@ -328,15 +340,24 @@ void main() {
         actorPhone: '+7 967 981-24-38',
         projectId: 'project-1',
       );
+      final automation = await client.updateProjectAutomationConfig(
+        actorProfile: 'nik-local',
+        actorPhone: '+7 967 981-24-38',
+        projectId: 'project-1',
+        primaryWorkspaceId: 'workspace-pups',
+      );
 
       expect(ticket.policy.scope, 'project_chat');
       expect(context.messages.single.text, 'Нужно собрать черновик.');
       expect(context.toPrompt(), contains('верни только JSON'));
       expect(snapshot.chatBindings.single.groupId, 'group-1');
+      expect(automation.primaryWorkspaceId, 'workspace-pups');
       expect(requests[0]['path'], '/agent/ticket');
       expect(requests[0]['body']['scope'], 'project_chat');
       expect(requests[1]['path'], '/agent/project-chat/context');
       expect(requests[2]['path'], '/projects/control');
+      expect(requests[3]['path'], '/projects/automation');
+      expect(requests[3]['body']['actor_phone'], '+7 967 981-24-38');
     });
   });
 }

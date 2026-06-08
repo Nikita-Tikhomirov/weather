@@ -251,6 +251,78 @@ class ProjectGroupChatSyncTest extends TestCase
             ->assertJsonPath('context.messages.0.text', 'Нужно сделать экран связей проекта.');
     }
 
+    #[Test]
+    public function project_control_does_not_fallback_to_first_workspace_without_configuration(): void
+    {
+        $project = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/projects/create', [
+                'actor_profile' => 'nik',
+                'name' => 'Проект без workspace',
+            ])
+            ->assertStatus(200)
+            ->json('project');
+
+        $this->grantWorkspaceAccess('nik', 'exp76-ru');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/projects/control?actor_profile=nik&project_id='.$project['id'])
+            ->assertStatus(200)
+            ->assertJsonPath('snapshot.primary_workspace.id', '')
+            ->assertJsonPath('snapshot.automation.primary_workspace_id', '')
+            ->assertJsonPath('snapshot.permissions.can_use_agent', false);
+    }
+
+    #[Test]
+    public function project_owner_can_update_primary_workspace(): void
+    {
+        $project = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/projects/create', [
+                'actor_profile' => 'nik',
+                'name' => 'Проект с workspace',
+            ])
+            ->assertStatus(200)
+            ->json('project');
+
+        $this->grantWorkspaceAccess('nik', 'pups-shop');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/projects/automation', [
+                'actor_profile' => 'nik',
+                'project_id' => $project['id'],
+                'primary_workspace_id' => 'pups-shop',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('automation.primary_workspace_id', 'pups-shop');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/projects/control?actor_profile=nik&project_id='.$project['id'])
+            ->assertStatus(200)
+            ->assertJsonPath('snapshot.primary_workspace.id', 'pups-shop')
+            ->assertJsonPath('snapshot.permissions.can_use_agent', true);
+    }
+
+    #[Test]
+    public function project_owner_cannot_set_workspace_without_access(): void
+    {
+        $project = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/projects/create', [
+                'actor_profile' => 'nik',
+                'name' => 'Проект с чужим workspace',
+            ])
+            ->assertStatus(200)
+            ->json('project');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/projects/automation', [
+                'actor_profile' => 'nik',
+                'project_id' => $project['id'],
+                'primary_workspace_id' => 'foreign-workspace',
+            ])
+            ->assertStatus(403)
+            ->assertJsonPath('ok', false);
+    }
+
     private function grantWorkspaceAccess(string $profileKey, string $workspaceId): void
     {
         $now = now()->format('Y-m-d\TH:i:s');

@@ -81,7 +81,7 @@ extension _ChatSection on _HomePageState {
           : () => unawaited(_startProjectChatAgent(store, boundProject)),
       onShowProjectStatus: boundProject == null
           ? null
-          : () => _showProjectChatStatus(store, boundProject),
+          : () => unawaited(_showProjectChatStatus(store, boundProject)),
       onCallTap: () => _startCallOutgoing(callType: 'audio'),
       onVideoCallTap: () => _startCallOutgoing(callType: 'video'),
       typingUsers: _typingUsers,
@@ -132,24 +132,43 @@ extension _ChatSection on _HomePageState {
         );
   }
 
-  String _workspaceIdForProjectChat(TaskProject project) {
-    final workspaces = _accessPolicy.workspaces
-        .map((item) => (item['workspace_id'] ?? '').toString().trim())
-        .where((id) => id.isNotEmpty)
-        .toList(growable: false);
-    if (workspaces.contains(project.id)) {
-      return project.id;
+  Future<ProjectControlSnapshot?> _projectControlSnapshotForChat(
+    TaskStore store,
+    TaskProject project,
+  ) async {
+    final cached = _projectControlSnapshots[project.id];
+    if (cached != null && cached.primaryWorkspaceId.trim().isNotEmpty) {
+      return cached;
     }
-    return workspaces.isEmpty ? '' : workspaces.first;
+    try {
+      final snapshot = await store.repository.api.fetchProjectControlSnapshot(
+        actorProfile: store.owner.value,
+        actorPhone: _currentProfilePhone,
+        projectId: project.id,
+      );
+      _projectControlSnapshots[project.id] = snapshot;
+      return snapshot;
+    } catch (e, st) {
+      debugPrint('[project-chat-agent] project snapshot error: $e\n$st');
+      return null;
+    }
+  }
+
+  Future<String> _workspaceIdForProjectChat(
+    TaskStore store,
+    TaskProject project,
+  ) async {
+    final snapshot = await _projectControlSnapshotForChat(store, project);
+    return (snapshot?.primaryWorkspaceId ?? '').trim();
   }
 
   Future<void> _analyzeProjectChat(
     TaskStore store,
     TaskProject project,
   ) async {
-    final workspaceId = _workspaceIdForProjectChat(project);
+    final workspaceId = await _workspaceIdForProjectChat(store, project);
     if (workspaceId.isEmpty) {
-      _showSnack('Нет доступного workspace для агента проекта.');
+      _showSnack('Выберите workspace проекта в Project Control Center.');
       return;
     }
     try {
@@ -195,9 +214,9 @@ extension _ChatSection on _HomePageState {
     TaskStore store,
     TaskProject project,
   ) async {
-    final workspaceId = _workspaceIdForProjectChat(project);
+    final workspaceId = await _workspaceIdForProjectChat(store, project);
     if (workspaceId.isEmpty) {
-      _showSnack('Нет доступного workspace для агента проекта.');
+      _showSnack('Выберите workspace проекта в Project Control Center.');
       return;
     }
     try {
@@ -394,9 +413,15 @@ extension _ChatSection on _HomePageState {
     _showSnack('Задача создана в проекте ${project.name}.');
   }
 
-  void _showProjectChatStatus(TaskStore store, TaskProject project) {
+  Future<void> _showProjectChatStatus(
+    TaskStore store,
+    TaskProject project,
+  ) async {
     final group = _familyGroupForConversation(store, _activeConversationKey);
-    final workspaceId = _workspaceIdForProjectChat(project);
+    final workspaceId = await _workspaceIdForProjectChat(store, project);
+    if (!mounted) {
+      return;
+    }
     showModalBottomSheet<void>(
       context: context,
       builder: (sheetContext) {
@@ -436,9 +461,11 @@ extension _ChatSection on _HomePageState {
                   workspaceId.isEmpty ? 'Workspace не выбран' : workspaceId,
                 ),
                 subtitle: Text(
-                  _accessPolicy.canUseAi
-                      ? 'Агент доступен по кнопке'
-                      : 'Нет прав на AI-агента',
+                  workspaceId.isEmpty
+                      ? 'Выберите workspace в Project Control Center'
+                      : _accessPolicy.canUseAi
+                          ? 'Агент доступен по кнопке'
+                          : 'Нет прав на AI-агента',
                 ),
               ),
               if (_projectChatAgentSessionId.isNotEmpty)

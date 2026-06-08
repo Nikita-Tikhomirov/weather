@@ -102,6 +102,7 @@ Route::middleware('sync.apikey')->group(function (): void {
     // Task projects & family groups
     Route::get('/projects', [ProjectGroupController::class, 'listProjects']);
     Route::get('/projects/control', [ProjectGroupController::class, 'projectControl']);
+    Route::post('/projects/automation', [ProjectGroupController::class, 'updateProjectAutomation']);
     Route::post('/projects/create', [ProjectGroupController::class, 'createProject']);
     Route::post('/projects/update', [ProjectGroupController::class, 'updateProject']);
     Route::post('/projects/delete', [ProjectGroupController::class, 'deleteProject']);

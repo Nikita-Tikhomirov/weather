@@ -731,6 +731,26 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     );
   }
 
+  Future<ProjectAutomationConfig> updateProjectAutomationConfig({
+    required String actorProfile,
+    String actorPhone = '',
+    required String projectId,
+    required String primaryWorkspaceId,
+    bool? agentEnabled,
+    String? defaultAgentMode,
+    int? chatAnalysisMessageLimit,
+  }) {
+    return _sync.updateProjectAutomationConfig(
+      actorProfile: actorProfile,
+      actorPhone: actorPhone,
+      projectId: projectId,
+      primaryWorkspaceId: primaryWorkspaceId,
+      agentEnabled: agentEnabled,
+      defaultAgentMode: defaultAgentMode,
+      chatAnalysisMessageLimit: chatAnalysisMessageLimit,
+    );
+  }
+
   Future<TaskProject> createProject({
     required String actorProfile,
     required String name,
