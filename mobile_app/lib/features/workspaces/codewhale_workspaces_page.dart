@@ -18,7 +18,12 @@ import 'workspace_list_view.dart';
 import 'workspace_restore_policy.dart';
 
 class CodeWhaleWorkspacesPage extends StatefulWidget {
-  const CodeWhaleWorkspacesPage({super.key});
+  const CodeWhaleWorkspacesPage({
+    super.key,
+    this.restoreLastSelectionOnOpen = false,
+  });
+
+  final bool restoreLastSelectionOnOpen;
 
   @override
   State<CodeWhaleWorkspacesPage> createState() =>
@@ -154,6 +159,7 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
       workspaces: _workspaces,
       savedWorkspaceId: savedWorkspaceId,
       activeWorkspace: _activeWorkspace,
+      restoreEnabled: widget.restoreLastSelectionOnOpen,
     );
     if (workspace == null) {
       if (savedWorkspaceId.isNotEmpty) {
@@ -189,6 +195,7 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
       sessions: _sessionsByWorkspace[workspaceId] ?? const [],
       savedSessionId: savedSessionId,
       activeSession: _activeSession,
+      restoreEnabled: widget.restoreLastSelectionOnOpen,
     );
     if (session == null) {
       if (savedSessionId.isNotEmpty) {
@@ -328,10 +335,11 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
         _handleSessionTask(message);
       }
     });
-    if (shouldRestoreWorkspace) {
+    if (shouldRestoreWorkspace && widget.restoreLastSelectionOnOpen) {
       unawaited(_restoreLastWorkspaceFromList());
     }
-    if (sessionWorkspaceToRestore.isNotEmpty) {
+    if (sessionWorkspaceToRestore.isNotEmpty &&
+        widget.restoreLastSelectionOnOpen) {
       unawaited(_restoreLastSessionFromList(sessionWorkspaceToRestore));
     }
   }

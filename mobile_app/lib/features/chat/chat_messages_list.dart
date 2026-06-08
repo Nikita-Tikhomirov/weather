@@ -47,6 +47,7 @@ class ChatMessagesList extends StatefulWidget {
 class ChatMessagesListState extends State<ChatMessagesList> {
   final ScrollController _controller = ScrollController();
   final Map<String, GlobalKey> _itemKeys = <String, GlobalKey>{};
+  int _bottomScrollRequest = 0;
 
   GlobalKey _keyFor(String id) =>
       _itemKeys.putIfAbsent(id, () => GlobalKey(debugLabel: 'msg-$id'));
@@ -55,9 +56,7 @@ class ChatMessagesListState extends State<ChatMessagesList> {
   void initState() {
     super.initState();
     _controller.addListener(_maybeLoadOlder);
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _scrollToBottom(animated: false),
-    );
+    _scheduleScrollToBottom(animated: false);
   }
 
   @override
@@ -80,15 +79,14 @@ class ChatMessagesListState extends State<ChatMessagesList> {
                 newestFromOwner: newest.senderProfile == widget.owner,
               ));
       if (shouldScroll) {
-        WidgetsBinding.instance.addPostFrameCallback(
-          (_) => _scrollToBottom(animated: oldWidget.messages.isNotEmpty),
-        );
+        _scheduleScrollToBottom(animated: oldWidget.messages.isNotEmpty);
       }
       return;
     }
 
     if (oldWidget.messages.length != widget.messages.length &&
         _controller.hasClients) {
+      _bottomScrollRequest++;
       final oldMax = _controller.position.maxScrollExtent;
       final oldOffset = _controller.offset;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -126,19 +124,12 @@ class ChatMessagesListState extends State<ChatMessagesList> {
     }
   }
 
-  void _scrollToBottom({required bool animated}) {
-    if (!_controller.hasClients) {
-      return;
-    }
-    final target = _controller.position.maxScrollExtent;
-    if (!animated) {
-      _controller.jumpTo(target);
-      return;
-    }
-    _controller.animateTo(
-      target,
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOut,
+  void _scheduleScrollToBottom({required bool animated}) {
+    final request = ++_bottomScrollRequest;
+    ChatScrollPolicy.scheduleBottomSnap(
+      controller: _controller,
+      isActive: () => mounted && request == _bottomScrollRequest,
+      animated: animated,
     );
   }
 

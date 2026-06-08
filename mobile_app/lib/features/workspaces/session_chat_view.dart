@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../chat/chat_scroll_policy.dart';
 import '../../models/workspace_item.dart';
 import '../../models/workspace_session.dart';
 
@@ -34,6 +35,7 @@ class SessionChatView extends StatefulWidget {
 
 class _SessionChatViewState extends State<SessionChatView> {
   final ScrollController _scrollController = ScrollController();
+  int _bottomScrollRequest = 0;
 
   @override
   void initState() {
@@ -156,16 +158,12 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   void _scheduleScrollToLatest() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scrollController.hasClients) {
-        return;
-      }
-      final maxExtent = _scrollController.position.maxScrollExtent;
-      if (maxExtent <= 0) {
-        return;
-      }
-      _scrollController.jumpTo(maxExtent);
-    });
+    final request = ++_bottomScrollRequest;
+    ChatScrollPolicy.scheduleBottomSnap(
+      controller: _scrollController,
+      isActive: () => mounted && request == _bottomScrollRequest,
+      animated: false,
+    );
   }
 
   static String _eventTailSignature(List<Map<String, dynamic>> events) {

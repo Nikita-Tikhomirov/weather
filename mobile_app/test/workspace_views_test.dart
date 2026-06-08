@@ -330,7 +330,12 @@ void main() {
     List<Map<String, dynamic>> events(int count) {
       return [
         for (var index = 0; index < count; index++)
-          {'type': 'user_message', 'text': 'message-$index'},
+          {
+            'type': 'user_message',
+            'text': index < 50
+                ? 'message-$index'
+                : 'message-$index ${'long agent event text ' * 22}',
+          },
       ];
     }
 
@@ -349,7 +354,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('message-79'), findsOneWidget);
+    var scrollable = _mainScrollable(tester);
+    expect(
+      scrollable.position.pixels,
+      scrollable.position.maxScrollExtent,
+    );
+    expect(find.textContaining('message-79'), findsOneWidget);
     expect(find.text('message-0'), findsNothing);
 
     await tester.pumpWidget(
@@ -367,7 +377,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('message-80'), findsOneWidget);
+    scrollable = _mainScrollable(tester);
+    expect(
+      scrollable.position.pixels,
+      scrollable.position.maxScrollExtent,
+    );
+    expect(find.textContaining('message-80'), findsOneWidget);
     controller.dispose();
   });
 
@@ -489,4 +504,10 @@ Widget _testApp({required Widget home}) {
     theme: ThemeData(splashFactory: NoSplash.splashFactory),
     home: home,
   );
+}
+
+ScrollableState _mainScrollable(WidgetTester tester) {
+  return tester.stateList<ScrollableState>(find.byType(Scrollable)).firstWhere(
+        (state) => state.widget.controller != null,
+      );
 }

@@ -5,8 +5,11 @@ WorkspaceItem? workspaceToRestore({
   required List<WorkspaceItem> workspaces,
   required String savedWorkspaceId,
   required WorkspaceItem? activeWorkspace,
+  bool restoreEnabled = false,
 }) {
-  if (activeWorkspace != null || savedWorkspaceId.trim().isEmpty) {
+  if (!restoreEnabled ||
+      activeWorkspace != null ||
+      savedWorkspaceId.trim().isEmpty) {
     return null;
   }
   return workspaces.cast<WorkspaceItem?>().firstWhere(
@@ -19,8 +22,11 @@ WorkspaceSession? workspaceSessionToRestore({
   required List<WorkspaceSession> sessions,
   required String savedSessionId,
   required WorkspaceSession? activeSession,
+  bool restoreEnabled = false,
 }) {
-  if (activeSession != null || savedSessionId.trim().isEmpty) {
+  if (!restoreEnabled ||
+      activeSession != null ||
+      savedSessionId.trim().isEmpty) {
     return null;
   }
   return sessions.cast<WorkspaceSession?>().firstWhere(

@@ -18,14 +18,14 @@ void main() {
       status: WorkspaceStatus.available,
     );
 
-    test('restores saved workspace when no workspace is active', () {
+    test('does not auto-restore saved workspace when menu opens', () {
       final result = workspaceToRestore(
         workspaces: const [workspaceA, workspaceB],
         savedWorkspaceId: 'workspace-b',
         activeWorkspace: null,
       );
 
-      expect(result, workspaceB);
+      expect(result, isNull);
     });
 
     test('does not override active workspace', () {
@@ -38,7 +38,7 @@ void main() {
       expect(result, isNull);
     });
 
-    test('restores saved session when it exists', () {
+    test('does not auto-open saved session when menu opens', () {
       const sessionA = WorkspaceSession(
         id: 'session-a',
         workspaceId: 'workspace-a',
@@ -58,7 +58,7 @@ void main() {
         activeSession: null,
       );
 
-      expect(result, sessionB);
+      expect(result, isNull);
     });
   });
 }
