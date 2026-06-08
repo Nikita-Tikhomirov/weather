@@ -1697,9 +1697,10 @@ class CodeWhaleBridge:
                     "final": True,
                 },
             )
-        auto_finish_event = self._auto_finish_task_card_if_confirmation_prompt(
+        auto_finish_event = self._auto_finish_task_card_after_completed_reply(
             workspace,
             session,
+            text,
             full_text,
         )
         if auto_finish_event is not None:
@@ -1725,13 +1726,14 @@ class CodeWhaleBridge:
             "runtime_session_id": runtime_session_id or "",
         }
 
-    def _auto_finish_task_card_if_confirmation_prompt(
+    def _auto_finish_task_card_after_completed_reply(
         self,
         workspace: dict[str, Any],
         session: dict[str, Any],
+        user_text: str,
         full_text: str,
     ) -> dict[str, Any] | None:
-        if not self._looks_like_review_confirmation_prompt(full_text):
+        if not self._should_auto_finish_task_card_reply(user_text, full_text):
             return None
         task_card = session.get("task_card")
         if not isinstance(task_card, dict) or not task_card:
@@ -1797,6 +1799,34 @@ class CodeWhaleBridge:
         )
 
     @staticmethod
+    def _should_auto_finish_task_card_reply(user_text: str, assistant_text: str) -> bool:
+        if not assistant_text.strip():
+            return False
+        if CodeWhaleBridge._is_task_card_technical_prompt(user_text):
+            return False
+        if CodeWhaleBridge._looks_like_review_confirmation_prompt(assistant_text):
+            return True
+        if CodeWhaleBridge._looks_like_blocking_task_card_reply(assistant_text):
+            return False
+        return CodeWhaleBridge._looks_like_task_completion_report(assistant_text)
+
+    @staticmethod
+    def _is_task_card_technical_prompt(text: str) -> bool:
+        normalized = re.sub(r"\s+", " ", text.strip().lower())
+        if not normalized:
+            return False
+        if normalized.startswith(("/skill", "/mode", "/plugin")):
+            return True
+        technical_markers = (
+            "family-task-card read",
+            "familly-task-card read",
+            "системный контекст family todo",
+            "карточка задачи не файл в проекте",
+            "task_card_actions_json",
+        )
+        return any(marker in normalized for marker in technical_markers)
+
+    @staticmethod
     def _looks_like_review_confirmation_prompt(text: str) -> bool:
         normalized = re.sub(r"\s+", " ", text.strip().lower())
         if "?" not in normalized:
@@ -1838,6 +1868,94 @@ class CodeWhaleBridge:
             )
         )
         return has_review_target and has_move_intent and has_ready_signal and not has_blocker_signal
+
+    @staticmethod
+    def _looks_like_blocking_task_card_reply(text: str) -> bool:
+        normalized = re.sub(r"\s+", " ", text.strip().lower())
+        neutral_phrases = (
+            "блокирующих вопросов нет",
+            "нет блокирующих вопросов",
+            "блокеров нет",
+            "ошибок нет",
+            "без ошибок",
+            "no blockers",
+            "no blocking questions",
+        )
+        guarded = normalized
+        for phrase in neutral_phrases:
+            guarded = guarded.replace(phrase, "")
+        blocker_markers = (
+            "карточка задачи недоступна",
+            "http 403",
+            "forbidden",
+            "не могу",
+            "невозможно",
+            "не удалось",
+            "недоступ",
+            "нужен ответ",
+            "нужно уточнить",
+            "требуется уточнение",
+            "уточните",
+            "что конкретно нужно сделать",
+            "не хватает",
+            "ожидаю ответ",
+            "failed",
+            "error",
+            "blocked",
+            "blocker",
+        )
+        return any(marker in guarded for marker in blocker_markers)
+
+    @staticmethod
+    def _looks_like_task_completion_report(text: str) -> bool:
+        normalized = re.sub(r"\s+", " ", text.strip().lower())
+        if not normalized:
+            return False
+        completion_markers = (
+            "работа выполн",
+            "вся работа выполн",
+            "задача выполн",
+            "задача готов",
+            "задача по сути готов",
+            "работа заверш",
+            "задача заверш",
+            "всё выполнено",
+            "все выполнено",
+            "перевожу на проверк",
+            "можно проверять",
+            "готово к проверк",
+            "completed",
+            "done",
+        )
+        if any(marker in normalized for marker in completion_markers):
+            return True
+        result_markers = (
+            "создан",
+            "создала",
+            "добавлен",
+            "добавила",
+            "исправлен",
+            "исправила",
+            "реализован",
+            "реализовала",
+            "проверен",
+            "проверила",
+            "чек-лист",
+            "чеклист",
+            "отчёт",
+            "отчет",
+        )
+        no_blocker_markers = (
+            "блокирующих вопросов нет",
+            "нет блокирующих вопросов",
+            "блокеров нет",
+            "no blockers",
+            "no blocking questions",
+        )
+        return (
+            any(marker in normalized for marker in result_markers)
+            and any(marker in normalized for marker in no_blocker_markers)
+        )
 
     @staticmethod
     def _task_card_finish_summary(text: str) -> str:

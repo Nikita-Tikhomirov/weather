@@ -1067,6 +1067,122 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             self.assertEqual(events[-1]["event_type"], "task_card_auto_finish")
             self.assertIn("без подтверждения", events[-1]["text"])
 
+    def test_stream_session_message_auto_finishes_completion_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            session = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Агент",
+                    "task_card": {
+                        "task_id": "task-1",
+                        "agent_session_id": "agent-session-1",
+                        "actor_profile": "Nikita",
+                        "actor_phone": "+79679812438",
+                        "api_url": "https://api.example.test",
+                        "policy_ticket": "ticket-1",
+                        "task_type": "feature",
+                        "mode": "executor",
+                    },
+                }
+            )["session"]
+
+            with (
+                patch.object(
+                    bridge.exec_client,
+                    "stream_prompt",
+                    return_value=iter(
+                        [
+                            {
+                                "type": "content",
+                                "content": (
+                                    "Чек-лист создан, все секции добавлены. "
+                                    "Работа выполнена, блокирующих вопросов нет."
+                                ),
+                            },
+                            {"type": "done"},
+                        ]
+                    ),
+                ),
+                patch("family_task_card_cli.run", return_value=0) as task_card_run,
+            ):
+                replies = list(
+                    bridge.stream_session_message(
+                        {
+                            "type": "session_send",
+                            "workspace_id": workspace["id"],
+                            "session_id": session["id"],
+                            "text": "Выполни задачу по карточке",
+                        }
+                    )
+                )
+
+            task_card_run.assert_called_once()
+            self.assertEqual(task_card_run.call_args.args[0][0], "finish")
+            self.assertIn("session_process_event", [reply["type"] for reply in replies])
+            events = bridge.sessions.load_events(workspace["id"], session["id"])
+            self.assertEqual(events[-1]["event_type"], "task_card_auto_finish")
+
+    def test_stream_session_message_does_not_auto_finish_blocking_question(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            session = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Агент",
+                    "task_card": {
+                        "task_id": "task-1",
+                        "agent_session_id": "agent-session-1",
+                        "actor_profile": "Nikita",
+                        "actor_phone": "+79679812438",
+                        "api_url": "https://api.example.test",
+                        "policy_ticket": "ticket-1",
+                        "task_type": "feature",
+                        "mode": "executor",
+                    },
+                }
+            )["session"]
+
+            with (
+                patch.object(
+                    bridge.exec_client,
+                    "stream_prompt",
+                    return_value=iter(
+                        [
+                            {
+                                "type": "content",
+                                "content": "Карточка загружена. Что конкретно нужно сделать?",
+                            },
+                            {"type": "done"},
+                        ]
+                    ),
+                ),
+                patch("family_task_card_cli.run", return_value=0) as task_card_run,
+            ):
+                replies = list(
+                    bridge.stream_session_message(
+                        {
+                            "type": "session_send",
+                            "workspace_id": workspace["id"],
+                            "session_id": session["id"],
+                            "text": "Проверь карточку",
+                        }
+                    )
+                )
+
+            task_card_run.assert_not_called()
+            self.assertNotIn("session_process_event", [reply["type"] for reply in replies])
+
     def test_stream_session_message_serializes_concurrent_sends_to_reuse_runtime_session(
         self,
     ) -> None:
