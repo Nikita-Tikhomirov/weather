@@ -5,6 +5,7 @@ import '../models/agent_policy.dart';
 import '../models/device_snapshots.dart';
 import '../models/family_group.dart';
 import '../models/pending_event.dart';
+import '../models/project_control_models.dart';
 import '../models/sync_snapshots.dart';
 import '../models/task_item.dart';
 import '../models/task_project.dart';
@@ -372,6 +373,56 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
     );
   }
 
+  Future<AgentTicketResult> requestProjectChatAgentTicket({
+    required String actorProfile,
+    String actorPhone = '',
+    required String projectId,
+    required String conversationKey,
+    required String workspaceId,
+    String requestedMode = 'planner',
+  }) async {
+    final body = await postJsonWithFallback(
+      paths: const ['/agent/ticket', '/agent/ticket/'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        if (actorPhone.trim().isNotEmpty) 'actor_phone': actorPhone,
+        'scope': 'project_chat',
+        'project_id': projectId,
+        'conversation_key': conversationKey,
+        'workspace_id': workspaceId,
+        if (requestedMode.trim().isNotEmpty) 'requested_mode': requestedMode,
+      }),
+    );
+    return AgentTicketResult.fromJson(body);
+  }
+
+  Future<ProjectChatContextPack> fetchProjectChatContext({
+    required String actorProfile,
+    String actorPhone = '',
+    required String projectId,
+    required String conversationKey,
+    required String workspaceId,
+    int? messageLimit,
+    String requestedMode = 'planner',
+  }) async {
+    final body = await postJsonWithFallback(
+      paths: const [
+        '/agent/project-chat/context',
+        '/agent/project-chat/context/',
+      ],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        if (actorPhone.trim().isNotEmpty) 'actor_phone': actorPhone,
+        'project_id': projectId,
+        'conversation_key': conversationKey,
+        'workspace_id': workspaceId,
+        if (messageLimit != null) 'message_limit': messageLimit,
+        if (requestedMode.trim().isNotEmpty) 'requested_mode': requestedMode,
+      }),
+    );
+    return ProjectChatContextPack.fromJson(body);
+  }
+
   Future<List<WorkspaceAccessGrant>> listWorkspaceAccess({
     required String actorProfile,
     String actorPhone = '',
@@ -475,6 +526,22 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
         .whereType<Map>()
         .map((row) => TaskProject.fromJson(Map<String, dynamic>.from(row)))
         .toList();
+  }
+
+  Future<ProjectControlSnapshot> fetchProjectControlSnapshot({
+    required String actorProfile,
+    required String projectId,
+    String actorPhone = '',
+  }) async {
+    final body = await getJsonWithFallback(
+      paths: const ['/projects/control', '/projects/control/'],
+      query: {
+        'actor_profile': actorProfile,
+        'project_id': projectId,
+        if (actorPhone.trim().isNotEmpty) 'phone': actorPhone,
+      },
+    );
+    return ProjectControlSnapshot.fromJson(body);
   }
 
   Future<TaskProject> createProject({

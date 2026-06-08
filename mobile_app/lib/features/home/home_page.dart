@@ -41,6 +41,7 @@ import '../../models/task_project.dart';
 import '../../services/api_client.dart';
 import '../../services/call_service.dart';
 import '../../services/chat_realtime_service.dart';
+import '../../services/codewhale_bridge_service.dart';
 import '../../services/desktop_process_host_service.dart';
 import '../../services/local_db.dart';
 import '../../services/desktop_theme_service.dart';
@@ -102,6 +103,10 @@ class _HomePageState extends State<HomePage> {
   List<ChatContact> _familyMembers = const <ChatContact>[];
   List<ProjectContact> _projectContacts = const <ProjectContact>[];
   ProjectBridgeService? _projectBridge;
+  CodeWhaleBridgeService? _projectChatAgentBridge;
+  String _projectChatAgentSessionId = '';
+  String _pendingProjectChatAgentPrompt = '';
+  String _pendingProjectChatAgentWorkspaceId = '';
   final List<BridgeMessage> _projectMessages = <BridgeMessage>[];
   List<ProjectFileNode> _projectFiles = const <ProjectFileNode>[];
   String _projectFileTreePath = '';
@@ -3596,6 +3601,7 @@ class _HomePageState extends State<HomePage> {
     _syncLoops?.dispose();
     _taskAgentAutomation?.dispose();
     _voiceRecorder?.dispose();
+    _projectChatAgentBridge?.dispose();
     unawaited(_desktopProcessHostService?.stopAll());
     _desktopThemeService?.state.dispose();
     _store?.dispose();

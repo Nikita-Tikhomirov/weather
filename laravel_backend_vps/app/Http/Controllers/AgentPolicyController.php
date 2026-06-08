@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Domain\Access\AccessPolicyService;
 use App\Domain\Agent\AgentTaskService;
+use App\Domain\Chat\ChatRepository;
+use App\Domain\Sync\SyncRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use InvalidArgumentException;
@@ -14,6 +16,8 @@ class AgentPolicyController extends Controller
     public function __construct(
         private readonly AccessPolicyService $access,
         private readonly AgentTaskService $agentTasks,
+        private readonly SyncRepository $repo,
+        private readonly ChatRepository $chat,
     ) {
     }
 
@@ -101,6 +105,81 @@ class AgentPolicyController extends Controller
             ]);
         } catch (InvalidArgumentException $e) {
             return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function projectChatContext(Request $request): JsonResponse
+    {
+        try {
+            $projectId = trim((string)$request->input('project_id', ''));
+            $conversationKey = trim((string)$request->input('conversation_key', ''));
+            $policy = $this->access->agentProjectChatPolicy(
+                (string)$request->input('actor_profile', ''),
+                (string)$request->input('requested_mode', ''),
+                (string)$request->input('workspace_id', ''),
+                $projectId,
+                $conversationKey,
+                $this->actorPhone($request),
+            );
+            if (!((bool)($policy['allowed'] ?? false))) {
+                return $this->json(403, [
+                    'ok' => false,
+                    'policy' => $policy,
+                    'error' => (string)($policy['reason'] ?? 'Нет прав на контекст чата проекта.'),
+                ]);
+            }
+
+            $project = $this->repo->findProject($projectId);
+            if ($project === null) {
+                return $this->json(404, [
+                    'ok' => false,
+                    'policy' => $policy,
+                    'error' => 'Проект не найден.',
+                ]);
+            }
+
+            $binding = $this->repo->projectChatBinding($projectId, $conversationKey);
+            if ($binding === null) {
+                return $this->json(403, [
+                    'ok' => false,
+                    'policy' => $policy,
+                    'error' => 'Чат не привязан к выбранному проекту.',
+                ]);
+            }
+
+            $actor = (string)$request->input('actor_profile', '');
+            $members = $this->chat->conversationMembers($actor, $conversationKey);
+            $automation = $this->repo->projectAutomationConfig($projectId);
+            $requestedLimit = (int)$request->input(
+                'message_limit',
+                (int)($automation['chat_analysis_message_limit'] ?? 40),
+            );
+            $limit = max(1, min(100, $requestedLimit));
+            $messages = $this->chat->listMessages($actor, $conversationKey, null, $limit);
+
+            return $this->json(200, [
+                'ok' => true,
+                'policy' => $policy,
+                'context' => [
+                    'project' => $project,
+                    'binding' => $binding,
+                    'workspace' => [
+                        'id' => (string)$request->input('workspace_id', ''),
+                    ],
+                    'automation' => $automation,
+                    'conversation' => [
+                        'conversation_key' => (string)($messages['conversation_key'] ?? $conversationKey),
+                        'resolved_conversation_key' => (string)($messages['resolved_conversation_key'] ?? $conversationKey),
+                        'members' => $members,
+                    ],
+                    'policy' => $policy,
+                    'messages' => is_array($messages['messages'] ?? null) ? $messages['messages'] : [],
+                ],
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(403, ['ok' => false, 'error' => $e->getMessage()]);
         } catch (Throwable $e) {
             return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
         }
@@ -285,6 +364,17 @@ class AgentPolicyController extends Controller
     /** @return array<string, mixed> */
     private function buildPolicy(Request $request): array
     {
+        if (strtolower(trim((string)$request->input('scope', 'task'))) === 'project_chat') {
+            return $this->access->agentProjectChatPolicy(
+                (string)$request->input('actor_profile', ''),
+                (string)$request->input('requested_mode', ''),
+                (string)$request->input('workspace_id', ''),
+                (string)$request->input('project_id', ''),
+                (string)$request->input('conversation_key', ''),
+                $this->actorPhone($request),
+            );
+        }
+
         return $this->access->agentPolicy(
             (string) $request->input('actor_profile', ''),
             (string) $request->input('task_type', 'feature'),

@@ -8,6 +8,7 @@ import '../models/chat_snapshots.dart';
 import '../models/device_snapshots.dart';
 import '../models/family_group.dart';
 import '../models/pending_event.dart';
+import '../models/project_control_models.dart';
 import '../models/sync_snapshots.dart';
 import '../models/task_project.dart';
 
@@ -19,6 +20,7 @@ import 'sync_api_client.dart';
 // api_client.dart still see these types.
 export '../models/chat_snapshots.dart';
 export '../models/device_snapshots.dart';
+export '../models/project_control_models.dart';
 export '../models/sync_snapshots.dart';
 
 /// Facade that delegates to the focused API clients.
@@ -240,6 +242,44 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
       eventType: eventType,
       payload: payload,
       taskType: taskType,
+      requestedMode: requestedMode,
+    );
+  }
+
+  Future<AgentTicketResult> requestProjectChatAgentTicket({
+    required String actorProfile,
+    String actorPhone = '',
+    required String projectId,
+    required String conversationKey,
+    required String workspaceId,
+    String requestedMode = 'planner',
+  }) {
+    return _sync.requestProjectChatAgentTicket(
+      actorProfile: actorProfile,
+      actorPhone: actorPhone,
+      projectId: projectId,
+      conversationKey: conversationKey,
+      workspaceId: workspaceId,
+      requestedMode: requestedMode,
+    );
+  }
+
+  Future<ProjectChatContextPack> fetchProjectChatContext({
+    required String actorProfile,
+    String actorPhone = '',
+    required String projectId,
+    required String conversationKey,
+    required String workspaceId,
+    int? messageLimit,
+    String requestedMode = 'planner',
+  }) {
+    return _sync.fetchProjectChatContext(
+      actorProfile: actorProfile,
+      actorPhone: actorPhone,
+      projectId: projectId,
+      conversationKey: conversationKey,
+      workspaceId: workspaceId,
+      messageLimit: messageLimit,
       requestedMode: requestedMode,
     );
   }
@@ -677,6 +717,18 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     required String actorProfile,
   }) {
     return _sync.listProjects(actorProfile: actorProfile);
+  }
+
+  Future<ProjectControlSnapshot> fetchProjectControlSnapshot({
+    required String actorProfile,
+    required String projectId,
+    String actorPhone = '',
+  }) {
+    return _sync.fetchProjectControlSnapshot(
+      actorProfile: actorProfile,
+      projectId: projectId,
+      actorPhone: actorPhone,
+    );
   }
 
   Future<TaskProject> createProject({

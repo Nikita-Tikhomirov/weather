@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../models/agent_policy.dart';
 import '../../models/chat_models.dart';
 import '../../models/family_group.dart';
 import '../../models/task_project.dart';
@@ -14,12 +15,14 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
     this.contacts = const [],
     this.contactLabel = _defaultContactLabel,
     this.actorProfile,
+    this.accessPolicy = const UserAccessPolicy.messengerOnly(),
   });
 
   final TaskStore store;
   final List<ChatContact> contacts;
   final String Function(ChatContact) contactLabel;
   final String? actorProfile;
+  final UserAccessPolicy accessPolicy;
 
   static String _defaultContactLabel(ChatContact c) => c.displayName.isNotEmpty
       ? c.displayName
@@ -29,16 +32,186 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Проекты и группы'),
+        title: const Text('Project Control Center'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
+          _buildControlCenter(context),
+          const SizedBox(height: 24),
           _buildProjectsSection(context),
           const SizedBox(height: 24),
           _buildGroupsSection(context),
         ],
       ),
+    );
+  }
+
+  Widget _buildControlCenter(BuildContext context) {
+    return ValueListenableBuilder<List<TaskProject>>(
+      valueListenable: store.projects,
+      builder: (context, projects, _) {
+        return ValueListenableBuilder<String>(
+          valueListenable: store.currentProjectId,
+          builder: (context, currentProjectId, __) {
+            final project = projects.cast<TaskProject?>().firstWhere(
+                  (item) => item?.id == currentProjectId,
+                  orElse: () => projects.isEmpty ? null : projects.first,
+                );
+            return ValueListenableBuilder<Map<String, List<String>>>(
+              valueListenable: store.projectGroupMap,
+              builder: (context, pgMap, ___) {
+                return ValueListenableBuilder<List<FamilyGroup>>(
+                  valueListenable: store.familyGroups,
+                  builder: (context, groups, ____) {
+                    if (project == null) {
+                      return const Card(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Text(
+                            'Создайте проект, чтобы подключить чат и агента.',
+                          ),
+                        ),
+                      );
+                    }
+                    final groupIds = pgMap[project.id] ?? const <String>[];
+                    final boundGroups = groups
+                        .where((group) => groupIds.contains(group.id))
+                        .toList();
+                    final workspaceId = _primaryWorkspaceId(project.id);
+                    final canUseAgent = accessPolicy.canUseAi &&
+                        accessPolicy.canUseWorkspaces &&
+                        workspaceId.isNotEmpty;
+                    final agentBlockedReason = workspaceId.isEmpty
+                        ? 'Нет доступного workspace'
+                        : 'Нет прав на агента';
+
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.hub_outlined,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    project.name,
+                                    style:
+                                        Theme.of(context).textTheme.titleLarge,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (project.description.isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              Text(project.description),
+                            ],
+                            const SizedBox(height: 16),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _InfoChip(
+                                  icon: Icons.forum_outlined,
+                                  label: boundGroups.isEmpty
+                                      ? 'Чаты не связаны'
+                                      : 'Чатов: ${boundGroups.length}',
+                                ),
+                                _InfoChip(
+                                  icon: Icons.workspaces_outline,
+                                  label: workspaceId.isEmpty
+                                      ? 'Workspace не выбран'
+                                      : 'Workspace: $workspaceId',
+                                ),
+                                _InfoChip(
+                                  icon: Icons.smart_toy_outlined,
+                                  label: canUseAgent
+                                      ? 'Агент доступен'
+                                      : agentBlockedReason,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Связанные чаты',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            if (boundGroups.isEmpty)
+                              Text(
+                                'Назначьте группу проекту, чтобы появился проектный чат.',
+                                style: TextStyle(
+                                  color: Theme.of(context).disabledColor,
+                                ),
+                              )
+                            else
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  for (final group in boundGroups)
+                                    Chip(
+                                      avatar: const Icon(Icons.group, size: 18),
+                                      label: Text(group.name),
+                                    ),
+                                ],
+                              ),
+                            const SizedBox(height: 16),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                FilledButton.icon(
+                                  key: const ValueKey(
+                                    'project-control-analyze-chat',
+                                  ),
+                                  icon: const Icon(Icons.auto_awesome_outlined),
+                                  label: const Text('Анализ чата'),
+                                  onPressed: canUseAgent &&
+                                          boundGroups.isNotEmpty
+                                      ? () => _showControlActionHint(context)
+                                      : null,
+                                ),
+                                OutlinedButton.icon(
+                                  key: const ValueKey(
+                                    'project-control-draft-task',
+                                  ),
+                                  icon: const Icon(Icons.note_add_outlined),
+                                  label: const Text('Черновик задачи'),
+                                  onPressed: canUseAgent &&
+                                          boundGroups.isNotEmpty
+                                      ? () => _showControlActionHint(context)
+                                      : null,
+                                ),
+                                OutlinedButton.icon(
+                                  key: const ValueKey(
+                                    'project-control-start-agent',
+                                  ),
+                                  icon: const Icon(Icons.play_arrow_outlined),
+                                  label: const Text('Запустить агента'),
+                                  onPressed: canUseAgent
+                                      ? () => _showControlActionHint(context)
+                                      : null,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 
@@ -307,5 +480,40 @@ class ProjectsAndGroupsScreen extends StatelessWidget {
     );
     if (confirmed != true) return;
     await store.deleteFamilyGroup(id);
+  }
+
+  String _primaryWorkspaceId(String projectId) {
+    final workspaces = accessPolicy.workspaces
+        .map((item) => (item['workspace_id'] ?? '').toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+    if (workspaces.contains(projectId)) {
+      return projectId;
+    }
+    return workspaces.isEmpty ? '' : workspaces.first;
+  }
+
+  void _showControlActionHint(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Откройте связанный групповой чат.')),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Chip(
+      avatar: Icon(icon, size: 18),
+      label: Text(label),
+    );
   }
 }

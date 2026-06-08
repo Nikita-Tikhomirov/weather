@@ -3,6 +3,7 @@
 namespace App\Domain\Sync;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 final class SyncRepository
 {
@@ -809,6 +810,12 @@ final class SyncRepository
     {
         DB::table('task_projects')->where('id', $id)->delete();
         DB::table('project_family_groups')->where('project_id', $id)->delete();
+        if (Schema::hasTable('project_chat_bindings')) {
+            DB::table('project_chat_bindings')->where('project_id', $id)->delete();
+        }
+        if (Schema::hasTable('project_automation_configs')) {
+            DB::table('project_automation_configs')->where('project_id', $id)->delete();
+        }
     }
 
     public function upsertFamilyGroupRecord(array $group): void
@@ -829,6 +836,9 @@ final class SyncRepository
     {
         DB::table('family_groups')->where('id', $id)->delete();
         DB::table('project_family_groups')->where('group_id', $id)->delete();
+        if (Schema::hasTable('project_chat_bindings')) {
+            DB::table('project_chat_bindings')->where('group_id', $id)->delete();
+        }
     }
 
     public function setProjectGroups(string $projectId, array $groupIds): void
@@ -841,6 +851,137 @@ final class SyncRepository
                 'group_id' => $gid,
             ]);
         }
+    }
+
+    /** @param list<string> $groupIds */
+    public function syncProjectChatBindings(string $projectId, array $groupIds): void
+    {
+        if (!Schema::hasTable('project_chat_bindings')) {
+            return;
+        }
+
+        $projectId = trim($projectId);
+        if ($projectId === '') {
+            return;
+        }
+
+        $normalizedGroupIds = array_values(array_unique(array_filter(
+            array_map(static fn ($value): string => trim((string)$value), $groupIds),
+            static fn (string $value): bool => $value !== '',
+        )));
+        $expectedConversationKeys = array_map(
+            static fn (string $groupId): string => 'grp:family:'.$groupId,
+            $normalizedGroupIds,
+        );
+
+        DB::table('project_chat_bindings')
+            ->where('project_id', $projectId)
+            ->where('source', 'family_group')
+            ->whereNotIn('conversation_key', $expectedConversationKeys === [] ? [''] : $expectedConversationKeys)
+            ->delete();
+
+        $now = $this->nowIso();
+        $hasPrimary = DB::table('project_chat_bindings')
+            ->where('project_id', $projectId)
+            ->where('is_primary', 1)
+            ->exists();
+
+        foreach ($normalizedGroupIds as $index => $groupId) {
+            $conversationKey = 'grp:family:'.$groupId;
+            $makePrimary = !$hasPrimary && $index === 0;
+            DB::table('project_chat_bindings')->updateOrInsert(
+                ['project_id' => $projectId, 'conversation_key' => $conversationKey],
+                [
+                    'group_id' => $groupId,
+                    'source' => 'family_group',
+                    'is_primary' => $makePrimary ? 1 : 0,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ],
+            );
+            if ($makePrimary) {
+                $hasPrimary = true;
+            }
+        }
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function projectChatBindings(string $projectId): array
+    {
+        if (!Schema::hasTable('project_chat_bindings')) {
+            return [];
+        }
+        return DB::table('project_chat_bindings')
+            ->where('project_id', trim($projectId))
+            ->orderByDesc('is_primary')
+            ->orderBy('created_at')
+            ->get()
+            ->map(static fn ($row): array => [
+                'project_id' => (string)$row->project_id,
+                'conversation_key' => (string)$row->conversation_key,
+                'group_id' => (string)($row->group_id ?? ''),
+                'source' => (string)($row->source ?? ''),
+                'is_primary' => (bool)$row->is_primary,
+                'created_at' => (string)$row->created_at,
+                'updated_at' => (string)$row->updated_at,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /** @return array<string, mixed>|null */
+    public function projectChatBinding(string $projectId, string $conversationKey): ?array
+    {
+        if (!Schema::hasTable('project_chat_bindings')) {
+            return null;
+        }
+        $row = DB::table('project_chat_bindings')
+            ->where('project_id', trim($projectId))
+            ->where('conversation_key', trim($conversationKey))
+            ->first();
+        if ($row === null) {
+            return null;
+        }
+        return [
+            'project_id' => (string)$row->project_id,
+            'conversation_key' => (string)$row->conversation_key,
+            'group_id' => (string)($row->group_id ?? ''),
+            'source' => (string)($row->source ?? ''),
+            'is_primary' => (bool)$row->is_primary,
+            'created_at' => (string)$row->created_at,
+            'updated_at' => (string)$row->updated_at,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public function projectAutomationConfig(string $projectId): array
+    {
+        $projectId = trim($projectId);
+        $defaults = [
+            'project_id' => $projectId,
+            'primary_workspace_id' => '',
+            'agent_enabled' => false,
+            'default_agent_mode' => 'planner',
+            'chat_analysis_message_limit' => 40,
+            'created_at' => '',
+            'updated_at' => '',
+        ];
+        if (!Schema::hasTable('project_automation_configs')) {
+            return $defaults;
+        }
+        $row = DB::table('project_automation_configs')->where('project_id', $projectId)->first();
+        if ($row === null) {
+            return $defaults;
+        }
+        return [
+            'project_id' => (string)$row->project_id,
+            'primary_workspace_id' => (string)($row->primary_workspace_id ?? ''),
+            'agent_enabled' => (bool)$row->agent_enabled,
+            'default_agent_mode' => (string)($row->default_agent_mode ?? 'planner'),
+            'chat_analysis_message_limit' => max(1, min(100, (int)($row->chat_analysis_message_limit ?? 40))),
+            'created_at' => (string)$row->created_at,
+            'updated_at' => (string)$row->updated_at,
+        ];
     }
 
     private function normalizeReminderOffsets(mixed $raw): array

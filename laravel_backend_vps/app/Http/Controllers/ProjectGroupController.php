@@ -37,6 +37,85 @@ class ProjectGroupController extends Controller
         }
     }
 
+    public function projectControl(Request $request): JsonResponse
+    {
+        try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->query(
+                'actor_profile',
+                (string)$request->input('actor_profile', ''),
+            ));
+            $projectId = trim((string)$request->query(
+                'project_id',
+                (string)$request->input('project_id', ''),
+            ));
+            if ($projectId === '') {
+                throw new InvalidArgumentException('project_id is required');
+            }
+
+            $visibleProjects = $this->repo->visibleProjectsForActor($actor);
+            $project = null;
+            foreach ($visibleProjects as $candidate) {
+                if ((string)($candidate['id'] ?? '') === $projectId) {
+                    $project = $candidate;
+                    break;
+                }
+            }
+            if ($project === null) {
+                throw new InvalidArgumentException('Project not found');
+            }
+
+            $bindings = $this->repo->projectChatBindings($projectId);
+            $groupsById = [];
+            foreach ($this->repo->visibleGroupsForActor($actor) as $group) {
+                $groupsById[(string)($group['id'] ?? '')] = $group;
+            }
+            $bindings = array_map(static function (array $binding) use ($groupsById): array {
+                $groupId = (string)($binding['group_id'] ?? '');
+                $group = is_array($groupsById[$groupId] ?? null) ? $groupsById[$groupId] : [];
+                return [
+                    ...$binding,
+                    'title' => (string)($group['name'] ?? ''),
+                    'members' => is_array($group['members'] ?? null) ? $group['members'] : [],
+                ];
+            }, $bindings);
+
+            $access = $this->access->accessForActor($actor, $this->actorPhone($request));
+            $automation = $this->repo->projectAutomationConfig($projectId);
+            $workspaceId = $this->primaryWorkspaceId(
+                $projectId,
+                (string)($automation['primary_workspace_id'] ?? ''),
+                is_array($access['workspaces'] ?? null) ? $access['workspaces'] : [],
+            );
+            $automation['primary_workspace_id'] = $workspaceId;
+            $capabilities = array_map('strval', $access['capabilities'] ?? []);
+
+            return $this->json(200, [
+                'ok' => true,
+                'snapshot' => [
+                    'project' => $project,
+                    'chat_bindings' => $bindings,
+                    'automation' => $automation,
+                    'primary_workspace' => [
+                        'id' => $workspaceId,
+                    ],
+                    'permissions' => [
+                        'can_manage_project' => (string)($project['owner_key'] ?? '') === $actor
+                            || (bool)($access['is_superadmin'] ?? false),
+                        'can_use_agent' => $workspaceId !== ''
+                            && in_array('workspaces.use', $capabilities, true)
+                            && in_array('ai.use', $capabilities, true),
+                        'can_use_workspace' => $workspaceId !== ''
+                            && in_array('workspaces.use', $capabilities, true),
+                    ],
+                ],
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(403, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
     public function listGroups(Request $request): JsonResponse
     {
         try {
@@ -131,7 +210,9 @@ class ProjectGroupController extends Controller
             ]);
 
             if (is_array($groupIds)) {
-                $this->repo->setProjectGroups($id, array_map('strval', $groupIds));
+                $normalizedGroupIds = array_map('strval', $groupIds);
+                $this->repo->setProjectGroups($id, $normalizedGroupIds);
+                $this->syncProjectGroupChats($actor, $id, $normalizedGroupIds);
             }
 
             return $this->json(200, ['ok' => true]);
@@ -192,7 +273,9 @@ class ProjectGroupController extends Controller
                 throw new InvalidArgumentException('group_ids must be array');
             }
 
-            $this->repo->setProjectGroups($projectId, array_map('strval', $groupIds));
+            $normalizedGroupIds = array_map('strval', $groupIds);
+            $this->repo->setProjectGroups($projectId, $normalizedGroupIds);
+            $this->syncProjectGroupChats($actor, $projectId, $normalizedGroupIds);
             return $this->json(200, ['ok' => true]);
         } catch (InvalidArgumentException $e) {
             return $this->json(403, ['ok' => false, 'error' => $e->getMessage()]);
@@ -264,7 +347,7 @@ class ProjectGroupController extends Controller
                 throw new InvalidArgumentException('Only the group owner can edit');
             }
 
-            $name = trim((string)$request->input('name', ''));
+            $name = trim((string)$request->input('name', (string)($group['name'] ?? '')));
             $members = $request->input('members', null);
             $now = $this->repo->nowIso();
             $nextMembers = is_array($members)
@@ -321,5 +404,62 @@ class ProjectGroupController extends Controller
     private function json(int $status, array $payload): JsonResponse
     {
         return response()->json($payload, $status, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    private function actorPhone(Request $request): string
+    {
+        return trim((string)$request->query(
+            'phone',
+            (string)$request->input('actor_phone', (string)$request->input('phone', '')),
+        ));
+    }
+
+    /** @param list<array<string, mixed>> $workspaces */
+    private function primaryWorkspaceId(string $projectId, string $configured, array $workspaces): string
+    {
+        $configured = trim($configured);
+        if ($configured !== '') {
+            return $configured;
+        }
+        foreach ($workspaces as $workspace) {
+            $workspaceId = (string)($workspace['workspace_id'] ?? '');
+            if ($workspaceId === $projectId) {
+                return $workspaceId;
+            }
+        }
+        foreach ($workspaces as $workspace) {
+            $workspaceId = trim((string)($workspace['workspace_id'] ?? ''));
+            if ($workspaceId !== '') {
+                return $workspaceId;
+            }
+        }
+        return '';
+    }
+
+    /** @param list<string> $groupIds */
+    private function syncProjectGroupChats(string $actor, string $projectId, array $groupIds): void
+    {
+        $normalizedGroupIds = [];
+        foreach ($groupIds as $groupId) {
+            $id = trim((string)$groupId);
+            if ($id !== '' && !in_array($id, $normalizedGroupIds, true)) {
+                $normalizedGroupIds[] = $id;
+            }
+        }
+
+        foreach ($normalizedGroupIds as $groupId) {
+            $group = $this->repo->findGroup($groupId);
+            if ($group === null) {
+                continue;
+            }
+            $this->chat->syncFamilyGroupConversation(
+                $groupId,
+                (string)($group['name'] ?? ''),
+                (string)($group['owner_key'] ?? $actor),
+                is_array($group['members'] ?? null) ? $group['members'] : [],
+            );
+        }
+
+        $this->repo->syncProjectChatBindings($projectId, $normalizedGroupIds);
     }
 }

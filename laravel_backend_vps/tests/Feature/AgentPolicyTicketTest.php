@@ -87,6 +87,55 @@ class AgentPolicyTicketTest extends TestCase
             ->assertJsonPath('event.type', 'agent_queue_completed');
     }
 
+    #[Test]
+    public function project_chat_ticket_requires_workspace_access(): void
+    {
+        $response = $this->withHeaders(['X-Api-Key' => 'dev-local-key'])
+            ->postJson('/agent/ticket', [
+                'actor_profile' => 'nik',
+                'scope' => 'project_chat',
+                'project_id' => 'project-1',
+                'conversation_key' => 'grp:family:group-1',
+                'workspace_id' => 'weather',
+                'requested_mode' => 'planner',
+            ]);
+
+        $response
+            ->assertStatus(403)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('policy.scope', 'project_chat');
+    }
+
+    #[Test]
+    public function project_chat_ticket_allows_only_safe_session_commands(): void
+    {
+        $response = $this->withHeaders(['X-Api-Key' => 'dev-local-key'])
+            ->postJson('/agent/ticket', [
+                'actor_profile' => 'Nikita',
+                'actor_phone' => '+79679812438',
+                'scope' => 'project_chat',
+                'project_id' => 'project-1',
+                'conversation_key' => 'grp:family:group-1',
+                'workspace_id' => 'weather',
+                'requested_mode' => 'planner',
+            ]);
+
+        $response
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('policy.scope', 'project_chat')
+            ->assertJsonPath('policy.project_id', 'project-1')
+            ->assertJsonPath('policy.conversation_key', 'grp:family:group-1');
+
+        $commands = $response->json('policy.allowed_commands');
+        $this->assertContains('session_create', $commands);
+        $this->assertContains('session_send', $commands);
+        $this->assertNotContains('session_update_task_card', $commands);
+        $this->assertNotContains('session_upload_file', $commands);
+        $this->assertNotContains('workspace_create', $commands);
+        $this->assertNotContains('workspace_attach', $commands);
+    }
+
     /** @return array<string, string> */
     private function agentPayload(string $taskId): array
     {

@@ -14,5 +14,6 @@ def test_vps_deploy_manifest_includes_access_and_agent_backend_files() -> None:
         "laravel_backend_vps\\app\\Http\\Controllers\\AgentPolicyController.php",
         "laravel_backend_vps\\app\\Http\\Controllers\\AuthController.php",
         "laravel_backend_vps\\database\\migrations\\2026_06_04_001000_create_access_and_agent_orchestration_tables.php",
+        "laravel_backend_vps\\database\\migrations\\2026_06_08_001100_create_project_control_center_tables.php",
     ]:
         assert path in script

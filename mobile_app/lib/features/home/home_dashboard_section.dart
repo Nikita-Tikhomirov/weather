@@ -103,6 +103,7 @@ extension _DashboardSection on _HomePageState {
                                 ? c.displayName
                                 : c.profileKey,
                             actorProfile: store.owner.value,
+                            accessPolicy: _accessPolicy,
                           ),
                         ),
                       );

@@ -49,16 +49,22 @@ void main() {
               };
               break;
             case '/agent/ticket':
+              final isProjectChat = decodedBody['scope'] == 'project_chat';
               payload = {
                 'ok': true,
                 'policy_ticket': 'signed-ticket',
                 'policy': {
                   'allowed': true,
-                  'mode': 'executor',
-                  'mode_label': 'Исполнитель',
+                  'scope': isProjectChat ? 'project_chat' : 'task',
+                  'mode': isProjectChat ? 'planner' : 'executor',
+                  'mode_label': isProjectChat ? 'План' : 'Исполнитель',
                   'workspace_id': 'weather',
-                  'task_id': 'task-1',
-                  'plugins': ['task_context', 'task_write', 'workspace_write'],
+                  'task_id': isProjectChat ? '' : 'task-1',
+                  if (isProjectChat) 'project_id': 'project-1',
+                  if (isProjectChat) 'conversation_key': 'grp:family:group-1',
+                  'plugins': isProjectChat
+                      ? ['project_chat_context', 'workspace_read']
+                      : ['task_context', 'task_write', 'workspace_write'],
                   'allowed_commands': ['session_create', 'session_send'],
                   'reason': '',
                 },
@@ -85,6 +91,67 @@ void main() {
               payload = {
                 'ok': true,
                 'event': {'type': 'agent_session_started'},
+              };
+              break;
+            case '/agent/project-chat/context':
+              payload = {
+                'ok': true,
+                'context': {
+                  'project': {'id': 'project-1', 'name': 'Weather'},
+                  'binding': {
+                    'project_id': 'project-1',
+                    'conversation_key': 'grp:family:group-1',
+                    'group_id': 'group-1',
+                    'title': 'Команда',
+                  },
+                  'workspace': {'id': 'weather'},
+                  'automation': {
+                    'project_id': 'project-1',
+                    'primary_workspace_id': 'weather',
+                    'default_agent_mode': 'planner',
+                    'chat_analysis_message_limit': 40,
+                  },
+                  'policy': {
+                    'allowed': true,
+                    'scope': 'project_chat',
+                    'mode': 'planner',
+                    'workspace_id': 'weather',
+                    'allowed_commands': ['session_create', 'session_send'],
+                  },
+                  'messages': [
+                    {
+                      'id': 'msg-1',
+                      'conversation_key': 'grp:family:group-1',
+                      'sender_profile': 'nik',
+                      'message_type': 'text',
+                      'text': 'Нужно собрать черновик.',
+                      'created_at': '2026-06-08T10:00:00',
+                    },
+                  ],
+                },
+              };
+              break;
+            case '/projects/control':
+              payload = {
+                'ok': true,
+                'snapshot': {
+                  'project': {'id': 'project-1', 'name': 'Weather'},
+                  'chat_bindings': [
+                    {
+                      'project_id': 'project-1',
+                      'conversation_key': 'grp:family:group-1',
+                      'group_id': 'group-1',
+                      'title': 'Команда',
+                      'is_primary': true,
+                    },
+                  ],
+                  'automation': {
+                    'project_id': 'project-1',
+                    'primary_workspace_id': 'weather',
+                  },
+                  'primary_workspace': {'id': 'weather'},
+                  'permissions': {'can_use_agent': true},
+                },
               };
               break;
             case '/admin/workspace-access':
@@ -239,6 +306,37 @@ void main() {
       expect(requests[0]['query']['phone'], '+7 967 981-24-38');
       expect(requests[1]['body']['actor_phone'], '+7 967 981-24-38');
       expect(requests[2]['body']['actor_phone'], '+7 967 981-24-38');
+    });
+
+    test('requests project chat context and control snapshot', () async {
+      final ticket = await client.requestProjectChatAgentTicket(
+        actorProfile: 'nik-local',
+        actorPhone: '+7 967 981-24-38',
+        projectId: 'project-1',
+        conversationKey: 'grp:family:group-1',
+        workspaceId: 'weather',
+      );
+      final context = await client.fetchProjectChatContext(
+        actorProfile: 'nik-local',
+        actorPhone: '+7 967 981-24-38',
+        projectId: 'project-1',
+        conversationKey: 'grp:family:group-1',
+        workspaceId: 'weather',
+      );
+      final snapshot = await client.fetchProjectControlSnapshot(
+        actorProfile: 'nik-local',
+        actorPhone: '+7 967 981-24-38',
+        projectId: 'project-1',
+      );
+
+      expect(ticket.policy.scope, 'project_chat');
+      expect(context.messages.single.text, 'Нужно собрать черновик.');
+      expect(context.toPrompt(), contains('верни только JSON'));
+      expect(snapshot.chatBindings.single.groupId, 'group-1');
+      expect(requests[0]['path'], '/agent/ticket');
+      expect(requests[0]['body']['scope'], 'project_chat');
+      expect(requests[1]['path'], '/agent/project-chat/context');
+      expect(requests[2]['path'], '/projects/control');
     });
   });
 }

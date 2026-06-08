@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../app/app_config.dart';
 import '../../models/call_models.dart';
 import '../../models/chat_models.dart';
+import '../../models/task_project.dart';
 import '../../services/call_service.dart';
 import '../../shared/utils/avatar_url_resolver.dart';
 import 'active_call_banner.dart';
@@ -57,6 +58,11 @@ class MessengerPage extends StatelessWidget {
     this.onOpenActiveCall,
     this.onEndActiveCall,
     this.onAcceptActiveCall,
+    this.activeProject,
+    this.onAnalyzeProjectChat,
+    this.onDraftProjectTask,
+    this.onStartProjectAgent,
+    this.onShowProjectStatus,
   });
 
   final List<ChatConversation> conversations;
@@ -104,6 +110,11 @@ class MessengerPage extends StatelessWidget {
   final VoidCallback? onOpenActiveCall;
   final VoidCallback? onEndActiveCall;
   final VoidCallback? onAcceptActiveCall;
+  final TaskProject? activeProject;
+  final VoidCallback? onAnalyzeProjectChat;
+  final VoidCallback? onDraftProjectTask;
+  final VoidCallback? onStartProjectAgent;
+  final VoidCallback? onShowProjectStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -154,6 +165,11 @@ class MessengerPage extends StatelessWidget {
           onBackToContacts: onBackToContacts,
           onCallTap: onCallTap,
           onVideoCallTap: onVideoCallTap,
+          activeProject: activeProject,
+          onAnalyzeProjectChat: onAnalyzeProjectChat,
+          onDraftProjectTask: onDraftProjectTask,
+          onStartProjectAgent: onStartProjectAgent,
+          onShowProjectStatus: onShowProjectStatus,
         ),
         Expanded(
           child: ChatMessagesList(
@@ -376,6 +392,11 @@ class _ChatHeader extends StatelessWidget {
     required this.onBackToContacts,
     this.onCallTap,
     this.onVideoCallTap,
+    this.activeProject,
+    this.onAnalyzeProjectChat,
+    this.onDraftProjectTask,
+    this.onStartProjectAgent,
+    this.onShowProjectStatus,
   });
 
   final String activeConversationKey;
@@ -386,6 +407,11 @@ class _ChatHeader extends StatelessWidget {
   final VoidCallback onBackToContacts;
   final VoidCallback? onCallTap;
   final VoidCallback? onVideoCallTap;
+  final TaskProject? activeProject;
+  final VoidCallback? onAnalyzeProjectChat;
+  final VoidCallback? onDraftProjectTask;
+  final VoidCallback? onStartProjectAgent;
+  final VoidCallback? onShowProjectStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -406,6 +432,13 @@ class _ChatHeader extends StatelessWidget {
     final avatarUrl = conv.avatarUrl;
     const baseUrl = AppConfig.apiBaseUrl;
 
+    final project = activeProject;
+    final hasProjectActions = project != null &&
+        (onAnalyzeProjectChat != null ||
+            onDraftProjectTask != null ||
+            onStartProjectAgent != null ||
+            onShowProjectStatus != null);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
@@ -413,44 +446,100 @@ class _ChatHeader extends StatelessWidget {
           bottom: BorderSide(color: Theme.of(context).dividerColor),
         ),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back),
-            tooltip: 'Контакты',
-            onPressed: onBackToContacts,
-          ),
-          if (isGroup && avatarUrl != null && avatarUrl.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: CircleAvatar(
-                radius: 16,
-                backgroundImage: NetworkImage(
-                  avatarUrl.startsWith('/') ? '$baseUrl$avatarUrl' : avatarUrl,
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Контакты',
+                onPressed: onBackToContacts,
+              ),
+              if (isGroup && avatarUrl != null && avatarUrl.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: CircleAvatar(
+                    radius: 16,
+                    backgroundImage: NetworkImage(
+                      avatarUrl.startsWith('/')
+                          ? '$baseUrl$avatarUrl'
+                          : avatarUrl,
+                    ),
+                    onBackgroundImageError: (_, __) {},
+                  ),
                 ),
-                onBackgroundImageError: (_, __) {},
+              Expanded(
+                child: Text(
+                  conversationLabel(conv, owner),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
-            ),
-          Expanded(
-            child: Text(
-              conversationLabel(conv, owner),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+              if (hasProjectActions)
+                PopupMenuButton<String>(
+                  key: const ValueKey('messenger-project-agent-menu'),
+                  tooltip: 'Агент проекта',
+                  icon: const Icon(Icons.smart_toy_outlined),
+                  onSelected: (value) {
+                    if (value == 'analyze') {
+                      onAnalyzeProjectChat?.call();
+                    } else if (value == 'draft') {
+                      onDraftProjectTask?.call();
+                    } else if (value == 'start') {
+                      onStartProjectAgent?.call();
+                    } else if (value == 'status') {
+                      onShowProjectStatus?.call();
+                    }
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: 'analyze',
+                      child: Text('Анализ чата'),
+                    ),
+                    PopupMenuItem(
+                      value: 'draft',
+                      child: Text('Черновик задачи'),
+                    ),
+                    PopupMenuItem(
+                      value: 'start',
+                      child: Text('Запустить агента'),
+                    ),
+                    PopupMenuItem(
+                      value: 'status',
+                      child: Text('Статус проекта'),
+                    ),
+                  ],
+                ),
+              if (onCallTap != null)
+                IconButton(
+                  icon: const Icon(Icons.call),
+                  tooltip: 'Аудиозвонок',
+                  onPressed: onCallTap,
+                ),
+              if (onVideoCallTap != null)
+                IconButton(
+                  icon: const Icon(Icons.videocam),
+                  tooltip: 'Видеозвонок',
+                  onPressed: onVideoCallTap,
+                ),
+            ],
           ),
-          if (onCallTap != null)
-            IconButton(
-              icon: const Icon(Icons.call),
-              tooltip: 'Аудиозвонок',
-              onPressed: onCallTap,
-            ),
-          if (onVideoCallTap != null)
-            IconButton(
-              icon: const Icon(Icons.videocam),
-              tooltip: 'Видеозвонок',
-              onPressed: onVideoCallTap,
+          if (project != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 48, right: 8, bottom: 2),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: InputChip(
+                  key: const ValueKey('messenger-project-chip'),
+                  avatar: const Icon(Icons.folder_outlined, size: 16),
+                  label: Text(project.name),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: onShowProjectStatus,
+                ),
+              ),
             ),
         ],
       ),

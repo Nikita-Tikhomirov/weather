@@ -252,6 +252,7 @@ final class AccessPolicyService
             'profile_key' => (string) ($access['profile_key'] ?? ''),
             'roles' => array_map('strval', $access['roles'] ?? []),
             'capabilities' => $capabilities,
+            'scope' => 'task',
             'task_type' => $this->normalizeTaskType($taskType),
             'task_id' => $taskId,
             'workspace_id' => $workspaceId,
@@ -259,6 +260,97 @@ final class AccessPolicyService
             'mode_label' => $this->modeLabel($mode),
             'plugins' => $this->pluginsForMode($mode, $capabilities),
             'allowed_commands' => $this->commandsForMode($mode, $capabilities),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public function agentProjectChatPolicy(
+        string $actor,
+        string $requestedMode,
+        string $workspaceId,
+        string $projectId,
+        string $conversationKey,
+        string $actorPhone = '',
+    ): array {
+        $access = $this->accessForActor($actor, $actorPhone);
+        $capabilities = array_map('strval', $access['capabilities'] ?? []);
+        $mode = $this->normalizeMode($requestedMode) ?: 'planner';
+        $workspaceId = trim($workspaceId);
+        $projectId = trim($projectId);
+        $conversationKey = trim($conversationKey);
+
+        if ($workspaceId === '') {
+            return $this->deniedProjectChatPolicy(
+                $access,
+                $mode,
+                $workspaceId,
+                $projectId,
+                $conversationKey,
+                'Выберите воркспейс проекта для запуска агента.',
+            );
+        }
+        if ($projectId === '' || $conversationKey === '') {
+            return $this->deniedProjectChatPolicy(
+                $access,
+                $mode,
+                $workspaceId,
+                $projectId,
+                $conversationKey,
+                'Выберите проект и связанный чат.',
+            );
+        }
+
+        if (!$this->hasWorkspaceAccess($actor, $workspaceId, $actorPhone)) {
+            $this->writeAudit($actor, 'agent.project_chat_policy_denied', 'workspace', $workspaceId, [
+                'project_id' => $projectId,
+                'conversation_key' => $conversationKey,
+                'reason' => 'workspace_access_missing',
+            ]);
+            return $this->deniedProjectChatPolicy(
+                $access,
+                $mode,
+                $workspaceId,
+                $projectId,
+                $conversationKey,
+                'Нет доступа к воркспейсу проекта.',
+            );
+        }
+
+        foreach (['projects.view', 'workspaces.use', 'ai.use'] as $required) {
+            if (!in_array($required, $capabilities, true)) {
+                $this->writeAudit($actor, 'agent.project_chat_policy_denied', 'project', $projectId, [
+                    'workspace_id' => $workspaceId,
+                    'conversation_key' => $conversationKey,
+                    'missing_capability' => $required,
+                ]);
+                return $this->deniedProjectChatPolicy(
+                    $access,
+                    $mode,
+                    $workspaceId,
+                    $projectId,
+                    $conversationKey,
+                    'Нет прав на агента в чате проекта.',
+                );
+            }
+        }
+
+        return [
+            'allowed' => true,
+            'reason' => '',
+            'phone' => (string)($access['phone'] ?? ''),
+            'profile_key' => (string)($access['profile_key'] ?? ''),
+            'roles' => array_map('strval', $access['roles'] ?? []),
+            'capabilities' => $capabilities,
+            'scope' => 'project_chat',
+            'task_type' => 'planning',
+            'task_id' => '',
+            'project_id' => $projectId,
+            'conversation_key' => $conversationKey,
+            'workspace_id' => $workspaceId,
+            'mode' => $mode,
+            'mode_label' => $this->modeLabel($mode),
+            'plugins' => $this->pluginsForProjectChatMode($capabilities),
+            'allowed_commands' => $this->projectChatCommands($capabilities),
         ];
     }
 
@@ -794,6 +886,46 @@ final class AccessPolicyService
         return array_values(array_unique($commands));
     }
 
+    /** @param list<string> $capabilities @return list<string> */
+    private function pluginsForProjectChatMode(array $capabilities): array
+    {
+        $plugins = ['project_chat_context'];
+        if (in_array('workspaces.view', $capabilities, true)) {
+            $plugins[] = 'workspace_read';
+        }
+        if (in_array('admin.audit', $capabilities, true)) {
+            $plugins[] = 'audit';
+        }
+        return array_values(array_unique($plugins));
+    }
+
+    /** @param list<string> $capabilities @return list<string> */
+    private function projectChatCommands(array $capabilities): array
+    {
+        $commands = [
+            'session_health',
+            'session_list',
+            'session_open',
+            'workspace_discover',
+            'workspace_file_list',
+            'workspace_file_read',
+            'workspace_folder_list',
+            'workspace_list',
+        ];
+        if (in_array('workspaces.use', $capabilities, true) && in_array('ai.use', $capabilities, true)) {
+            array_push(
+                $commands,
+                'session_create',
+                'session_send',
+                'session_start',
+                'session_stop',
+                'session_task_poll',
+            );
+        }
+        sort($commands);
+        return array_values(array_unique($commands));
+    }
+
     /** @return array<string, mixed> */
     private function deniedPolicy(
         array $access,
@@ -810,8 +942,38 @@ final class AccessPolicyService
             'profile_key' => (string) ($access['profile_key'] ?? ''),
             'roles' => array_map('strval', $access['roles'] ?? []),
             'capabilities' => array_map('strval', $access['capabilities'] ?? []),
+            'scope' => 'task',
             'task_type' => $this->normalizeTaskType($taskType),
             'task_id' => trim($taskId),
+            'workspace_id' => trim($workspaceId),
+            'mode' => $mode,
+            'mode_label' => $this->modeLabel($mode),
+            'plugins' => [],
+            'allowed_commands' => [],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function deniedProjectChatPolicy(
+        array $access,
+        string $mode,
+        string $workspaceId,
+        string $projectId,
+        string $conversationKey,
+        string $reason,
+    ): array {
+        return [
+            'allowed' => false,
+            'reason' => $reason,
+            'phone' => (string)($access['phone'] ?? ''),
+            'profile_key' => (string)($access['profile_key'] ?? ''),
+            'roles' => array_map('strval', $access['roles'] ?? []),
+            'capabilities' => array_map('strval', $access['capabilities'] ?? []),
+            'scope' => 'project_chat',
+            'task_type' => 'planning',
+            'task_id' => '',
+            'project_id' => trim($projectId),
+            'conversation_key' => trim($conversationKey),
             'workspace_id' => trim($workspaceId),
             'mode' => $mode,
             'mode_label' => $this->modeLabel($mode),

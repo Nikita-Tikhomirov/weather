@@ -44,6 +44,7 @@ $files = @(
     @{Local="laravel_backend_vps\routes\api.php";                          Remote="$RemoteBase/routes/api.php"},
     @{Local="laravel_backend_vps\routes\console.php";                      Remote="$RemoteBase/routes/console.php"},
     @{Local="laravel_backend_vps\database\migrations\2026_06_04_001000_create_access_and_agent_orchestration_tables.php"; Remote="$RemoteBase/database/migrations/2026_06_04_001000_create_access_and_agent_orchestration_tables.php"},
+    @{Local="laravel_backend_vps\database\migrations\2026_06_08_001100_create_project_control_center_tables.php"; Remote="$RemoteBase/database/migrations/2026_06_08_001100_create_project_control_center_tables.php"},
     @{Local="laravel_backend_vps\database\migrations\2026_06_02_000700_deactivate_legacy_chat_stickers.php"; Remote="$RemoteBase/database/migrations/2026_06_02_000700_deactivate_legacy_chat_stickers.php"},
     @{Local="laravel_backend_vps\database\migrations\2026_05_26_000800_add_projects_and_family_groups.php"; Remote="$RemoteBase/database/migrations/2026_05_26_000800_add_projects_and_family_groups.php"}
 )

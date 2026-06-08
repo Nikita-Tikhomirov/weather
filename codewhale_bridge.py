@@ -660,7 +660,7 @@ class CodeWhaleWorkerManager:
         session = self.sessions.get_session(workspace_id, session_id)
         task_card = session.get("task_card") if isinstance(session.get("task_card"), dict) else {}
         task_card_runtime = None
-        if task_card:
+        if task_card and str(task_card.get("scope") or "task").strip() != "project_chat":
             task_card_runtime = self._prepare_task_card_runtime(
                 workspace,
                 workspace_id,
@@ -2244,6 +2244,9 @@ class CodeWhaleBridge:
             "api_url",
             "api_key",
             "policy_ticket",
+            "scope",
+            "project_id",
+            "conversation_key",
             "task_type",
             "mode",
         }
@@ -2298,6 +2301,14 @@ class CodeWhaleBridge:
             raise ValueError(f"Нет прав на действие: {exc}") from exc
         if not command_allowed_by_policy(msg_type, policy):
             raise ValueError("Нет прав на это действие в воркспейсе.")
+        policy_workspace_id = str(policy.get("workspace_id") or "").strip()
+        message_workspace_id = self._workspace_id(message)
+        if (
+            policy_workspace_id
+            and message_workspace_id
+            and policy_workspace_id != message_workspace_id
+        ):
+            raise ValueError("Нет прав на действие в выбранном воркспейсе.")
 
     def _workspace_id(self, message: dict[str, Any]) -> str:
         return str(message.get("workspace_id") or "").strip()

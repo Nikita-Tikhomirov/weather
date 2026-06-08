@@ -22,6 +22,11 @@ extension _ChatSection on _HomePageState {
       return _buildProjectChatView(store, compact: compact);
     }
 
+    final boundProject = _projectForBoundGroupConversation(
+      store,
+      _activeConversationKey,
+    );
+
     return MessengerPage(
       conversations: _chatConversations,
       contacts: _phoneContacts.isEmpty ? _chatContacts : _phoneContacts,
@@ -64,12 +69,398 @@ extension _ChatSection on _HomePageState {
       },
       onOpenAttachMenu: () => _openAttachMenu(store),
       onManageGroup: (conv) => _openManageGroupSheet(store, conv),
+      activeProject: boundProject,
+      onAnalyzeProjectChat: boundProject == null
+          ? null
+          : () => unawaited(_analyzeProjectChat(store, boundProject)),
+      onDraftProjectTask: boundProject == null
+          ? null
+          : () => unawaited(_analyzeProjectChat(store, boundProject)),
+      onStartProjectAgent: boundProject == null
+          ? null
+          : () => unawaited(_startProjectChatAgent(store, boundProject)),
+      onShowProjectStatus: boundProject == null
+          ? null
+          : () => _showProjectChatStatus(store, boundProject),
       onCallTap: () => _startCallOutgoing(callType: 'audio'),
       onVideoCallTap: () => _startCallOutgoing(callType: 'video'),
       typingUsers: _typingUsers,
       onStartRecord: () => _voiceRecorder?.startRecord(),
       onStopRecord: () => _voiceRecorder?.stopRecord(),
       onSendText: () => _sendTextMessage(store),
+    );
+  }
+
+  TaskProject? _projectForBoundGroupConversation(
+    TaskStore store,
+    String conversationKey,
+  ) {
+    final groupId = _familyGroupIdForConversation(conversationKey);
+    if (groupId.isEmpty) {
+      return null;
+    }
+    var projectId = '';
+    for (final entry in store.projectGroupMap.value.entries) {
+      if (entry.value.contains(groupId)) {
+        projectId = entry.key;
+        break;
+      }
+    }
+    if (projectId.isEmpty) {
+      return null;
+    }
+    return store.projects.value.cast<TaskProject?>().firstWhere(
+          (project) => project?.id == projectId,
+          orElse: () => null,
+        );
+  }
+
+  String _familyGroupIdForConversation(String conversationKey) {
+    const prefix = 'grp:family:';
+    final key = conversationKey.trim();
+    return key.startsWith(prefix) ? key.substring(prefix.length) : '';
+  }
+
+  FamilyGroup? _familyGroupForConversation(TaskStore store, String key) {
+    final groupId = _familyGroupIdForConversation(key);
+    if (groupId.isEmpty) {
+      return null;
+    }
+    return store.familyGroups.value.cast<FamilyGroup?>().firstWhere(
+          (group) => group?.id == groupId,
+          orElse: () => null,
+        );
+  }
+
+  String _workspaceIdForProjectChat(TaskProject project) {
+    final workspaces = _accessPolicy.workspaces
+        .map((item) => (item['workspace_id'] ?? '').toString().trim())
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+    if (workspaces.contains(project.id)) {
+      return project.id;
+    }
+    return workspaces.isEmpty ? '' : workspaces.first;
+  }
+
+  Future<void> _analyzeProjectChat(
+    TaskStore store,
+    TaskProject project,
+  ) async {
+    final workspaceId = _workspaceIdForProjectChat(project);
+    if (workspaceId.isEmpty) {
+      _showSnack('Нет доступного workspace для агента проекта.');
+      return;
+    }
+    try {
+      final group = _familyGroupForConversation(store, _activeConversationKey);
+      final contextPack = await store.repository.api.fetchProjectChatContext(
+        actorProfile: store.owner.value,
+        actorPhone: _currentProfilePhone,
+        projectId: project.id,
+        conversationKey: _activeConversationKey,
+        workspaceId: workspaceId,
+      );
+      final ticket = await store.repository.api.requestProjectChatAgentTicket(
+        actorProfile: store.owner.value,
+        actorPhone: _currentProfilePhone,
+        projectId: project.id,
+        conversationKey: _activeConversationKey,
+        workspaceId: workspaceId,
+        requestedMode: contextPack.automation.defaultAgentMode,
+      );
+      await _queueProjectChatAgentPrompt(
+        workspaceId: workspaceId,
+        project: project,
+        contextPack: contextPack,
+        policyTicket: ticket.policyTicket,
+      );
+      final draft = _draftFromProjectChatContext(contextPack);
+      if (!mounted) {
+        return;
+      }
+      await _showChatTaskDraftPreview(
+        store: store,
+        draft: draft,
+        project: project,
+        groupId: group?.id ?? '',
+      );
+    } catch (e, st) {
+      debugPrint('[project-chat-agent] analyze error: $e\n$st');
+      _showSnack('Не удалось проанализировать чат проекта.');
+    }
+  }
+
+  Future<void> _startProjectChatAgent(
+    TaskStore store,
+    TaskProject project,
+  ) async {
+    final workspaceId = _workspaceIdForProjectChat(project);
+    if (workspaceId.isEmpty) {
+      _showSnack('Нет доступного workspace для агента проекта.');
+      return;
+    }
+    try {
+      final contextPack = await store.repository.api.fetchProjectChatContext(
+        actorProfile: store.owner.value,
+        actorPhone: _currentProfilePhone,
+        projectId: project.id,
+        conversationKey: _activeConversationKey,
+        workspaceId: workspaceId,
+      );
+      final ticket = await store.repository.api.requestProjectChatAgentTicket(
+        actorProfile: store.owner.value,
+        actorPhone: _currentProfilePhone,
+        projectId: project.id,
+        conversationKey: _activeConversationKey,
+        workspaceId: workspaceId,
+        requestedMode: contextPack.automation.defaultAgentMode,
+      );
+      await _queueProjectChatAgentPrompt(
+        workspaceId: workspaceId,
+        project: project,
+        contextPack: contextPack,
+        policyTicket: ticket.policyTicket,
+      );
+      _showSnack('Агент проекта запускается в CodeWhale.');
+    } catch (e, st) {
+      debugPrint('[project-chat-agent] start error: $e\n$st');
+      _showSnack('Не удалось запустить агента проекта.');
+    }
+  }
+
+  Future<void> _queueProjectChatAgentPrompt({
+    required String workspaceId,
+    required TaskProject project,
+    required ProjectChatContextPack contextPack,
+    required String policyTicket,
+  }) async {
+    final bridge = _ensureProjectChatAgentBridge();
+    bridge.updatePolicyTicket(policyTicket);
+    _pendingProjectChatAgentWorkspaceId = workspaceId;
+    _pendingProjectChatAgentPrompt = contextPack.toPrompt();
+    bridge.createSession(
+      workspaceId,
+      title: 'Анализ чата: ${project.name}',
+      taskCard: {
+        'scope': 'project_chat',
+        'project_id': project.id,
+        'conversation_key': _activeConversationKey,
+        'workspace_id': workspaceId,
+        'actor_profile': _store?.owner.value ?? '',
+        'actor_phone': _currentProfilePhone,
+        'mode': contextPack.automation.defaultAgentMode,
+        'policy_ticket': policyTicket,
+      },
+    );
+    await bridge.connect();
+  }
+
+  CodeWhaleBridgeService _ensureProjectChatAgentBridge() {
+    final existing = _projectChatAgentBridge;
+    if (existing != null) {
+      return existing;
+    }
+    final bridge = CodeWhaleBridgeService(
+      onMessage: (message) {
+        final session = message.session;
+        if (session != null) {
+          _projectChatAgentSessionId = session.id;
+          final prompt = _pendingProjectChatAgentPrompt.trim();
+          final workspaceId = _pendingProjectChatAgentWorkspaceId.trim();
+          if (prompt.isNotEmpty && workspaceId.isNotEmpty) {
+            _pendingProjectChatAgentPrompt = '';
+            _bridgeSendProjectChatPrompt(workspaceId, session.id, prompt);
+          }
+        }
+      },
+      onStatusChange: (connected, status) {
+        debugPrint('[project-chat-agent] $status');
+      },
+    );
+    _projectChatAgentBridge = bridge;
+    return bridge;
+  }
+
+  void _bridgeSendProjectChatPrompt(
+    String workspaceId,
+    String sessionId,
+    String prompt,
+  ) {
+    final bridge = _projectChatAgentBridge;
+    if (bridge == null) {
+      return;
+    }
+    bridge.startSession(workspaceId, sessionId);
+    bridge.sendSessionMessage(workspaceId, sessionId, prompt);
+  }
+
+  ChatTaskDraft _draftFromProjectChatContext(ProjectChatContextPack context) {
+    final textMessages =
+        context.messages.where((message) => message.text.trim().isNotEmpty);
+    final sourceIds = textMessages.map((message) => message.id).toList();
+    final actionItems = <String>[];
+    for (final message in textMessages) {
+      final text = message.text.trim();
+      if (text.isEmpty) {
+        continue;
+      }
+      actionItems.add('${message.senderProfile}: $text');
+    }
+    final titleSource = actionItems.isEmpty
+        ? 'Задача из чата'
+        : actionItems.last.replaceFirst(RegExp(r'^[^:]+:\s*'), '');
+    final title = titleSource.length > 80
+        ? '${titleSource.substring(0, 77)}...'
+        : titleSource;
+    return ChatTaskDraft(
+      title: title,
+      summary: 'Черновик создан из последних сообщений чата проекта.',
+      actionItems: actionItems.take(8).toList(),
+      sourceMessageIds: sourceIds.take(12).toList(),
+    );
+  }
+
+  Future<void> _showChatTaskDraftPreview({
+    required TaskStore store,
+    required ChatTaskDraft draft,
+    required TaskProject project,
+    required String groupId,
+  }) async {
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            16 + MediaQuery.of(sheetContext).viewInsets.bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Черновик задачи',
+                style: Theme.of(sheetContext).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                draft.title,
+                style: Theme.of(sheetContext).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 260),
+                child: SingleChildScrollView(
+                  child: Text(draft.composedDetails),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  TextButton(
+                    key: const ValueKey('chat-draft-cancel'),
+                    onPressed: () => Navigator.of(sheetContext).pop(false),
+                    child: const Text('Отмена'),
+                  ),
+                  const Spacer(),
+                  FilledButton.icon(
+                    key: const ValueKey('chat-draft-confirm'),
+                    icon: const Icon(Icons.check),
+                    onPressed: () => Navigator.of(sheetContext).pop(true),
+                    label: const Text('Создать задачу'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (confirmed != true) {
+      return;
+    }
+    final result = await store.saveDraftWithResult(
+      draft: draft.toTaskDraft(projectId: project.id, groupId: groupId),
+    );
+    if (result.error != null) {
+      _showSnack(result.error!);
+      return;
+    }
+    await _safeSyncDelta(store, showErrors: true);
+    _showSnack('Задача создана в проекте ${project.name}.');
+  }
+
+  void _showProjectChatStatus(TaskStore store, TaskProject project) {
+    final group = _familyGroupForConversation(store, _activeConversationKey);
+    final workspaceId = _workspaceIdForProjectChat(project);
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Статус проекта',
+                style: Theme.of(sheetContext).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.folder_outlined),
+                title: Text(project.name),
+                subtitle: Text(
+                  project.description.isEmpty
+                      ? 'Описание не задано'
+                      : project.description,
+                ),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.forum_outlined),
+                title: Text(group?.name ?? _activeConversationKey),
+                subtitle: Text(
+                  'Участники: ${(group?.members ?? const <String>[]).join(', ')}',
+                ),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.workspaces_outline),
+                title: Text(
+                  workspaceId.isEmpty ? 'Workspace не выбран' : workspaceId,
+                ),
+                subtitle: Text(
+                  _accessPolicy.canUseAi
+                      ? 'Агент доступен по кнопке'
+                      : 'Нет прав на AI-агента',
+                ),
+              ),
+              if (_projectChatAgentSessionId.isNotEmpty)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.smart_toy_outlined),
+                  title: const Text('Активная сессия агента'),
+                  subtitle: Text(_projectChatAgentSessionId),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 const Map<String, String> _pluginLabels = {
   'task_context': 'Контекст задачи',
+  'project_chat_context': 'Контекст чата проекта',
   'task_write': 'Запись в задачу',
   'workspace_read': 'Чтение воркспейса',
   'workspace_write': 'Запись в воркспейс',
@@ -23,6 +24,9 @@ class AgentRunPolicy {
     required this.reason,
     this.workspaceId = '',
     this.taskId = '',
+    this.scope = 'task',
+    this.projectId = '',
+    this.conversationKey = '',
     this.sessionId = '',
   });
 
@@ -35,6 +39,9 @@ class AgentRunPolicy {
         reason = 'AI доступен только пользователям с правами на воркспейс.',
         workspaceId = '',
         taskId = '',
+        scope = 'task',
+        projectId = '',
+        conversationKey = '',
         sessionId = '';
 
   final bool allowed;
@@ -45,6 +52,9 @@ class AgentRunPolicy {
   final String reason;
   final String workspaceId;
   final String taskId;
+  final String scope;
+  final String projectId;
+  final String conversationKey;
   final String sessionId;
 
   factory AgentRunPolicy.fromJson(Map<String, dynamic> json) {
@@ -60,6 +70,11 @@ class AgentRunPolicy {
       workspaceId:
           (json['workspace_id'] ?? json['workspaceId'] ?? '').toString(),
       taskId: (json['task_id'] ?? json['taskId'] ?? '').toString(),
+      scope: (json['scope'] ?? 'task').toString(),
+      projectId: (json['project_id'] ?? json['projectId'] ?? '').toString(),
+      conversationKey:
+          (json['conversation_key'] ?? json['conversationKey'] ?? '')
+              .toString(),
       sessionId: (json['session_id'] ?? json['sessionId'] ?? '').toString(),
     );
   }
@@ -91,6 +106,9 @@ class AgentRunPolicy {
       'reason': reason,
       'workspace_id': workspaceId,
       'task_id': taskId,
+      'scope': scope,
+      'project_id': projectId,
+      'conversation_key': conversationKey,
       'session_id': sessionId,
     };
   }
@@ -108,6 +126,9 @@ class AgentRunPolicy {
           reason == other.reason &&
           workspaceId == other.workspaceId &&
           taskId == other.taskId &&
+          scope == other.scope &&
+          projectId == other.projectId &&
+          conversationKey == other.conversationKey &&
           sessionId == other.sessionId;
 
   @override
@@ -120,6 +141,9 @@ class AgentRunPolicy {
         reason,
         workspaceId,
         taskId,
+        scope,
+        projectId,
+        conversationKey,
         sessionId,
       );
 }

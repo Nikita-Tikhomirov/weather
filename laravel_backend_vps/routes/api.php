@@ -25,6 +25,7 @@ Route::middleware('sync.apikey')->group(function (): void {
     Route::post('/agent/policy', [AgentPolicyController::class, 'policy']);
     Route::post('/agent/ticket', [AgentPolicyController::class, 'ticket']);
     Route::post('/agent/context', [AgentPolicyController::class, 'context']);
+    Route::post('/agent/project-chat/context', [AgentPolicyController::class, 'projectChatContext']);
     Route::post('/agent/events', [AgentPolicyController::class, 'event']);
     Route::post('/agent/sessions', [AgentPolicyController::class, 'session']);
     Route::post('/agent/task-card/read', [AgentPolicyController::class, 'taskCardRead']);
@@ -100,6 +101,7 @@ Route::middleware('sync.apikey')->group(function (): void {
 
     // Task projects & family groups
     Route::get('/projects', [ProjectGroupController::class, 'listProjects']);
+    Route::get('/projects/control', [ProjectGroupController::class, 'projectControl']);
     Route::post('/projects/create', [ProjectGroupController::class, 'createProject']);
     Route::post('/projects/update', [ProjectGroupController::class, 'updateProject']);
     Route::post('/projects/delete', [ProjectGroupController::class, 'deleteProject']);

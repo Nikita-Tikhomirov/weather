@@ -505,6 +505,36 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             self.assertEqual(reply["type"], "error")
             self.assertIn("Нет прав", reply["error"])
 
+    def test_project_chat_ticket_rejects_workspace_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(
+                root / "Desktop",
+                root / "state",
+                require_policy_ticket=True,
+                policy_ticket_secret="secret",
+            )
+            policy = {
+                "allowed": True,
+                "scope": "project_chat",
+                "workspace_id": "weather",
+                "project_id": "project-1",
+                "conversation_key": "grp:family:group-1",
+                "allowed_commands": ["session_create", "session_send"],
+            }
+            ticket = sign_policy_ticket(policy, secret="secret")
+
+            reply = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": "other-workspace",
+                    "policy_ticket": ticket,
+                }
+            )
+
+            self.assertEqual(reply["type"], "error")
+            self.assertIn("воркспейсе", reply["error"])
+
     def test_handle_codewhale_command_list_includes_skills(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -674,6 +704,38 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             task_card = created["session"]["task_card"]
             self.assertEqual(task_card["task_id"], "task-1")
             self.assertEqual(task_card["agent_session_id"], "agent-session-1")
+            self.assertEqual(task_card["workspace_id"], workspace["id"])
+
+    def test_session_create_accepts_project_chat_context_with_policy_ticket(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+
+            created = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Анализ чата проекта",
+                    "task_card": {
+                        "scope": "project_chat",
+                        "project_id": "project-1",
+                        "conversation_key": "grp:family:group-1",
+                        "policy_ticket": "ticket-1",
+                        "actor_profile": "Nikita",
+                        "mode": "planner",
+                    },
+                }
+            )
+
+            self.assertEqual(created["type"], "session")
+            task_card = created["session"]["task_card"]
+            self.assertEqual(task_card["scope"], "project_chat")
+            self.assertEqual(task_card["project_id"], "project-1")
+            self.assertEqual(task_card["conversation_key"], "grp:family:group-1")
+            self.assertEqual(task_card["policy_ticket"], "ticket-1")
             self.assertEqual(task_card["workspace_id"], workspace["id"])
 
     def test_handle_session_update_task_card_persists_existing_session_metadata(
