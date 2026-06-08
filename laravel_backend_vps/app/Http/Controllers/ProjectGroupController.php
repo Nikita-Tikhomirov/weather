@@ -83,7 +83,8 @@ class ProjectGroupController extends Controller
             $automation = $this->repo->projectAutomationConfig($projectId);
             $workspaces = is_array($access['workspaces'] ?? null) ? $access['workspaces'] : [];
             $workspaceId = trim((string)($automation['primary_workspace_id'] ?? ''));
-            $workspaceIsAccessible = $workspaceId !== '' && $this->workspaceIsAccessible($workspaceId, $workspaces);
+            $workspaceIsAccessible = $workspaceId !== ''
+                && ((bool)($access['is_superadmin'] ?? false) || $this->workspaceIsAccessible($workspaceId, $workspaces));
             $automation['primary_workspace_id'] = $workspaceId;
             $capabilities = array_map('strval', $access['capabilities'] ?? []);
 

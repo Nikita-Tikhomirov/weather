@@ -7,6 +7,8 @@ import '../../models/chat_models.dart';
 import '../../models/family_group.dart';
 import '../../models/project_control_models.dart';
 import '../../models/task_project.dart';
+import '../../models/workspace_item.dart';
+import '../../services/codewhale_bridge_service.dart';
 import '../../state/task_store.dart';
 import 'project_edit_sheet.dart';
 import 'family_group_edit_sheet.dart';
@@ -19,6 +21,8 @@ class ProjectsAndGroupsScreen extends StatefulWidget {
     this.contactLabel = _defaultContactLabel,
     this.actorProfile,
     this.accessPolicy = const UserAccessPolicy.messengerOnly(),
+    this.initialWorkspaces = const [],
+    this.loadWorkspacesFromBridge = true,
   });
 
   final TaskStore store;
@@ -26,6 +30,8 @@ class ProjectsAndGroupsScreen extends StatefulWidget {
   final String Function(ChatContact) contactLabel;
   final String? actorProfile;
   final UserAccessPolicy accessPolicy;
+  final List<WorkspaceItem> initialWorkspaces;
+  final bool loadWorkspacesFromBridge;
 
   static String _defaultContactLabel(ChatContact c) => c.displayName.isNotEmpty
       ? c.displayName
@@ -40,6 +46,25 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
   final Map<String, ProjectControlSnapshot> _snapshots =
       <String, ProjectControlSnapshot>{};
   final Set<String> _loadingSnapshots = <String>{};
+  CodeWhaleBridgeService? _workspaceBridge;
+  List<WorkspaceItem> _bridgeWorkspaces = const [];
+  bool _workspaceBridgeConnected = false;
+  String _workspaceBridgeStatus = 'Список workspace ещё не загружен.';
+
+  @override
+  void initState() {
+    super.initState();
+    _bridgeWorkspaces = _sortWorkspaces(widget.initialWorkspaces);
+    if (widget.loadWorkspacesFromBridge) {
+      _connectWorkspaceBridge();
+    }
+  }
+
+  @override
+  void dispose() {
+    _workspaceBridge?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,23 +123,24 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
                     final canManageProject = snapshot?.canManageProject ??
                         project.ownerKey ==
                             (widget.actorProfile ?? widget.store.owner.value);
-                    final canUseAgent = (snapshot?.canUseAgent ?? false) ||
-                        (widget.accessPolicy.canUseAi &&
-                            widget.accessPolicy.canUseWorkspaces &&
+                    final fallbackCanUseWorkspace =
+                        widget.accessPolicy.canUseWorkspaces &&
                             _workspaceIsAvailable(workspaceId) &&
-                            workspaceId.isNotEmpty);
+                            workspaceId.isNotEmpty;
+                    final fallbackCanUseAgent =
+                        widget.accessPolicy.canUseAi && fallbackCanUseWorkspace;
+                    final canUseAgent =
+                        snapshot?.canUseAgent ?? fallbackCanUseAgent;
                     final canUseWorkspace =
-                        (snapshot?.canUseWorkspace ?? false) ||
-                            (widget.accessPolicy.canUseWorkspaces &&
-                                _workspaceIsAvailable(workspaceId) &&
-                                workspaceId.isNotEmpty);
+                        snapshot?.canUseWorkspace ?? fallbackCanUseWorkspace;
                     final isLoadingSnapshot =
                         _loadingSnapshots.contains(project.id);
+                    final workspaceName = _workspaceDisplayLabel(workspaceId);
                     final workspaceLabel = workspaceId.isEmpty
                         ? 'Workspace не выбран'
                         : canUseWorkspace
-                            ? 'Workspace: $workspaceId'
-                            : 'Workspace: $workspaceId (нет доступа)';
+                            ? 'Workspace: $workspaceName'
+                            : 'Workspace: $workspaceName (нет доступа)';
                     final agentBlockedReason = workspaceId.isEmpty
                         ? 'Workspace не выбран'
                         : 'Нет прав на агента';
@@ -177,8 +203,15 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
                             const SizedBox(height: 12),
                             _WorkspaceControl(
                               workspaceId: workspaceId,
+                              workspaceLabel: workspaceName,
                               isLoading: isLoadingSnapshot,
                               canPick: canPickWorkspace,
+                              bridgeConnected: _workspaceBridgeConnected,
+                              bridgeStatus: _workspaceBridgeStatus,
+                              workspaceCount: _availableWorkspaces.length,
+                              onRefresh: widget.loadWorkspacesFromBridge
+                                  ? _requestWorkspaceList
+                                  : null,
                               onPick: canPickWorkspace
                                   ? () => _pickPrimaryWorkspace(
                                         context,
@@ -532,14 +565,171 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
     await widget.store.deleteFamilyGroup(id);
   }
 
-  List<String> get _availableWorkspaceIds => widget.accessPolicy.workspaces
-      .map((item) => (item['workspace_id'] ?? '').toString().trim())
+  List<WorkspaceItem> get _availableWorkspaces {
+    final byId = <String, WorkspaceItem>{};
+    for (final workspace in _bridgeWorkspaces) {
+      final id = workspace.id.trim();
+      if (id.isEmpty) {
+        continue;
+      }
+      byId[id] = workspace;
+    }
+    for (final raw in widget.accessPolicy.workspaces) {
+      final id = (raw['workspace_id'] ?? '').toString().trim();
+      if (id.isEmpty || byId.containsKey(id)) {
+        continue;
+      }
+      byId[id] = WorkspaceItem(
+        id: id,
+        name: id,
+        path: '',
+        status: WorkspaceStatus.unknown,
+      );
+    }
+    return _sortWorkspaces(byId.values.toList());
+  }
+
+  List<String> get _availableWorkspaceIds => _availableWorkspaces
+      .map((item) => item.id.trim())
       .where((item) => item.isNotEmpty)
       .toList(growable: false);
 
   bool _workspaceIsAvailable(String workspaceId) {
     final id = workspaceId.trim();
     return id.isNotEmpty && _availableWorkspaceIds.contains(id);
+  }
+
+  String _workspaceDisplayLabel(String workspaceId) {
+    final id = workspaceId.trim();
+    if (id.isEmpty) {
+      return '';
+    }
+    final workspace = _workspaceById(id);
+    return workspace == null ? id : _workspaceTitle(workspace);
+  }
+
+  WorkspaceItem? _workspaceById(String workspaceId) {
+    final id = workspaceId.trim();
+    if (id.isEmpty) {
+      return null;
+    }
+    for (final workspace in _availableWorkspaces) {
+      if (workspace.id.trim() == id) {
+        return workspace;
+      }
+    }
+    return null;
+  }
+
+  void _connectWorkspaceBridge() {
+    final bridge = CodeWhaleBridgeService(
+      onMessage: (message) {
+        if (!mounted) {
+          return;
+        }
+        if (message.type == 'workspace_list' || message.workspaces.isNotEmpty) {
+          setState(() {
+            _bridgeWorkspaces = _sortWorkspaces(message.workspaces);
+            _workspaceBridgeStatus = _bridgeWorkspaces.isEmpty
+                ? 'CodeWhale не вернул workspace.'
+                : 'Загружено workspace: ${_bridgeWorkspaces.length}';
+          });
+        }
+      },
+      onStatusChange: (connected, status) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _workspaceBridgeConnected = connected;
+          _workspaceBridgeStatus = status;
+        });
+        if (connected) {
+          _requestWorkspaceList();
+        }
+      },
+    );
+    _workspaceBridge = bridge;
+    unawaited(
+      bridge.connect().then((_) {
+        if (mounted) {
+          _requestWorkspaceList();
+        }
+      }),
+    );
+  }
+
+  void _requestWorkspaceList() {
+    _workspaceBridge?.requestWorkspaceList();
+  }
+
+  List<WorkspaceItem> _filterWorkspaces(String query) {
+    final normalized = query.trim().toLowerCase();
+    final workspaces = _availableWorkspaces;
+    if (normalized.isEmpty) {
+      return workspaces;
+    }
+    return workspaces.where((workspace) {
+      final haystack = [
+        _workspaceTitle(workspace),
+        workspace.id,
+        workspace.name,
+        workspace.path,
+      ].join(' ').toLowerCase();
+      return haystack.contains(normalized);
+    }).toList(growable: false);
+  }
+
+  static List<WorkspaceItem> _sortWorkspaces(Iterable<WorkspaceItem> items) {
+    final result = items.toList(growable: false);
+    result.sort((a, b) => _workspaceTitle(a).compareTo(_workspaceTitle(b)));
+    return result;
+  }
+
+  static String _workspaceTitle(WorkspaceItem workspace) {
+    final name = workspace.name.trim();
+    final pathSegment = _lastPathSegment(workspace.path).trim();
+    if (name.isNotEmpty && !_looksTechnicalId(name)) {
+      return name;
+    }
+    if (pathSegment.isNotEmpty && !_looksTechnicalId(pathSegment)) {
+      return pathSegment;
+    }
+    if (name.isNotEmpty) {
+      return name;
+    }
+    return workspace.id.trim();
+  }
+
+  static String _workspaceSubtitle(WorkspaceItem workspace) {
+    final parts = <String>[];
+    final id = workspace.id.trim();
+    final path = workspace.path.trim();
+    final title = _workspaceTitle(workspace);
+    if (id.isNotEmpty && id != title) {
+      parts.add(id);
+    }
+    if (path.isNotEmpty) {
+      parts.add(path);
+    }
+    return parts.join(' · ');
+  }
+
+  static String _lastPathSegment(String path) {
+    final parts = path.trim().split(RegExp(r'[\\/]+'));
+    if (parts.isEmpty) {
+      return path.trim();
+    }
+    return parts.last.trim();
+  }
+
+  static bool _looksTechnicalId(String value) {
+    final text = value.trim().toLowerCase();
+    if (text.isEmpty) {
+      return true;
+    }
+    return RegExp(r'^prj-[a-f0-9]{12,}$').hasMatch(text) ||
+        RegExp(r'^[a-f0-9]{16,}$').hasMatch(text);
   }
 
   void _ensureProjectSnapshot(String projectId) {
@@ -582,39 +772,100 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
     ProjectControlSnapshot? snapshot,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
+    var query = '';
     final selected = await showModalBottomSheet<String>(
       context: context,
+      isScrollControlled: true,
       builder: (sheetContext) {
         final currentId = (snapshot?.primaryWorkspaceId ?? '').trim();
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Text(
-                  'Основной workspace',
-                  style: Theme.of(sheetContext).textTheme.titleLarge,
-                ),
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            final filtered = _filterWorkspaces(query);
+            return SafeArea(
+              child: DraggableScrollableSheet(
+                expand: false,
+                initialChildSize: 0.78,
+                minChildSize: 0.45,
+                maxChildSize: 0.92,
+                builder: (context, scrollController) {
+                  return ListView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Основной workspace',
+                              style:
+                                  Theme.of(sheetContext).textTheme.titleLarge,
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Обновить список',
+                            icon: const Icon(Icons.refresh),
+                            onPressed: widget.loadWorkspacesFromBridge
+                                ? _requestWorkspaceList
+                                : null,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        autofocus: false,
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.search),
+                          hintText: 'Поиск по имени, id или пути',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (value) {
+                          setSheetState(() => query = value);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Найдено: ${filtered.length} из ${_availableWorkspaces.length}. '
+                        'Источник: ${_bridgeWorkspaces.isEmpty ? 'права backend' : 'CodeWhale'}',
+                        style: Theme.of(sheetContext).textTheme.bodySmall,
+                      ),
+                      if (currentId.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        ListTile(
+                          leading: const Icon(Icons.link_off_outlined),
+                          title: const Text('Снять привязку'),
+                          subtitle: const Text('Агент проекта будет отключён.'),
+                          onTap: () => Navigator.of(sheetContext).pop(''),
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      if (filtered.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: Text('Workspace не найдены.'),
+                        )
+                      else
+                        for (final workspace in filtered)
+                          ListTile(
+                            leading: Icon(
+                              workspace.id == currentId
+                                  ? Icons.check_circle
+                                  : Icons.workspaces_outline,
+                            ),
+                            title: Text(_workspaceTitle(workspace)),
+                            subtitle: Text(
+                              _workspaceSubtitle(workspace),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onTap: () =>
+                                Navigator.of(sheetContext).pop(workspace.id),
+                          ),
+                    ],
+                  );
+                },
               ),
-              if (currentId.isNotEmpty)
-                ListTile(
-                  leading: const Icon(Icons.link_off_outlined),
-                  title: const Text('Снять привязку'),
-                  onTap: () => Navigator.of(sheetContext).pop(''),
-                ),
-              for (final workspaceId in _availableWorkspaceIds)
-                ListTile(
-                  leading: Icon(
-                    workspaceId == currentId
-                        ? Icons.check_circle
-                        : Icons.workspaces_outline,
-                  ),
-                  title: Text(workspaceId),
-                  onTap: () => Navigator.of(sheetContext).pop(workspaceId),
-                ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -675,37 +926,67 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
 class _WorkspaceControl extends StatelessWidget {
   const _WorkspaceControl({
     required this.workspaceId,
+    required this.workspaceLabel,
     required this.isLoading,
     required this.canPick,
+    required this.bridgeConnected,
+    required this.bridgeStatus,
+    required this.workspaceCount,
+    required this.onRefresh,
     required this.onPick,
   });
 
   final String workspaceId;
+  final String workspaceLabel;
   final bool isLoading;
   final bool canPick;
+  final bool bridgeConnected;
+  final String bridgeStatus;
+  final int workspaceCount;
+  final VoidCallback? onRefresh;
   final VoidCallback? onPick;
 
   @override
   Widget build(BuildContext context) {
     final label =
         workspaceId.trim().isEmpty ? 'Выбрать workspace' : 'Сменить workspace';
+    final selectedText = workspaceId.trim().isEmpty
+        ? 'Workspace не выбран.'
+        : 'Выбран: $workspaceLabel';
     final hint = canPick
-        ? 'Свяжите проект с конкретным workspace для агента.'
+        ? '$selectedText Доступно: $workspaceCount.'
         : 'Нет доступных workspace для выбора.';
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Text(
-            isLoading ? 'Загружаю настройку workspace...' : hint,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+        Text(
+          isLoading ? 'Загружаю настройку workspace...' : hint,
+          style: Theme.of(context).textTheme.bodySmall,
         ),
-        const SizedBox(width: 8),
-        OutlinedButton.icon(
-          key: const ValueKey('project-workspace-picker'),
-          icon: const Icon(Icons.account_tree_outlined),
-          label: Text(label),
-          onPressed: isLoading ? null : onPick,
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                bridgeConnected ? bridgeStatus : 'CodeWhale: $bridgeStatus',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+            IconButton(
+              tooltip: 'Обновить workspace',
+              icon: const Icon(Icons.refresh),
+              onPressed: onRefresh,
+            ),
+            const SizedBox(width: 4),
+            OutlinedButton.icon(
+              key: const ValueKey('project-workspace-picker'),
+              icon: const Icon(Icons.account_tree_outlined),
+              label: Text(label),
+              onPressed: isLoading ? null : onPick,
+            ),
+          ],
         ),
       ],
     );

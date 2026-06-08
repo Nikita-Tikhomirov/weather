@@ -307,8 +307,29 @@ class ProjectGroupChatSyncTest extends TestCase
     {
         $project = $this->withHeaders(['X-Api-Key' => 'prod-key'])
             ->postJson('/projects/create', [
-                'actor_profile' => 'nik',
+                'actor_profile' => 'nastya',
                 'name' => 'Проект с чужим workspace',
+            ])
+            ->assertStatus(200)
+            ->json('project');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/projects/automation', [
+                'actor_profile' => 'nastya',
+                'project_id' => $project['id'],
+                'primary_workspace_id' => 'foreign-workspace',
+            ])
+            ->assertStatus(403)
+            ->assertJsonPath('ok', false);
+    }
+
+    #[Test]
+    public function superadmin_can_set_primary_workspace_without_existing_grant(): void
+    {
+        $project = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/projects/create', [
+                'actor_profile' => 'nik',
+                'name' => 'Проект суперадмина',
             ])
             ->assertStatus(200)
             ->json('project');
@@ -317,10 +338,16 @@ class ProjectGroupChatSyncTest extends TestCase
             ->postJson('/projects/automation', [
                 'actor_profile' => 'nik',
                 'project_id' => $project['id'],
-                'primary_workspace_id' => 'foreign-workspace',
+                'primary_workspace_id' => 'workspace-cifra',
             ])
-            ->assertStatus(403)
-            ->assertJsonPath('ok', false);
+            ->assertStatus(200)
+            ->assertJsonPath('automation.primary_workspace_id', 'workspace-cifra');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/projects/control?actor_profile=nik&project_id='.$project['id'])
+            ->assertStatus(200)
+            ->assertJsonPath('snapshot.primary_workspace.id', 'workspace-cifra')
+            ->assertJsonPath('snapshot.permissions.can_use_agent', true);
     }
 
     private function grantWorkspaceAccess(string $profileKey, string $workspaceId): void

@@ -4,6 +4,7 @@ import 'package:family_todo_mobile/models/agent_policy.dart';
 import 'package:family_todo_mobile/models/family_group.dart';
 import 'package:family_todo_mobile/models/task_item.dart';
 import 'package:family_todo_mobile/models/task_project.dart';
+import 'package:family_todo_mobile/models/workspace_item.dart';
 import 'package:family_todo_mobile/repositories/task_repository.dart';
 import 'package:family_todo_mobile/services/api_client.dart';
 import 'package:family_todo_mobile/services/local_db.dart';
@@ -84,6 +85,185 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repository.fakeApi.savedWorkspaceIds, ['stylish-house']);
+    });
+
+    testWidgets('shows all CodeWhale workspaces with readable labels',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = TaskStore(
+        repository: repository,
+        domainService: TaskDomainService(),
+      );
+      store.owner.value = 'nik';
+      store.currentProjectId.value = 'project-1';
+      store.projects.value = const [
+        TaskProject(id: 'project-1', name: 'Цифра', ownerKey: 'nik'),
+      ];
+      repository.fakeApi.snapshot = const ProjectControlSnapshot(
+        project: TaskProject(id: 'project-1', name: 'Цифра'),
+        chatBindings: [],
+        automation: ProjectAutomationConfig(projectId: 'project-1'),
+        canManageProject: true,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: ProjectsAndGroupsScreen(
+            store: store,
+            actorProfile: 'nik',
+            loadWorkspacesFromBridge: false,
+            initialWorkspaces: const [
+              WorkspaceItem(
+                id: 'exp76-ru',
+                name: 'Exp76.ru',
+                path: 'C:/projects/exp76',
+                status: WorkspaceStatus.available,
+              ),
+              WorkspaceItem(
+                id: 'prj-6a188d11473da242626035',
+                name: '',
+                path: 'C:/projects/stylish-house',
+                status: WorkspaceStatus.available,
+              ),
+              WorkspaceItem(
+                id: 'workspace-cifra',
+                name: 'Цифра: утилиты',
+                path: 'C:/projects/cifra-tools',
+                status: WorkspaceStatus.available,
+              ),
+              WorkspaceItem(
+                id: 'workspace-shop',
+                name: 'Магазин Laravel',
+                path: 'C:/projects/shop-laravel',
+                status: WorkspaceStatus.available,
+              ),
+              WorkspaceItem(
+                id: 'workspace-bot',
+                name: 'Telegram bot',
+                path: 'C:/projects/tg-bot',
+                status: WorkspaceStatus.available,
+              ),
+            ],
+            accessPolicy: const UserAccessPolicy(
+              phone: '',
+              profileKey: 'nik',
+              roles: ['workspace_user'],
+              capabilities: [
+                'messenger.use',
+                'projects.view',
+                'workspaces.use',
+                'ai.use',
+              ],
+              workspaces: [
+                {'workspace_id': 'exp76-ru'},
+              ],
+              isSuperadmin: false,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('project-workspace-picker')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Найдено: 5 из 5'), findsOneWidget);
+      expect(find.text('Exp76.ru'), findsOneWidget);
+      expect(find.text('stylish-house'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'цифра');
+      await tester.pumpAndSettle();
+      expect(find.text('Цифра: утилиты'), findsOneWidget);
+      expect(find.textContaining('C:/projects/cifra-tools'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'telegram');
+      await tester.pumpAndSettle();
+      expect(find.text('Telegram bot'), findsOneWidget);
+    });
+
+    testWidgets('uses backend snapshot permissions for agent actions',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = TaskStore(
+        repository: repository,
+        domainService: TaskDomainService(),
+      );
+      store.owner.value = 'nik';
+      store.currentProjectId.value = 'project-1';
+      store.projects.value = const [
+        TaskProject(id: 'project-1', name: 'Цифра', ownerKey: 'nik'),
+      ];
+      store.familyGroups.value = const [
+        FamilyGroup(id: 'group-1', name: 'Команда', members: ['nik']),
+      ];
+      store.projectGroupMap.value = const {
+        'project-1': ['group-1'],
+      };
+      repository.fakeApi.snapshot = const ProjectControlSnapshot(
+        project: TaskProject(id: 'project-1', name: 'Цифра'),
+        chatBindings: [],
+        automation: ProjectAutomationConfig(
+          projectId: 'project-1',
+          primaryWorkspaceId: 'workspace-cifra',
+        ),
+        primaryWorkspaceId: 'workspace-cifra',
+        canManageProject: true,
+        canUseAgent: false,
+        canUseWorkspace: false,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: ProjectsAndGroupsScreen(
+            store: store,
+            actorProfile: 'nik',
+            loadWorkspacesFromBridge: false,
+            initialWorkspaces: const [
+              WorkspaceItem(
+                id: 'workspace-cifra',
+                name: 'Цифра: утилиты',
+                path: 'C:/projects/cifra-tools',
+                status: WorkspaceStatus.available,
+              ),
+            ],
+            accessPolicy: const UserAccessPolicy(
+              phone: '',
+              profileKey: 'nik',
+              roles: ['workspace_user'],
+              capabilities: [
+                'messenger.use',
+                'projects.view',
+                'workspaces.use',
+                'ai.use',
+              ],
+              workspaces: [],
+              isSuperadmin: false,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Workspace: Цифра: утилиты (нет доступа)'),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.byKey(const ValueKey('project-control-analyze-chat')),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.byKey(const ValueKey('project-control-start-agent')),
+            )
+            .onPressed,
+        isNull,
+      );
     });
   });
 }
