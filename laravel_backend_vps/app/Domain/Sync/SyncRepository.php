@@ -869,40 +869,37 @@ final class SyncRepository
             array_map(static fn ($value): string => trim((string)$value), $groupIds),
             static fn (string $value): bool => $value !== '',
         )));
-        $expectedConversationKeys = array_map(
-            static fn (string $groupId): string => 'grp:family:'.$groupId,
-            $normalizedGroupIds,
-        );
+        $conversationKey = 'grp:project:'.$projectId;
+        $expectedConversationKeys = $normalizedGroupIds === [] ? [] : [$conversationKey];
 
         DB::table('project_chat_bindings')
             ->where('project_id', $projectId)
-            ->where('source', 'family_group')
+            ->whereIn('source', ['family_group', 'project_group'])
             ->whereNotIn('conversation_key', $expectedConversationKeys === [] ? [''] : $expectedConversationKeys)
             ->delete();
 
-        $now = $this->nowIso();
-        $hasPrimary = DB::table('project_chat_bindings')
-            ->where('project_id', $projectId)
-            ->where('is_primary', 1)
-            ->exists();
-
-        foreach ($normalizedGroupIds as $index => $groupId) {
-            $conversationKey = 'grp:family:'.$groupId;
-            $makePrimary = !$hasPrimary && $index === 0;
-            DB::table('project_chat_bindings')->updateOrInsert(
-                ['project_id' => $projectId, 'conversation_key' => $conversationKey],
-                [
-                    'group_id' => $groupId,
-                    'source' => 'family_group',
-                    'is_primary' => $makePrimary ? 1 : 0,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ],
-            );
-            if ($makePrimary) {
-                $hasPrimary = true;
-            }
+        if ($normalizedGroupIds === []) {
+            DB::table('project_chat_bindings')
+                ->where('project_id', $projectId)
+                ->whereIn('source', ['family_group', 'project_group'])
+                ->delete();
+            return;
         }
+
+        $now = $this->nowIso();
+        DB::table('project_chat_bindings')
+            ->where('project_id', $projectId)
+            ->update(['is_primary' => 0, 'updated_at' => $now]);
+        DB::table('project_chat_bindings')->updateOrInsert(
+            ['project_id' => $projectId, 'conversation_key' => $conversationKey],
+            [
+                'group_id' => $normalizedGroupIds[0],
+                'source' => 'project_group',
+                'is_primary' => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+        );
     }
 
     /** @return list<array<string, mixed>> */

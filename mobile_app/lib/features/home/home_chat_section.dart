@@ -95,6 +95,13 @@ extension _ChatSection on _HomePageState {
     TaskStore store,
     String conversationKey,
   ) {
+    final directProjectId = _projectIdForProjectConversation(conversationKey);
+    if (directProjectId.isNotEmpty) {
+      return store.projects.value.cast<TaskProject?>().firstWhere(
+            (project) => project?.id == directProjectId,
+            orElse: () => null,
+          );
+    }
     final groupId = _familyGroupIdForConversation(conversationKey);
     if (groupId.isEmpty) {
       return null;
@@ -121,13 +128,25 @@ extension _ChatSection on _HomePageState {
     return key.startsWith(prefix) ? key.substring(prefix.length) : '';
   }
 
+  String _projectIdForProjectConversation(String conversationKey) {
+    const prefix = 'grp:project:';
+    final key = conversationKey.trim();
+    return key.startsWith(prefix) ? key.substring(prefix.length) : '';
+  }
+
   FamilyGroup? _familyGroupForConversation(TaskStore store, String key) {
     final groupId = _familyGroupIdForConversation(key);
-    if (groupId.isEmpty) {
+    var effectiveGroupId = groupId;
+    if (effectiveGroupId.isEmpty) {
+      final projectId = _projectIdForProjectConversation(key);
+      final groupIds = store.projectGroupMap.value[projectId] ?? const [];
+      effectiveGroupId = groupIds.isEmpty ? '' : groupIds.first;
+    }
+    if (effectiveGroupId.isEmpty) {
       return null;
     }
     return store.familyGroups.value.cast<FamilyGroup?>().firstWhere(
-          (group) => group?.id == groupId,
+          (group) => group?.id == effectiveGroupId,
           orElse: () => null,
         );
   }

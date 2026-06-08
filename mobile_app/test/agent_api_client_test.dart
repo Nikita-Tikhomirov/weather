@@ -61,7 +61,8 @@ void main() {
                   'workspace_id': 'weather',
                   'task_id': isProjectChat ? '' : 'task-1',
                   if (isProjectChat) 'project_id': 'project-1',
-                  if (isProjectChat) 'conversation_key': 'grp:family:group-1',
+                  if (isProjectChat)
+                    'conversation_key': 'grp:project:project-1',
                   'plugins': isProjectChat
                       ? ['project_chat_context', 'workspace_read']
                       : ['task_context', 'task_write', 'workspace_write'],
@@ -100,9 +101,9 @@ void main() {
                   'project': {'id': 'project-1', 'name': 'Weather'},
                   'binding': {
                     'project_id': 'project-1',
-                    'conversation_key': 'grp:family:group-1',
+                    'conversation_key': 'grp:project:project-1',
                     'group_id': 'group-1',
-                    'title': 'Команда',
+                    'title': 'Weather',
                   },
                   'workspace': {'id': 'weather'},
                   'automation': {
@@ -121,7 +122,7 @@ void main() {
                   'messages': [
                     {
                       'id': 'msg-1',
-                      'conversation_key': 'grp:family:group-1',
+                      'conversation_key': 'grp:project:project-1',
                       'sender_profile': 'nik',
                       'message_type': 'text',
                       'text': 'Нужно собрать черновик.',
@@ -139,10 +140,11 @@ void main() {
                   'chat_bindings': [
                     {
                       'project_id': 'project-1',
-                      'conversation_key': 'grp:family:group-1',
+                      'conversation_key': 'grp:project:project-1',
                       'group_id': 'group-1',
-                      'title': 'Команда',
+                      'title': 'Weather',
                       'is_primary': true,
+                      'source': 'project_group',
                     },
                   ],
                   'automation': {
@@ -163,6 +165,25 @@ void main() {
                   'agent_enabled': true,
                   'default_agent_mode': 'planner',
                   'chat_analysis_message_limit': 40,
+                },
+              };
+              break;
+            case '/projects/ensure-chat':
+              final projectId = decodedBody['project_id'];
+              payload = {
+                'ok': true,
+                'conversation': {
+                  'conversation_key': 'grp:project:$projectId',
+                  'kind': 'group',
+                  'title': 'Weather',
+                  'members': ['nik', 'nastya'],
+                },
+                'binding': {
+                  'project_id': projectId,
+                  'conversation_key': 'grp:project:$projectId',
+                  'group_id': 'group-1',
+                  'source': 'project_group',
+                  'is_primary': true,
                 },
               };
               break;
@@ -325,14 +346,14 @@ void main() {
         actorProfile: 'nik-local',
         actorPhone: '+7 967 981-24-38',
         projectId: 'project-1',
-        conversationKey: 'grp:family:group-1',
+        conversationKey: 'grp:project:project-1',
         workspaceId: 'weather',
       );
       final context = await client.fetchProjectChatContext(
         actorProfile: 'nik-local',
         actorPhone: '+7 967 981-24-38',
         projectId: 'project-1',
-        conversationKey: 'grp:family:group-1',
+        conversationKey: 'grp:project:project-1',
         workspaceId: 'weather',
       );
       final snapshot = await client.fetchProjectControlSnapshot(
@@ -358,6 +379,19 @@ void main() {
       expect(requests[2]['path'], '/projects/control');
       expect(requests[3]['path'], '/projects/automation');
       expect(requests[3]['body']['actor_phone'], '+7 967 981-24-38');
+    });
+
+    test('ensures project chat conversation', () async {
+      final conversation = await client.ensureProjectChat(
+        actorProfile: 'nik-local',
+        projectId: 'project-1',
+      );
+
+      expect(conversation.conversationKey, 'grp:project:project-1');
+      expect(conversation.title, 'Weather');
+      expect(conversation.members, ['nik', 'nastya']);
+      expect(requests.single['path'], '/projects/ensure-chat');
+      expect(requests.single['body']['project_id'], 'project-1');
     });
   });
 }

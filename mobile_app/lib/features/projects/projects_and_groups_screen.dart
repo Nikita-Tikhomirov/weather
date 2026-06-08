@@ -9,6 +9,7 @@ import '../../models/project_control_models.dart';
 import '../../models/task_project.dart';
 import '../../models/workspace_item.dart';
 import '../../services/codewhale_bridge_service.dart';
+import '../../services/local_db.dart';
 import '../../state/task_store.dart';
 import 'project_edit_sheet.dart';
 import 'family_group_edit_sheet.dart';
@@ -118,6 +119,7 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
                         .toList();
                     _ensureProjectSnapshot(project.id);
                     final snapshot = _snapshots[project.id];
+                    final projectChatBinding = _projectChatBinding(snapshot);
                     final workspaceId =
                         (snapshot?.primaryWorkspaceId ?? '').trim();
                     final canManageProject = snapshot?.canManageProject ??
@@ -238,13 +240,43 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: [
-                                  for (final group in boundGroups)
+                                  if (projectChatBinding != null)
                                     Chip(
-                                      avatar: const Icon(Icons.group, size: 18),
-                                      label: Text(group.name),
-                                    ),
+                                      avatar: const Icon(
+                                        Icons.hub_outlined,
+                                        size: 18,
+                                      ),
+                                      label: Text(
+                                        projectChatBinding.displayTitle,
+                                      ),
+                                    )
+                                  else
+                                    for (final group in boundGroups)
+                                      Chip(
+                                        avatar:
+                                            const Icon(Icons.group, size: 18),
+                                        label: Text(group.name),
+                                      ),
                                 ],
                               ),
+                            if (boundGroups.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              OutlinedButton.icon(
+                                key: const ValueKey(
+                                  'project-control-ensure-chat',
+                                ),
+                                icon: const Icon(Icons.forum_outlined),
+                                label: Text(
+                                  projectChatBinding == null
+                                      ? 'Создать проектный чат'
+                                      : 'Обновить проектный чат',
+                                ),
+                                onPressed: canManageProject &&
+                                        !isLoadingSnapshot
+                                    ? () => _ensureProjectChat(context, project)
+                                    : null,
+                              ),
+                            ],
                             const SizedBox(height: 16),
                             Wrap(
                               spacing: 8,
@@ -257,7 +289,7 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
                                   icon: const Icon(Icons.auto_awesome_outlined),
                                   label: const Text('Анализ чата'),
                                   onPressed: canUseProjectAgent &&
-                                          boundGroups.isNotEmpty
+                                          projectChatBinding != null
                                       ? () => _showControlActionHint(context)
                                       : null,
                                 ),
@@ -268,7 +300,7 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
                                   icon: const Icon(Icons.note_add_outlined),
                                   label: const Text('Черновик задачи'),
                                   onPressed: canUseProjectAgent &&
-                                          boundGroups.isNotEmpty
+                                          projectChatBinding != null
                                       ? () => _showControlActionHint(context)
                                       : null,
                                 ),
@@ -278,7 +310,8 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
                                   ),
                                   icon: const Icon(Icons.play_arrow_outlined),
                                   label: const Text('Запустить агента'),
-                                  onPressed: canUseProjectAgent
+                                  onPressed: canUseProjectAgent &&
+                                          projectChatBinding != null
                                       ? () => _showControlActionHint(context)
                                       : null,
                                 ),
@@ -599,6 +632,17 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
     return id.isNotEmpty && _availableWorkspaceIds.contains(id);
   }
 
+  ProjectChatBinding? _projectChatBinding(ProjectControlSnapshot? snapshot) {
+    final bindings = snapshot?.chatBindings ?? const <ProjectChatBinding>[];
+    for (final binding in bindings) {
+      if (binding.source == 'project_group' ||
+          binding.conversationKey.startsWith('grp:project:')) {
+        return binding;
+      }
+    }
+    return null;
+  }
+
   String _workspaceDisplayLabel(String workspaceId) {
     final id = workspaceId.trim();
     if (id.isEmpty) {
@@ -916,9 +960,49 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
     }
   }
 
+  Future<void> _ensureProjectChat(
+    BuildContext context,
+    TaskProject project,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final actor = widget.actorProfile ?? widget.store.owner.value;
+      final conversation = await widget.store.repository.api.ensureProjectChat(
+        actorProfile: actor,
+        projectId: project.id,
+      );
+      try {
+        await widget.store.repository.db.upsertConversation(conversation);
+      } catch (_) {
+        // Widget tests can provide a repository without a local DB.
+      }
+      final snapshot =
+          await widget.store.repository.api.fetchProjectControlSnapshot(
+        actorProfile: actor,
+        projectId: project.id,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _snapshots[project.id] = snapshot;
+      });
+      messenger.showSnackBar(
+        SnackBar(content: Text('Проектный чат «${conversation.title}» готов.')),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      messenger.showSnackBar(
+        SnackBar(content: Text('Не удалось создать проектный чат: $error')),
+      );
+    }
+  }
+
   void _showControlActionHint(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Откройте связанный групповой чат.')),
+      const SnackBar(content: Text('Откройте проектный чат.')),
     );
   }
 }

@@ -798,6 +798,16 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
     );
   }
 
+  Future<ChatConversation> ensureProjectChat({
+    required String actorProfile,
+    required String projectId,
+  }) {
+    return _sync.ensureProjectChat(
+      actorProfile: actorProfile,
+      projectId: projectId,
+    );
+  }
+
   Future<List<FamilyGroup>> listFamilyGroups({
     required String actorProfile,
   }) {

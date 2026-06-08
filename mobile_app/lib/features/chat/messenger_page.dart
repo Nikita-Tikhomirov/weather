@@ -286,9 +286,22 @@ class _ContactList extends StatelessWidget {
         conv.conversationKey.startsWith('grp:');
   }
 
+  bool _isProjectConversation(ChatConversation conv) {
+    return conv.conversationKey.startsWith('grp:project:');
+  }
+
   @override
   Widget build(BuildContext context) {
-    final groups = groupConversations.where(_isGroupConversation).toList();
+    final projectChats = groupConversations
+        .where(
+          (conv) => _isGroupConversation(conv) && _isProjectConversation(conv),
+        )
+        .toList();
+    final groups = groupConversations
+        .where(
+          (conv) => _isGroupConversation(conv) && !_isProjectConversation(conv),
+        )
+        .toList();
     return Column(
       children: [
         Padding(
@@ -322,12 +335,35 @@ class _ContactList extends StatelessWidget {
         Expanded(
           child: ListView(
             children: [
-              if (groups.isNotEmpty) ...[
+              if (projectChats.isNotEmpty) ...[
                 const Padding(
                   padding: EdgeInsets.fromLTRB(16, 8, 8, 4),
                   child: Text(
-                    'Группы',
+                    'Проектные чаты',
                     style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                ...projectChats.map((conv) {
+                  return ListTile(
+                    leading: const CircleAvatar(
+                      child: Icon(Icons.hub_outlined),
+                    ),
+                    title: Text(groupLabel(conv, owner)),
+                    subtitle: Text('Участники: ${conv.members.length}'),
+                    onTap: () => onOpenConversation(conv.conversationKey),
+                  );
+                }),
+                const Divider(height: 24),
+              ],
+              if (groups.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
+                  child: Text(
+                    projectChats.isEmpty ? 'Группы' : 'Обычные группы',
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),

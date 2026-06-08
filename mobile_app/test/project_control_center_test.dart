@@ -1,6 +1,7 @@
 import 'package:family_todo_mobile/domain/task_domain_service.dart';
 import 'package:family_todo_mobile/features/projects/projects_and_groups_screen.dart';
 import 'package:family_todo_mobile/models/agent_policy.dart';
+import 'package:family_todo_mobile/models/chat_models.dart';
 import 'package:family_todo_mobile/models/family_group.dart';
 import 'package:family_todo_mobile/models/task_item.dart';
 import 'package:family_todo_mobile/models/task_project.dart';
@@ -265,6 +266,79 @@ void main() {
         isNull,
       );
     });
+
+    testWidgets('creates project chat from assigned group', (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = TaskStore(
+        repository: repository,
+        domainService: TaskDomainService(),
+      );
+      store.owner.value = 'nik';
+      store.currentProjectId.value = 'project-1';
+      store.projects.value = const [
+        TaskProject(id: 'project-1', name: 'Цифра', ownerKey: 'nik'),
+      ];
+      store.familyGroups.value = const [
+        FamilyGroup(id: 'group-1', name: 'Команда', members: ['nik', 'nastya']),
+      ];
+      store.projectGroupMap.value = const {
+        'project-1': ['group-1'],
+      };
+      repository.fakeApi.snapshot = const ProjectControlSnapshot(
+        project: TaskProject(id: 'project-1', name: 'Цифра'),
+        chatBindings: [],
+        automation: ProjectAutomationConfig(projectId: 'project-1'),
+        canManageProject: true,
+      );
+      repository.fakeApi.snapshotAfterEnsure = const ProjectControlSnapshot(
+        project: TaskProject(id: 'project-1', name: 'Цифра'),
+        chatBindings: [
+          ProjectChatBinding(
+            projectId: 'project-1',
+            conversationKey: 'grp:project:project-1',
+            groupId: 'group-1',
+            source: 'project_group',
+            isPrimary: true,
+            title: 'Цифра',
+            members: ['nik', 'nastya'],
+          ),
+        ],
+        automation: ProjectAutomationConfig(projectId: 'project-1'),
+        canManageProject: true,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: ProjectsAndGroupsScreen(
+            store: store,
+            actorProfile: 'nik',
+            loadWorkspacesFromBridge: false,
+            accessPolicy: const UserAccessPolicy(
+              phone: '',
+              profileKey: 'nik',
+              roles: ['workspace_user'],
+              capabilities: ['messenger.use', 'projects.view'],
+              workspaces: [],
+              isSuperadmin: false,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('project-control-ensure-chat')),
+        findsOneWidget,
+      );
+      await tester
+          .tap(find.byKey(const ValueKey('project-control-ensure-chat')));
+      await tester.pumpAndSettle();
+
+      expect(repository.fakeApi.ensureChatProjectIds, ['project-1']);
+      expect(find.text('Цифра'), findsWidgets);
+      expect(find.text('Обновить проектный чат'), findsOneWidget);
+    });
   });
 }
 
@@ -322,7 +396,9 @@ class _FakeApiClient extends ApiClient {
     chatBindings: [],
     automation: ProjectAutomationConfig(projectId: ''),
   );
+  ProjectControlSnapshot? snapshotAfterEnsure;
   final List<String> savedWorkspaceIds = [];
+  final List<String> ensureChatProjectIds = [];
 
   @override
   Future<ProjectControlSnapshot> fetchProjectControlSnapshot({
@@ -330,7 +406,25 @@ class _FakeApiClient extends ApiClient {
     required String projectId,
     String actorPhone = '',
   }) async {
+    if (snapshotAfterEnsure != null &&
+        ensureChatProjectIds.contains(projectId)) {
+      return snapshotAfterEnsure!;
+    }
     return snapshot;
+  }
+
+  @override
+  Future<ChatConversation> ensureProjectChat({
+    required String actorProfile,
+    required String projectId,
+  }) async {
+    ensureChatProjectIds.add(projectId);
+    return const ChatConversation(
+      conversationKey: 'grp:project:project-1',
+      kind: 'group',
+      title: 'Цифра',
+      members: ['nik', 'nastya'],
+    );
   }
 
   @override

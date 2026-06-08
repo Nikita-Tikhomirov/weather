@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../contracts/sync_api.dart';
 import '../models/agent_policy.dart';
+import '../models/chat_models.dart';
 import '../models/device_snapshots.dart';
 import '../models/family_group.dart';
 import '../models/pending_event.dart';
@@ -636,6 +637,22 @@ class SyncApiClient extends HttpApiClient implements SyncApi {
         'project_id': projectId,
         'group_ids': groupIds,
       }),
+    );
+  }
+
+  Future<ChatConversation> ensureProjectChat({
+    required String actorProfile,
+    required String projectId,
+  }) async {
+    final body = await postJsonWithFallback(
+      paths: const ['/projects/ensure-chat', '/projects_ensure_chat.php'],
+      body: jsonEncode({
+        'actor_profile': actorProfile,
+        'project_id': projectId,
+      }),
+    );
+    return ChatConversation.fromJson(
+      Map<String, dynamic>.from(body['conversation'] as Map),
     );
   }
 

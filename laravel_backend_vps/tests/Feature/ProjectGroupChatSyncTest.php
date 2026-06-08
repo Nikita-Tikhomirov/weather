@@ -150,9 +150,107 @@ class ProjectGroupChatSyncTest extends TestCase
         $this->assertDatabaseHas('project_chat_bindings', [
             'project_id' => $project['id'],
             'group_id' => $group['id'],
-            'conversation_key' => 'grp:family:'.$group['id'],
-            'source' => 'family_group',
+            'conversation_key' => 'grp:project:'.$project['id'],
+            'source' => 'project_group',
             'is_primary' => 1,
+        ]);
+        $this->assertDatabaseHas('chat_conversations', [
+            'conversation_key' => 'grp:project:'.$project['id'],
+            'kind' => 'group',
+            'title' => 'Проект с чатом',
+        ]);
+    }
+
+    #[Test]
+    public function project_owner_can_create_project_named_group_chat_from_attached_group(): void
+    {
+        $group = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/family-groups/create', [
+                'actor_profile' => 'nik',
+                'name' => 'Рабочая группа',
+                'members' => ['nastya'],
+            ])
+            ->assertStatus(200)
+            ->json('group');
+
+        $project = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/projects/create', [
+                'actor_profile' => 'nik',
+                'name' => 'Цифра',
+            ])
+            ->assertStatus(200)
+            ->json('project');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/projects/set-groups', [
+                'actor_profile' => 'nik',
+                'project_id' => $project['id'],
+                'group_ids' => [$group['id']],
+            ])
+            ->assertStatus(200);
+
+        $response = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/projects/ensure-chat', [
+                'actor_profile' => 'nik',
+                'project_id' => $project['id'],
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('conversation.conversation_key', 'grp:project:'.$project['id'])
+            ->assertJsonPath('conversation.title', 'Цифра')
+            ->assertJsonPath('binding.conversation_key', 'grp:project:'.$project['id'])
+            ->assertJsonPath('binding.source', 'project_group')
+            ->json();
+
+        $this->assertEqualsCanonicalizing(
+            ['nik', 'nastya'],
+            $response['conversation']['members'],
+        );
+        $this->assertDatabaseHas('chat_conversations', [
+            'conversation_key' => 'grp:project:'.$project['id'],
+            'kind' => 'group',
+            'title' => 'Цифра',
+        ]);
+        $this->assertDatabaseHas('project_chat_bindings', [
+            'project_id' => $project['id'],
+            'group_id' => $group['id'],
+            'conversation_key' => 'grp:project:'.$project['id'],
+            'source' => 'project_group',
+            'is_primary' => 1,
+        ]);
+    }
+
+    #[Test]
+    public function project_owner_cannot_attach_group_they_cannot_see(): void
+    {
+        $group = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/family-groups/create', [
+                'actor_profile' => 'nastya',
+                'name' => 'Чужая группа',
+                'members' => ['arisha'],
+            ])
+            ->assertStatus(200)
+            ->json('group');
+
+        $project = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/projects/create', [
+                'actor_profile' => 'misha',
+                'name' => 'Проект Миши',
+            ])
+            ->assertStatus(200)
+            ->json('project');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/projects/set-groups', [
+                'actor_profile' => 'misha',
+                'project_id' => $project['id'],
+                'group_ids' => [$group['id']],
+            ])
+            ->assertStatus(403)
+            ->assertJsonPath('ok', false);
+
+        $this->assertDatabaseMissing('project_chat_bindings', [
+            'project_id' => $project['id'],
+            'conversation_key' => 'grp:project:'.$project['id'],
         ]);
     }
 
@@ -190,7 +288,7 @@ class ProjectGroupChatSyncTest extends TestCase
             ->postJson('/agent/project-chat/context', [
                 'actor_profile' => 'misha',
                 'project_id' => $project['id'],
-                'conversation_key' => 'grp:family:'.$group['id'],
+                'conversation_key' => 'grp:project:'.$project['id'],
                 'workspace_id' => 'weather',
             ])
             ->assertStatus(403)
@@ -217,7 +315,7 @@ class ProjectGroupChatSyncTest extends TestCase
             ->assertStatus(200)
             ->json('project');
 
-        $conversationKey = 'grp:family:'.$group['id'];
+        $conversationKey = 'grp:project:'.$project['id'];
 
         $this->withHeaders(['X-Api-Key' => 'prod-key'])
             ->postJson('/projects/set-groups', [

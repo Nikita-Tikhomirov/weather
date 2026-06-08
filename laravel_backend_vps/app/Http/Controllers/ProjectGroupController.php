@@ -66,16 +66,28 @@ class ProjectGroupController extends Controller
 
             $bindings = $this->repo->projectChatBindings($projectId);
             $groupsById = [];
-            foreach ($this->repo->visibleGroupsForActor($actor) as $group) {
+            $visibleGroups = $this->access->isSuperadminActor($actor)
+                ? $this->repo->allFamilyGroups()
+                : $this->repo->visibleGroupsForActor($actor);
+            foreach ($visibleGroups as $group) {
                 $groupsById[(string)($group['id'] ?? '')] = $group;
             }
-            $bindings = array_map(static function (array $binding) use ($groupsById): array {
+            $projectGroupMap = $this->repo->projectGroupMap();
+            $projectGroupIds = is_array($projectGroupMap[$projectId] ?? null)
+                ? array_map('strval', $projectGroupMap[$projectId])
+                : [];
+            $bindings = array_map(function (array $binding) use ($groupsById, $project, $projectGroupIds): array {
                 $groupId = (string)($binding['group_id'] ?? '');
                 $group = is_array($groupsById[$groupId] ?? null) ? $groupsById[$groupId] : [];
+                $source = (string)($binding['source'] ?? '');
                 return [
                     ...$binding,
-                    'title' => (string)($group['name'] ?? ''),
-                    'members' => is_array($group['members'] ?? null) ? $group['members'] : [],
+                    'title' => $source === 'project_group'
+                        ? (string)($project['name'] ?? '')
+                        : (string)($group['name'] ?? ''),
+                    'members' => $source === 'project_group'
+                        ? $this->projectChatMembers($project, $projectGroupIds, $groupsById)
+                        : (is_array($group['members'] ?? null) ? $group['members'] : []),
                 ];
             }, $bindings);
 
@@ -261,7 +273,7 @@ class ProjectGroupController extends Controller
             ]);
 
             if (is_array($groupIds)) {
-                $normalizedGroupIds = array_map('strval', $groupIds);
+                $normalizedGroupIds = $this->normalizeAssignableGroupIds($actor, $groupIds);
                 $this->repo->setProjectGroups($id, $normalizedGroupIds);
                 $this->syncProjectGroupChats($actor, $id, $normalizedGroupIds);
             }
@@ -324,10 +336,53 @@ class ProjectGroupController extends Controller
                 throw new InvalidArgumentException('group_ids must be array');
             }
 
-            $normalizedGroupIds = array_map('strval', $groupIds);
+            $normalizedGroupIds = $this->normalizeAssignableGroupIds($actor, $groupIds);
             $this->repo->setProjectGroups($projectId, $normalizedGroupIds);
             $this->syncProjectGroupChats($actor, $projectId, $normalizedGroupIds);
             return $this->json(200, ['ok' => true]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(403, ['ok' => false, 'error' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return $this->json(500, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function ensureProjectChat(Request $request): JsonResponse
+    {
+        try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
+            $projectId = trim((string)$request->input('project_id', ''));
+            if ($projectId === '') {
+                throw new InvalidArgumentException('project_id is required');
+            }
+
+            $project = $this->repo->findProject($projectId);
+            if ($project === null) {
+                throw new InvalidArgumentException('Project not found');
+            }
+            if ((string)($project['owner_key'] ?? '') !== $actor && !$this->access->isSuperadminActor($actor)) {
+                throw new InvalidArgumentException('Only the project owner can create project chat');
+            }
+
+            $projectGroups = $this->repo->projectGroupMap();
+            $groupIds = is_array($projectGroups[$projectId] ?? null)
+                ? array_map('strval', $projectGroups[$projectId])
+                : [];
+            if ($groupIds === []) {
+                throw new InvalidArgumentException('Сначала привяжите группу к проекту.');
+            }
+
+            $conversation = $this->syncProjectGroupChats($actor, $projectId, $groupIds);
+            $conversationKey = (string)($conversation['conversation_key'] ?? '');
+            $binding = $conversationKey === ''
+                ? null
+                : $this->repo->projectChatBinding($projectId, $conversationKey);
+
+            return $this->json(200, [
+                'ok' => true,
+                'conversation' => $conversation,
+                'binding' => $binding,
+            ]);
         } catch (InvalidArgumentException $e) {
             return $this->json(403, ['ok' => false, 'error' => $e->getMessage()]);
         } catch (Throwable $e) {
@@ -477,7 +532,7 @@ class ProjectGroupController extends Controller
     }
 
     /** @param list<string> $groupIds */
-    private function syncProjectGroupChats(string $actor, string $projectId, array $groupIds): void
+    private function syncProjectGroupChats(string $actor, string $projectId, array $groupIds): array
     {
         $normalizedGroupIds = [];
         foreach ($groupIds as $groupId) {
@@ -487,10 +542,32 @@ class ProjectGroupController extends Controller
             }
         }
 
+        if ($normalizedGroupIds === []) {
+            $this->repo->syncProjectChatBindings($projectId, []);
+            return [];
+        }
+
+        $project = $this->repo->findProject($projectId);
+        if ($project === null) {
+            return [];
+        }
+
+        $projectMembers = [];
+
         foreach ($normalizedGroupIds as $groupId) {
             $group = $this->repo->findGroup($groupId);
             if ($group === null) {
                 continue;
+            }
+            $groupOwner = trim((string)($group['owner_key'] ?? ''));
+            if ($groupOwner !== '' && !in_array($groupOwner, $projectMembers, true)) {
+                $projectMembers[] = $groupOwner;
+            }
+            foreach (is_array($group['members'] ?? null) ? $group['members'] : [] as $member) {
+                $profile = trim((string)$member);
+                if ($profile !== '' && !in_array($profile, $projectMembers, true)) {
+                    $projectMembers[] = $profile;
+                }
             }
             $this->chat->syncFamilyGroupConversation(
                 $groupId,
@@ -500,6 +577,71 @@ class ProjectGroupController extends Controller
             );
         }
 
+        $conversation = $this->chat->syncProjectConversation(
+            $projectId,
+            (string)($project['name'] ?? ''),
+            (string)($project['owner_key'] ?? $actor),
+            $projectMembers,
+        );
         $this->repo->syncProjectChatBindings($projectId, $normalizedGroupIds);
+        return $conversation;
+    }
+
+    /** @param list<mixed> $groupIds */
+    private function normalizeAssignableGroupIds(string $actor, array $groupIds): array
+    {
+        $normalized = [];
+        foreach ($groupIds as $groupId) {
+            $id = trim((string)$groupId);
+            if ($id !== '' && !in_array($id, $normalized, true)) {
+                $normalized[] = $id;
+            }
+        }
+        if ($normalized === []) {
+            return [];
+        }
+
+        $visibleGroups = $this->access->isSuperadminActor($actor)
+            ? $this->repo->allFamilyGroups()
+            : $this->repo->visibleGroupsForActor($actor);
+        $visibleIds = [];
+        foreach ($visibleGroups as $group) {
+            $visibleIds[(string)($group['id'] ?? '')] = true;
+        }
+        foreach ($normalized as $groupId) {
+            if (!isset($visibleIds[$groupId])) {
+                throw new InvalidArgumentException('Нет доступа к выбранной группе.');
+            }
+        }
+        return $normalized;
+    }
+
+    /**
+     * @param array<string, mixed> $project
+     * @param list<string> $groupIds
+     * @param array<string, array<string, mixed>> $groupsById
+     * @return list<string>
+     */
+    private function projectChatMembers(array $project, array $groupIds, array $groupsById): array
+    {
+        $members = [];
+        $owner = trim((string)($project['owner_key'] ?? ''));
+        if ($owner !== '') {
+            $members[] = $owner;
+        }
+        foreach ($groupIds as $groupId) {
+            $group = is_array($groupsById[$groupId] ?? null) ? $groupsById[$groupId] : [];
+            $groupOwner = trim((string)($group['owner_key'] ?? ''));
+            if ($groupOwner !== '' && !in_array($groupOwner, $members, true)) {
+                $members[] = $groupOwner;
+            }
+            foreach (is_array($group['members'] ?? null) ? $group['members'] : [] as $member) {
+                $profile = trim((string)$member);
+                if ($profile !== '' && !in_array($profile, $members, true)) {
+                    $members[] = $profile;
+                }
+            }
+        }
+        return $members;
     }
 }

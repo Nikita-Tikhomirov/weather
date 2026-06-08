@@ -63,26 +63,71 @@ void main() {
         findsNothing,
       );
     });
+
+    testWidgets('separates project chats from regular groups', (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      var openedKey = '';
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: _page(
+              controller: controller,
+              activeConversationKey: '',
+              conversations: const [
+                ChatConversation(
+                  conversationKey: 'grp:project:project-1',
+                  kind: 'group',
+                  title: 'Цифра',
+                  members: ['nik', 'nastya'],
+                ),
+                ChatConversation(
+                  conversationKey: 'grp:family:group-1',
+                  kind: 'group',
+                  title: 'Команда',
+                  members: ['nik', 'nastya'],
+                ),
+              ],
+              onOpenConversation: (key) => openedKey = key,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Проектные чаты'), findsOneWidget);
+      expect(find.text('Обычные группы'), findsOneWidget);
+      expect(find.text('Цифра'), findsOneWidget);
+      expect(find.text('Команда'), findsOneWidget);
+
+      await tester.tap(find.text('Цифра'));
+      await tester.pumpAndSettle();
+      expect(openedKey, 'grp:project:project-1');
+    });
   });
 }
 
 MessengerPage _page({
   required TextEditingController controller,
+  List<ChatConversation> conversations = const [
+    ChatConversation(
+      conversationKey: 'grp:family:group-1',
+      kind: 'group',
+      title: 'Команда',
+      members: ['nik', 'nastya'],
+    ),
+  ],
+  String activeConversationKey = 'grp:family:group-1',
   TaskProject? activeProject,
   VoidCallback? onAnalyze,
+  void Function(String conversationKey)? onOpenConversation,
 }) {
   return MessengerPage(
-    conversations: const [
-      ChatConversation(
-        conversationKey: 'grp:family:group-1',
-        kind: 'group',
-        title: 'Команда',
-        members: ['nik', 'nastya'],
-      ),
-    ],
+    conversations: conversations,
     contacts: const [],
     messages: const [],
-    activeConversationKey: 'grp:family:group-1',
+    activeConversationKey: activeConversationKey,
     owner: 'nik',
     compact: false,
     chatInputController: controller,
@@ -101,7 +146,7 @@ MessengerPage _page({
     onOpenDirectContact: (_) {},
     onOpenWorkspaces: () {},
     onBackToContacts: () {},
-    onOpenConversation: (_) {},
+    onOpenConversation: onOpenConversation ?? (_) {},
     onOpenMessageActions: (_) {},
     onImageTap: (_, __) {},
     hasMoreOlderMessages: false,
