@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import '../models/chat_models.dart';
 import '../models/project_control_models.dart';
-import '../models/task_item.dart';
 import 'codewhale_bridge_service.dart';
 
 enum ProjectChatAgentAction {
@@ -56,6 +55,9 @@ class ProjectChatAgentService {
       'Это запрос из группового чата проекта, а не задача по коду. Используй только CHAT_CONTEXT ниже.',
       'Не отвечай про файлы workspace, task-card.json, tc.json, index.html, скрипты, репозиторий или рабочую область, если пользователь прямо не попросил смотреть код.',
       'Не пиши дежурные фразы вроде готовности к работе; дай конкретную пользу по вопросу пользователя и сообщениям чата.',
+      'Синтезируй смысл обсуждения, а не копируй фразы из чата. Убирай повторы, объединяй одинаковые идеи и пиши связно.',
+      'Для action "reply": ответь обычным связным текстом 2-6 предложений. Не делай список, если пользователь не попросил список.',
+      'Для action "task_draft": title должен быть результатом задачи, details - связным описанием, checklist - конкретными шагами без дублей.',
       'Верни только валидный JSON без markdown.',
       'Разрешенные значения "action": "reply", "task_draft", "start_agent", "status", "clarify".',
       'Контракт JSON:',
@@ -70,18 +72,10 @@ class ProjectChatAgentService {
       if (forcedAction != null)
         'Пользователь нажал действие: ${_wireAction(forcedAction)}. Верни action "${_wireAction(forcedAction)}", если контекст позволяет.',
       'Сообщение пользователя: $userMessage',
-      'CHAT_CONTEXT: последние сообщения чата без технических ответов самого Тудушкера:',
+      'CHAT_CONTEXT: последние уникальные сообщения чата без технических ответов самого Тудушкера:',
     ];
-    for (final message in context.messages) {
-      final text = message.text.trim();
-      if (text.isEmpty || message.isDeleted || _isTudushkerMessage(message)) {
-        continue;
-      }
-      final clean = _cleanChatText(text);
-      if (clean.isEmpty || _looksLikeWorkspaceChatter(clean)) {
-        continue;
-      }
-      lines.add('${message.id} ${message.senderProfile}: $clean');
+    for (final signal in _chatSignals(context)) {
+      lines.add('${signal.id} ${signal.senderProfile}: ${signal.text}');
     }
     return lines.join('\n');
   }
@@ -121,15 +115,13 @@ class ProjectChatAgentService {
     try {
       primaryOutput = await runPrompt(primaryPrompt);
     } catch (_) {
-      return buildFallbackDirective(
-        context: context,
+      return buildUnavailableDirective(
         userMessage: userMessage,
         forcedAction: forcedAction,
       );
     }
     if (primaryOutput.trim().isEmpty) {
-      return buildFallbackDirective(
-        context: context,
+      return buildUnavailableDirective(
         userMessage: userMessage,
         forcedAction: forcedAction,
       );
@@ -137,6 +129,14 @@ class ProjectChatAgentService {
     final primaryDirective = parseStrictModelDirective(primaryOutput);
     if (primaryDirective != null) {
       return primaryDirective;
+    }
+    final primaryPlainReply = parsePlainModelReply(
+      primaryOutput,
+      userMessage: userMessage,
+      forcedAction: forcedAction,
+    );
+    if (primaryPlainReply != null) {
+      return primaryPlainReply;
     }
 
     String repairOutput;
@@ -150,8 +150,7 @@ class ProjectChatAgentService {
         ),
       );
     } catch (_) {
-      return buildFallbackDirective(
-        context: context,
+      return buildUnavailableDirective(
         userMessage: userMessage,
         forcedAction: forcedAction,
       );
@@ -160,40 +159,63 @@ class ProjectChatAgentService {
     if (repairedDirective != null) {
       return repairedDirective;
     }
+    final repairedPlainReply = parsePlainModelReply(
+      repairOutput,
+      userMessage: userMessage,
+      forcedAction: forcedAction,
+    );
+    if (repairedPlainReply != null) {
+      return repairedPlainReply;
+    }
 
-    return buildFallbackDirective(
-      context: context,
+    return buildUnavailableDirective(
       userMessage: userMessage,
       forcedAction: forcedAction,
     );
   }
 
-  static ProjectChatAgentDirective buildFallbackDirective({
-    required ProjectChatContextPack context,
+  static ProjectChatAgentDirective buildUnavailableDirective({
     required String userMessage,
     ProjectChatAgentAction? forcedAction,
   }) {
-    final signals = _chatSignals(context);
-    if (forcedAction == ProjectChatAgentAction.taskDraft) {
-      return ProjectChatAgentDirective(
-        action: ProjectChatAgentAction.taskDraft,
-        draft: _fallbackDraft(context, signals),
-        rawText: 'fallback',
+    if (forcedAction == ProjectChatAgentAction.taskDraft ||
+        _looksLikeTaskRequest(userMessage)) {
+      return const ProjectChatAgentDirective(
+        action: ProjectChatAgentAction.reply,
+        replyText:
+            'Я не смог собрать нормальный черновик: не получил ответ AI. Не буду создавать карточку из кусков чата. Проверьте CodeWhale и workspace проекта, затем повторите запрос.',
+        rawText: 'ai_unavailable',
       );
     }
 
-    if (_looksLikeTaskRequest(userMessage)) {
-      return ProjectChatAgentDirective(
-        action: ProjectChatAgentAction.taskDraft,
-        draft: _fallbackDraft(context, signals),
-        rawText: 'fallback',
-      );
-    }
+    return const ProjectChatAgentDirective(
+      action: ProjectChatAgentAction.reply,
+      replyText:
+          'Сейчас не получил ответ AI, поэтому не буду придумывать ответ из кусков чата. Проверьте CodeWhale и workspace проекта, затем повторите запрос.',
+      rawText: 'ai_unavailable',
+    );
+  }
 
+  static ProjectChatAgentDirective? parsePlainModelReply(
+    String text, {
+    required String userMessage,
+    ProjectChatAgentAction? forcedAction,
+  }) {
+    if (forcedAction == ProjectChatAgentAction.taskDraft ||
+        _looksLikeTaskRequest(userMessage)) {
+      return null;
+    }
+    final trimmed = text.trim();
+    if (trimmed.isEmpty ||
+        _extractJsonObject(trimmed).isNotEmpty ||
+        _looksLikeWorkspaceChatter(trimmed) ||
+        _looksLikeLowValueAssistantChatter(trimmed)) {
+      return null;
+    }
     return ProjectChatAgentDirective(
       action: ProjectChatAgentAction.reply,
-      replyText: _fallbackReply(context, signals),
-      rawText: 'fallback',
+      replyText: _cleanModelReply(trimmed),
+      rawText: text,
     );
   }
 
@@ -240,16 +262,17 @@ class ProjectChatAgentService {
               _looksLikeWorkspaceChatter('$explicitTitle\n$details')) {
             return null;
           }
-          return directive;
+          return _normalizeDirective(directive);
         case ProjectChatAgentAction.reply:
         case ProjectChatAgentAction.status:
         case ProjectChatAgentAction.clarify:
           return directive.replyText.trim().isEmpty ||
-                  _looksLikeWorkspaceChatter(directive.replyText)
+                  _looksLikeWorkspaceChatter(directive.replyText) ||
+                  _looksLikeLowValueAssistantChatter(directive.replyText)
               ? null
-              : directive;
+              : _normalizeDirective(directive);
         case ProjectChatAgentAction.startAgent:
-          return directive;
+          return _normalizeDirective(directive);
       }
     } catch (_) {
       return null;
@@ -392,6 +415,19 @@ class ProjectChatAgentService {
     ].any(value.contains);
   }
 
+  static bool _looksLikeLowValueAssistantChatter(String text) {
+    final value = text.toLowerCase();
+    return const [
+      'принято. я тудушкер',
+      'я тудушкер',
+      'в канале',
+      'на связи',
+      'готов работать',
+      'готов к работе',
+      'что сегодня по задачам',
+    ].any(value.contains);
+  }
+
   static bool _looksLikeTaskRequest(String text) {
     final value = text.toLowerCase();
     return const [
@@ -406,6 +442,7 @@ class ProjectChatAgentService {
 
   static List<_ChatSignal> _chatSignals(ProjectChatContextPack context) {
     final result = <_ChatSignal>[];
+    final seen = <String>{};
     for (final message in context.messages) {
       if (message.isDeleted || _isTudushkerMessage(message)) {
         continue;
@@ -414,7 +451,18 @@ class ProjectChatAgentService {
       if (text.isEmpty || _looksLikeWorkspaceChatter(text)) {
         continue;
       }
-      result.add(_ChatSignal(id: message.id, text: text));
+      final fingerprint = _messageFingerprint(text);
+      if (fingerprint.isEmpty || seen.contains(fingerprint)) {
+        continue;
+      }
+      seen.add(fingerprint);
+      result.add(
+        _ChatSignal(
+          id: message.id,
+          senderProfile: message.senderProfile,
+          text: text,
+        ),
+      );
     }
     return result.length <= 8 ? result : result.sublist(result.length - 8);
   }
@@ -442,148 +490,62 @@ class ProjectChatAgentService {
         .trim();
   }
 
-  static String _fallbackReply(
-    ProjectChatContextPack context,
-    List<_ChatSignal> signals,
-  ) {
-    if (signals.isEmpty) {
-      return 'Я не вижу в чате достаточно предметного контекста. Напишите идею или проблему проекта, и я разложу её на следующий шаг или черновик задачи.';
-    }
-
-    final topics = signals.map((item) => item.text).toList();
-    final bullets = topics.take(4).map((item) => '- $item').join('\n');
-    final nextStep = _fallbackNextStep(topics);
-    return [
-      'По контексту чата вижу такие рабочие идеи:',
-      bullets,
-      '',
-      nextStep,
-      'Могу сразу оформить это в редактируемую карточку проекта.',
-    ].join('\n');
+  static String _messageFingerprint(String text) {
+    return text
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-zа-яё0-9]+', unicode: true), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
   }
 
-  static String _fallbackNextStep(List<String> topics) {
-    final focus = _fallbackFocus(topics);
-    if (focus.isEmpty) {
-      return 'Я бы превратил это в одну небольшую карточку с понятным результатом, чеклистом и ответственным.';
-    }
-    return 'Я бы оформил это как короткую задачу про $focus: цель, ожидаемый результат, критерии готовности и ответственный.';
-  }
-
-  static ChatTaskDraft _fallbackDraft(
-    ProjectChatContextPack context,
-    List<_ChatSignal> signals,
+  static ProjectChatAgentDirective _normalizeDirective(
+    ProjectChatAgentDirective directive,
   ) {
-    final topics = signals.map((item) => item.text).toList();
-    final ids =
-        signals.map((item) => item.id).where((id) => id.isNotEmpty).toList();
-    final title = _fallbackTitle(context, topics);
-    final details = topics.isEmpty
-        ? 'Черновик создан из проектного чата. Уточните описание перед сохранением.'
-        : 'По обсуждению в чате нужно зафиксировать и выполнить: ${topics.join('; ')}.';
-    return ChatTaskDraft(
-      title: title,
-      details: details,
-      summary: topics.isEmpty ? '' : topics.join('; '),
-      actionItems: topics,
-      checklist: _fallbackChecklist(topics),
-      sourceMessageIds: ids,
-      priority: Priority.medium,
+    final draft = directive.draft;
+    return ProjectChatAgentDirective(
+      action: directive.action,
+      replyText: _cleanModelReply(directive.replyText),
+      draft: draft == null ? null : _normalizeDraft(draft),
+      launchPrompt: directive.launchPrompt.trim(),
+      rawText: directive.rawText,
     );
   }
 
-  static String _fallbackTitle(
-    ProjectChatContextPack context,
-    List<String> topics,
-  ) {
-    final joined = topics.join(' ').toLowerCase();
-    final focus = _fallbackFocus(topics);
-    if (focus.isNotEmpty) {
-      if (joined.contains('сайт')) {
-        return 'Улучшить сайт: $focus';
-      }
-      return 'Задача из чата: $focus';
-    }
-    if (topics.isNotEmpty) {
-      final words = topics.first
-          .split(RegExp(r'\s+'))
-          .where((word) => word.trim().length > 2)
-          .take(7)
-          .join(' ');
-      if (words.trim().isNotEmpty) {
-        return 'Задача из чата: $words';
-      }
-    }
-    return 'Задача из чата проекта ${context.project.name}';
+  static ChatTaskDraft _normalizeDraft(ChatTaskDraft draft) {
+    return ChatTaskDraft(
+      title: draft.title.trim(),
+      details: _cleanModelReply(draft.details),
+      summary: _cleanModelReply(draft.summary),
+      decisions: _dedupeStrings(draft.decisions),
+      actionItems: _dedupeStrings(draft.actionItems),
+      blockers: _dedupeStrings(draft.blockers),
+      checklist: _dedupeStrings(draft.checklist),
+      assignees: _dedupeStrings(draft.assignees),
+      sourceMessageIds: _dedupeStrings(draft.sourceMessageIds),
+      priority: draft.priority,
+    );
   }
 
-  static List<String> _fallbackChecklist(List<String> topics) {
-    if (topics.isEmpty) {
-      return const [
-        'Уточнить цель задачи',
-        'Описать ожидаемый результат',
-        'Назначить ответственного',
-      ];
+  static List<String> _dedupeStrings(List<String> values) {
+    final seen = <String>{};
+    final result = <String>[];
+    for (final value in values) {
+      final clean = _cleanModelReply(value);
+      if (clean.isEmpty) {
+        continue;
+      }
+      final fingerprint = _messageFingerprint(clean);
+      if (fingerprint.isEmpty || seen.contains(fingerprint)) {
+        continue;
+      }
+      seen.add(fingerprint);
+      result.add(clean);
     }
-    final checklist = <String>[
-      'Сформулировать ожидаемый результат',
-      'Разбить обсуждение на конкретные действия',
-    ];
-    final focus = _fallbackFocus(topics);
-    if (focus.isNotEmpty) {
-      checklist.add('Зафиксировать решение по теме: $focus');
-    }
-    checklist.add('Проверить результат в проектном чате');
-    return checklist;
+    return result;
   }
 
-  static String _fallbackFocus(List<String> topics) {
-    final stopWords = <String>{
-      'надо',
-      'нужно',
-      'сделать',
-      'ещё',
-      'еще',
-      'чтобы',
-      'что',
-      'как',
-      'нам',
-      'или',
-      'это',
-      'этот',
-      'эту',
-      'при',
-      'для',
-      'про',
-      'бы',
-      'быть',
-      'какой',
-      'какая',
-      'какие',
-      'можно',
-      'давай',
-      'давайте',
-      'сайт',
-      'сайте',
-      'придумать',
-      'улучшить',
-    };
-    final words = <String>[];
-    for (final topic in topics) {
-      for (final raw in topic.toLowerCase().split(RegExp(r'[^a-zа-яё0-9]+'))) {
-        final word = raw.trim();
-        if (word.length < 4 || stopWords.contains(word)) {
-          continue;
-        }
-        if (!words.contains(word)) {
-          words.add(word);
-        }
-        if (words.length >= 6) {
-          return words.join(', ');
-        }
-      }
-    }
-    return words.join(', ');
+  static String _cleanModelReply(String text) {
+    return text.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   static String _extractJsonObject(String text) {
@@ -654,10 +616,12 @@ class ProjectChatAgentInvalidResponse implements Exception {
 class _ChatSignal {
   const _ChatSignal({
     required this.id,
+    required this.senderProfile,
     required this.text,
   });
 
   final String id;
+  final String senderProfile;
   final String text;
 }
 

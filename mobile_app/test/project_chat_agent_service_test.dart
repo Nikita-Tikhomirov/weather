@@ -55,6 +55,15 @@ void main() {
       expect(prompt, isNot(contains('msg-5 nik: Тудушкер:')));
     });
 
+    test('deduplicates repeated chat messages in model prompt', () {
+      final prompt = ProjectChatAgentService.buildIntentPrompt(
+        context: _contextPackWithRepeatedMessages(),
+        userMessage: 'Тудушкер, что думаешь?',
+      );
+
+      expect('checkout'.allMatches(prompt), hasLength(1));
+    });
+
     test('strict parser rejects plain workspace chatter', () {
       final directive = ProjectChatAgentService.parseStrictModelDirective(
         'Принято. Вижу в рабочей области task-card.json и index.html.',
@@ -93,7 +102,8 @@ void main() {
       expect(directive.replyText, isNot(contains('task-card.json')));
     });
 
-    test('resolver returns chat fallback when model is unavailable', () async {
+    test('resolver does not fake chat answer when model is unavailable',
+        () async {
       final directive = await ProjectChatAgentService.resolveDirective(
         context: _contextPackForWebsiteIdeas(),
         userMessage: 'Тудушкер!',
@@ -101,8 +111,9 @@ void main() {
       );
 
       expect(directive.action, ProjectChatAgentAction.reply);
-      expect(directive.replyText, contains('анимации'));
-      expect(directive.replyText, contains('секцию'));
+      expect(directive.replyText, contains('не получил ответ AI'));
+      expect(directive.replyText, isNot(contains('анимации')));
+      expect(directive.replyText, isNot(contains('секцию')));
       expect(directive.replyText, isNot(contains('task-card.json')));
       expect(directive.replyText, isNot(contains('Я бы сделал что-то лишнее')));
     });
@@ -121,10 +132,11 @@ void main() {
 
       expect(calls, 1);
       expect(directive.action, ProjectChatAgentAction.reply);
-      expect(directive.replyText, contains('анимации'));
+      expect(directive.replyText, contains('не получил ответ AI'));
+      expect(directive.replyText, isNot(contains('анимации')));
     });
 
-    test('resolver returns editable task draft fallback for forced draft',
+    test('resolver does not create fake task draft when model is unavailable',
         () async {
       final directive = await ProjectChatAgentService.resolveDirective(
         context: _contextPackForWebsiteIdeas(),
@@ -133,12 +145,31 @@ void main() {
         runPrompt: (_) async => '',
       );
 
-      expect(directive.action, ProjectChatAgentAction.taskDraft);
-      expect(directive.draft?.title, contains('анимации'));
-      expect(directive.draft?.details, contains('секцию'));
-      expect(directive.draft?.checklist, isNotEmpty);
-      expect(directive.draft?.sourceMessageIds, contains('site-1'));
-      expect(directive.draft?.sourceMessageIds, isNot(contains('site-4')));
+      expect(directive.action, ProjectChatAgentAction.reply);
+      expect(directive.draft, isNull);
+      expect(
+        directive.replyText,
+        contains('не смог собрать нормальный черновик'),
+      );
+      expect(directive.replyText, isNot(contains('анимации')));
+    });
+
+    test('resolver accepts connected plain model reply without repair',
+        () async {
+      var calls = 0;
+      final directive = await ProjectChatAgentService.resolveDirective(
+        context: _contextPackForWebsiteIdeas(),
+        userMessage: 'Тудушкер, что думаешь?',
+        runPrompt: (_) async {
+          calls += 1;
+          return 'Я бы усилил главную страницу: добавить плавные анимации при прокрутке и отдельную секцию с понятным обещанием для клиента. Это даст странице больше динамики и быстрее объяснит ценность проекта.';
+        },
+      );
+
+      expect(calls, 1);
+      expect(directive.action, ProjectChatAgentAction.reply);
+      expect(directive.replyText, contains('усилил главную страницу'));
+      expect(directive.replyText, isNot(contains('task-card.json')));
     });
 
     test('parses task draft directive from model JSON', () {
@@ -166,6 +197,34 @@ void main() {
         'Подключить оплату',
       ]);
       expect(directive.draft?.priority, Priority.high);
+    });
+
+    test('strict parser deduplicates task draft lists from model JSON', () {
+      final directive = ProjectChatAgentService.parseStrictModelDirective('''
+{
+  "action": "task_draft",
+  "draft": {
+    "title": "Улучшить главную страницу сайта",
+    "details": "Нужно продумать и внедрить улучшения главной страницы: добавить плавные анимации при прокрутке и новую смысловую секцию.",
+    "summary": "Улучшение главной страницы",
+    "action_items": ["Добавить анимации", "Добавить анимации", "Продумать новую секцию"],
+    "checklist": ["Добавить анимации", "Добавить анимации", "Продумать новую секцию"],
+    "source_message_ids": ["site-1", "site-1", "site-2"],
+    "priority": "medium"
+  }
+}
+''');
+
+      expect(directive?.action, ProjectChatAgentAction.taskDraft);
+      expect(directive?.draft?.actionItems, [
+        'Добавить анимации',
+        'Продумать новую секцию',
+      ]);
+      expect(directive?.draft?.checklist, [
+        'Добавить анимации',
+        'Продумать новую секцию',
+      ]);
+      expect(directive?.draft?.sourceMessageIds, ['site-1', 'site-2']);
     });
 
     test('plain model text is treated as chat reply', () {
@@ -336,5 +395,64 @@ ProjectChatContextPack _contextPackForWebsiteIdeas() {
       reason: '',
     ),
     workspaceId: 'workspace-site',
+  );
+}
+
+ProjectChatContextPack _contextPackWithRepeatedMessages() {
+  return const ProjectChatContextPack(
+    project: TaskProject(
+      id: 'project-repeat',
+      name: 'Повторы',
+      description: 'Проверка контекста',
+    ),
+    binding: ProjectChatBinding(
+      projectId: 'project-repeat',
+      conversationKey: 'grp:project:project-repeat',
+      title: 'Повторы',
+      members: ['nik', 'tudushker'],
+    ),
+    automation: ProjectAutomationConfig(
+      projectId: 'project-repeat',
+      primaryWorkspaceId: 'workspace-repeat',
+      agentEnabled: true,
+      defaultAgentMode: 'planner',
+      chatAnalysisMessageLimit: 40,
+    ),
+    messages: [
+      ChatMessage(
+        id: 'repeat-1',
+        conversationKey: 'grp:project:project-repeat',
+        senderProfile: 'nik',
+        messageType: 'text',
+        text: 'Нужно сделать нормальный checkout',
+        createdAt: '2026-06-09T10:00:00Z',
+      ),
+      ChatMessage(
+        id: 'repeat-2',
+        conversationKey: 'grp:project:project-repeat',
+        senderProfile: 'nik',
+        messageType: 'text',
+        text: 'Нужно сделать нормальный checkout',
+        createdAt: '2026-06-09T10:01:00Z',
+      ),
+      ChatMessage(
+        id: 'repeat-3',
+        conversationKey: 'grp:project:project-repeat',
+        senderProfile: 'nik',
+        messageType: 'text',
+        text: 'И оплату без лишних шагов',
+        createdAt: '2026-06-09T10:02:00Z',
+      ),
+    ],
+    policy: AgentRunPolicy(
+      allowed: true,
+      workspaceId: 'workspace-repeat',
+      mode: 'planner',
+      modeLabel: 'Планировщик',
+      plugins: ['project_chat_context'],
+      allowedCommands: ['session_create', 'session_send'],
+      reason: '',
+    ),
+    workspaceId: 'workspace-repeat',
   );
 }
