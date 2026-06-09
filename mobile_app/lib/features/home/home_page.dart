@@ -106,6 +106,7 @@ class _HomePageState extends State<HomePage> {
   List<ProjectContact> _projectContacts = const <ProjectContact>[];
   ProjectBridgeService? _projectBridge;
   CodeWhaleBridgeService? _projectChatAgentBridge;
+  ProjectChatAgentBridgeRunner? _projectChatAgentRunner;
   String _projectChatAgentSessionId = '';
   String _pendingProjectChatAgentPrompt = '';
   String _pendingProjectChatAgentWorkspaceId = '';
@@ -3619,6 +3620,7 @@ class _HomePageState extends State<HomePage> {
     _taskAgentAutomation?.dispose();
     _voiceRecorder?.dispose();
     _projectChatAgentBridge?.dispose();
+    _projectChatAgentRunner?.dispose();
     unawaited(_desktopProcessHostService?.stopAll());
     _desktopThemeService?.state.dispose();
     _store?.dispose();

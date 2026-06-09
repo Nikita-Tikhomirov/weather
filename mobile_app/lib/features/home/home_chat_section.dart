@@ -220,6 +220,9 @@ extension _ChatSection on _HomePageState {
         policyTicket: request.policyTicket,
       );
     } catch (e, st) {
+      if (e is ProjectChatAgentRequestCancelled) {
+        return;
+      }
       debugPrint('[project-chat-agent] analyze error: $e\n$st');
       _showSnack('Не удалось проанализировать чат проекта.');
     }
@@ -342,37 +345,40 @@ extension _ChatSection on _HomePageState {
     required String prompt,
     String title = '',
   }) async {
-    final previous = _projectChatAgentResponseCompleter;
-    if (previous != null && !previous.isCompleted) {
-      previous.completeError(StateError('Предыдущий запрос Тудушкера отменен'));
-    }
-    final completer = Completer<String>();
-    _projectChatAgentResponseCompleter = completer;
-    _projectChatAgentResponseBuffer = StringBuffer();
-    await _queueProjectChatAgentPrompt(
+    final runner = _ensureProjectChatAgentRunner();
+    return runner.run(
       workspaceId: workspaceId,
-      project: project,
-      contextPack: contextPack,
+      title: title.trim().isEmpty ? 'Тудушкер: ${project.name}' : title.trim(),
       policyTicket: policyTicket,
       prompt: prompt,
-      title: title,
+      taskCard: {
+        'scope': 'project_chat',
+        'project_id': project.id,
+        'conversation_key': _activeConversationKey,
+        'workspace_id': workspaceId,
+        'actor_profile': _store?.owner.value ?? '',
+        'actor_phone': _currentProfilePhone,
+        'mode': contextPack.automation.defaultAgentMode,
+        'policy_ticket': policyTicket,
+      },
     );
-    try {
-      return await completer.future.timeout(
-        const Duration(seconds: 90),
-        onTimeout: () {
-          if (_projectChatAgentResponseCompleter == completer) {
-            _projectChatAgentResponseCompleter = null;
-            _projectChatAgentResponseBuffer = StringBuffer();
-          }
-          return '';
-        },
-      );
-    } finally {
-      if (_projectChatAgentResponseCompleter == completer) {
-        _projectChatAgentResponseCompleter = null;
-      }
+  }
+
+  ProjectChatAgentBridgeRunner _ensureProjectChatAgentRunner() {
+    final existing = _projectChatAgentRunner;
+    if (existing != null) {
+      return existing;
     }
+    final runner = ProjectChatAgentBridgeRunner(
+      onSessionLinked: (sessionId) {
+        _projectChatAgentSessionId = sessionId;
+      },
+      onStatusChange: (connected, status) {
+        debugPrint('[project-chat-agent] $status');
+      },
+    );
+    _projectChatAgentRunner = runner;
+    return runner;
   }
 
   CodeWhaleBridgeService _ensureProjectChatAgentBridge() {
@@ -537,6 +543,9 @@ extension _ChatSection on _HomePageState {
         policyTicket: request.policyTicket,
       );
     } catch (e, st) {
+      if (e is ProjectChatAgentRequestCancelled) {
+        return;
+      }
       debugPrint('[project-chat-agent] mention error: $e\n$st');
       await _sendProjectChatAgentMessage(
         store,

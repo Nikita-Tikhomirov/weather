@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 
 import '../models/project_control_models.dart';
+import 'codewhale_bridge_service.dart';
 
 enum ProjectChatAgentAction {
   reply,
@@ -221,5 +223,235 @@ class ProjectChatAgentService {
       }
     }
     return '';
+  }
+}
+
+typedef ProjectChatAgentBridgeFactory = CodeWhaleBridgeService Function({
+  required void Function(CodeWhaleBridgeMessage message) onMessage,
+  required void Function(bool connected, String status) onStatusChange,
+});
+
+class ProjectChatAgentRequestCancelled implements Exception {
+  const ProjectChatAgentRequestCancelled();
+
+  @override
+  String toString() => 'Project chat agent request cancelled';
+}
+
+class ProjectChatAgentBridgeRunner {
+  ProjectChatAgentBridgeRunner({
+    ProjectChatAgentBridgeFactory? bridgeFactory,
+    this.taskPollDelay = const Duration(seconds: 2),
+    this.timeout = const Duration(seconds: 90),
+    this.onSessionLinked,
+    this.onStatusChange,
+  }) : _bridgeFactory = bridgeFactory;
+
+  final ProjectChatAgentBridgeFactory? _bridgeFactory;
+  final Duration taskPollDelay;
+  final Duration timeout;
+  final void Function(String sessionId)? onSessionLinked;
+  final void Function(bool connected, String status)? onStatusChange;
+
+  CodeWhaleBridgeService? _bridge;
+  Completer<String>? _activeCompleter;
+  StringBuffer _buffer = StringBuffer();
+  final List<Timer> _pollTimers = <Timer>[];
+  String _workspaceId = '';
+  String _sessionId = '';
+  String _prompt = '';
+
+  Future<String> run({
+    required String workspaceId,
+    required String title,
+    required Map<String, dynamic> taskCard,
+    required String policyTicket,
+    required String prompt,
+  }) async {
+    final current = _activeCompleter;
+    if (current != null && !current.isCompleted) {
+      current.completeError(const ProjectChatAgentRequestCancelled());
+    }
+    _cancelPollTimers();
+
+    final completer = Completer<String>();
+    _activeCompleter = completer;
+    _buffer = StringBuffer();
+    _workspaceId = workspaceId.trim();
+    _sessionId = '';
+    _prompt = prompt.trim();
+
+    final bridge = _ensureBridge();
+    bridge.updatePolicyTicket(policyTicket);
+    final connected = await bridge.connect();
+    if (!connected) {
+      _clearIfActive(completer);
+      throw StateError('CodeWhale недоступен');
+    }
+
+    bridge.createSession(
+      _workspaceId,
+      title: title,
+      taskCard: taskCard,
+    );
+
+    try {
+      return await completer.future.timeout(
+        timeout,
+        onTimeout: () {
+          _clearIfActive(completer);
+          return '';
+        },
+      );
+    } finally {
+      _clearIfActive(completer);
+    }
+  }
+
+  CodeWhaleBridgeService _ensureBridge() {
+    final existing = _bridge;
+    if (existing != null) {
+      return existing;
+    }
+    final factory = _bridgeFactory;
+    final bridge = factory == null
+        ? CodeWhaleBridgeService(
+            onMessage: _handleMessage,
+            onStatusChange: _handleStatusChange,
+          )
+        : factory(
+            onMessage: _handleMessage,
+            onStatusChange: _handleStatusChange,
+          );
+    _bridge = bridge;
+    return bridge;
+  }
+
+  void _handleStatusChange(bool connected, String status) {
+    onStatusChange?.call(connected, status);
+  }
+
+  void _handleMessage(CodeWhaleBridgeMessage message) {
+    final completer = _activeCompleter;
+    if (completer == null || completer.isCompleted) {
+      return;
+    }
+    if (message.isError) {
+      completer.completeError(
+        StateError(message.error.isEmpty ? 'Ошибка CodeWhale' : message.error),
+      );
+      return;
+    }
+
+    final session = message.session;
+    if (session != null) {
+      _sessionId = session.id;
+      onSessionLinked?.call(session.id);
+      final prompt = _prompt.trim();
+      if (_workspaceId.isNotEmpty &&
+          _sessionId.isNotEmpty &&
+          prompt.isNotEmpty) {
+        _prompt = '';
+        final bridge = _bridge;
+        bridge?.startSession(_workspaceId, _sessionId);
+        bridge?.sendSessionMessage(_workspaceId, _sessionId, prompt);
+      }
+      return;
+    }
+
+    if (message.type == 'assistant_delta') {
+      _buffer.write(message.text);
+      return;
+    }
+
+    if (message.type == 'session_task') {
+      _handleSessionTask(message, completer);
+      return;
+    }
+
+    if (message.type == 'session_stream_done') {
+      completer.complete(_buffer.toString());
+      return;
+    }
+
+    if (message.type == 'output' && message.text.trim().isNotEmpty) {
+      _buffer.write(message.text);
+    }
+  }
+
+  void _handleSessionTask(
+    CodeWhaleBridgeMessage message,
+    Completer<String> completer,
+  ) {
+    final status = message.taskStatus.trim().toLowerCase();
+    if (!_isDoneStatus(status)) {
+      _scheduleTaskPoll(message);
+      return;
+    }
+    if (message.taskResultSummary.trim().isNotEmpty) {
+      _buffer.write(message.taskResultSummary);
+    }
+    if (status == 'failed' || status == 'canceled' || status == 'cancelled') {
+      final output = _buffer.toString().trim();
+      if (output.isEmpty) {
+        completer.completeError(StateError('CodeWhale task $status'));
+        return;
+      }
+    }
+    completer.complete(_buffer.toString());
+  }
+
+  void _scheduleTaskPoll(CodeWhaleBridgeMessage message) {
+    final taskId = message.taskId.trim();
+    if (taskId.isEmpty) {
+      return;
+    }
+    final workspaceId = message.workspaceId.trim().isNotEmpty
+        ? message.workspaceId.trim()
+        : _workspaceId;
+    final sessionId = message.sessionId.trim().isNotEmpty
+        ? message.sessionId.trim()
+        : _sessionId;
+    if (workspaceId.isEmpty || sessionId.isEmpty) {
+      return;
+    }
+    final timer = Timer(taskPollDelay, () {
+      _bridge?.pollSessionTask(workspaceId, sessionId, taskId);
+    });
+    _pollTimers.add(timer);
+  }
+
+  bool _isDoneStatus(String status) {
+    return const {
+      'completed',
+      'succeeded',
+      'success',
+      'failed',
+      'canceled',
+      'cancelled',
+    }.contains(status);
+  }
+
+  void _clearIfActive(Completer<String> completer) {
+    if (_activeCompleter != completer) {
+      return;
+    }
+    _activeCompleter = null;
+    _buffer = StringBuffer();
+    _prompt = '';
+    _cancelPollTimers();
+  }
+
+  void _cancelPollTimers() {
+    for (final timer in _pollTimers) {
+      timer.cancel();
+    }
+    _pollTimers.clear();
+  }
+
+  void dispose() {
+    _cancelPollTimers();
+    _bridge?.dispose();
+    _bridge = null;
   }
 }
