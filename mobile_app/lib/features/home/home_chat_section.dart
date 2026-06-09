@@ -650,22 +650,66 @@ extension _ChatSection on _HomePageState {
       }
     } catch (error, stackTrace) {
       debugPrint('[project-chat-agent] bot send failed: $error\n$stackTrace');
-      final fallback = await store.repository.api.chatSendMessage(
-        actorProfile: store.owner.value,
-        conversationKey: conversationKey,
-        messageType: 'text',
-        text: 'Тудушкер: $clean',
-        clientMessageId:
-            'tudushker-fallback-${DateTime.now().microsecondsSinceEpoch}',
-      );
-      await store.repository.db.upsertMessages([fallback]);
-      final messages = List<ChatMessage>.from(
-        _chatMessagesByConversation[conversationKey] ?? const [],
-      )..add(fallback);
-      _chatMessagesByConversation[conversationKey] = messages;
-      if (mounted) {
-        setState(() {});
+      try {
+        final fallback = await store.repository.api.chatSendMessage(
+          actorProfile: store.owner.value,
+          conversationKey: conversationKey,
+          messageType: 'text',
+          text: 'Тудушкер: $clean',
+          clientMessageId:
+              'tudushker-fallback-${DateTime.now().microsecondsSinceEpoch}',
+        );
+        await store.repository.db.upsertMessages([fallback]);
+        final messages = List<ChatMessage>.from(
+          _chatMessagesByConversation[conversationKey] ?? const [],
+        )..add(fallback);
+        _chatMessagesByConversation[conversationKey] = messages;
+        if (mounted) {
+          setState(() {});
+        }
+      } catch (fallbackError, fallbackStackTrace) {
+        debugPrint(
+          '[project-chat-agent] owner fallback send failed: '
+          '$fallbackError\n$fallbackStackTrace',
+        );
+        await _appendLocalProjectChatAgentMessage(
+          store: store,
+          conversationKey: conversationKey,
+          text: clean,
+        );
       }
+    }
+  }
+
+  Future<void> _appendLocalProjectChatAgentMessage({
+    required TaskStore store,
+    required String conversationKey,
+    required String text,
+  }) async {
+    final message = ChatMessage(
+      id: 'local-tudushker-${DateTime.now().microsecondsSinceEpoch}',
+      conversationKey: conversationKey,
+      senderProfile: 'tudushker',
+      messageType: 'text',
+      text: text,
+      createdAt: DateTime.now().toIso8601String(),
+      clientMessageId:
+          'local-tudushker-${DateTime.now().microsecondsSinceEpoch}',
+      deliveryStatus: 'failed',
+    );
+    try {
+      await store.repository.db.upsertMessages([message]);
+    } catch (error, stackTrace) {
+      debugPrint(
+        '[project-chat-agent] local fallback persist failed: $error\n$stackTrace',
+      );
+    }
+    final messages = List<ChatMessage>.from(
+      _chatMessagesByConversation[conversationKey] ?? const [],
+    )..add(message);
+    _chatMessagesByConversation[conversationKey] = messages;
+    if (mounted) {
+      setState(() {});
     }
   }
 

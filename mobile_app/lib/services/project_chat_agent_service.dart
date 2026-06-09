@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 
+import '../models/chat_models.dart';
 import '../models/project_control_models.dart';
+import '../models/task_item.dart';
 import 'codewhale_bridge_service.dart';
 
 enum ProjectChatAgentAction {
@@ -72,12 +74,14 @@ class ProjectChatAgentService {
     ];
     for (final message in context.messages) {
       final text = message.text.trim();
-      if (text.isEmpty ||
-          message.isDeleted ||
-          message.senderProfile.trim().toLowerCase() == 'tudushker') {
+      if (text.isEmpty || message.isDeleted || _isTudushkerMessage(message)) {
         continue;
       }
-      lines.add('${message.id} ${message.senderProfile}: $text');
+      final clean = _cleanChatText(text);
+      if (clean.isEmpty || _looksLikeWorkspaceChatter(clean)) {
+        continue;
+      }
+      lines.add('${message.id} ${message.senderProfile}: $clean');
     }
     return lines.join('\n');
   }
@@ -113,26 +117,84 @@ class ProjectChatAgentService {
       userMessage: userMessage,
       forcedAction: forcedAction,
     );
-    final primaryOutput = await runPrompt(primaryPrompt);
+    String primaryOutput;
+    try {
+      primaryOutput = await runPrompt(primaryPrompt);
+    } catch (_) {
+      return buildFallbackDirective(
+        context: context,
+        userMessage: userMessage,
+        forcedAction: forcedAction,
+      );
+    }
+    if (primaryOutput.trim().isEmpty) {
+      return buildFallbackDirective(
+        context: context,
+        userMessage: userMessage,
+        forcedAction: forcedAction,
+      );
+    }
     final primaryDirective = parseStrictModelDirective(primaryOutput);
     if (primaryDirective != null) {
       return primaryDirective;
     }
 
-    final repairOutput = await runPrompt(
-      buildRepairPrompt(
+    String repairOutput;
+    try {
+      repairOutput = await runPrompt(
+        buildRepairPrompt(
+          context: context,
+          userMessage: userMessage,
+          invalidOutput: primaryOutput,
+          forcedAction: forcedAction,
+        ),
+      );
+    } catch (_) {
+      return buildFallbackDirective(
         context: context,
         userMessage: userMessage,
-        invalidOutput: primaryOutput,
         forcedAction: forcedAction,
-      ),
-    );
+      );
+    }
     final repairedDirective = parseStrictModelDirective(repairOutput);
     if (repairedDirective != null) {
       return repairedDirective;
     }
 
-    throw const ProjectChatAgentInvalidResponse();
+    return buildFallbackDirective(
+      context: context,
+      userMessage: userMessage,
+      forcedAction: forcedAction,
+    );
+  }
+
+  static ProjectChatAgentDirective buildFallbackDirective({
+    required ProjectChatContextPack context,
+    required String userMessage,
+    ProjectChatAgentAction? forcedAction,
+  }) {
+    final signals = _chatSignals(context);
+    if (forcedAction == ProjectChatAgentAction.taskDraft) {
+      return ProjectChatAgentDirective(
+        action: ProjectChatAgentAction.taskDraft,
+        draft: _fallbackDraft(context, signals),
+        rawText: 'fallback',
+      );
+    }
+
+    if (_looksLikeTaskRequest(userMessage)) {
+      return ProjectChatAgentDirective(
+        action: ProjectChatAgentAction.taskDraft,
+        draft: _fallbackDraft(context, signals),
+        rawText: 'fallback',
+      );
+    }
+
+    return ProjectChatAgentDirective(
+      action: ProjectChatAgentAction.reply,
+      replyText: _fallbackReply(context, signals),
+      rawText: 'fallback',
+    );
   }
 
   static ProjectChatAgentDirective? parseStrictModelDirective(String text) {
@@ -330,6 +392,200 @@ class ProjectChatAgentService {
     ].any(value.contains);
   }
 
+  static bool _looksLikeTaskRequest(String text) {
+    final value = text.toLowerCase();
+    return const [
+      'карточк',
+      'таск',
+      'todo',
+      'черновик',
+      'оформ',
+      'заплан',
+    ].any(value.contains);
+  }
+
+  static List<_ChatSignal> _chatSignals(ProjectChatContextPack context) {
+    final result = <_ChatSignal>[];
+    for (final message in context.messages) {
+      if (message.isDeleted || _isTudushkerMessage(message)) {
+        continue;
+      }
+      final text = _cleanChatText(message.text);
+      if (text.isEmpty || _looksLikeWorkspaceChatter(text)) {
+        continue;
+      }
+      result.add(_ChatSignal(id: message.id, text: text));
+    }
+    return result.length <= 8 ? result : result.sublist(result.length - 8);
+  }
+
+  static bool _isTudushkerMessage(ChatMessage message) {
+    final profile = message.senderProfile.trim().toLowerCase();
+    if (profile == 'tudushker' || profile == 'тудушкер') {
+      return true;
+    }
+    return _looksLikeTudushkerFallbackText(message.text);
+  }
+
+  static bool _looksLikeTudushkerFallbackText(String text) {
+    return RegExp(
+      r'^\s*тудушкер\s*[:\-—]',
+      caseSensitive: false,
+      unicode: true,
+    ).hasMatch(text);
+  }
+
+  static String _cleanChatText(String text) {
+    return text
+        .replaceAll(_wakeWordPattern, ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  static String _fallbackReply(
+    ProjectChatContextPack context,
+    List<_ChatSignal> signals,
+  ) {
+    if (signals.isEmpty) {
+      return 'Я не вижу в чате достаточно предметного контекста. Напишите идею или проблему проекта, и я разложу её на следующий шаг или черновик задачи.';
+    }
+
+    final topics = signals.map((item) => item.text).toList();
+    final bullets = topics.take(4).map((item) => '- $item').join('\n');
+    final nextStep = _fallbackNextStep(topics);
+    return [
+      'По контексту чата вижу такие рабочие идеи:',
+      bullets,
+      '',
+      nextStep,
+      'Могу сразу оформить это в редактируемую карточку проекта.',
+    ].join('\n');
+  }
+
+  static String _fallbackNextStep(List<String> topics) {
+    final focus = _fallbackFocus(topics);
+    if (focus.isEmpty) {
+      return 'Я бы превратил это в одну небольшую карточку с понятным результатом, чеклистом и ответственным.';
+    }
+    return 'Я бы оформил это как короткую задачу про $focus: цель, ожидаемый результат, критерии готовности и ответственный.';
+  }
+
+  static ChatTaskDraft _fallbackDraft(
+    ProjectChatContextPack context,
+    List<_ChatSignal> signals,
+  ) {
+    final topics = signals.map((item) => item.text).toList();
+    final ids =
+        signals.map((item) => item.id).where((id) => id.isNotEmpty).toList();
+    final title = _fallbackTitle(context, topics);
+    final details = topics.isEmpty
+        ? 'Черновик создан из проектного чата. Уточните описание перед сохранением.'
+        : 'По обсуждению в чате нужно зафиксировать и выполнить: ${topics.join('; ')}.';
+    return ChatTaskDraft(
+      title: title,
+      details: details,
+      summary: topics.isEmpty ? '' : topics.join('; '),
+      actionItems: topics,
+      checklist: _fallbackChecklist(topics),
+      sourceMessageIds: ids,
+      priority: Priority.medium,
+    );
+  }
+
+  static String _fallbackTitle(
+    ProjectChatContextPack context,
+    List<String> topics,
+  ) {
+    final joined = topics.join(' ').toLowerCase();
+    final focus = _fallbackFocus(topics);
+    if (focus.isNotEmpty) {
+      if (joined.contains('сайт')) {
+        return 'Улучшить сайт: $focus';
+      }
+      return 'Задача из чата: $focus';
+    }
+    if (topics.isNotEmpty) {
+      final words = topics.first
+          .split(RegExp(r'\s+'))
+          .where((word) => word.trim().length > 2)
+          .take(7)
+          .join(' ');
+      if (words.trim().isNotEmpty) {
+        return 'Задача из чата: $words';
+      }
+    }
+    return 'Задача из чата проекта ${context.project.name}';
+  }
+
+  static List<String> _fallbackChecklist(List<String> topics) {
+    if (topics.isEmpty) {
+      return const [
+        'Уточнить цель задачи',
+        'Описать ожидаемый результат',
+        'Назначить ответственного',
+      ];
+    }
+    final checklist = <String>[
+      'Сформулировать ожидаемый результат',
+      'Разбить обсуждение на конкретные действия',
+    ];
+    final focus = _fallbackFocus(topics);
+    if (focus.isNotEmpty) {
+      checklist.add('Зафиксировать решение по теме: $focus');
+    }
+    checklist.add('Проверить результат в проектном чате');
+    return checklist;
+  }
+
+  static String _fallbackFocus(List<String> topics) {
+    final stopWords = <String>{
+      'надо',
+      'нужно',
+      'сделать',
+      'ещё',
+      'еще',
+      'чтобы',
+      'что',
+      'как',
+      'нам',
+      'или',
+      'это',
+      'этот',
+      'эту',
+      'при',
+      'для',
+      'про',
+      'бы',
+      'быть',
+      'какой',
+      'какая',
+      'какие',
+      'можно',
+      'давай',
+      'давайте',
+      'сайт',
+      'сайте',
+      'придумать',
+      'улучшить',
+    };
+    final words = <String>[];
+    for (final topic in topics) {
+      for (final raw in topic.toLowerCase().split(RegExp(r'[^a-zа-яё0-9]+'))) {
+        final word = raw.trim();
+        if (word.length < 4 || stopWords.contains(word)) {
+          continue;
+        }
+        if (!words.contains(word)) {
+          words.add(word);
+        }
+        if (words.length >= 6) {
+          return words.join(', ');
+        }
+      }
+    }
+    return words.join(', ');
+  }
+
   static String _extractJsonObject(String text) {
     var source = text.trim();
     if (source.startsWith('```')) {
@@ -395,11 +651,21 @@ class ProjectChatAgentInvalidResponse implements Exception {
   String toString() => 'Project chat agent returned invalid structured output';
 }
 
+class _ChatSignal {
+  const _ChatSignal({
+    required this.id,
+    required this.text,
+  });
+
+  final String id;
+  final String text;
+}
+
 class ProjectChatAgentBridgeRunner {
   ProjectChatAgentBridgeRunner({
     ProjectChatAgentBridgeFactory? bridgeFactory,
     this.taskPollDelay = const Duration(seconds: 2),
-    this.timeout = const Duration(seconds: 90),
+    this.timeout = const Duration(seconds: 30),
     this.onSessionLinked,
     this.onStatusChange,
   }) : _bridgeFactory = bridgeFactory;
