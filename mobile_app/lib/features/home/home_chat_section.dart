@@ -190,24 +190,26 @@ extension _ChatSection on _HomePageState {
         store: store,
         project: project,
         userMessage: 'Пользователь нажал кнопку создания черновика задачи.',
-        forcedAction: ProjectChatAgentAction.taskDraft,
       );
       if (request == null) {
         return;
       }
       _showSnack('Тудушкер анализирует чат.');
-      final output = await _runProjectChatAgentPrompt(
-        workspaceId: request.workspaceId,
-        project: project,
-        contextPack: request.contextPack,
-        policyTicket: request.policyTicket,
-        prompt: request.prompt,
-        title: 'Черновик задачи: ${project.name}',
+      final directive = await ProjectChatAgentService.resolveDirective(
+        context: request.contextPack,
+        userMessage: request.userMessage,
+        forcedAction: ProjectChatAgentAction.taskDraft,
+        runPrompt: (prompt) {
+          return _runProjectChatAgentPrompt(
+            workspaceId: request.workspaceId,
+            project: project,
+            contextPack: request.contextPack,
+            policyTicket: request.policyTicket,
+            prompt: prompt,
+            title: 'Черновик задачи: ${project.name}',
+          );
+        },
       );
-      if (output.trim().isEmpty) {
-        throw StateError('Тудушкер не вернул черновик');
-      }
-      final directive = ProjectChatAgentService.parseModelDirective(output);
       if (!mounted) {
         return;
       }
@@ -221,6 +223,10 @@ extension _ChatSection on _HomePageState {
       );
     } catch (e, st) {
       if (e is ProjectChatAgentRequestCancelled) {
+        return;
+      }
+      if (e is ProjectChatAgentInvalidResponse) {
+        _showSnack('Тудушкер вернул неструктурированный ответ.');
         return;
       }
       debugPrint('[project-chat-agent] analyze error: $e\n$st');
@@ -272,7 +278,6 @@ extension _ChatSection on _HomePageState {
     required TaskStore store,
     required TaskProject project,
     required String userMessage,
-    ProjectChatAgentAction? forcedAction,
   }) async {
     final workspaceId = await _workspaceIdForProjectChat(store, project);
     if (workspaceId.isEmpty) {
@@ -300,11 +305,7 @@ extension _ChatSection on _HomePageState {
       contextPack: contextPack,
       policyTicket: ticket.policyTicket,
       groupId: group?.id ?? '',
-      prompt: ProjectChatAgentService.buildIntentPrompt(
-        context: contextPack,
-        userMessage: userMessage,
-        forcedAction: forcedAction,
-      ),
+      userMessage: userMessage,
     );
   }
 
@@ -523,13 +524,19 @@ extension _ChatSection on _HomePageState {
       if (request == null) {
         return;
       }
-      final output = await _runProjectChatAgentPrompt(
-        workspaceId: request.workspaceId,
-        project: project,
-        contextPack: request.contextPack,
-        policyTicket: request.policyTicket,
-        prompt: request.prompt,
-        title: 'Тудушкер: ${project.name}',
+      final directive = await ProjectChatAgentService.resolveDirective(
+        context: request.contextPack,
+        userMessage: userMessage,
+        runPrompt: (prompt) {
+          return _runProjectChatAgentPrompt(
+            workspaceId: request.workspaceId,
+            project: project,
+            contextPack: request.contextPack,
+            policyTicket: request.policyTicket,
+            prompt: prompt,
+            title: 'Тудушкер: ${project.name}',
+          );
+        },
       );
       if (!mounted) {
         return;
@@ -538,12 +545,19 @@ extension _ChatSection on _HomePageState {
         store: store,
         project: project,
         contextPack: request.contextPack,
-        directive: ProjectChatAgentService.parseModelDirective(output),
+        directive: directive,
         groupId: request.groupId,
         policyTicket: request.policyTicket,
       );
     } catch (e, st) {
       if (e is ProjectChatAgentRequestCancelled) {
+        return;
+      }
+      if (e is ProjectChatAgentInvalidResponse) {
+        await _sendProjectChatAgentMessage(
+          store,
+          'Я получил неструктурированный ответ модели и не стал отправлять его в чат. Повторите запрос чуть точнее.',
+        );
         return;
       }
       debugPrint('[project-chat-agent] mention error: $e\n$st');
@@ -841,12 +855,12 @@ class _ProjectChatAgentRequest {
     required this.contextPack,
     required this.policyTicket,
     required this.groupId,
-    required this.prompt,
+    required this.userMessage,
   });
 
   final String workspaceId;
   final ProjectChatContextPack contextPack;
   final String policyTicket;
   final String groupId;
-  final String prompt;
+  final String userMessage;
 }

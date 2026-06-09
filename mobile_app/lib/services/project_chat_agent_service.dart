@@ -51,6 +51,9 @@ class ProjectChatAgentService {
     final lines = <String>[
       'Ты Тудушкер, AI-помощник проектного группового чата.',
       'Тебя вызвали wake word "$wakeWord". Не подбирай действие по хардкоду фраз: сам определи намерение по смыслу сообщения и контекста.',
+      'Это запрос из группового чата проекта, а не задача по коду. Используй только CHAT_CONTEXT ниже.',
+      'Не отвечай про файлы workspace, task-card.json, tc.json, index.html, скрипты, репозиторий или рабочую область, если пользователь прямо не попросил смотреть код.',
+      'Не пиши дежурные фразы вроде готовности к работе; дай конкретную пользу по вопросу пользователя и сообщениям чата.',
       'Верни только валидный JSON без markdown.',
       'Разрешенные значения "action": "reply", "task_draft", "start_agent", "status", "clarify".',
       'Контракт JSON:',
@@ -65,16 +68,130 @@ class ProjectChatAgentService {
       if (forcedAction != null)
         'Пользователь нажал действие: ${_wireAction(forcedAction)}. Верни action "${_wireAction(forcedAction)}", если контекст позволяет.',
       'Сообщение пользователя: $userMessage',
-      'Последние сообщения чата:',
+      'CHAT_CONTEXT: последние сообщения чата без технических ответов самого Тудушкера:',
     ];
     for (final message in context.messages) {
       final text = message.text.trim();
-      if (text.isEmpty || message.isDeleted) {
+      if (text.isEmpty ||
+          message.isDeleted ||
+          message.senderProfile.trim().toLowerCase() == 'tudushker') {
         continue;
       }
       lines.add('${message.id} ${message.senderProfile}: $text');
     }
     return lines.join('\n');
+  }
+
+  static String buildRepairPrompt({
+    required ProjectChatContextPack context,
+    required String userMessage,
+    required String invalidOutput,
+    ProjectChatAgentAction? forcedAction,
+  }) {
+    return [
+      buildIntentPrompt(
+        context: context,
+        userMessage: userMessage,
+        forcedAction: forcedAction,
+      ),
+      '',
+      'Предыдущий ответ недопустим: модель вернула не JSON или начала говорить про workspace вместо чата.',
+      'Перепиши ответ строго по контракту JSON выше. Не добавляй markdown, пояснения или текст вне JSON.',
+      'Недопустимый ответ:',
+      invalidOutput.trim(),
+    ].join('\n');
+  }
+
+  static Future<ProjectChatAgentDirective> resolveDirective({
+    required ProjectChatContextPack context,
+    required String userMessage,
+    required Future<String> Function(String prompt) runPrompt,
+    ProjectChatAgentAction? forcedAction,
+  }) async {
+    final primaryPrompt = buildIntentPrompt(
+      context: context,
+      userMessage: userMessage,
+      forcedAction: forcedAction,
+    );
+    final primaryOutput = await runPrompt(primaryPrompt);
+    final primaryDirective = parseStrictModelDirective(primaryOutput);
+    if (primaryDirective != null) {
+      return primaryDirective;
+    }
+
+    final repairOutput = await runPrompt(
+      buildRepairPrompt(
+        context: context,
+        userMessage: userMessage,
+        invalidOutput: primaryOutput,
+        forcedAction: forcedAction,
+      ),
+    );
+    final repairedDirective = parseStrictModelDirective(repairOutput);
+    if (repairedDirective != null) {
+      return repairedDirective;
+    }
+
+    throw const ProjectChatAgentInvalidResponse();
+  }
+
+  static ProjectChatAgentDirective? parseStrictModelDirective(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    final jsonText = _extractJsonObject(trimmed);
+    if (jsonText.isEmpty) {
+      return null;
+    }
+    try {
+      final decoded = jsonDecode(jsonText);
+      if (decoded is! Map) {
+        return null;
+      }
+      final json = Map<String, dynamic>.from(decoded);
+      final rawAction = (json['action'] ?? '').toString().trim();
+      if (rawAction.isEmpty) {
+        return null;
+      }
+      final action = _parseAction(rawAction);
+      final directive = parseModelDirective(jsonText);
+      switch (action) {
+        case ProjectChatAgentAction.taskDraft:
+          final draftSource = json['draft'] is Map
+              ? Map<String, dynamic>.from(json['draft'] as Map)
+              : json;
+          final explicitTitle =
+              (draftSource['title'] ?? draftSource['task_title'] ?? '')
+                  .toString()
+                  .trim();
+          final details =
+              (draftSource['details'] ?? draftSource['description'] ?? '')
+                  .toString()
+                  .trim();
+          final hasWork = _stringList(
+                draftSource['checklist'] ?? draftSource['action_items'],
+              ).isNotEmpty ||
+              _stringList(draftSource['actionItems']).isNotEmpty;
+          if (explicitTitle.isEmpty ||
+              (details.isEmpty && !hasWork) ||
+              _looksLikeWorkspaceChatter('$explicitTitle\n$details')) {
+            return null;
+          }
+          return directive;
+        case ProjectChatAgentAction.reply:
+        case ProjectChatAgentAction.status:
+        case ProjectChatAgentAction.clarify:
+          return directive.replyText.trim().isEmpty ||
+                  _looksLikeWorkspaceChatter(directive.replyText)
+              ? null
+              : directive;
+        case ProjectChatAgentAction.startAgent:
+          return directive;
+      }
+    } catch (_) {
+      return null;
+    }
   }
 
   static ProjectChatAgentDirective parseModelDirective(String text) {
@@ -180,6 +297,39 @@ class ProjectChatAgentService {
     return '';
   }
 
+  static List<String> _stringList(Object? raw) {
+    if (raw is List) {
+      return raw
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    if (raw is String && raw.trim().isNotEmpty) {
+      return raw
+          .split(RegExp(r'[\n,;]+'))
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    return const <String>[];
+  }
+
+  static bool _looksLikeWorkspaceChatter(String text) {
+    final value = text.toLowerCase();
+    return const [
+      'task-card.json',
+      'tc.json',
+      'tc2.json',
+      'index.html',
+      '_extract_sections.py',
+      '_post_comment.ps1',
+      'рабочей области',
+      'рабочая область',
+      'workspace files',
+      'workspace-фай',
+    ].any(value.contains);
+  }
+
   static String _extractJsonObject(String text) {
     var source = text.trim();
     if (source.startsWith('```')) {
@@ -236,6 +386,13 @@ class ProjectChatAgentRequestCancelled implements Exception {
 
   @override
   String toString() => 'Project chat agent request cancelled';
+}
+
+class ProjectChatAgentInvalidResponse implements Exception {
+  const ProjectChatAgentInvalidResponse();
+
+  @override
+  String toString() => 'Project chat agent returned invalid structured output';
 }
 
 class ProjectChatAgentBridgeRunner {
@@ -360,16 +517,25 @@ class ProjectChatAgentBridgeRunner {
     }
 
     if (message.type == 'assistant_delta') {
+      if (!_belongsToCurrentSession(message)) {
+        return;
+      }
       _buffer.write(message.text);
       return;
     }
 
     if (message.type == 'session_task') {
+      if (!_belongsToCurrentSession(message)) {
+        return;
+      }
       _handleSessionTask(message, completer);
       return;
     }
 
     if (message.type == 'session_stream_done') {
+      if (!_belongsToCurrentSession(message)) {
+        return;
+      }
       completer.complete(_buffer.toString());
       return;
     }
@@ -377,6 +543,13 @@ class ProjectChatAgentBridgeRunner {
     if (message.type == 'output' && message.text.trim().isNotEmpty) {
       _buffer.write(message.text);
     }
+  }
+
+  bool _belongsToCurrentSession(CodeWhaleBridgeMessage message) {
+    final messageSessionId = message.sessionId.trim();
+    return messageSessionId.isEmpty ||
+        _sessionId.isEmpty ||
+        messageSessionId == _sessionId;
   }
 
   void _handleSessionTask(

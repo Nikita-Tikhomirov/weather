@@ -46,6 +46,49 @@ void main() {
       );
       expect(prompt, contains('msg-1 nik: Нужно сделать нормальный checkout'));
       expect(prompt, contains('Тудушкер, как лучше разложить работу?'));
+      expect(prompt, contains('Не отвечай про файлы workspace'));
+      expect(
+        prompt,
+        isNot(contains('msg-3 tudushker: Принято. Вижу в рабочей области')),
+      );
+    });
+
+    test('strict parser rejects plain workspace chatter', () {
+      final directive = ProjectChatAgentService.parseStrictModelDirective(
+        'Принято. Вижу в рабочей области task-card.json и index.html.',
+      );
+
+      expect(directive, isNull);
+    });
+
+    test('strict parser rejects json wrapped workspace chatter', () {
+      final directive = ProjectChatAgentService.parseStrictModelDirective(
+        '{"action":"reply","reply_text":"Вижу в рабочей области task-card.json и index.html."}',
+      );
+
+      expect(directive, isNull);
+    });
+
+    test('resolver repairs non-json workspace answer before replying',
+        () async {
+      final prompts = <String>[];
+      final directive = await ProjectChatAgentService.resolveDirective(
+        context: _contextPack(),
+        userMessage: 'тудушкер что бы нам ещё добавить?',
+        runPrompt: (prompt) async {
+          prompts.add(prompt);
+          if (prompts.length == 1) {
+            return 'Принято. Вижу task-card.json и index.html.';
+          }
+          return '{"action":"reply","reply_text":"Добавьте плавные анимации при прокрутке и отдельную секцию с преимуществами проекта."}';
+        },
+      );
+
+      expect(prompts, hasLength(2));
+      expect(prompts.last, contains('Предыдущий ответ недопустим'));
+      expect(directive.action, ProjectChatAgentAction.reply);
+      expect(directive.replyText, contains('анимации при прокрутке'));
+      expect(directive.replyText, isNot(contains('task-card.json')));
     });
 
     test('parses task draft directive from model JSON', () {
@@ -140,6 +183,14 @@ ProjectChatContextPack _contextPack() {
         messageType: 'text',
         text: 'И оплату без лишних шагов',
         createdAt: '2026-06-09T10:01:00Z',
+      ),
+      ChatMessage(
+        id: 'msg-3',
+        conversationKey: 'grp:project:project-1',
+        senderProfile: 'tudushker',
+        messageType: 'text',
+        text: 'Принято. Вижу в рабочей области task-card.json.',
+        createdAt: '2026-06-09T10:02:00Z',
       ),
     ],
     policy: AgentRunPolicy(
