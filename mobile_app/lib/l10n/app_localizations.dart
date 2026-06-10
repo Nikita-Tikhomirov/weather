@@ -758,6 +758,36 @@ abstract class AppLocalizations {
   /// **'Error: {error}'**
   String groupSaveFailed(Object error);
 
+  /// No description provided for @projectsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects'**
+  String get projectsSection;
+
+  /// No description provided for @createProjectAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Create project'**
+  String get createProjectAction;
+
+  /// No description provided for @createGroupAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Create group'**
+  String get createGroupAction;
+
+  /// No description provided for @noProjectsYetAction.
+  ///
+  /// In en, this message translates to:
+  /// **'No projects yet. Press + to create one.'**
+  String get noProjectsYetAction;
+
+  /// No description provided for @noGroupsYetAction.
+  ///
+  /// In en, this message translates to:
+  /// **'No groups yet. Press + to create one.'**
+  String get noGroupsYetAction;
+
   /// No description provided for @connecting.
   ///
   /// In en, this message translates to:

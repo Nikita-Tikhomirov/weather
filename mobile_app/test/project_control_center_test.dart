@@ -121,6 +121,39 @@ void main() {
       expect(find.text('Enter group name'), findsOneWidget);
     });
 
+    testWidgets('projects and groups sections use localized empty states',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = TaskStore(
+        repository: repository,
+        domainService: TaskDomainService(),
+      );
+
+      await tester.pumpWidget(
+        _localizedApp(
+          home: ProjectsAndGroupsScreen(
+            store: store,
+            actorProfile: 'nik',
+            loadWorkspacesFromBridge: false,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Projects'), findsOneWidget);
+      expect(find.byTooltip('Create project'), findsOneWidget);
+      expect(
+        find.text('No projects yet. Press + to create one.'),
+        findsOneWidget,
+      );
+      expect(find.text('Groups'), findsOneWidget);
+      expect(find.byTooltip('Create group'), findsOneWidget);
+      expect(
+        find.text('No groups yet. Press + to create one.'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('does not auto-select first workspace and saves chosen one',
         (tester) async {
       final repository = _FakeTaskRepository();

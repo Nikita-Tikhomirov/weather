@@ -120,6 +120,11 @@
       "error": {}
     }
   },
+  "projectsSection": "Projects",
+  "createProjectAction": "Create project",
+  "createGroupAction": "Create group",
+  "noProjectsYetAction": "No projects yet. Press + to create one.",
+  "noGroupsYetAction": "No groups yet. Press + to create one.",
   "connecting": "Connecting...",
   "reconnecting": "Reconnecting...",
   "connected": "Connected",

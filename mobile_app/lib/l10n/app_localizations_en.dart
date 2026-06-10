@@ -343,6 +343,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get projectsSection => 'Projects';
+
+  @override
+  String get createProjectAction => 'Create project';
+
+  @override
+  String get createGroupAction => 'Create group';
+
+  @override
+  String get noProjectsYetAction => 'No projects yet. Press + to create one.';
+
+  @override
+  String get noGroupsYetAction => 'No groups yet. Press + to create one.';
+
+  @override
   String get connecting => 'Connecting...';
 
   @override

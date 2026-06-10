@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/agent_policy.dart';
 import '../../models/chat_models.dart';
 import '../../models/family_group.dart';
@@ -15,6 +16,22 @@ import 'project_edit_sheet.dart';
 import 'family_group_edit_sheet.dart';
 
 part 'projects_and_groups_sections.dart';
+
+class _ProjectsAndGroupsText {
+  const _ProjectsAndGroupsText(this.l10n);
+
+  final AppLocalizations? l10n;
+
+  String get projects => l10n?.projectsSection ?? 'Проекты';
+  String get groups => l10n?.groups ?? 'Группы';
+  String get createProject => l10n?.createProjectAction ?? 'Создать проект';
+  String get createGroup => l10n?.createGroupAction ?? 'Создать группу';
+  String get noProjectsYet =>
+      l10n?.noProjectsYetAction ??
+      'Проектов пока нет. Нажмите + чтобы создать.';
+  String get noGroupsYet =>
+      l10n?.noGroupsYetAction ?? 'Групп пока нет. Нажмите + чтобы создать.';
+}
 
 class ProjectsAndGroupsScreen extends StatefulWidget {
   const ProjectsAndGroupsScreen({

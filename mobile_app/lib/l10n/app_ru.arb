@@ -120,6 +120,11 @@
       "error": {}
     }
   },
+  "projectsSection": "Проекты",
+  "createProjectAction": "Создать проект",
+  "createGroupAction": "Создать группу",
+  "noProjectsYetAction": "Проектов пока нет. Нажмите + чтобы создать.",
+  "noGroupsYetAction": "Групп пока нет. Нажмите + чтобы создать.",
   "connecting": "Подключение...",
   "reconnecting": "Переподключение...",
   "connected": "Подключено",

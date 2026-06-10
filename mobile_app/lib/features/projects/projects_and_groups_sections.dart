@@ -256,29 +256,32 @@ extension _ProjectsAndGroupsSections on _ProjectsAndGroupsScreenState {
             return ValueListenableBuilder<List<FamilyGroup>>(
               valueListenable: widget.store.familyGroups,
               builder: (context, groups, __) {
+                final text = _ProjectsAndGroupsText(
+                  AppLocalizations.of(context),
+                );
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
                         Text(
-                          'Проекты',
+                          text.projects,
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const Spacer(),
                         IconButton(
                           icon: const Icon(Icons.add),
-                          tooltip: 'Создать проект',
+                          tooltip: text.createProject,
                           onPressed: () => _createProject(context),
                         ),
                       ],
                     ),
                     if (projects.isEmpty)
-                      const Card(
+                      Card(
                         child: Padding(
-                          padding: EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(16),
                           child: Text(
-                            'Проектов пока нет. Нажмите + чтобы создать.',
+                            text.noProjectsYet,
                           ),
                         ),
                       ),
@@ -298,28 +301,29 @@ extension _ProjectsAndGroupsSections on _ProjectsAndGroupsScreenState {
     return ValueListenableBuilder<List<FamilyGroup>>(
       valueListenable: widget.store.familyGroups,
       builder: (context, groups, _) {
+        final text = _ProjectsAndGroupsText(AppLocalizations.of(context));
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Text(
-                  'Группы',
+                  text.groups,
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.add),
-                  tooltip: 'Создать группу',
+                  tooltip: text.createGroup,
                   onPressed: () => _createGroup(context),
                 ),
               ],
             ),
             if (groups.isEmpty)
-              const Card(
+              Card(
                 child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('Групп пока нет. Нажмите + чтобы создать.'),
+                  padding: const EdgeInsets.all(16),
+                  child: Text(text.noGroupsYet),
                 ),
               ),
             for (final group in groups) _groupTile(context, group),

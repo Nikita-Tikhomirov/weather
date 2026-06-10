@@ -343,6 +343,22 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get projectsSection => 'Проекты';
+
+  @override
+  String get createProjectAction => 'Создать проект';
+
+  @override
+  String get createGroupAction => 'Создать группу';
+
+  @override
+  String get noProjectsYetAction =>
+      'Проектов пока нет. Нажмите + чтобы создать.';
+
+  @override
+  String get noGroupsYetAction => 'Групп пока нет. Нажмите + чтобы создать.';
+
+  @override
   String get connecting => 'Подключение...';
 
   @override
