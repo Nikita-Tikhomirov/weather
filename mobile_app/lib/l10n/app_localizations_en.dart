@@ -141,6 +141,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get speaker => 'Speaker';
 
   @override
+  String get headset => 'Headset';
+
+  @override
   String get search => 'Search';
 
   @override

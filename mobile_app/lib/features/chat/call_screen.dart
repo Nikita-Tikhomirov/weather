@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/call_models.dart';
 import '../../services/call_service.dart';
 
@@ -10,6 +11,35 @@ Color callScreenBaseColor(String callType) {
   return callType.trim().toLowerCase() == 'video'
       ? Colors.black
       : const Color(0xFF0D47A1);
+}
+
+class _CallScreenText {
+  const _CallScreenText(this.l10n);
+
+  final AppLocalizations? l10n;
+
+  String status(CallState state) {
+    switch (state) {
+      case CallState.calling:
+        return l10n?.calling ?? 'Вызов...';
+      case CallState.ringing:
+        return l10n?.incomingCall ?? 'Входящий звонок...';
+      case CallState.connected:
+        return l10n?.inCall ?? 'Разговор';
+      case CallState.ended:
+        return l10n?.callEnded ?? 'Звонок завершён';
+      case CallState.idle:
+        return '';
+    }
+  }
+
+  String get accept => l10n?.accept ?? 'Принять';
+  String get decline => l10n?.decline ?? 'Отклонить';
+  String get endCall => l10n?.endCall ?? 'Завершить';
+  String get headset => l10n?.headset ?? 'Гарнитура';
+  String get microphone => l10n?.microphone ?? 'Микрофон';
+  String get speaker => l10n?.speaker ?? 'Динамик';
+  String get unmute => l10n?.unmute ?? 'Вкл. микро';
 }
 
 class CallScreen extends StatefulWidget {
@@ -286,18 +316,19 @@ class _CallScreenState extends State<CallScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final text = _CallScreenText(AppLocalizations.of(context));
     if (!_isVideoCall) {
       return Scaffold(
         backgroundColor: callScreenBaseColor(widget.session.callType),
         body: CallAudioBody(
           peerLabel: widget.peerLabel,
           state: _currentState,
-          statusText: _statusText,
+          statusText: text.status(_currentState),
           durationText: _currentState == CallState.connected
               ? _formatDuration(_duration)
               : '',
           errorText: _errorText,
-          actions: _buildActions(),
+          actions: _buildActions(text),
         ),
       );
     }
@@ -341,7 +372,7 @@ class _CallScreenState extends State<CallScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _statusText,
+                  text.status(_currentState),
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 16,
@@ -384,29 +415,14 @@ class _CallScreenState extends State<CallScreen> {
             bottom: 60,
             left: 0,
             right: 0,
-            child: _buildActions(),
+            child: _buildActions(text),
           ),
         ],
       ),
     );
   }
 
-  String get _statusText {
-    switch (_currentState) {
-      case CallState.calling:
-        return 'Вызов...';
-      case CallState.ringing:
-        return 'Входящий звонок...';
-      case CallState.connected:
-        return 'Разговор';
-      case CallState.ended:
-        return 'Звонок завершён';
-      case CallState.idle:
-        return '';
-    }
-  }
-
-  Widget _buildActions() {
+  Widget _buildActions(_CallScreenText text) {
     if (_currentState == CallState.ended) {
       return const SizedBox.shrink();
     }
@@ -421,7 +437,7 @@ class _CallScreenState extends State<CallScreen> {
             _CallButton(
               icon: Icons.call_end,
               color: Colors.red,
-              label: 'Отклонить',
+              label: text.decline,
               onTap: () async {
                 await widget.callService.rejectCall(widget.session.sessionId);
               },
@@ -431,7 +447,7 @@ class _CallScreenState extends State<CallScreen> {
             _CallButton(
               icon: Icons.call,
               color: Colors.green,
-              label: 'Принять',
+              label: text.accept,
               onTap: () async {
                 await widget.callService.acceptCall(
                   widget.session.sessionId,
@@ -444,7 +460,7 @@ class _CallScreenState extends State<CallScreen> {
             _CallButton(
               icon: _isMuted ? Icons.mic_off : Icons.mic,
               color: _isMuted ? Colors.white : Colors.white38,
-              label: _isMuted ? 'Вкл. микро' : 'Микрофон',
+              label: _isMuted ? text.unmute : text.microphone,
               onTap: () {
                 setState(() => _isMuted = !_isMuted);
                 unawaited(widget.callService.setMicrophoneMuted(_isMuted));
@@ -455,7 +471,7 @@ class _CallScreenState extends State<CallScreen> {
             _CallButton(
               icon: Icons.headset_mic,
               color: _isHeadsetPreferred ? Colors.white : Colors.white38,
-              label: 'Гарнитура',
+              label: text.headset,
               onTap: () {
                 setState(() {
                   _isHeadsetPreferred = true;
@@ -469,7 +485,7 @@ class _CallScreenState extends State<CallScreen> {
             _CallButton(
               icon: Icons.call_end,
               color: Colors.red,
-              label: 'Завершить',
+              label: text.endCall,
               onTap: () async {
                 await widget.callService.endCall();
               },
@@ -480,7 +496,7 @@ class _CallScreenState extends State<CallScreen> {
             _CallButton(
               icon: _isSpeakerOn ? Icons.volume_up : Icons.volume_down,
               color: _isSpeakerOn ? Colors.white : Colors.white38,
-              label: 'Динамик',
+              label: text.speaker,
               onTap: () {
                 setState(() {
                   _isSpeakerOn = !_isSpeakerOn;

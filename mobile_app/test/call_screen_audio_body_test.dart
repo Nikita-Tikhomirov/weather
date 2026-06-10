@@ -1,4 +1,5 @@
 import 'package:family_todo_mobile/features/chat/call_screen.dart';
+import 'package:family_todo_mobile/l10n/app_localizations.dart';
 import 'package:family_todo_mobile/models/call_models.dart';
 import 'package:family_todo_mobile/services/api_client.dart';
 import 'package:family_todo_mobile/services/call_service.dart';
@@ -33,6 +34,15 @@ class _NoopCallAudioDevice implements CallAudioDevice {
 }
 
 void main() {
+  Widget localizedApp(Widget child) {
+    return MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: child,
+    );
+  }
+
   testWidgets('audio call body keeps status and controls visible',
       (tester) async {
     await tester.pumpWidget(
@@ -88,6 +98,42 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
 
     expect(tester.takeException(), isNull);
+    service.dispose();
+  });
+
+  testWidgets('incoming audio call screen uses localized labels',
+      (tester) async {
+    final service = CallService(
+      api: _NoopApi(),
+      actorProfile: 'nik',
+      audioDevice: _NoopCallAudioDevice(),
+    );
+    const session = CallSession(
+      sessionId: 'call-2',
+      callerProfile: 'misha',
+      calleeProfile: 'nik',
+      conversationKey: 'dm:misha:nik',
+      callType: 'audio',
+      status: 'ringing',
+      createdAt: '2026-06-01T12:00:00',
+    );
+
+    await tester.pumpWidget(
+      localizedApp(
+        CallScreen(
+          callService: service,
+          session: session,
+          isIncoming: true,
+          peerLabel: 'misha',
+          onCallFinished: () {},
+        ),
+      ),
+    );
+
+    expect(find.text('Incoming call...'), findsOneWidget);
+    expect(find.text('Accept'), findsOneWidget);
+    expect(find.text('Decline'), findsOneWidget);
+    expect(find.text('Принять'), findsNothing);
     service.dispose();
   });
 }

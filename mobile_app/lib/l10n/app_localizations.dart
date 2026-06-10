@@ -362,6 +362,12 @@ abstract class AppLocalizations {
   /// **'Speaker'**
   String get speaker;
 
+  /// No description provided for @headset.
+  ///
+  /// In en, this message translates to:
+  /// **'Headset'**
+  String get headset;
+
   /// No description provided for @search.
   ///
   /// In en, this message translates to:

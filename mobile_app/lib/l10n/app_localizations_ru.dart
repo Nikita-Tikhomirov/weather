@@ -141,6 +141,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get speaker => 'Динамик';
 
   @override
+  String get headset => 'Гарнитура';
+
+  @override
   String get search => 'Поиск';
 
   @override
