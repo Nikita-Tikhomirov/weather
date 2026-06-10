@@ -159,8 +159,8 @@ python .\voice_trigger.py
 
 ```powershell
 cd .\mobile_app
-C:\Users\user\tools\flutter\bin\flutter.bat test --concurrency=1
-C:\Users\user\tools\flutter\bin\flutter.bat analyze
+$env:FLUTTER_BIN = 'C:\Users\user\.puro\envs\stable\flutter\bin\flutter.bat'
+.\tool\run_flutter_checks.ps1
 ```
 
 Полный локальный прогон тестов запускается с `--concurrency=1`, как в CI:

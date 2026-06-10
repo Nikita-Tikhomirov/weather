@@ -77,10 +77,25 @@ flutter run \
 PowerShell from `mobile_app/`:
 
 ```powershell
-C:\Users\user\tools\flutter\bin\flutter.bat test --concurrency=1
-C:\Users\user\tools\flutter\bin\flutter.bat analyze
+$env:FLUTTER_BIN = 'C:\Users\user\.puro\envs\stable\flutter\bin\flutter.bat'
+.\tool\run_flutter_checks.ps1
 ```
 
-Use `--concurrency=1` for the full local test suite, matching CI. Some
-sqflite-based tests change the global database factory and can make a
-parallel full run fail while individual suites still pass.
+Run Flutter commands one at a time. On this Windows host, concurrent Flutter
+commands can contend for the startup lock, and long full-suite runs can fail
+with a native `flutter_tester.exe` access violation before a suite loads. When
+that happens, use the suite-by-suite runner:
+
+```powershell
+.\tool\run_flutter_checks.ps1 -SuiteBySuite -Retries 1
+```
+
+For a narrow check:
+
+```powershell
+.\tool\run_flutter_checks.ps1 -SkipAnalyze -SuiteBySuite -TestPattern agent_launch_plan_test.dart
+```
+
+The CI-equivalent command remains `flutter test --concurrency=1`; the
+suite-by-suite mode is a local stability fallback for infrastructure crashes,
+not a replacement for fixing real test assertions.
