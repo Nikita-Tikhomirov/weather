@@ -1,4 +1,5 @@
 import 'package:family_todo_mobile/features/tasks/calendar_view.dart';
+import 'package:family_todo_mobile/l10n/app_localizations.dart';
 import 'package:family_todo_mobile/models/task_item.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -31,6 +32,36 @@ void main() {
       expect(find.textContaining('2026'), findsOneWidget);
       // Today button
       expect(find.text('Сегодня'), findsOneWidget);
+    });
+
+    testWidgets('uses localized today action when delegates are available',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: CalendarView(
+              monthDate: DateTime(2026, 5),
+              allTasks: const [],
+              selectedDate: DateTime(2026, 5, 31),
+              labelFor: (String p) => p,
+              onMonthPrev: () {},
+              onMonthNext: () {},
+              onGoToday: () {},
+              onDayTap: (DateTime date, List<TaskItem> tasks) {},
+              onEdit: (TaskItem t) async {},
+              onDelete: (TaskItem t) async {},
+              onAddForDate: (DateTime d) async {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Today'), findsOneWidget);
+      expect(find.textContaining('May'), findsOneWidget);
     });
 
     testWidgets('shows tasks on their dates', (tester) async {

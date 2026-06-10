@@ -72,6 +72,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noTasksForFilter => 'No tasks match this filter';
 
   @override
+  String get noTasksForDate => 'No tasks for this date';
+
+  @override
+  String get close => 'Close';
+
+  @override
+  String get more => 'more';
+
+  @override
   String get dropHere => 'Drop here';
 
   @override
@@ -130,6 +139,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get undo => 'Undo';
+
+  @override
+  String get today => 'Today';
 
   @override
   String get addTask => 'Add Task';

@@ -224,6 +224,24 @@ abstract class AppLocalizations {
   /// **'No tasks match this filter'**
   String get noTasksForFilter;
 
+  /// No description provided for @noTasksForDate.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks for this date'**
+  String get noTasksForDate;
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
+  /// No description provided for @more.
+  ///
+  /// In en, this message translates to:
+  /// **'more'**
+  String get more;
+
   /// No description provided for @dropHere.
   ///
   /// In en, this message translates to:
@@ -343,6 +361,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Undo'**
   String get undo;
+
+  /// No description provided for @today.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get today;
 
   /// No description provided for @addTask.
   ///

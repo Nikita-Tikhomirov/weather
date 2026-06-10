@@ -72,6 +72,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get noTasksForFilter => 'Под выбранный фильтр задач нет';
 
   @override
+  String get noTasksForDate => 'На эту дату задач нет';
+
+  @override
+  String get close => 'Закрыть';
+
+  @override
+  String get more => 'еще';
+
+  @override
   String get dropHere => 'Отпустить сюда';
 
   @override
@@ -130,6 +139,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get undo => 'Отменить';
+
+  @override
+  String get today => 'Сегодня';
 
   @override
   String get addTask => 'Добавить задачу';

@@ -1,23 +1,30 @@
 import 'package:flutter/material.dart';
 
-import '../../app/app_labels.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/task_item.dart';
 import 'task_card.dart';
+import 'tasks_board.dart';
 
-const _monthNamesRu = [
-  'Январь',
-  'Февраль',
-  'Март',
-  'Апрель',
-  'Май',
-  'Июнь',
-  'Июль',
-  'Август',
-  'Сентябрь',
-  'Октябрь',
-  'Ноябрь',
-  'Декабрь',
-];
+String _todayLabel(BuildContext context) {
+  return AppLocalizations.of(context)?.today ?? 'Сегодня';
+}
+
+String _addTaskLabel(BuildContext context) {
+  return AppLocalizations.of(context)?.addTask ?? 'Добавить задачу';
+}
+
+String _noTasksForDateLabel(BuildContext context) {
+  return AppLocalizations.of(context)?.noTasksForDate ??
+      'На эту дату задач нет';
+}
+
+String _closeLabel(BuildContext context) {
+  return AppLocalizations.of(context)?.close ?? 'Закрыть';
+}
+
+String _moreLabel(BuildContext context) {
+  return AppLocalizations.of(context)?.more ?? 'еще';
+}
 
 /// Full month grid calendar (4 columns). Tap a day → navigate to DayTasksPage.
 class CalendarView extends StatelessWidget {
@@ -73,7 +80,7 @@ class CalendarView extends StatelessWidget {
               ),
               Expanded(
                 child: Text(
-                  '${_monthNamesRu[monthDate.month - 1]} ${monthDate.year}',
+                  MaterialLocalizations.of(context).formatMonthYear(monthDate),
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
@@ -88,7 +95,7 @@ class CalendarView extends StatelessWidget {
               const SizedBox(width: 4),
               TextButton(
                 onPressed: onGoToday,
-                child: const Text('Сегодня'),
+                child: Text(_todayLabel(context)),
               ),
             ],
           ),
@@ -305,7 +312,7 @@ class DayTasksPage extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            tooltip: 'Добавить задачу',
+            tooltip: _addTaskLabel(context),
             onPressed: () => onAddForDate(day),
           ),
         ],
@@ -313,7 +320,7 @@ class DayTasksPage extends StatelessWidget {
       body: tasks.isEmpty
           ? Center(
               child: Text(
-                'На эту дату задач нет',
+                _noTasksForDateLabel(context),
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -372,13 +379,13 @@ class DesktopCalendarView extends StatelessWidget {
   final Future<void> Function(DateTime) onAddForDate;
 
   static const _weekDayNamesRu = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-  static const _statusTitles = {
-    'todo': 'К выполнению',
-    'in_progress': 'В работе',
-    'in_review': 'На проверке',
-    'done': 'Выполнено',
-    'archive': 'Архив',
-  };
+  static const _statuses = [
+    'todo',
+    'in_progress',
+    'in_review',
+    'done',
+    'archive',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -397,7 +404,7 @@ class DesktopCalendarView extends StatelessWidget {
                 icon: const Icon(Icons.chevron_left),
               ),
               Text(
-                '${_monthNamesRu[month.month - 1]} ${month.year}',
+                MaterialLocalizations.of(context).formatMonthYear(month),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               IconButton(
@@ -407,7 +414,7 @@ class DesktopCalendarView extends StatelessWidget {
               const SizedBox(width: 8),
               OutlinedButton(
                 onPressed: onGoToday,
-                child: const Text('Сегодня'),
+                child: Text(_todayLabel(context)),
               ),
             ],
           ),
@@ -514,7 +521,8 @@ class DesktopCalendarView extends StatelessWidget {
                               TextButton(
                                 onPressed: () =>
                                     _openDayPopup(context, day, dayTasks),
-                                child: Text('+$overflow еще'),
+                                child:
+                                    Text('+$overflow ${_moreLabel(context)}'),
                               ),
                           ],
                         ),
@@ -529,7 +537,7 @@ class DesktopCalendarView extends StatelessWidget {
           SizedBox(
             height: 58,
             child: Row(
-              children: _statusTitles.keys.map((status) {
+              children: _statuses.map((status) {
                 return Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -542,7 +550,14 @@ class DesktopCalendarView extends StatelessWidget {
                             border: Border.all(color: const Color(0xFFD9E2EF)),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Center(child: Text(_statusTitles[status]!)),
+                          child: Center(
+                            child: Text(
+                              taskWorkflowLabel(
+                                context,
+                                WorkflowStatus.parse(status),
+                              ),
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -571,7 +586,7 @@ class DesktopCalendarView extends StatelessWidget {
           content: SizedBox(
             width: 520,
             child: dayTasks.isEmpty
-                ? const Text('На эту дату задач нет')
+                ? Text(_noTasksForDateLabel(context))
                 : ListView(
                     shrinkWrap: true,
                     children: [
@@ -580,7 +595,7 @@ class DesktopCalendarView extends StatelessWidget {
                           dense: true,
                           title: Text(task.title),
                           subtitle: Text(
-                            '${task.time} · ${workflowLabel(task.workflowStatus)}',
+                            '${task.time} · ${taskWorkflowLabel(context, task.workflowStatus)}',
                           ),
                           trailing: Wrap(
                             spacing: 4,
@@ -602,7 +617,7 @@ class DesktopCalendarView extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Закрыть'),
+              child: Text(_closeLabel(context)),
             ),
             FilledButton.icon(
               onPressed: () async {
@@ -610,7 +625,7 @@ class DesktopCalendarView extends StatelessWidget {
                 await onAddForDate(day);
               },
               icon: const Icon(Icons.add),
-              label: const Text('Добавить'),
+              label: Text(_addTaskLabel(context)),
             ),
           ],
         );
