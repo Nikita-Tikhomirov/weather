@@ -26,6 +26,7 @@
   "more": "more",
   "dropHere": "Drop here",
   "message": "Message",
+  "messageDeleted": "Message deleted",
   "send": "Send",
   "incomingVideoCall": "Incoming video call",
   "incomingAudioCall": "Incoming audio call",

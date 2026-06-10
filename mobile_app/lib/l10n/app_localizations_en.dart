@@ -87,6 +87,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get message => 'Message';
 
   @override
+  String get messageDeleted => 'Message deleted';
+
+  @override
   String get send => 'Send';
 
   @override

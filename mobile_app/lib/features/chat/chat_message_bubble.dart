@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/chat_models.dart';
 import '../../shared/utils/avatar_url_resolver.dart';
 import 'chat_attachment_bubble.dart';
@@ -133,9 +134,12 @@ class ChatMessageBubble extends StatelessWidget {
       return _buildUploadingContent(context);
     }
     if (deleted) {
-      return const Text(
-        'Сообщение удалено',
-        style: TextStyle(fontStyle: FontStyle.italic, color: Color(0xFF9CA3AF)),
+      return Text(
+        AppLocalizations.of(context)?.messageDeleted ?? 'Сообщение удалено',
+        style: const TextStyle(
+          fontStyle: FontStyle.italic,
+          color: Color(0xFF9CA3AF),
+        ),
       );
     }
     // Reply quote

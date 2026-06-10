@@ -87,6 +87,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get message => 'Сообщение';
 
   @override
+  String get messageDeleted => 'Сообщение удалено';
+
+  @override
   String get send => 'Отправить';
 
   @override
