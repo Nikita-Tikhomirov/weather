@@ -1,7 +1,27 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/project_contact.dart';
 import '../../models/project_file.dart';
+
+class _ProjectFileBrowserText {
+  const _ProjectFileBrowserText(this.l10n);
+
+  final AppLocalizations? l10n;
+
+  String projectFilesTitle(String projectName) {
+    return l10n?.projectFilesTitle(projectName) ?? 'Файлы - $projectName';
+  }
+
+  String get projectRoot => l10n?.projectRoot ?? 'Корень';
+  String get upOneLevel => l10n?.upOneLevel ?? 'Наверх';
+  String get refresh => l10n?.refresh ?? 'Обновить';
+  String get close => l10n?.close ?? 'Закрыть';
+  String get loadingFiles => l10n?.loadingFiles ?? 'Загрузка файлов...';
+  String get folderEmpty => l10n?.folderEmpty ?? 'Папка пуста';
+  String get preview => l10n?.previewAction ?? 'Просмотр';
+  String get linkToChat => l10n?.linkToChat ?? 'Ссылка в чат';
+}
 
 class ProjectFileBrowser extends StatelessWidget {
   const ProjectFileBrowser({
@@ -30,6 +50,7 @@ class ProjectFileBrowser extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final text = _ProjectFileBrowserText(AppLocalizations.of(context));
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
       minChildSize: 0.4,
@@ -47,7 +68,7 @@ class ProjectFileBrowser extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Файлы — ${project.name}',
+                          text.projectFilesTitle(project.name),
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
@@ -67,7 +88,9 @@ class ProjectFileBrowser extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    tooltip: currentPath.isEmpty ? 'Корень' : 'Наверх',
+                    tooltip: currentPath.isEmpty
+                        ? text.projectRoot
+                        : text.upOneLevel,
                     icon: const Icon(Icons.arrow_upward),
                     onPressed: currentPath.isEmpty
                         ? null
@@ -82,12 +105,12 @@ class ProjectFileBrowser extends StatelessWidget {
                           },
                   ),
                   IconButton(
-                    tooltip: 'Обновить',
+                    tooltip: text.refresh,
                     icon: const Icon(Icons.refresh),
                     onPressed: onRefresh,
                   ),
                   IconButton(
-                    tooltip: 'Закрыть',
+                    tooltip: text.close,
                     icon: const Icon(Icons.close),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
@@ -110,7 +133,7 @@ class ProjectFileBrowser extends StatelessWidget {
                             child: CircularProgressIndicator(strokeWidth: 3),
                           ),
                           const SizedBox(height: 16),
-                          const Text('Загрузка файлов...'),
+                          Text(text.loadingFiles),
                         ] else ...[
                           Icon(
                             Icons.folder_open,
@@ -118,7 +141,7 @@ class ProjectFileBrowser extends StatelessWidget {
                             color: Theme.of(context).disabledColor,
                           ),
                           const SizedBox(height: 16),
-                          const Text('Папка пуста'),
+                          Text(text.folderEmpty),
                         ],
                       ],
                     ),
@@ -148,6 +171,7 @@ class ProjectFileBrowser extends StatelessWidget {
                         }
                       },
                       onLink: () => onLinkToChat(node.path),
+                      linkTooltip: text.linkToChat,
                     );
                   },
                 ),
@@ -169,6 +193,9 @@ class ProjectFileBrowser extends StatelessWidget {
       showDragHandle: true,
       builder: (sheetContext) {
         final cs = Theme.of(sheetContext).colorScheme;
+        final text = _ProjectFileBrowserText(
+          AppLocalizations.of(sheetContext),
+        );
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
@@ -226,7 +253,7 @@ class ProjectFileBrowser extends StatelessWidget {
                         onViewFile(node.path);
                       },
                       icon: const Icon(Icons.visibility),
-                      label: const Text('Просмотр'),
+                      label: Text(text.preview),
                     ),
                   ),
                 ],
@@ -239,7 +266,7 @@ class ProjectFileBrowser extends StatelessWidget {
                       onLinkToChat(node.path);
                     },
                     icon: const Icon(Icons.attachment),
-                    label: const Text('Ссылка в чат'),
+                    label: Text(text.linkToChat),
                   ),
                 ),
               ],
@@ -272,11 +299,13 @@ class _FileNodeTile extends StatelessWidget {
     required this.node,
     required this.onTap,
     required this.onLink,
+    required this.linkTooltip,
   });
 
   final ProjectFileNode node;
   final VoidCallback onTap;
   final VoidCallback onLink;
+  final String linkTooltip;
 
   @override
   Widget build(BuildContext context) {
@@ -304,7 +333,7 @@ class _FileNodeTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            tooltip: 'Ссылка в чат',
+            tooltip: linkTooltip,
             icon: const Icon(Icons.attachment, size: 20),
             onPressed: onLink,
           ),

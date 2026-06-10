@@ -625,6 +625,23 @@ class AppLocalizationsRu extends AppLocalizations {
   String get previewFile => 'Просмотр файла';
 
   @override
+  String projectFilesTitle(Object projectName) {
+    return 'Файлы - $projectName';
+  }
+
+  @override
+  String get loadingFiles => 'Загрузка файлов...';
+
+  @override
+  String get folderEmpty => 'Папка пуста';
+
+  @override
+  String get previewAction => 'Просмотр';
+
+  @override
+  String get linkToChat => 'Ссылка в чат';
+
+  @override
   String get sessionCodeWhaleModes => 'Режимы CodeWhale';
 
   @override

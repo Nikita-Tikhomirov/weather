@@ -218,6 +218,16 @@
   "noFiles": "No files",
   "insertPathInChat": "Insert path in chat",
   "previewFile": "Preview file",
+  "projectFilesTitle": "Files - {projectName}",
+  "@projectFilesTitle": {
+    "placeholders": {
+      "projectName": {}
+    }
+  },
+  "loadingFiles": "Loading files...",
+  "folderEmpty": "Folder is empty",
+  "previewAction": "Preview",
+  "linkToChat": "Link to chat",
   "sessionCodeWhaleModes": "CodeWhale modes",
   "provider": "Provider",
   "model": "Model",

@@ -218,6 +218,16 @@
   "noFiles": "Файлов нет",
   "insertPathInChat": "Путь в чат",
   "previewFile": "Просмотр файла",
+  "projectFilesTitle": "Файлы - {projectName}",
+  "@projectFilesTitle": {
+    "placeholders": {
+      "projectName": {}
+    }
+  },
+  "loadingFiles": "Загрузка файлов...",
+  "folderEmpty": "Папка пуста",
+  "previewAction": "Просмотр",
+  "linkToChat": "Ссылка в чат",
   "sessionCodeWhaleModes": "Режимы CodeWhale",
   "provider": "Провайдер",
   "model": "Модель",

@@ -1316,6 +1316,36 @@ abstract class AppLocalizations {
   /// **'Preview file'**
   String get previewFile;
 
+  /// No description provided for @projectFilesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Files - {projectName}'**
+  String projectFilesTitle(Object projectName);
+
+  /// No description provided for @loadingFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading files...'**
+  String get loadingFiles;
+
+  /// No description provided for @folderEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder is empty'**
+  String get folderEmpty;
+
+  /// No description provided for @previewAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get previewAction;
+
+  /// No description provided for @linkToChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Link to chat'**
+  String get linkToChat;
+
   /// No description provided for @sessionCodeWhaleModes.
   ///
   /// In en, this message translates to:

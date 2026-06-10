@@ -625,6 +625,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get previewFile => 'Preview file';
 
   @override
+  String projectFilesTitle(Object projectName) {
+    return 'Files - $projectName';
+  }
+
+  @override
+  String get loadingFiles => 'Loading files...';
+
+  @override
+  String get folderEmpty => 'Folder is empty';
+
+  @override
+  String get previewAction => 'Preview';
+
+  @override
+  String get linkToChat => 'Link to chat';
+
+  @override
   String get sessionCodeWhaleModes => 'CodeWhale modes';
 
   @override
