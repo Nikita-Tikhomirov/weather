@@ -630,7 +630,7 @@ class ProjectChatAgentBridgeRunner {
   ProjectChatAgentBridgeRunner({
     ProjectChatAgentBridgeFactory? bridgeFactory,
     this.taskPollDelay = const Duration(seconds: 2),
-    this.timeout = const Duration(seconds: 30),
+    this.timeout = const Duration(seconds: 90),
     this.onSessionLinked,
     this.onStatusChange,
   }) : _bridgeFactory = bridgeFactory;
