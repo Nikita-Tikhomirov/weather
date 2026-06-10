@@ -108,6 +108,18 @@
       "error": {}
     }
   },
+  "newGroup": "Новая группа",
+  "editGroup": "Редактировать группу",
+  "groupNameLabel": "Название группы",
+  "noContacts": "Нет контактов. Добавьте контакты в мессенджере.",
+  "groupNameRequired": "Введите название группы",
+  "groupMemberRequired": "Выберите хотя бы одного участника",
+  "groupSaveFailed": "Ошибка: {error}",
+  "@groupSaveFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "connecting": "Подключение...",
   "reconnecting": "Переподключение...",
   "connected": "Подключено",

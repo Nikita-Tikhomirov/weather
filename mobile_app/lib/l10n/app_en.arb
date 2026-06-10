@@ -108,6 +108,18 @@
       "error": {}
     }
   },
+  "newGroup": "New group",
+  "editGroup": "Edit group",
+  "groupNameLabel": "Group name",
+  "noContacts": "No contacts. Add contacts in Messenger.",
+  "groupNameRequired": "Enter group name",
+  "groupMemberRequired": "Select at least one participant",
+  "groupSaveFailed": "Error: {error}",
+  "@groupSaveFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "connecting": "Connecting...",
   "reconnecting": "Reconnecting...",
   "connected": "Connected",

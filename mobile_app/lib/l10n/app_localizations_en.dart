@@ -320,6 +320,29 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get newGroup => 'New group';
+
+  @override
+  String get editGroup => 'Edit group';
+
+  @override
+  String get groupNameLabel => 'Group name';
+
+  @override
+  String get noContacts => 'No contacts. Add contacts in Messenger.';
+
+  @override
+  String get groupNameRequired => 'Enter group name';
+
+  @override
+  String get groupMemberRequired => 'Select at least one participant';
+
+  @override
+  String groupSaveFailed(Object error) {
+    return 'Error: $error';
+  }
+
+  @override
   String get connecting => 'Connecting...';
 
   @override

@@ -320,6 +320,29 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get newGroup => 'Новая группа';
+
+  @override
+  String get editGroup => 'Редактировать группу';
+
+  @override
+  String get groupNameLabel => 'Название группы';
+
+  @override
+  String get noContacts => 'Нет контактов. Добавьте контакты в мессенджере.';
+
+  @override
+  String get groupNameRequired => 'Введите название группы';
+
+  @override
+  String get groupMemberRequired => 'Выберите хотя бы одного участника';
+
+  @override
+  String groupSaveFailed(Object error) {
+    return 'Ошибка: $error';
+  }
+
+  @override
   String get connecting => 'Подключение...';
 
   @override

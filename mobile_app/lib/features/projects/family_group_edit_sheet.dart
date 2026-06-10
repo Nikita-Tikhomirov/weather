@@ -1,8 +1,33 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/chat_models.dart';
 import '../../models/family_group.dart';
 import '../../state/task_store.dart';
+
+class _FamilyGroupEditSheetText {
+  const _FamilyGroupEditSheetText(this.l10n);
+
+  final AppLocalizations? l10n;
+
+  String get newGroup => l10n?.newGroup ?? 'Новая группа';
+  String get editGroup => l10n?.editGroup ?? 'Редактировать группу';
+  String get groupNameLabel => l10n?.groupNameLabel ?? 'Название группы';
+  String get participants => l10n?.participants ?? 'Участники';
+  String get noContacts =>
+      l10n?.noContacts ?? 'Нет контактов. Добавьте контакты в мессенджере.';
+  String get cancel => l10n?.cancel ?? 'Отмена';
+  String get create => l10n?.create ?? 'Создать';
+  String get save => l10n?.save ?? 'Сохранить';
+  String get groupNameRequired =>
+      l10n?.groupNameRequired ?? 'Введите название группы';
+  String get groupMemberRequired =>
+      l10n?.groupMemberRequired ?? 'Выберите хотя бы одного участника';
+
+  String groupSaveFailed(Object error) {
+    return l10n?.groupSaveFailed(error.toString()) ?? 'Ошибка: $error';
+  }
+}
 
 Future<void> showFamilyGroupEditSheet({
   required BuildContext context,
@@ -18,6 +43,7 @@ Future<void> showFamilyGroupEditSheet({
   final selectedMembers = <String>{
     ...(isCreate ? const <String>{} : group?.members ?? const <String>[]),
   };
+  final text = _FamilyGroupEditSheetText(AppLocalizations.of(context));
 
   await showModalBottomSheet<void>(
     context: context,
@@ -54,26 +80,25 @@ Future<void> showFamilyGroupEditSheet({
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                isCreate ? 'Новая группа' : 'Редактировать группу',
+                isCreate ? text.newGroup : text.editGroup,
                 style: Theme.of(sheetContext).textTheme.titleLarge,
               ),
               const SizedBox(height: 12),
               // ── TextField manages its own state via controller ──
               TextField(
                 controller: nameCtl,
-                decoration: const InputDecoration(labelText: 'Название группы'),
+                decoration: InputDecoration(labelText: text.groupNameLabel),
               ),
               const SizedBox(height: 12),
               Text(
-                'Участники',
+                text.participants,
                 style: Theme.of(sheetContext).textTheme.titleSmall,
               ),
               const SizedBox(height: 6),
               if (availableContacts.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child:
-                      Text('Нет контактов. Добавьте контакты в мессенджере.'),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(text.noContacts),
                 ),
               // ── StatefulBuilder only for FilterChips ──
               StatefulBuilder(
@@ -107,7 +132,7 @@ Future<void> showFamilyGroupEditSheet({
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(sheetContext),
-                      child: const Text('Отмена'),
+                      child: Text(text.cancel),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -117,17 +142,16 @@ Future<void> showFamilyGroupEditSheet({
                         final name = nameCtl.text.trim();
                         if (name.isEmpty) {
                           ScaffoldMessenger.of(sheetContext).showSnackBar(
-                            const SnackBar(
-                              content: Text('Введите название группы'),
+                            SnackBar(
+                              content: Text(text.groupNameRequired),
                             ),
                           );
                           return;
                         }
                         if (selectedMembers.isEmpty) {
                           ScaffoldMessenger.of(sheetContext).showSnackBar(
-                            const SnackBar(
-                              content:
-                                  Text('Выберите хотя бы одного участника'),
+                            SnackBar(
+                              content: Text(text.groupMemberRequired),
                             ),
                           );
                           return;
@@ -153,7 +177,12 @@ Future<void> showFamilyGroupEditSheet({
                             ScaffoldMessenger.of(sheetContext).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  'Ошибка: ${e.toString().replaceFirst("Exception: ", "")}',
+                                  text.groupSaveFailed(
+                                    e.toString().replaceFirst(
+                                          'Exception: ',
+                                          '',
+                                        ),
+                                  ),
                                 ),
                                 backgroundColor: Colors.red,
                               ),
@@ -161,7 +190,7 @@ Future<void> showFamilyGroupEditSheet({
                           }
                         }
                       },
-                      child: Text(isCreate ? 'Создать' : 'Сохранить'),
+                      child: Text(isCreate ? text.create : text.save),
                     ),
                   ),
                 ],

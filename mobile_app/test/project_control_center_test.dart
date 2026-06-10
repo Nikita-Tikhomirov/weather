@@ -1,4 +1,5 @@
 import 'package:family_todo_mobile/domain/task_domain_service.dart';
+import 'package:family_todo_mobile/features/projects/family_group_edit_sheet.dart';
 import 'package:family_todo_mobile/features/projects/project_edit_sheet.dart';
 import 'package:family_todo_mobile/features/projects/projects_and_groups_screen.dart';
 import 'package:family_todo_mobile/l10n/app_localizations.dart';
@@ -63,6 +64,61 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Enter project name'), findsOneWidget);
+    });
+
+    testWidgets('family group edit sheet uses localized labels',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = TaskStore(
+        repository: repository,
+        domainService: TaskDomainService(),
+      );
+
+      await tester.pumpWidget(
+        _localizedApp(
+          home: Builder(
+            builder: (context) {
+              return Scaffold(
+                body: Center(
+                  child: FilledButton(
+                    onPressed: () => showFamilyGroupEditSheet(
+                      context: context,
+                      store: store,
+                      isCreate: true,
+                      contacts: const [
+                        ChatContact(
+                          profileKey: 'nik',
+                          displayName: 'Nick',
+                          phone: '',
+                          conversationKey: 'chat:nik',
+                        ),
+                      ],
+                      contactLabel: (contact) => contact.displayName,
+                      actorProfile: 'nik',
+                    ),
+                    child: const Text('Open group sheet'),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open group sheet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('New group'), findsOneWidget);
+      expect(find.text('Group name'), findsOneWidget);
+      expect(find.text('Participants'), findsOneWidget);
+      expect(find.text('Nick'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('Create'), findsOneWidget);
+
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Enter group name'), findsOneWidget);
     });
 
     testWidgets('does not auto-select first workspace and saves chosen one',

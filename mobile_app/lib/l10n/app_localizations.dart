@@ -716,6 +716,48 @@ abstract class AppLocalizations {
   /// **'Error: {error}'**
   String projectSaveFailed(Object error);
 
+  /// No description provided for @newGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'New group'**
+  String get newGroup;
+
+  /// No description provided for @editGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit group'**
+  String get editGroup;
+
+  /// No description provided for @groupNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Group name'**
+  String get groupNameLabel;
+
+  /// No description provided for @noContacts.
+  ///
+  /// In en, this message translates to:
+  /// **'No contacts. Add contacts in Messenger.'**
+  String get noContacts;
+
+  /// No description provided for @groupNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter group name'**
+  String get groupNameRequired;
+
+  /// No description provided for @groupMemberRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Select at least one participant'**
+  String get groupMemberRequired;
+
+  /// No description provided for @groupSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {error}'**
+  String groupSaveFailed(Object error);
+
   /// No description provided for @connecting.
   ///
   /// In en, this message translates to:
