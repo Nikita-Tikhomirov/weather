@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/api_client.dart';
 
 /// Standalone profile-initialization service extracted from _HomePageState.
@@ -72,16 +73,18 @@ class ProfileInitService {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
+            final l10n = AppLocalizations.of(ctx);
             return AlertDialog(
-              title: const Text('Вход по номеру телефона'),
+              title:
+                  Text(l10n?.initialProfileTitle ?? 'Вход по номеру телефона'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
                     controller: phoneCtl,
                     keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      labelText: 'Номер телефона',
+                    decoration: InputDecoration(
+                      labelText: l10n?.phoneNumberLabel ?? 'Номер телефона',
                       hintText: '+7 999 111 22 33',
                     ),
                   ),
@@ -89,7 +92,7 @@ class ProfileInitService {
                   TextField(
                     controller: nameCtl,
                     textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(labelText: 'Имя'),
+                    decoration: InputDecoration(labelText: l10n?.name ?? 'Имя'),
                   ),
                   if (errorText.isNotEmpty) ...[
                     const SizedBox(height: 8),
@@ -127,7 +130,7 @@ class ProfileInitService {
                       setDialogState(() => errorText = error.toString());
                     }
                   },
-                  child: const Text('Продолжить'),
+                  child: Text(l10n?.continueAction ?? 'Продолжить'),
                 ),
               ],
             );

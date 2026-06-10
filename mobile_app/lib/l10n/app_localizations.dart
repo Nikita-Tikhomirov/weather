@@ -1166,6 +1166,24 @@ abstract class AppLocalizations {
   /// **'Phone'**
   String get phone;
 
+  /// No description provided for @phoneNumberLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number'**
+  String get phoneNumberLabel;
+
+  /// No description provided for @initialProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with phone number'**
+  String get initialProfileTitle;
+
+  /// No description provided for @continueAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get continueAction;
+
   /// No description provided for @administration.
   ///
   /// In en, this message translates to:

@@ -575,6 +575,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get phone => 'Телефон';
 
   @override
+  String get phoneNumberLabel => 'Номер телефона';
+
+  @override
+  String get initialProfileTitle => 'Вход по номеру телефона';
+
+  @override
+  String get continueAction => 'Продолжить';
+
+  @override
   String get administration => 'Администрирование';
 
   @override

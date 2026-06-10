@@ -575,6 +575,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get phone => 'Phone';
 
   @override
+  String get phoneNumberLabel => 'Phone number';
+
+  @override
+  String get initialProfileTitle => 'Sign in with phone number';
+
+  @override
+  String get continueAction => 'Continue';
+
+  @override
   String get administration => 'Administration';
 
   @override
