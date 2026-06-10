@@ -192,6 +192,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskDetails => 'Details';
 
   @override
+  String get chatTaskDraft => 'Task draft';
+
+  @override
+  String get taskSummary => 'Summary';
+
+  @override
+  String get checklist => 'Checklist';
+
+  @override
+  String get actionItems => 'Action items';
+
+  @override
+  String get decisions => 'Decisions';
+
+  @override
+  String get blockers => 'Blockers';
+
+  @override
+  String get sources => 'Sources';
+
+  @override
+  String get createTask => 'Create task';
+
+  @override
+  String get taskFromChat => 'Task from chat';
+
+  @override
   String get taskProject => 'Project';
 
   @override

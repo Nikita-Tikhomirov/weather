@@ -464,6 +464,60 @@ abstract class AppLocalizations {
   /// **'Details'**
   String get taskDetails;
 
+  /// No description provided for @chatTaskDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Task draft'**
+  String get chatTaskDraft;
+
+  /// No description provided for @taskSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get taskSummary;
+
+  /// No description provided for @checklist.
+  ///
+  /// In en, this message translates to:
+  /// **'Checklist'**
+  String get checklist;
+
+  /// No description provided for @actionItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Action items'**
+  String get actionItems;
+
+  /// No description provided for @decisions.
+  ///
+  /// In en, this message translates to:
+  /// **'Decisions'**
+  String get decisions;
+
+  /// No description provided for @blockers.
+  ///
+  /// In en, this message translates to:
+  /// **'Blockers'**
+  String get blockers;
+
+  /// No description provided for @sources.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources'**
+  String get sources;
+
+  /// No description provided for @createTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Create task'**
+  String get createTask;
+
+  /// No description provided for @taskFromChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Task from chat'**
+  String get taskFromChat;
+
   /// No description provided for @taskProject.
   ///
   /// In en, this message translates to:

@@ -192,6 +192,33 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskDetails => 'Описание';
 
   @override
+  String get chatTaskDraft => 'Черновик задачи';
+
+  @override
+  String get taskSummary => 'Резюме';
+
+  @override
+  String get checklist => 'Чеклист';
+
+  @override
+  String get actionItems => 'Action items';
+
+  @override
+  String get decisions => 'Решения';
+
+  @override
+  String get blockers => 'Блокеры';
+
+  @override
+  String get sources => 'Источники';
+
+  @override
+  String get createTask => 'Создать задачу';
+
+  @override
+  String get taskFromChat => 'Задача из чата';
+
+  @override
   String get taskProject => 'Проект';
 
   @override

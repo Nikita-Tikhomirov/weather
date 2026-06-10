@@ -1,10 +1,21 @@
 import 'package:family_todo_mobile/features/projects/chat_task_draft_editor_sheet.dart';
+import 'package:family_todo_mobile/l10n/app_localizations.dart';
 import 'package:family_todo_mobile/models/project_control_models.dart';
 import 'package:family_todo_mobile/models/task_item.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  Widget localizedApp(Widget child) {
+    return MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
+      home: Scaffold(body: child),
+    );
+  }
+
   testWidgets('allows full editing before confirming chat task draft',
       (tester) async {
     ChatTaskDraft? confirmed;
@@ -54,5 +65,36 @@ void main() {
     expect(confirmed?.checklist, ['Спроектировать форму', 'Подключить оплату']);
     expect(confirmed?.assignees, ['nik', 'nastya']);
     expect(confirmed?.priority, Priority.medium);
+  });
+
+  testWidgets('uses localized editor labels when delegates are available',
+      (tester) async {
+    await tester.pumpWidget(
+      localizedApp(
+        ChatTaskDraftEditorSheet(
+          initialDraft: const ChatTaskDraft(
+            title: '',
+            priority: Priority.medium,
+          ),
+          onCancel: () {},
+          onConfirm: (_) {},
+        ),
+      ),
+    );
+
+    expect(find.text('Task draft'), findsOneWidget);
+    expect(find.text('Title'), findsOneWidget);
+    expect(find.text('Details'), findsOneWidget);
+    expect(find.text('Summary'), findsOneWidget);
+    expect(find.text('Checklist'), findsOneWidget);
+    expect(find.text('Action items'), findsOneWidget);
+    expect(find.text('Decisions'), findsOneWidget);
+    expect(find.text('Blockers'), findsOneWidget);
+    expect(find.text('Assignees'), findsOneWidget);
+    expect(find.text('Sources'), findsOneWidget);
+    expect(find.text('Priority'), findsOneWidget);
+    expect(find.text('Medium'), findsOneWidget);
+    expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('Create task'), findsOneWidget);
   });
 }

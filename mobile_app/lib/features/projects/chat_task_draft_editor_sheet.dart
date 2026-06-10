@@ -1,7 +1,32 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/project_control_models.dart';
 import '../../models/task_item.dart';
+
+class _ChatTaskDraftEditorText {
+  const _ChatTaskDraftEditorText(this.l10n);
+
+  final AppLocalizations? l10n;
+
+  String get draft => l10n?.chatTaskDraft ?? 'Черновик задачи';
+  String get title => l10n?.taskTitle ?? 'Заголовок';
+  String get details => l10n?.taskDetails ?? 'Описание';
+  String get summary => l10n?.taskSummary ?? 'Резюме';
+  String get checklist => l10n?.checklist ?? 'Чеклист';
+  String get actionItems => l10n?.actionItems ?? 'Action items';
+  String get decisions => l10n?.decisions ?? 'Решения';
+  String get blockers => l10n?.blockers ?? 'Блокеры';
+  String get assignees => l10n?.taskAssignees ?? 'Ответственные';
+  String get sources => l10n?.sources ?? 'Источники';
+  String get priority => l10n?.priority ?? 'Приоритет';
+  String get low => l10n?.low ?? 'Низкий';
+  String get medium => l10n?.medium ?? 'Средний';
+  String get high => l10n?.high ?? 'Высокий';
+  String get cancel => l10n?.cancel ?? 'Отмена';
+  String get createTask => l10n?.createTask ?? 'Создать задачу';
+  String get taskFromChat => l10n?.taskFromChat ?? 'Задача из чата';
+}
 
 class ChatTaskDraftEditorSheet extends StatefulWidget {
   const ChatTaskDraftEditorSheet({
@@ -65,6 +90,7 @@ class _ChatTaskDraftEditorSheetState extends State<ChatTaskDraftEditorSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final text = _ChatTaskDraftEditorText(AppLocalizations.of(context));
     return SafeArea(
       top: false,
       child: SingleChildScrollView(
@@ -79,21 +105,21 @@ class _ChatTaskDraftEditorSheetState extends State<ChatTaskDraftEditorSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Черновик задачи',
+              text.draft,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
             TextField(
               key: const ValueKey('chat-draft-title-field'),
               controller: _titleCtl,
-              decoration: const InputDecoration(labelText: 'Заголовок'),
+              decoration: InputDecoration(labelText: text.title),
               textInputAction: TextInputAction.next,
             ),
             const SizedBox(height: 10),
             TextField(
               key: const ValueKey('chat-draft-details-field'),
               controller: _detailsCtl,
-              decoration: const InputDecoration(labelText: 'Описание'),
+              decoration: InputDecoration(labelText: text.details),
               minLines: 3,
               maxLines: 6,
             ),
@@ -101,7 +127,7 @@ class _ChatTaskDraftEditorSheetState extends State<ChatTaskDraftEditorSheet> {
             TextField(
               key: const ValueKey('chat-draft-summary-field'),
               controller: _summaryCtl,
-              decoration: const InputDecoration(labelText: 'Резюме'),
+              decoration: InputDecoration(labelText: text.summary),
               minLines: 1,
               maxLines: 3,
             ),
@@ -109,7 +135,7 @@ class _ChatTaskDraftEditorSheetState extends State<ChatTaskDraftEditorSheet> {
             TextField(
               key: const ValueKey('chat-draft-checklist-field'),
               controller: _checklistCtl,
-              decoration: const InputDecoration(labelText: 'Чеклист'),
+              decoration: InputDecoration(labelText: text.checklist),
               minLines: 2,
               maxLines: 6,
             ),
@@ -117,7 +143,7 @@ class _ChatTaskDraftEditorSheetState extends State<ChatTaskDraftEditorSheet> {
             TextField(
               key: const ValueKey('chat-draft-action-items-field'),
               controller: _actionItemsCtl,
-              decoration: const InputDecoration(labelText: 'Action items'),
+              decoration: InputDecoration(labelText: text.actionItems),
               minLines: 2,
               maxLines: 5,
             ),
@@ -125,7 +151,7 @@ class _ChatTaskDraftEditorSheetState extends State<ChatTaskDraftEditorSheet> {
             TextField(
               key: const ValueKey('chat-draft-decisions-field'),
               controller: _decisionsCtl,
-              decoration: const InputDecoration(labelText: 'Решения'),
+              decoration: InputDecoration(labelText: text.decisions),
               minLines: 1,
               maxLines: 4,
             ),
@@ -133,7 +159,7 @@ class _ChatTaskDraftEditorSheetState extends State<ChatTaskDraftEditorSheet> {
             TextField(
               key: const ValueKey('chat-draft-blockers-field'),
               controller: _blockersCtl,
-              decoration: const InputDecoration(labelText: 'Блокеры'),
+              decoration: InputDecoration(labelText: text.blockers),
               minLines: 1,
               maxLines: 4,
             ),
@@ -141,26 +167,26 @@ class _ChatTaskDraftEditorSheetState extends State<ChatTaskDraftEditorSheet> {
             TextField(
               key: const ValueKey('chat-draft-assignees-field'),
               controller: _assigneesCtl,
-              decoration: const InputDecoration(labelText: 'Ответственные'),
+              decoration: InputDecoration(labelText: text.assignees),
             ),
             const SizedBox(height: 10),
             TextField(
               key: const ValueKey('chat-draft-sources-field'),
               controller: _sourcesCtl,
-              decoration: const InputDecoration(labelText: 'Источники'),
+              decoration: InputDecoration(labelText: text.sources),
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<Priority>(
               key: const ValueKey('chat-draft-priority-field'),
               initialValue: _priority,
-              decoration: const InputDecoration(labelText: 'Приоритет'),
-              items: const [
-                DropdownMenuItem(value: Priority.low, child: Text('Низкий')),
+              decoration: InputDecoration(labelText: text.priority),
+              items: [
+                DropdownMenuItem(value: Priority.low, child: Text(text.low)),
                 DropdownMenuItem(
                   value: Priority.medium,
-                  child: Text('Средний'),
+                  child: Text(text.medium),
                 ),
-                DropdownMenuItem(value: Priority.high, child: Text('Высокий')),
+                DropdownMenuItem(value: Priority.high, child: Text(text.high)),
               ],
               onChanged: (value) {
                 if (value == null) return;
@@ -173,14 +199,14 @@ class _ChatTaskDraftEditorSheetState extends State<ChatTaskDraftEditorSheet> {
                 TextButton(
                   key: const ValueKey('chat-draft-cancel'),
                   onPressed: widget.onCancel,
-                  child: const Text('Отмена'),
+                  child: Text(text.cancel),
                 ),
                 const Spacer(),
                 FilledButton.icon(
                   key: const ValueKey('chat-draft-confirm'),
                   icon: const Icon(Icons.check),
-                  onPressed: () => widget.onConfirm(_buildDraft()),
-                  label: const Text('Создать задачу'),
+                  onPressed: () => widget.onConfirm(_buildDraft(text)),
+                  label: Text(text.createTask),
                 ),
               ],
             ),
@@ -190,10 +216,10 @@ class _ChatTaskDraftEditorSheetState extends State<ChatTaskDraftEditorSheet> {
     );
   }
 
-  ChatTaskDraft _buildDraft() {
+  ChatTaskDraft _buildDraft(_ChatTaskDraftEditorText text) {
     final fallbackTitle = widget.initialDraft.title.trim().isNotEmpty
         ? widget.initialDraft.title.trim()
-        : 'Задача из чата';
+        : text.taskFromChat;
     return ChatTaskDraft(
       title:
           _titleCtl.text.trim().isEmpty ? fallbackTitle : _titleCtl.text.trim(),
