@@ -1,6 +1,21 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/workspace_item.dart';
+
+class _WorkspaceListText {
+  const _WorkspaceListText(this.l10n);
+
+  final AppLocalizations? l10n;
+
+  String get workspaces => l10n?.workspaces ?? 'Рабочие пространства';
+  String get refresh => l10n?.refresh ?? 'Обновить';
+  String get attachFolder => l10n?.attachFolder ?? 'Подключить папку';
+  String get createWorkspace =>
+      l10n?.createWorkspace ?? 'Создать рабочее пространство';
+  String get noWorkspacesYet =>
+      l10n?.noWorkspacesYet ?? 'Рабочих пространств пока нет';
+}
 
 class WorkspaceListView extends StatelessWidget {
   const WorkspaceListView({
@@ -24,23 +39,24 @@ class WorkspaceListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = _WorkspaceListText(AppLocalizations.of(context));
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Рабочие пространства'),
+        title: Text(text.workspaces),
         actions: [
           IconButton(
-            tooltip: 'Обновить',
+            tooltip: text.refresh,
             icon: const Icon(Icons.refresh),
             onPressed: onRefresh,
           ),
           IconButton(
-            tooltip: 'Подключить папку',
+            tooltip: text.attachFolder,
             icon: const Icon(Icons.folder_open),
             onPressed: onAttachWorkspace,
           ),
           IconButton(
-            tooltip: 'Создать рабочее пространство',
+            tooltip: text.createWorkspace,
             icon: const Icon(Icons.add),
             onPressed: onCreateWorkspace,
           ),
@@ -66,7 +82,7 @@ class WorkspaceListView extends StatelessWidget {
           ),
           Expanded(
             child: workspaces.isEmpty
-                ? const Center(child: Text('Рабочих пространств пока нет'))
+                ? Center(child: Text(text.noWorkspacesYet))
                 : ListView.separated(
                     itemCount: workspaces.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),

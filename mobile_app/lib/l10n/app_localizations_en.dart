@@ -390,6 +390,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSession => 'New session';
 
   @override
+  String get workspaces => 'Workspaces';
+
+  @override
+  String get attachFolder => 'Attach folder';
+
+  @override
+  String get createWorkspace => 'Create workspace';
+
+  @override
+  String get noWorkspacesYet => 'No workspaces yet';
+
+  @override
   String get stopGeneration => 'Stop generation';
 
   @override

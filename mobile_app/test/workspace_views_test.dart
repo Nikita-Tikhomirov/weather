@@ -3,6 +3,7 @@ import 'package:family_todo_mobile/features/workspaces/session_management_view.d
 import 'package:family_todo_mobile/features/workspaces/workspace_detail_view.dart';
 import 'package:family_todo_mobile/features/workspaces/workspace_folder_browser_view.dart';
 import 'package:family_todo_mobile/features/workspaces/workspace_list_view.dart';
+import 'package:family_todo_mobile/l10n/app_localizations.dart';
 import 'package:family_todo_mobile/models/project_file.dart';
 import 'package:family_todo_mobile/models/workspace_item.dart';
 import 'package:family_todo_mobile/models/workspace_session.dart';
@@ -55,6 +56,28 @@ void main() {
     expect(createTapped, isTrue);
     expect(attachTapped, isTrue);
     expect(opened?.id, 'weather');
+  });
+
+  testWidgets('workspace list uses localized shell labels', (tester) async {
+    await tester.pumpWidget(
+      _localizedTestApp(
+        home: WorkspaceListView(
+          workspaces: const [],
+          connected: true,
+          statusText: 'Connected',
+          onRefresh: () {},
+          onCreateWorkspace: () {},
+          onAttachWorkspace: () {},
+          onOpenWorkspace: (_) {},
+        ),
+      ),
+    );
+
+    expect(find.text('Workspaces'), findsOneWidget);
+    expect(find.text('No workspaces yet'), findsOneWidget);
+    expect(find.byTooltip('Refresh'), findsOneWidget);
+    expect(find.byTooltip('Attach folder'), findsOneWidget);
+    expect(find.byTooltip('Create workspace'), findsOneWidget);
   });
 
   testWidgets('workspace detail shows sessions and opens management',
@@ -501,6 +524,16 @@ void main() {
 
 Widget _testApp({required Widget home}) {
   return MaterialApp(
+    theme: ThemeData(splashFactory: NoSplash.splashFactory),
+    home: home,
+  );
+}
+
+Widget _localizedTestApp({required Widget home}) {
+  return MaterialApp(
+    locale: const Locale('en'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     theme: ThemeData(splashFactory: NoSplash.splashFactory),
     home: home,
   );

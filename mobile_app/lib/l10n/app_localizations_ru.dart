@@ -390,6 +390,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get newSession => 'Новая сессия';
 
   @override
+  String get workspaces => 'Рабочие пространства';
+
+  @override
+  String get attachFolder => 'Подключить папку';
+
+  @override
+  String get createWorkspace => 'Создать рабочее пространство';
+
+  @override
+  String get noWorkspacesYet => 'Рабочих пространств пока нет';
+
+  @override
   String get stopGeneration => 'Остановить генерацию';
 
   @override

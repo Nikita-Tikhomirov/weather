@@ -860,6 +860,30 @@ abstract class AppLocalizations {
   /// **'New session'**
   String get newSession;
 
+  /// No description provided for @workspaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspaces'**
+  String get workspaces;
+
+  /// No description provided for @attachFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach folder'**
+  String get attachFolder;
+
+  /// No description provided for @createWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Create workspace'**
+  String get createWorkspace;
+
+  /// No description provided for @noWorkspacesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No workspaces yet'**
+  String get noWorkspacesYet;
+
   /// No description provided for @stopGeneration.
   ///
   /// In en, this message translates to:
