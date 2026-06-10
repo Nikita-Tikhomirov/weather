@@ -1,0 +1,251 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for English (`en`).
+class AppLocalizationsEn extends AppLocalizations {
+  AppLocalizationsEn([String locale = 'en']) : super(locale);
+
+  @override
+  String get appTitle => 'Family ToDo';
+
+  @override
+  String get tasksTab => 'Tasks';
+
+  @override
+  String get calendarTab => 'Calendar';
+
+  @override
+  String get chatsTab => 'Chats';
+
+  @override
+  String get familyTab => 'Family';
+
+  @override
+  String get familyTasks => 'Family Tasks';
+
+  @override
+  String get filterUpcoming => 'Upcoming';
+
+  @override
+  String get filterOverdue => 'Overdue';
+
+  @override
+  String get filterDone => 'Done';
+
+  @override
+  String get filterAll => 'All';
+
+  @override
+  String get noTasks => 'No tasks';
+
+  @override
+  String get noTasksForFilter => 'No tasks match this filter';
+
+  @override
+  String get message => 'Message';
+
+  @override
+  String get send => 'Send';
+
+  @override
+  String get calling => 'Calling...';
+
+  @override
+  String get incomingCall => 'Incoming call...';
+
+  @override
+  String get inCall => 'In call';
+
+  @override
+  String get callEnded => 'Call ended';
+
+  @override
+  String get decline => 'Decline';
+
+  @override
+  String get accept => 'Accept';
+
+  @override
+  String get endCall => 'End';
+
+  @override
+  String get microphone => 'Microphone';
+
+  @override
+  String get unmute => 'Unmute';
+
+  @override
+  String get speaker => 'Speaker';
+
+  @override
+  String get search => 'Search';
+
+  @override
+  String get delete => 'Delete';
+
+  @override
+  String get edit => 'Edit';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get done => 'Done';
+
+  @override
+  String get undo => 'Undo';
+
+  @override
+  String get addTask => 'Add Task';
+
+  @override
+  String get taskTitle => 'Task title';
+
+  @override
+  String get taskDetails => 'Details';
+
+  @override
+  String get dueDate => 'Due date';
+
+  @override
+  String get time => 'Time';
+
+  @override
+  String get priority => 'Priority';
+
+  @override
+  String get low => 'Low';
+
+  @override
+  String get medium => 'Medium';
+
+  @override
+  String get high => 'High';
+
+  @override
+  String get reminder => 'Reminder';
+
+  @override
+  String get participants => 'Participants';
+
+  @override
+  String get connecting => 'Connecting...';
+
+  @override
+  String get reconnecting => 'Reconnecting...';
+
+  @override
+  String get connected => 'Connected';
+
+  @override
+  String get disconnected => 'Connection lost';
+
+  @override
+  String get connectionError => 'Connection error';
+
+  @override
+  String get retry => 'Retry';
+
+  @override
+  String get settings => 'Settings';
+
+  @override
+  String get profile => 'Profile';
+
+  @override
+  String get theme => 'Theme';
+
+  @override
+  String get light => 'Light';
+
+  @override
+  String get dark => 'Dark';
+
+  @override
+  String get system => 'System';
+
+  @override
+  String get about => 'About';
+
+  @override
+  String get version => 'Version';
+
+  @override
+  String get loading => 'Loading...';
+
+  @override
+  String get error => 'Error';
+
+  @override
+  String get photo => 'Photo';
+
+  @override
+  String get file => 'File';
+
+  @override
+  String get sticker => 'Sticker';
+
+  @override
+  String get voiceMessage => 'Voice message';
+
+  @override
+  String get typing => 'typing...';
+
+  @override
+  String get online => 'online';
+
+  @override
+  String get offline => 'offline';
+
+  @override
+  String get markRead => 'Mark read';
+
+  @override
+  String get reply => 'Reply';
+
+  @override
+  String get forward => 'Forward';
+
+  @override
+  String get copy => 'Copy';
+
+  @override
+  String get newSession => 'New session';
+
+  @override
+  String get stopGeneration => 'Stop generation';
+
+  @override
+  String get diagnostics => 'Diagnostics';
+
+  @override
+  String get resetToken => 'Reset token';
+
+  @override
+  String get refresh => 'Refresh';
+
+  @override
+  String get notificationChannelName => 'Notifications';
+
+  @override
+  String get notificationChannelDesc =>
+      'Push notifications for tasks and reminders';
+
+  @override
+  String get notificationNewMessage => 'New message';
+
+  @override
+  String get yes => 'Yes';
+
+  @override
+  String get no => 'No';
+
+  @override
+  String get ok => 'OK';
+}

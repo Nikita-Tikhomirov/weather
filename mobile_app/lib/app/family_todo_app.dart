@@ -2,10 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/home/home_page.dart';
+import '../l10n/app_localizations.dart';
 import 'app_theme.dart';
 
 class FamilyTodoApp extends StatefulWidget {
-  const FamilyTodoApp({super.key});
+  const FamilyTodoApp({
+    super.key,
+    this.home,
+  });
+
+  final Widget? home;
 
   @override
   State<FamilyTodoApp> createState() => _FamilyTodoAppState();
@@ -40,13 +46,17 @@ class _FamilyTodoAppState extends State<FamilyTodoApp> {
   Widget build(BuildContext context) {
     final option = themeOptionByKey(_themeKey);
     return MaterialApp(
-      title: 'Задачи',
+      onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
+      locale: const Locale('ru'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(option),
-      home: HomePage(
-        selectedThemeKey: option.key,
-        onThemeChanged: _setTheme,
-      ),
+      home: widget.home ??
+          HomePage(
+            selectedThemeKey: option.key,
+            onThemeChanged: _setTheme,
+          ),
     );
   }
 }
