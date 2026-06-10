@@ -21,6 +21,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get chatsTab => 'Чаты';
 
   @override
+  String get messengerTab => 'Мессенджер';
+
+  @override
   String get familyTab => 'Семья';
 
   @override

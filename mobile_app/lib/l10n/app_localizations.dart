@@ -122,6 +122,12 @@ abstract class AppLocalizations {
   /// **'Chats'**
   String get chatsTab;
 
+  /// No description provided for @messengerTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Messenger'**
+  String get messengerTab;
+
   /// No description provided for @familyTab.
   ///
   /// In en, this message translates to:

@@ -7,58 +7,18 @@ part of 'home_page.dart';
 
 extension _NavigationSection on _HomePageState {
   Widget buildNavigationBar(TaskStore store) {
-    return ValueListenableBuilder<int>(
-      valueListenable: store.pageIndex,
-      builder: (context, page, _) {
-        if (!_accessPolicy.canUseTaskManager) {
-          return NavigationBar(
-            selectedIndex: 0,
-            onDestinationSelected: (_) => store.setPage(2),
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.forum_outlined),
-                label: 'Мессенджер',
-              ),
-            ],
-          );
-        }
-        return NavigationBar(
-          selectedIndex: page,
-          onDestinationSelected: (index) {
-            store.setPage(index);
-          },
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.view_kanban_outlined),
-              label: 'Задачи',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.calendar_month_outlined),
-              label: 'Календарь',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.forum_outlined),
-              label: 'Мессенджер',
-            ),
-          ],
-        );
-      },
+    return HomeNavigationBar(
+      pageIndex: store.pageIndex,
+      canUseTaskManager: _accessPolicy.canUseTaskManager,
+      onPageSelected: store.setPage,
     );
   }
 
   Widget buildFloatingActionButton(TaskStore store) {
-    return ValueListenableBuilder<int>(
-      valueListenable: store.pageIndex,
-      builder: (context, page, _) {
-        if (!_accessPolicy.canUseTaskManager || page != 0) {
-          return const SizedBox.shrink();
-        }
-        return FloatingActionButton.extended(
-          onPressed: () => _openTaskEditor(store),
-          icon: const Icon(Icons.add),
-          label: const Text('Задача'),
-        );
-      },
+    return HomeTaskFloatingActionButton(
+      pageIndex: store.pageIndex,
+      canUseTaskManager: _accessPolicy.canUseTaskManager,
+      onPressed: () => _openTaskEditor(store),
     );
   }
 }
