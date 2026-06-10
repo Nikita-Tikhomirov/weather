@@ -318,6 +318,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profile => 'Profile';
 
   @override
+  String get changePhoto => 'Change photo';
+
+  @override
+  String get name => 'Name';
+
+  @override
+  String get saveName => 'Save name';
+
+  @override
+  String get phone => 'Phone';
+
+  @override
+  String get administration => 'Administration';
+
+  @override
+  String get profileAdminSubtitle =>
+      'Users, projects, workspaces, and agent roles';
+
+  @override
+  String avatarUploadFailed(Object error) {
+    return 'Could not upload avatar: $error';
+  }
+
+  @override
+  String get nameSaved => 'Name saved';
+
+  @override
   String get theme => 'Theme';
 
   @override

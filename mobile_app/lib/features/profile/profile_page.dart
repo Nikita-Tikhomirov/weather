@@ -4,9 +4,32 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/agent_policy.dart';
 import '../../services/api_client.dart';
 import '../../shared/utils/avatar_url_resolver.dart';
+
+class _ProfileText {
+  const _ProfileText(this.l10n);
+
+  final AppLocalizations? l10n;
+
+  String get profile => l10n?.profile ?? 'Профиль';
+  String get changePhoto => l10n?.changePhoto ?? 'Изменить фото';
+  String get name => l10n?.name ?? 'Имя';
+  String get saveName => l10n?.saveName ?? 'Сохранить имя';
+  String get phone => l10n?.phone ?? 'Телефон';
+  String get administration => l10n?.administration ?? 'Администрирование';
+  String get adminSubtitle =>
+      l10n?.profileAdminSubtitle ??
+      'Пользователи, проекты, воркспейсы и роли агентов';
+  String get nameSaved => l10n?.nameSaved ?? 'Имя сохранено';
+
+  String avatarUploadFailed(Object error) {
+    return l10n?.avatarUploadFailed(error.toString()) ??
+        'Не удалось загрузить аватарку: $error';
+  }
+}
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({
@@ -85,8 +108,9 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() => _avatarUrl = uploadedUrl);
     } catch (error) {
       if (!mounted) return;
+      final text = _ProfileText(AppLocalizations.of(context));
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Не удалось загрузить аватарку: $error')),
+        SnackBar(content: Text(text.avatarUploadFailed(error))),
       );
     }
   }
@@ -98,15 +122,17 @@ class _ProfilePageState extends State<ProfilePage> {
     await prefs.setString('profile_display_name', name);
     widget.onDisplayNameChanged(name);
     if (!mounted) return;
+    final text = _ProfileText(AppLocalizations.of(context));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Имя сохранено')),
+      SnackBar(content: Text(text.nameSaved)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final text = _ProfileText(AppLocalizations.of(context));
     return Scaffold(
-      appBar: AppBar(title: const Text('Профиль')),
+      appBar: AppBar(title: Text(text.profile)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -125,15 +151,15 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 8),
             TextButton(
               onPressed: _pickAvatar,
-              child: const Text('Изменить фото'),
+              child: Text(text.changePhoto),
             ),
             const SizedBox(height: 24),
             TextField(
               controller: _nameCtl,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Имя',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: text.name,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 8),
@@ -141,18 +167,18 @@ class _ProfilePageState extends State<ProfilePage> {
               alignment: Alignment.centerRight,
               child: FilledButton(
                 onPressed: _saveName,
-                child: const Text('Сохранить имя'),
+                child: Text(text.saveName),
               ),
             ),
             const SizedBox(height: 16),
             ListTile(
               leading: const Icon(Icons.phone),
-              title: const Text('Телефон'),
+              title: Text(text.phone),
               subtitle: Text(widget.phone),
             ),
             ListTile(
               leading: const Icon(Icons.badge),
-              title: const Text('Профиль'),
+              title: Text(text.profile),
               subtitle: Text(widget.profileKey),
             ),
             if (widget.accessPolicy.canManageWorkspaceAccess &&
@@ -160,10 +186,8 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: 24),
               ListTile(
                 leading: const Icon(Icons.admin_panel_settings_outlined),
-                title: const Text('Администрирование'),
-                subtitle: const Text(
-                  'Пользователи, проекты, воркспейсы и роли агентов',
-                ),
+                title: Text(text.administration),
+                subtitle: Text(text.adminSubtitle),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: widget.onOpenAdmin,
               ),

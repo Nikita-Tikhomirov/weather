@@ -103,6 +103,19 @@
   "retry": "Retry",
   "settings": "Settings",
   "profile": "Profile",
+  "changePhoto": "Change photo",
+  "name": "Name",
+  "saveName": "Save name",
+  "phone": "Phone",
+  "administration": "Administration",
+  "profileAdminSubtitle": "Users, projects, workspaces, and agent roles",
+  "avatarUploadFailed": "Could not upload avatar: {error}",
+  "@avatarUploadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "nameSaved": "Name saved",
   "theme": "Theme",
   "light": "Light",
   "dark": "Dark",

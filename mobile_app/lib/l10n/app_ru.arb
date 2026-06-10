@@ -103,6 +103,19 @@
   "retry": "Повторить",
   "settings": "Настройки",
   "profile": "Профиль",
+  "changePhoto": "Изменить фото",
+  "name": "Имя",
+  "saveName": "Сохранить имя",
+  "phone": "Телефон",
+  "administration": "Администрирование",
+  "profileAdminSubtitle": "Пользователи, проекты, воркспейсы и роли агентов",
+  "avatarUploadFailed": "Не удалось загрузить аватарку: {error}",
+  "@avatarUploadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "nameSaved": "Имя сохранено",
   "theme": "Тема",
   "light": "Светлая",
   "dark": "Тёмная",

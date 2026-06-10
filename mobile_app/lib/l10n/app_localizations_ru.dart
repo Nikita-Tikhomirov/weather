@@ -318,6 +318,33 @@ class AppLocalizationsRu extends AppLocalizations {
   String get profile => 'Профиль';
 
   @override
+  String get changePhoto => 'Изменить фото';
+
+  @override
+  String get name => 'Имя';
+
+  @override
+  String get saveName => 'Сохранить имя';
+
+  @override
+  String get phone => 'Телефон';
+
+  @override
+  String get administration => 'Администрирование';
+
+  @override
+  String get profileAdminSubtitle =>
+      'Пользователи, проекты, воркспейсы и роли агентов';
+
+  @override
+  String avatarUploadFailed(Object error) {
+    return 'Не удалось загрузить аватарку: $error';
+  }
+
+  @override
+  String get nameSaved => 'Имя сохранено';
+
+  @override
   String get theme => 'Тема';
 
   @override
