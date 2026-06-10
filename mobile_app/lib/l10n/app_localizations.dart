@@ -176,6 +176,12 @@ abstract class AppLocalizations {
   /// **'No tasks match this filter'**
   String get noTasksForFilter;
 
+  /// No description provided for @dropHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop here'**
+  String get dropHere;
+
   /// No description provided for @message.
   ///
   /// In en, this message translates to:

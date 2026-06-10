@@ -48,6 +48,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get noTasksForFilter => 'Под выбранный фильтр задач нет';
 
   @override
+  String get dropHere => 'Отпустить сюда';
+
+  @override
   String get message => 'Сообщение';
 
   @override

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_labels.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/task_item.dart';
 
 class TaskCard extends StatelessWidget {
@@ -63,6 +64,7 @@ class TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final resolveLabel = labelFor ?? profileLabel;
     final statusColor = _statusColor(item.workflowStatus);
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -120,7 +122,7 @@ class TaskCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   _statusChip(
                     item.workflowStatus,
-                    workflowLabel(item.workflowStatus),
+                    _workflowLabel(l10n, item.workflowStatus),
                   ),
                 ],
               ),
@@ -236,7 +238,8 @@ class TaskCard extends StatelessWidget {
                   ),
                   if (!selectionMode) ...[
                     IconButton(
-                      tooltip: 'Выполнить/отменить',
+                      tooltip:
+                          '${l10n?.done ?? 'Выполнить'}/${l10n?.undo ?? 'отменить'}',
                       iconSize: 20,
                       icon: Icon(
                         item.workflowStatus == WorkflowStatus.done
@@ -247,7 +250,7 @@ class TaskCard extends StatelessWidget {
                       onPressed: onDoneToggle,
                     ),
                     IconButton(
-                      tooltip: 'Удалить',
+                      tooltip: l10n?.delete ?? 'Удалить',
                       iconSize: 20,
                       icon: Icon(
                         Icons.delete_outline,
@@ -263,6 +266,21 @@ class TaskCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+String _workflowLabel(AppLocalizations? l10n, WorkflowStatus status) {
+  switch (status) {
+    case WorkflowStatus.todo:
+      return l10n?.workflowTodo ?? workflowLabel(status);
+    case WorkflowStatus.in_progress:
+      return l10n?.workflowInProgress ?? workflowLabel(status);
+    case WorkflowStatus.in_review:
+      return l10n?.workflowInReview ?? workflowLabel(status);
+    case WorkflowStatus.done:
+      return l10n?.workflowDone ?? workflowLabel(status);
+    case WorkflowStatus.archive:
+      return l10n?.workflowArchive ?? 'Архив';
   }
 }
 

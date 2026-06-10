@@ -48,6 +48,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noTasksForFilter => 'No tasks match this filter';
 
   @override
+  String get dropHere => 'Drop here';
+
+  @override
   String get message => 'Message';
 
   @override

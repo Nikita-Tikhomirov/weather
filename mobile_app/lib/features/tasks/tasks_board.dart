@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/task_item.dart';
 import 'task_card.dart';
 
@@ -97,23 +98,23 @@ class TasksBoard extends StatelessWidget {
   final Future<void> Function(TaskItem) onDelete;
   final Future<void> Function(TaskItem) onDoneToggle;
 
-  static const _titles = {
-    'todo': 'К выполнению',
-    'in_progress': 'В работе',
-    'in_review': 'На проверке',
-    'done': 'Выполнено',
-    'archive': 'Архив',
-  };
+  static const _statuses = [
+    'todo',
+    'in_progress',
+    'in_review',
+    'done',
+    'archive',
+  ];
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 88),
-      children: _titles.keys.map<Widget>((status) {
+      children: _statuses.map<Widget>((status) {
         final items = byStatus[status] ?? const <TaskItem>[];
         return _KanbanColumn(
           status: status,
-          title: _titles[status]!,
+          title: _workflowLabel(context, WorkflowStatus.parse(status)),
           items: items,
           labelFor: labelFor,
           groupLabel: groupLabel,
@@ -130,6 +131,30 @@ class TasksBoard extends StatelessWidget {
       }).toList(),
     );
   }
+}
+
+String _workflowLabel(BuildContext context, WorkflowStatus status) {
+  final l10n = AppLocalizations.of(context);
+  switch (status) {
+    case WorkflowStatus.todo:
+      return l10n?.workflowTodo ?? 'К выполнению';
+    case WorkflowStatus.in_progress:
+      return l10n?.workflowInProgress ?? 'В работе';
+    case WorkflowStatus.in_review:
+      return l10n?.workflowInReview ?? 'На проверке';
+    case WorkflowStatus.done:
+      return l10n?.workflowDone ?? 'Выполнено';
+    case WorkflowStatus.archive:
+      return l10n?.workflowArchive ?? 'Архив';
+  }
+}
+
+String _dropHereLabel(BuildContext context) {
+  return AppLocalizations.of(context)?.dropHere ?? 'Отпустить сюда';
+}
+
+String _noTasksLabel(BuildContext context) {
+  return AppLocalizations.of(context)?.noTasks ?? 'Нет задач';
 }
 
 class _KanbanColumn extends StatelessWidget {
@@ -385,7 +410,7 @@ class _EmptyKanbanColumn extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              isHovering ? 'Отпустить сюда' : 'Нет задач',
+              isHovering ? _dropHereLabel(context) : _noTasksLabel(context),
               style: TextStyle(
                 color: style.mutedColor,
                 fontWeight: FontWeight.w600,
@@ -446,13 +471,13 @@ class DesktopTasksBoard extends StatelessWidget {
   final Future<void> Function(TaskItem) onDelete;
   final Future<void> Function(TaskItem) onDoneToggle;
 
-  static const _titles = {
-    'todo': 'К выполнению',
-    'in_progress': 'В работе',
-    'in_review': 'На проверке',
-    'done': 'Выполнено',
-    'archive': 'Архив',
-  };
+  static const _statuses = [
+    'todo',
+    'in_progress',
+    'in_review',
+    'done',
+    'archive',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -465,7 +490,7 @@ class DesktopTasksBoard extends StatelessWidget {
             width: 5 * 340,
             height: constraints.maxHeight,
             child: Row(
-              children: _titles.keys.map<Widget>((status) {
+              children: _statuses.map<Widget>((status) {
                 final items = byStatus[status] ?? const <TaskItem>[];
                 return SizedBox(
                   width: 330,
@@ -473,7 +498,7 @@ class DesktopTasksBoard extends StatelessWidget {
                     padding: const EdgeInsets.only(right: 10),
                     child: _KanbanColumn(
                       status: status,
-                      title: _titles[status]!,
+                      title: _workflowLabel(ctx, WorkflowStatus.parse(status)),
                       items: items,
                       labelFor: labelFor,
                       selectionMode: selectionMode,

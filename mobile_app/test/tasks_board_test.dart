@@ -1,4 +1,5 @@
 import 'package:family_todo_mobile/features/tasks/tasks_board.dart';
+import 'package:family_todo_mobile/l10n/app_localizations.dart';
 import 'package:family_todo_mobile/models/task_collaboration.dart';
 import 'package:family_todo_mobile/models/task_item.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +31,55 @@ void main() {
       expect(find.text('В работе'), findsOneWidget);
       expect(find.text('На проверке'), findsOneWidget);
       expect(find.text('Выполнено'), findsOneWidget);
+    });
+
+    testWidgets('uses localized workflow labels when delegates are available',
+        (tester) async {
+      const task = TaskItem(
+        id: 'done-1',
+        ownerKey: 'test_user',
+        isFamily: false,
+        title: 'Localized Done Task',
+        details: '',
+        dueDate: '2026-05-31',
+        time: '',
+        workflowStatus: WorkflowStatus.done,
+        priority: Priority.high,
+        tags: [],
+        assignees: [],
+        reminderOffsetsMinutes: [],
+        durationMinutes: 0,
+        updatedAt: '2026-05-30T00:00:00',
+        version: 1,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: TasksBoard(
+              byStatus: const <String, List<TaskItem>>{
+                'done': [task],
+              },
+              labelFor: (_) => 'User',
+              selectionMode: false,
+              selectedIds: const <String>{},
+              onToggleSelect: (_) {},
+              onDrop: (task, status) async {},
+              onEdit: (task) async {},
+              onDelete: (task) async {},
+              onDoneToggle: (task) async {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('To do'), findsOneWidget);
+      expect(find.text('In progress'), findsOneWidget);
+      expect(find.text('In review'), findsOneWidget);
+      expect(find.text('Done'), findsAtLeastNWidgets(1));
     });
 
     testWidgets('displays tasks in correct columns', (tester) async {
