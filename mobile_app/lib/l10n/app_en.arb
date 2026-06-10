@@ -95,6 +95,19 @@
   "projectHasNoGroups": "This project has no groups.",
   "selectProjectGroup": "Select a project group.",
   "groupMembersMissing": "No group members were found in contacts.",
+  "newProject": "New project",
+  "editProject": "Edit project",
+  "projectNameLabel": "Project name",
+  "description": "Description",
+  "groups": "Groups",
+  "create": "Create",
+  "projectNameRequired": "Enter project name",
+  "projectSaveFailed": "Error: {error}",
+  "@projectSaveFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "connecting": "Connecting...",
   "reconnecting": "Reconnecting...",
   "connected": "Connected",

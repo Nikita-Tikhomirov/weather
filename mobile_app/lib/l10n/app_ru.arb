@@ -95,6 +95,19 @@
   "projectHasNoGroups": "У проекта нет групп.",
   "selectProjectGroup": "Выберите группу проекта.",
   "groupMembersMissing": "Участники группы не найдены в контактах.",
+  "newProject": "Новый проект",
+  "editProject": "Редактировать проект",
+  "projectNameLabel": "Название",
+  "description": "Описание",
+  "groups": "Группы",
+  "create": "Создать",
+  "projectNameRequired": "Введите название проекта",
+  "projectSaveFailed": "Ошибка: {error}",
+  "@projectSaveFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "connecting": "Подключение...",
   "reconnecting": "Переподключение...",
   "connected": "Подключено",

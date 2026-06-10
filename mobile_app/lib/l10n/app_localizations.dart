@@ -668,6 +668,54 @@ abstract class AppLocalizations {
   /// **'No group members were found in contacts.'**
   String get groupMembersMissing;
 
+  /// No description provided for @newProject.
+  ///
+  /// In en, this message translates to:
+  /// **'New project'**
+  String get newProject;
+
+  /// No description provided for @editProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit project'**
+  String get editProject;
+
+  /// No description provided for @projectNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Project name'**
+  String get projectNameLabel;
+
+  /// No description provided for @description.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get description;
+
+  /// No description provided for @groups.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups'**
+  String get groups;
+
+  /// No description provided for @create.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get create;
+
+  /// No description provided for @projectNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter project name'**
+  String get projectNameRequired;
+
+  /// No description provided for @projectSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {error}'**
+  String projectSaveFailed(Object error);
+
   /// No description provided for @connecting.
   ///
   /// In en, this message translates to:

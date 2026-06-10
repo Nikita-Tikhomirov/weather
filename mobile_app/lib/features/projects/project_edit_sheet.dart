@@ -1,8 +1,30 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/family_group.dart';
 import '../../models/task_project.dart';
 import '../../state/task_store.dart';
+
+class _ProjectEditSheetText {
+  const _ProjectEditSheetText(this.l10n);
+
+  final AppLocalizations? l10n;
+
+  String get newProject => l10n?.newProject ?? 'Новый проект';
+  String get editProject => l10n?.editProject ?? 'Редактировать проект';
+  String get projectNameLabel => l10n?.projectNameLabel ?? 'Название';
+  String get description => l10n?.description ?? 'Описание';
+  String get groups => l10n?.groups ?? 'Группы';
+  String get cancel => l10n?.cancel ?? 'Отмена';
+  String get create => l10n?.create ?? 'Создать';
+  String get save => l10n?.save ?? 'Сохранить';
+  String get projectNameRequired =>
+      l10n?.projectNameRequired ?? 'Введите название проекта';
+
+  String projectSaveFailed(Object error) {
+    return l10n?.projectSaveFailed(error.toString()) ?? 'Ошибка: $error';
+  }
+}
 
 Future<void> showProjectEditSheet({
   required BuildContext context,
@@ -18,6 +40,7 @@ Future<void> showProjectEditSheet({
   final selectedGroupIds = <String>{
     ...(initialGroupIds ?? const <String>[]),
   };
+  final text = _ProjectEditSheetText(AppLocalizations.of(context));
 
   await showModalBottomSheet<void>(
     context: context,
@@ -42,25 +65,25 @@ Future<void> showProjectEditSheet({
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        isCreate ? 'Новый проект' : 'Редактировать проект',
+                        isCreate ? text.newProject : text.editProject,
                         style: Theme.of(sheetContext).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: nameCtl,
                         decoration:
-                            const InputDecoration(labelText: 'Название'),
+                            InputDecoration(labelText: text.projectNameLabel),
                       ),
                       TextField(
                         controller: descCtl,
                         decoration:
-                            const InputDecoration(labelText: 'Описание'),
+                            InputDecoration(labelText: text.description),
                         maxLines: 2,
                       ),
                       const SizedBox(height: 12),
                       if (groups.isNotEmpty) ...[
                         Text(
-                          'Группы',
+                          text.groups,
                           style: Theme.of(sheetContext).textTheme.titleSmall,
                         ),
                         const SizedBox(height: 6),
@@ -90,7 +113,7 @@ Future<void> showProjectEditSheet({
                           Expanded(
                             child: OutlinedButton(
                               onPressed: () => Navigator.pop(sheetContext),
-                              child: const Text('Отмена'),
+                              child: Text(text.cancel),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -101,8 +124,8 @@ Future<void> showProjectEditSheet({
                                 if (name.isEmpty) {
                                   ScaffoldMessenger.of(sheetContext)
                                       .showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Введите название проекта'),
+                                    SnackBar(
+                                      content: Text(text.projectNameRequired),
                                     ),
                                   );
                                   return;
@@ -131,7 +154,12 @@ Future<void> showProjectEditSheet({
                                         .showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          'Ошибка: ${e.toString().replaceFirst("Exception: ", "")}',
+                                          text.projectSaveFailed(
+                                            e.toString().replaceFirst(
+                                                  'Exception: ',
+                                                  '',
+                                                ),
+                                          ),
                                         ),
                                         backgroundColor: Colors.red,
                                       ),
@@ -139,7 +167,7 @@ Future<void> showProjectEditSheet({
                                   }
                                 }
                               },
-                              child: Text(isCreate ? 'Создать' : 'Сохранить'),
+                              child: Text(isCreate ? text.create : text.save),
                             ),
                           ),
                         ],

@@ -294,6 +294,32 @@ class AppLocalizationsRu extends AppLocalizations {
   String get groupMembersMissing => 'Участники группы не найдены в контактах.';
 
   @override
+  String get newProject => 'Новый проект';
+
+  @override
+  String get editProject => 'Редактировать проект';
+
+  @override
+  String get projectNameLabel => 'Название';
+
+  @override
+  String get description => 'Описание';
+
+  @override
+  String get groups => 'Группы';
+
+  @override
+  String get create => 'Создать';
+
+  @override
+  String get projectNameRequired => 'Введите название проекта';
+
+  @override
+  String projectSaveFailed(Object error) {
+    return 'Ошибка: $error';
+  }
+
+  @override
   String get connecting => 'Подключение...';
 
   @override

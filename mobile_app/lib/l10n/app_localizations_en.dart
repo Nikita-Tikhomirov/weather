@@ -294,6 +294,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupMembersMissing => 'No group members were found in contacts.';
 
   @override
+  String get newProject => 'New project';
+
+  @override
+  String get editProject => 'Edit project';
+
+  @override
+  String get projectNameLabel => 'Project name';
+
+  @override
+  String get description => 'Description';
+
+  @override
+  String get groups => 'Groups';
+
+  @override
+  String get create => 'Create';
+
+  @override
+  String get projectNameRequired => 'Enter project name';
+
+  @override
+  String projectSaveFailed(Object error) {
+    return 'Error: $error';
+  }
+
+  @override
   String get connecting => 'Connecting...';
 
   @override

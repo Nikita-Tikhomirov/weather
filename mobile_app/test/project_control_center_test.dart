@@ -1,5 +1,7 @@
 import 'package:family_todo_mobile/domain/task_domain_service.dart';
+import 'package:family_todo_mobile/features/projects/project_edit_sheet.dart';
 import 'package:family_todo_mobile/features/projects/projects_and_groups_screen.dart';
+import 'package:family_todo_mobile/l10n/app_localizations.dart';
 import 'package:family_todo_mobile/models/agent_policy.dart';
 import 'package:family_todo_mobile/models/chat_models.dart';
 import 'package:family_todo_mobile/models/family_group.dart';
@@ -15,6 +17,54 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('Project Control Center workspace binding', () {
+    testWidgets('project edit sheet uses localized labels', (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = TaskStore(
+        repository: repository,
+        domainService: TaskDomainService(),
+      );
+      store.familyGroups.value = const [
+        FamilyGroup(id: 'team', name: 'Team', members: ['nik']),
+      ];
+
+      await tester.pumpWidget(
+        _localizedApp(
+          home: Builder(
+            builder: (context) {
+              return Scaffold(
+                body: Center(
+                  child: FilledButton(
+                    onPressed: () => showProjectEditSheet(
+                      context: context,
+                      store: store,
+                      isCreate: true,
+                    ),
+                    child: const Text('Open sheet'),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open sheet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('New project'), findsOneWidget);
+      expect(find.text('Project name'), findsOneWidget);
+      expect(find.text('Description'), findsOneWidget);
+      expect(find.text('Groups'), findsOneWidget);
+      expect(find.text('Team'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('Create'), findsOneWidget);
+
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Enter project name'), findsOneWidget);
+    });
+
     testWidgets('does not auto-select first workspace and saves chosen one',
         (tester) async {
       final repository = _FakeTaskRepository();
@@ -340,6 +390,16 @@ void main() {
       expect(find.text('Обновить проектный чат'), findsOneWidget);
     });
   });
+}
+
+Widget _localizedApp({required Widget home}) {
+  return MaterialApp(
+    locale: const Locale('en'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    theme: ThemeData(splashFactory: NoSplash.splashFactory),
+    home: home,
+  );
 }
 
 class _FakeTaskRepository implements TaskRepository {
