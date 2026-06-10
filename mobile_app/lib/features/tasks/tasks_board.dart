@@ -114,7 +114,7 @@ class TasksBoard extends StatelessWidget {
         final items = byStatus[status] ?? const <TaskItem>[];
         return _KanbanColumn(
           status: status,
-          title: _workflowLabel(context, WorkflowStatus.parse(status)),
+          title: taskWorkflowLabel(context, WorkflowStatus.parse(status)),
           items: items,
           labelFor: labelFor,
           groupLabel: groupLabel,
@@ -133,7 +133,7 @@ class TasksBoard extends StatelessWidget {
   }
 }
 
-String _workflowLabel(BuildContext context, WorkflowStatus status) {
+String taskWorkflowLabel(BuildContext context, WorkflowStatus status) {
   final l10n = AppLocalizations.of(context);
   switch (status) {
     case WorkflowStatus.todo:
@@ -498,7 +498,8 @@ class DesktopTasksBoard extends StatelessWidget {
                     padding: const EdgeInsets.only(right: 10),
                     child: _KanbanColumn(
                       status: status,
-                      title: _workflowLabel(ctx, WorkflowStatus.parse(status)),
+                      title:
+                          taskWorkflowLabel(ctx, WorkflowStatus.parse(status)),
                       items: items,
                       labelFor: labelFor,
                       selectionMode: selectionMode,

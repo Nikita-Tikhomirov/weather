@@ -30,6 +30,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get familyTasks => 'Family Tasks';
 
   @override
+  String get dashboardOnDate => 'On date';
+
+  @override
+  String get dashboardDone => 'Done';
+
+  @override
+  String get dashboardFamily => 'Family';
+
+  @override
+  String get dashboardOverdue => 'Overdue';
+
+  @override
+  String get dashboardFamilyHint => 'Family';
+
+  @override
+  String get dashboardOverdueHint => 'Overdue';
+
+  @override
+  String get selectDate => 'Select date';
+
+  @override
+  String get upcomingTasks => 'Upcoming tasks';
+
+  @override
   String get filterUpcoming => 'Upcoming';
 
   @override

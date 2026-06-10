@@ -140,6 +140,54 @@ abstract class AppLocalizations {
   /// **'Family Tasks'**
   String get familyTasks;
 
+  /// No description provided for @dashboardOnDate.
+  ///
+  /// In en, this message translates to:
+  /// **'On date'**
+  String get dashboardOnDate;
+
+  /// No description provided for @dashboardDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get dashboardDone;
+
+  /// No description provided for @dashboardFamily.
+  ///
+  /// In en, this message translates to:
+  /// **'Family'**
+  String get dashboardFamily;
+
+  /// No description provided for @dashboardOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue'**
+  String get dashboardOverdue;
+
+  /// No description provided for @dashboardFamilyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Family'**
+  String get dashboardFamilyHint;
+
+  /// No description provided for @dashboardOverdueHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue'**
+  String get dashboardOverdueHint;
+
+  /// No description provided for @selectDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Select date'**
+  String get selectDate;
+
+  /// No description provided for @upcomingTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming tasks'**
+  String get upcomingTasks;
+
   /// No description provided for @filterUpcoming.
   ///
   /// In en, this message translates to:

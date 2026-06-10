@@ -30,6 +30,30 @@ class AppLocalizationsRu extends AppLocalizations {
   String get familyTasks => 'Семейные задачи';
 
   @override
+  String get dashboardOnDate => 'На дату';
+
+  @override
+  String get dashboardDone => 'Сделано';
+
+  @override
+  String get dashboardFamily => 'Семейных';
+
+  @override
+  String get dashboardOverdue => 'Просрочено';
+
+  @override
+  String get dashboardFamilyHint => 'Семейные';
+
+  @override
+  String get dashboardOverdueHint => 'Просрочка';
+
+  @override
+  String get selectDate => 'Выбрать дату';
+
+  @override
+  String get upcomingTasks => 'Ближайшие задачи';
+
+  @override
   String get filterUpcoming => 'Предстоящие';
 
   @override
