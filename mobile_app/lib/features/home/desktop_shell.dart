@@ -17,6 +17,7 @@ extension _DesktopShellExtension on _HomePageState {
     return ValueListenableBuilder<Map<String, String>>(
       valueListenable: store.desktopThemeTokens,
       builder: (context, tokens, _) {
+        final labels = DesktopShellLabels(AppLocalizations.of(context));
         final bgApp = colorFromToken(tokens, 'bg_app', const Color(0xFFF1F5F9));
         final bgPanel =
             colorFromToken(tokens, 'bg_panel', const Color(0xFFFFFFFF));
@@ -45,7 +46,7 @@ extension _DesktopShellExtension on _HomePageState {
                       children: [
                         Expanded(
                           child: Text(
-                            'Задачи - $selectedDateKey',
+                            labels.taskTitle(selectedDateKey),
                             style: TextStyle(
                               color: textPrimary,
                               fontWeight: FontWeight.w700,
@@ -57,15 +58,18 @@ extension _DesktopShellExtension on _HomePageState {
                           builder: (context, page, __) {
                             return SegmentedButton<int>(
                               showSelectedIcon: false,
-                              segments: const [
-                                ButtonSegment(value: 0, label: Text('Задачи')),
+                              segments: [
+                                ButtonSegment(
+                                  value: 0,
+                                  label: Text(labels.tasks),
+                                ),
                                 ButtonSegment(
                                   value: 1,
-                                  label: Text('Календарь'),
+                                  label: Text(labels.calendar),
                                 ),
                                 ButtonSegment(
                                   value: 2,
-                                  label: Text('Мессенджер'),
+                                  label: Text(labels.messenger),
                                 ),
                               ],
                               selected: {page},
@@ -80,14 +84,14 @@ extension _DesktopShellExtension on _HomePageState {
                           builder: (context, mode, __) {
                             return SegmentedButton<String>(
                               showSelectedIcon: false,
-                              segments: const [
+                              segments: [
                                 ButtonSegment(
                                   value: 'light',
-                                  label: Text('Свет'),
+                                  label: Text(labels.light),
                                 ),
                                 ButtonSegment(
                                   value: 'dark',
-                                  label: Text('Тьма'),
+                                  label: Text(labels.dark),
                                 ),
                               ],
                               selected: {mode},
@@ -109,7 +113,7 @@ extension _DesktopShellExtension on _HomePageState {
                                     : (schemes.isEmpty ? '' : schemes.first);
                                 return DropdownButton<String>(
                                   value: safeScheme.isEmpty ? null : safeScheme,
-                                  hint: const Text('Тема'),
+                                  hint: Text(labels.theme),
                                   onChanged: (value) {
                                     if (value != null) {
                                       _setDesktopThemeScheme(value);
@@ -136,7 +140,7 @@ extension _DesktopShellExtension on _HomePageState {
                                 voiceState.status == DesktopHostStatus.running;
                             return Row(
                               children: [
-                                const Text('Голос'),
+                                Text(labels.voice),
                                 Switch(
                                   value: enabled,
                                   onChanged: (value) =>
@@ -153,20 +157,20 @@ extension _DesktopShellExtension on _HomePageState {
                             return FilledButton.icon(
                               onPressed: () => _openTaskEditor(store),
                               icon: const Icon(Icons.add),
-                              label: const Text('Добавить'),
+                              label: Text(labels.addTask),
                             );
                           },
                         ),
                         if (_accessPolicy.canManageWorkspaceAccess)
                           IconButton(
-                            tooltip: 'Администрирование',
+                            tooltip: labels.administration,
                             icon: const Icon(
                               Icons.admin_panel_settings_outlined,
                             ),
                             onPressed: _openAdminAccess,
                           ),
                         IconButton(
-                          tooltip: 'Синхронизация',
+                          tooltip: labels.sync,
                           icon: const Icon(Icons.sync),
                           onPressed: () =>
                               _safeSyncFull(store, showErrors: true),
@@ -175,7 +179,7 @@ extension _DesktopShellExtension on _HomePageState {
                           valueListenable: store.canUndo,
                           builder: (context, canUndo, __) {
                             return IconButton(
-                              tooltip: 'Отменить',
+                              tooltip: labels.undo,
                               onPressed: canUndo
                                   ? () async {
                                       final ok = await store.undoLastAction();
@@ -210,7 +214,7 @@ extension _DesktopShellExtension on _HomePageState {
                   ),
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 220),
-                    height: _desktopLogExpanded ? 150 : 44,
+                    height: _desktopLogExpanded ? 150 : 48,
                     decoration: BoxDecoration(
                       color: bgPanel,
                       border: Border(top: BorderSide(color: border)),

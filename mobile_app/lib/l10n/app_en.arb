@@ -53,6 +53,8 @@
   "save": "Save",
   "done": "Done",
   "undo": "Undo",
+  "syncAction": "Sync",
+  "voice": "Voice",
   "today": "Today",
   "addTask": "Add Task",
   "newTask": "New task",

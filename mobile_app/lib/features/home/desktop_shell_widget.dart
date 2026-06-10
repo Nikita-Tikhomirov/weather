@@ -4,6 +4,8 @@ import '../../models/task_item.dart';
 import '../../services/desktop_process_host_service.dart';
 import '../../services/desktop_theme_service.dart';
 import '../../state/task_store.dart';
+import '../../l10n/app_localizations.dart';
+import 'desktop_shell_labels.dart';
 
 /// Standalone desktop shell widget extracted from _HomePageState.
 ///
@@ -63,6 +65,7 @@ class DesktopShellWidget extends StatelessWidget {
     return ValueListenableBuilder<Map<String, String>>(
       valueListenable: store.desktopThemeTokens,
       builder: (context, tokens, _) {
+        final labels = DesktopShellLabels(AppLocalizations.of(context));
         final bgApp = colorFromToken(tokens, 'bg_app', const Color(0xFFF1F5F9));
         final bgPanel =
             colorFromToken(tokens, 'bg_panel', const Color(0xFFFFFFFF));
@@ -91,7 +94,7 @@ class DesktopShellWidget extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            'Задачи - $selectedDateKey',
+                            labels.taskTitle(selectedDateKey),
                             style: TextStyle(
                               color: textPrimary,
                               fontWeight: FontWeight.w700,
@@ -103,18 +106,18 @@ class DesktopShellWidget extends StatelessWidget {
                           builder: (context, page, __) {
                             return SegmentedButton<int>(
                               showSelectedIcon: false,
-                              segments: const [
+                              segments: [
                                 ButtonSegment(
                                   value: 0,
-                                  label: Text('Задачи'),
+                                  label: Text(labels.tasks),
                                 ),
                                 ButtonSegment(
                                   value: 1,
-                                  label: Text('Календарь'),
+                                  label: Text(labels.calendar),
                                 ),
                                 ButtonSegment(
                                   value: 2,
-                                  label: Text('Мессенджер'),
+                                  label: Text(labels.messenger),
                                 ),
                               ],
                               selected: {page},
@@ -129,14 +132,14 @@ class DesktopShellWidget extends StatelessWidget {
                           builder: (context, mode, __) {
                             return SegmentedButton<String>(
                               showSelectedIcon: false,
-                              segments: const [
+                              segments: [
                                 ButtonSegment(
                                   value: 'light',
-                                  label: Text('Свет'),
+                                  label: Text(labels.light),
                                 ),
                                 ButtonSegment(
                                   value: 'dark',
-                                  label: Text('Тьма'),
+                                  label: Text(labels.dark),
                                 ),
                               ],
                               selected: {mode},
@@ -158,7 +161,7 @@ class DesktopShellWidget extends StatelessWidget {
                                     : (schemes.isEmpty ? '' : schemes.first);
                                 return DropdownButton<String>(
                                   value: safeScheme.isEmpty ? null : safeScheme,
-                                  hint: const Text('Тема'),
+                                  hint: Text(labels.theme),
                                   onChanged: (value) {
                                     if (value != null) {
                                       onSetDesktopThemeScheme(value);
@@ -185,7 +188,7 @@ class DesktopShellWidget extends StatelessWidget {
                                 voiceState.status == DesktopHostStatus.running;
                             return Row(
                               children: [
-                                const Text('Голос'),
+                                Text(labels.voice),
                                 Switch(
                                   value: enabled,
                                   onChanged: (value) =>
@@ -202,12 +205,12 @@ class DesktopShellWidget extends StatelessWidget {
                             return FilledButton.icon(
                               onPressed: () => onOpenTaskEditor(store),
                               icon: const Icon(Icons.add),
-                              label: const Text('Добавить'),
+                              label: Text(labels.addTask),
                             );
                           },
                         ),
                         IconButton(
-                          tooltip: 'Синхронизация',
+                          tooltip: labels.sync,
                           icon: const Icon(Icons.sync),
                           onPressed: () =>
                               onSafeSyncFull(store, showErrors: true),
@@ -216,7 +219,7 @@ class DesktopShellWidget extends StatelessWidget {
                           valueListenable: store.canUndo,
                           builder: (context, canUndo, __) {
                             return IconButton(
-                              tooltip: 'Отменить',
+                              tooltip: labels.undo,
                               onPressed: canUndo ? () => onUndo(store) : null,
                               icon: const Icon(Icons.undo),
                             );
@@ -234,7 +237,7 @@ class DesktopShellWidget extends StatelessWidget {
                   ),
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 220),
-                    height: desktopLogExpanded ? 150 : 44,
+                    height: desktopLogExpanded ? 150 : 48,
                     decoration: BoxDecoration(
                       color: bgPanel,
                       border: Border(

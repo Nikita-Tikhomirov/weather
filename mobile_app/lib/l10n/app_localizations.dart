@@ -416,6 +416,18 @@ abstract class AppLocalizations {
   /// **'Undo'**
   String get undo;
 
+  /// No description provided for @syncAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get syncAction;
+
+  /// No description provided for @voice.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice'**
+  String get voice;
+
   /// No description provided for @today.
   ///
   /// In en, this message translates to:

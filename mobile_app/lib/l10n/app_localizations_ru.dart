@@ -168,6 +168,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get undo => 'Отменить';
 
   @override
+  String get syncAction => 'Синхронизировать';
+
+  @override
+  String get voice => 'Голос';
+
+  @override
   String get today => 'Сегодня';
 
   @override

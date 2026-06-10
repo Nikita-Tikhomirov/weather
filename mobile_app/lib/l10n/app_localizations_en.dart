@@ -168,6 +168,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get undo => 'Undo';
 
   @override
+  String get syncAction => 'Sync';
+
+  @override
+  String get voice => 'Voice';
+
+  @override
   String get today => 'Today';
 
   @override
