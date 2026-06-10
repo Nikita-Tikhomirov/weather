@@ -1,7 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/task_item.dart';
 import '../tasks/task_card.dart';
+
+class _FamilyViewText {
+  const _FamilyViewText(this.l10n);
+
+  final AppLocalizations? l10n;
+
+  String get upcoming => l10n?.filterUpcoming ?? 'Предстоящие';
+  String get overdue => l10n?.filterOverdue ?? 'Просроченные';
+  String get done => l10n?.filterDone ?? 'Выполненные';
+  String get all => l10n?.filterAll ?? 'Все';
+  String get familyTasks => l10n?.familyTasks ?? 'Семейные задачи';
+  String get noTasksForFilter =>
+      l10n?.noTasksForFilter ?? 'Под выбранный фильтр задач нет';
+}
 
 class FamilyView extends StatelessWidget {
   const FamilyView({
@@ -23,16 +38,17 @@ class FamilyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = _FamilyViewText(AppLocalizations.of(context));
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
           child: SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'upcoming', label: Text('Предстоящие')),
-              ButtonSegment(value: 'overdue', label: Text('Просроченные')),
-              ButtonSegment(value: 'done', label: Text('Выполненные')),
-              ButtonSegment(value: 'all', label: Text('Все')),
+            segments: [
+              ButtonSegment(value: 'upcoming', label: Text(text.upcoming)),
+              ButtonSegment(value: 'overdue', label: Text(text.overdue)),
+              ButtonSegment(value: 'done', label: Text(text.done)),
+              ButtonSegment(value: 'all', label: Text(text.all)),
             ],
             selected: <String>{familyFilter},
             onSelectionChanged: (values) => onFilterChanged(values.first),
@@ -43,14 +59,14 @@ class FamilyView extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             children: [
               Text(
-                'Семейные задачи',
+                text.familyTasks,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
               if (familyTasks.isEmpty)
-                const Card(
+                Card(
                   child: ListTile(
-                    title: Text('Под выбранный фильтр задач нет'),
+                    title: Text(text.noTasksForFilter),
                   ),
                 ),
               for (final item in familyTasks)
