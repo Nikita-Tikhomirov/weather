@@ -15,6 +15,7 @@ import 'package:family_todo_mobile/services/api_client.dart';
 import 'package:family_todo_mobile/services/codewhale_bridge_service.dart';
 import 'package:family_todo_mobile/services/local_db.dart';
 import 'package:family_todo_mobile/domain/task_domain_service.dart';
+import 'package:family_todo_mobile/l10n/app_localizations.dart';
 import 'package:family_todo_mobile/state/task_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -614,6 +615,52 @@ void main() {
       expect(find.text('Настройки'), findsOneWidget);
       expect(find.text('Работа'), findsOneWidget);
       expect(find.text('Агент'), findsOneWidget);
+    });
+
+    testWidgets('uses localizations for task editor shell and settings labels',
+        (tester) async {
+      final store = _FakeTaskStore();
+      store.selectedDate.value = DateTime(2026, 5, 31);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  showTaskEditorSheet(
+                    context: context,
+                    store: store,
+                    knownContacts: const [],
+                    contactLabel: (c) => c.displayName,
+                    dateKey: (d) => d.toIso8601String(),
+                    onSaved: () async {},
+                  );
+                },
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('New task'), findsOneWidget);
+      expect(find.text('Settings'), findsOneWidget);
+      expect(find.text('Work'), findsOneWidget);
+      expect(find.text('Agent'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Title'), findsOneWidget);
+      expect(find.text('Project'), findsOneWidget);
+      expect(find.text('Priority'), findsOneWidget);
+      expect(find.text('Status'), findsOneWidget);
+      expect(find.text('Assignees'), findsOneWidget);
+      expect(find.text('Reminders'), findsOneWidget);
     });
 
     testWidgets('agent tab shows actions without static abilities block',

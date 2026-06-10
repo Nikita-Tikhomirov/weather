@@ -108,10 +108,31 @@ class AppLocalizationsRu extends AppLocalizations {
   String get addTask => 'Добавить задачу';
 
   @override
-  String get taskTitle => 'Название задачи';
+  String get newTask => 'Новая задача';
+
+  @override
+  String get editTask => 'Редактирование задачи';
+
+  @override
+  String get taskSettingsTab => 'Настройки';
+
+  @override
+  String get taskWorkTab => 'Работа';
+
+  @override
+  String get taskAgentTab => 'Агент';
+
+  @override
+  String get taskTitle => 'Название';
 
   @override
   String get taskDetails => 'Описание';
+
+  @override
+  String get taskProject => 'Проект';
+
+  @override
+  String get taskGroup => 'Группа';
 
   @override
   String get dueDate => 'Срок';
@@ -123,6 +144,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get priority => 'Приоритет';
 
   @override
+  String get taskStatus => 'Статус';
+
+  @override
   String get low => 'Низкий';
 
   @override
@@ -132,10 +156,49 @@ class AppLocalizationsRu extends AppLocalizations {
   String get high => 'Высокий';
 
   @override
+  String get workflowTodo => 'К выполнению';
+
+  @override
+  String get workflowInProgress => 'В работе';
+
+  @override
+  String get workflowInReview => 'На проверке';
+
+  @override
+  String get workflowDone => 'Выполнено';
+
+  @override
+  String get workflowArchive => 'Архив';
+
+  @override
   String get reminder => 'Напоминание';
 
   @override
+  String get taskReminders => 'Напоминания';
+
+  @override
   String get participants => 'Участники';
+
+  @override
+  String get taskAssignees => 'Ответственные';
+
+  @override
+  String get taskDuration => 'Оценка времени (мин)';
+
+  @override
+  String get selectProject => 'Выберите проект';
+
+  @override
+  String get selectGroup => 'Выберите группу';
+
+  @override
+  String get projectHasNoGroups => 'У проекта нет групп.';
+
+  @override
+  String get selectProjectGroup => 'Выберите группу проекта.';
+
+  @override
+  String get groupMembersMissing => 'Участники группы не найдены в контактах.';
 
   @override
   String get connecting => 'Подключение...';

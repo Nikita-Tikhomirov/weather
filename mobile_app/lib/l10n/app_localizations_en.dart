@@ -108,10 +108,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addTask => 'Add Task';
 
   @override
-  String get taskTitle => 'Task title';
+  String get newTask => 'New task';
+
+  @override
+  String get editTask => 'Edit task';
+
+  @override
+  String get taskSettingsTab => 'Settings';
+
+  @override
+  String get taskWorkTab => 'Work';
+
+  @override
+  String get taskAgentTab => 'Agent';
+
+  @override
+  String get taskTitle => 'Title';
 
   @override
   String get taskDetails => 'Details';
+
+  @override
+  String get taskProject => 'Project';
+
+  @override
+  String get taskGroup => 'Group';
 
   @override
   String get dueDate => 'Due date';
@@ -123,6 +144,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get priority => 'Priority';
 
   @override
+  String get taskStatus => 'Status';
+
+  @override
   String get low => 'Low';
 
   @override
@@ -132,10 +156,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get high => 'High';
 
   @override
+  String get workflowTodo => 'To do';
+
+  @override
+  String get workflowInProgress => 'In progress';
+
+  @override
+  String get workflowInReview => 'In review';
+
+  @override
+  String get workflowDone => 'Done';
+
+  @override
+  String get workflowArchive => 'Archive';
+
+  @override
   String get reminder => 'Reminder';
 
   @override
+  String get taskReminders => 'Reminders';
+
+  @override
   String get participants => 'Participants';
+
+  @override
+  String get taskAssignees => 'Assignees';
+
+  @override
+  String get taskDuration => 'Duration estimate (min)';
+
+  @override
+  String get selectProject => 'Select project';
+
+  @override
+  String get selectGroup => 'Select group';
+
+  @override
+  String get projectHasNoGroups => 'This project has no groups.';
+
+  @override
+  String get selectProjectGroup => 'Select a project group.';
+
+  @override
+  String get groupMembersMissing => 'No group members were found in contacts.';
 
   @override
   String get connecting => 'Connecting...';

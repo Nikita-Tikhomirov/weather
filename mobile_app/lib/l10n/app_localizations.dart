@@ -296,10 +296,40 @@ abstract class AppLocalizations {
   /// **'Add Task'**
   String get addTask;
 
+  /// No description provided for @newTask.
+  ///
+  /// In en, this message translates to:
+  /// **'New task'**
+  String get newTask;
+
+  /// No description provided for @editTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit task'**
+  String get editTask;
+
+  /// No description provided for @taskSettingsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get taskSettingsTab;
+
+  /// No description provided for @taskWorkTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Work'**
+  String get taskWorkTab;
+
+  /// No description provided for @taskAgentTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent'**
+  String get taskAgentTab;
+
   /// No description provided for @taskTitle.
   ///
   /// In en, this message translates to:
-  /// **'Task title'**
+  /// **'Title'**
   String get taskTitle;
 
   /// No description provided for @taskDetails.
@@ -307,6 +337,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Details'**
   String get taskDetails;
+
+  /// No description provided for @taskProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get taskProject;
+
+  /// No description provided for @taskGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Group'**
+  String get taskGroup;
 
   /// No description provided for @dueDate.
   ///
@@ -326,6 +368,12 @@ abstract class AppLocalizations {
   /// **'Priority'**
   String get priority;
 
+  /// No description provided for @taskStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get taskStatus;
+
   /// No description provided for @low.
   ///
   /// In en, this message translates to:
@@ -344,17 +392,95 @@ abstract class AppLocalizations {
   /// **'High'**
   String get high;
 
+  /// No description provided for @workflowTodo.
+  ///
+  /// In en, this message translates to:
+  /// **'To do'**
+  String get workflowTodo;
+
+  /// No description provided for @workflowInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get workflowInProgress;
+
+  /// No description provided for @workflowInReview.
+  ///
+  /// In en, this message translates to:
+  /// **'In review'**
+  String get workflowInReview;
+
+  /// No description provided for @workflowDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get workflowDone;
+
+  /// No description provided for @workflowArchive.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive'**
+  String get workflowArchive;
+
   /// No description provided for @reminder.
   ///
   /// In en, this message translates to:
   /// **'Reminder'**
   String get reminder;
 
+  /// No description provided for @taskReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders'**
+  String get taskReminders;
+
   /// No description provided for @participants.
   ///
   /// In en, this message translates to:
   /// **'Participants'**
   String get participants;
+
+  /// No description provided for @taskAssignees.
+  ///
+  /// In en, this message translates to:
+  /// **'Assignees'**
+  String get taskAssignees;
+
+  /// No description provided for @taskDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration estimate (min)'**
+  String get taskDuration;
+
+  /// No description provided for @selectProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Select project'**
+  String get selectProject;
+
+  /// No description provided for @selectGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Select group'**
+  String get selectGroup;
+
+  /// No description provided for @projectHasNoGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'This project has no groups.'**
+  String get projectHasNoGroups;
+
+  /// No description provided for @selectProjectGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a project group.'**
+  String get selectProjectGroup;
+
+  /// No description provided for @groupMembersMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No group members were found in contacts.'**
+  String get groupMembersMissing;
 
   /// No description provided for @connecting.
   ///
