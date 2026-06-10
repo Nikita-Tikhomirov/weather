@@ -1,5 +1,3 @@
-// ignore_for_file: invalid_use_of_protected_member
-
 part of 'home_page.dart';
 
 // ───────────────────────────────────────────────────────────────
@@ -50,7 +48,7 @@ extension _ChatSection on _HomePageState {
       onAddContactToFamily: (contact) => _addContactToFamily(store, contact),
       onOpenDirectContact: (contact) => _openDirectContact(store, contact),
       onOpenWorkspaces: _openCodeWhaleWorkspaces,
-      onBackToContacts: () => setState(() => _activeConversationKey = ''),
+      onBackToContacts: _clearActiveConversation,
       onOpenConversation: (conversationKey) =>
           _openConversation(store, conversationKey),
       onOpenMessageActions: (message) => _openMessageActions(store, message),
@@ -60,13 +58,8 @@ extension _ChatSection on _HomePageState {
           !_chatOlderExhausted.contains(_activeConversationKey),
       loadingOlderMessages: _chatOlderLoading.contains(_activeConversationKey),
       onLoadOlderMessages: () => _loadOlderChatMessages(store),
-      onClearReply: () => setState(() => _replyToMessage = null),
-      onCancelEdit: () {
-        setState(() {
-          _editingMessageId = null;
-          _chatInputCtl.clear();
-        });
-      },
+      onClearReply: _clearChatReply,
+      onCancelEdit: _cancelChatEdit,
       onOpenAttachMenu: () => _openAttachMenu(store),
       onManageGroup: (conv) => _openManageGroupSheet(store, conv),
       activeProject: boundProject,
@@ -646,7 +639,7 @@ extension _ChatSection on _HomePageState {
       )..add(message);
       _chatMessagesByConversation[conversationKey] = messages;
       if (mounted) {
-        setState(() {});
+        _markChatMessagesChanged();
       }
     } catch (error, stackTrace) {
       debugPrint('[project-chat-agent] bot send failed: $error\n$stackTrace');
@@ -665,7 +658,7 @@ extension _ChatSection on _HomePageState {
         )..add(fallback);
         _chatMessagesByConversation[conversationKey] = messages;
         if (mounted) {
-          setState(() {});
+          _markChatMessagesChanged();
         }
       } catch (fallbackError, fallbackStackTrace) {
         debugPrint(
@@ -709,7 +702,7 @@ extension _ChatSection on _HomePageState {
     )..add(message);
     _chatMessagesByConversation[conversationKey] = messages;
     if (mounted) {
-      setState(() {});
+      _markChatMessagesChanged();
     }
   }
 

@@ -1,5 +1,3 @@
-// ignore_for_file: invalid_use_of_protected_member
-
 part of 'home_page.dart';
 
 // ───────────────────────────────────────────────────────────────
@@ -123,22 +121,7 @@ extension _ProjectsDataExtension on _HomePageState {
   }
 
   void _applyStreamingProjectOutput(LocalDb db, BridgeMessage msg) {
-    var handled = false;
-    setState(() {
-      final lastIndex = _projectMessages.lastIndexWhere(
-        (item) => item.isOutput && item.streamId == msg.streamId,
-      );
-      if (lastIndex >= 0) {
-        final current = _projectMessages[lastIndex];
-        _projectMessages[lastIndex] = msg.isFinal
-            ? msg.copyWith(append: false)
-            : current.copyWith(text: current.text + msg.text);
-        handled = true;
-      } else {
-        _projectMessages.add(msg);
-        handled = true;
-      }
-    });
+    final handled = _mergeStreamingProjectOutput(msg);
     if (handled && msg.isFinal) {
       _saveProjectMessageToDb(db, msg.copyWith(append: false));
     }
@@ -213,11 +196,9 @@ extension _ProjectsDataExtension on _HomePageState {
       bridge: _projectBridge,
       messages: _projectMessages,
       chatInputController: _chatInputCtl,
-      onBack: () {
-        setState(() => _activeConversationKey = '');
-        // Keep bridge connection alive so session persists.
-        // Messages are already saved to DB and will be restored on re-entry.
-      },
+      // Keep bridge connection alive so session persists.
+      // Messages are already saved to DB and will be restored on re-entry.
+      onBack: _clearActiveConversation,
       onRequestBridgeStart: () => _requestProjectBridgeStart(project),
       onStartNewSession: _startNewProjectSession,
       onStopProjectPrompt: _stopProjectPrompt,
@@ -253,9 +234,7 @@ extension _ProjectsDataExtension on _HomePageState {
         projectId: _projectByConversationKey(_activeConversationKey)?.id ?? '',
         sessionId: _activeProjectSessionId ?? '',
       );
-      setState(() {
-        _projectMessages.add(sentMsg);
-      });
+      _addProjectMessage(sentMsg);
       if (store != null) {
         _saveProjectMessageToDb(store.repository.db, sentMsg);
       }
@@ -264,18 +243,14 @@ extension _ProjectsDataExtension on _HomePageState {
 
   void _openProjectFileManager(ProjectContact project) {
     // Request file tree, then show bottom sheet
-    _projectFiles = [];
-    _projectFileTreePath = '';
-    _projectFilesLoading = true;
+    _setProjectFileBrowserLoading(
+      path: '',
+      statusMessage: BridgeMessage(
+        type: 'status',
+        text: 'Запрашиваю файлы проекта...',
+      ),
+    );
     _projectBridge?.requestFileTree();
-    setState(() {
-      _projectMessages.add(
-        BridgeMessage(
-          type: 'status',
-          text: 'Запрашиваю файлы проекта...',
-        ),
-      );
-    });
 
     // Show bottom sheet immediately; it will update when files arrive
     if (!mounted) return;
@@ -293,11 +268,7 @@ extension _ProjectsDataExtension on _HomePageState {
               currentPath: _projectFileTreePath,
               isLoading: _projectFilesLoading,
               onNavigate: (path) {
-                setState(() {
-                  _projectFileTreePath = path;
-                  _projectFiles = [];
-                  _projectFilesLoading = true;
-                });
+                _setProjectFileBrowserLoading(path: path);
                 setSheetState(() {});
                 _projectBridge?.requestFileList(path);
               },
@@ -323,11 +294,7 @@ extension _ProjectsDataExtension on _HomePageState {
               },
               onOpenFile: (filePath) {
                 _projectBridge?.requestFileList(filePath);
-                setState(() {
-                  _projectFileTreePath = filePath;
-                  _projectFiles = [];
-                  _projectFilesLoading = true;
-                });
+                _setProjectFileBrowserLoading(path: filePath);
                 setSheetState(() {});
               },
             );
@@ -489,16 +456,14 @@ extension _ProjectsDataExtension on _HomePageState {
     if (!mounted) {
       return;
     }
-    setState(() {
-      _projectMessages.add(
-        BridgeMessage(
-          type: ok ? 'status' : 'error',
-          text: ok
-              ? 'Команда запуска bridge отправлена'
-              : 'Не удалось отправить команду запуска bridge',
-        ),
-      );
-    });
+    _addProjectMessage(
+      BridgeMessage(
+        type: ok ? 'status' : 'error',
+        text: ok
+            ? 'Команда запуска bridge отправлена'
+            : 'Не удалось отправить команду запуска bridge',
+      ),
+    );
     if (ok) {
       final store = _store;
       if (store == null) {
@@ -526,16 +491,12 @@ extension _ProjectsDataExtension on _HomePageState {
     if (!mounted) {
       return;
     }
-    setState(() {
-      _projectMessages
-        ..clear()
-        ..add(
-          BridgeMessage(
-            type: 'status',
-            text: 'Создаю новую сессию...',
-          ),
-        );
-    });
+    _resetProjectMessages(
+      BridgeMessage(
+        type: 'status',
+        text: 'Создаю новую сессию...',
+      ),
+    );
   }
 
   void _stopProjectPrompt() {
@@ -543,14 +504,12 @@ extension _ProjectsDataExtension on _HomePageState {
     if (!mounted) {
       return;
     }
-    setState(() {
-      _projectMessages.add(
-        BridgeMessage(
-          type: 'status',
-          text: 'Команда остановки отправлена',
-        ),
-      );
-    });
+    _addProjectMessage(
+      BridgeMessage(
+        type: 'status',
+        text: 'Команда остановки отправлена',
+      ),
+    );
   }
 
   Future<void> _sendProjectPhotos() async {
@@ -618,17 +577,15 @@ extension _ProjectsDataExtension on _HomePageState {
       if (ok) {
         sent += 1;
         if (mounted) {
-          setState(() {
-            _projectMessages.add(
-              BridgeMessage(
-                type: 'sent_image',
-                text: caption,
-                imageBase64: base64Encode(bytes),
-                imageMimeType: _projectImageMime(file),
-                imageFilename: file.name,
-              ),
-            );
-          });
+          _addProjectMessage(
+            BridgeMessage(
+              type: 'sent_image',
+              text: caption,
+              imageBase64: base64Encode(bytes),
+              imageMimeType: _projectImageMime(file),
+              imageFilename: file.name,
+            ),
+          );
         }
       } else {
         failed += 1;
@@ -637,26 +594,26 @@ extension _ProjectsDataExtension on _HomePageState {
     if (!mounted) {
       return;
     }
-    setState(() {
-      if (sent > 0) {
-        _projectMessages.add(
-          BridgeMessage(
-            type: 'send',
-            text: 'Фото сохранено в vision: $sent',
-          ),
-        );
-      }
-      if (failed > 0 || sent == 0) {
-        _projectMessages.add(
-          BridgeMessage(
-            type: 'error',
-            text: sent == 0
-                ? 'Фото не отправлено. Проверьте соединение или размер файла.'
-                : 'Не отправлено фото: $failed',
-          ),
-        );
-      }
-    });
+    final statusMessages = <BridgeMessage>[];
+    if (sent > 0) {
+      statusMessages.add(
+        BridgeMessage(
+          type: 'send',
+          text: 'Фото сохранено в vision: $sent',
+        ),
+      );
+    }
+    if (failed > 0 || sent == 0) {
+      statusMessages.add(
+        BridgeMessage(
+          type: 'error',
+          text: sent == 0
+              ? 'Фото не отправлено. Проверьте соединение или размер файла.'
+              : 'Не отправлено фото: $failed',
+        ),
+      );
+    }
+    _addProjectMessages(statusMessages);
   }
 
   String _projectImageMime(XFile file) {
@@ -754,17 +711,15 @@ extension _ProjectsDataExtension on _HomePageState {
       );
 
       if (mounted) {
-        setState(() {
-          _projectMessages.add(
-            BridgeMessage(
-              type: 'send',
-              text: '📎 Документ: ${file.name}',
-              projectId:
-                  _projectByConversationKey(_activeConversationKey)?.id ?? '',
-              sessionId: _activeProjectSessionId ?? '',
-            ),
-          );
-        });
+        _addProjectMessage(
+          BridgeMessage(
+            type: 'send',
+            text: '📎 Документ: ${file.name}',
+            projectId:
+                _projectByConversationKey(_activeConversationKey)?.id ?? '',
+            sessionId: _activeProjectSessionId ?? '',
+          ),
+        );
       }
     } catch (error) {
       if (mounted) {

@@ -377,6 +377,25 @@ class _HomePageState extends State<HomePage> {
     setState(() => _activeConversationKey = key);
   }
 
+  void _clearActiveConversation() {
+    _setActiveConversation('');
+  }
+
+  void _clearChatReply() {
+    setState(() => _replyToMessage = null);
+  }
+
+  void _cancelChatEdit() {
+    setState(() {
+      _editingMessageId = null;
+      _chatInputCtl.clear();
+    });
+  }
+
+  void _markChatMessagesChanged() {
+    setState(() {});
+  }
+
   void _setProfileInfo(String displayName, String phone) {
     setState(() {
       _currentProfileDisplayName = displayName;
@@ -480,8 +499,50 @@ class _HomePageState extends State<HomePage> {
     setState(() => _projectMessages.add(msg));
   }
 
+  void _resetProjectMessages(BridgeMessage msg) {
+    setState(() {
+      _projectMessages
+        ..clear()
+        ..add(msg);
+    });
+  }
+
+  bool _mergeStreamingProjectOutput(BridgeMessage msg) {
+    var handled = false;
+    setState(() {
+      final lastIndex = _projectMessages.lastIndexWhere(
+        (item) => item.isOutput && item.streamId == msg.streamId,
+      );
+      if (lastIndex >= 0) {
+        final current = _projectMessages[lastIndex];
+        _projectMessages[lastIndex] = msg.isFinal
+            ? msg.copyWith(append: false)
+            : current.copyWith(text: current.text + msg.text);
+        handled = true;
+      } else {
+        _projectMessages.add(msg);
+        handled = true;
+      }
+    });
+    return handled;
+  }
+
   void _setProjectBridge(ProjectBridgeService? bridge) {
     setState(() => _projectBridge = bridge);
+  }
+
+  void _setProjectFileBrowserLoading({
+    required String path,
+    BridgeMessage? statusMessage,
+  }) {
+    setState(() {
+      _projectFileTreePath = path;
+      _projectFiles = [];
+      _projectFilesLoading = true;
+      if (statusMessage != null) {
+        _projectMessages.add(statusMessage);
+      }
+    });
   }
 
   void _setProjectFiles(List<ProjectFileNode> files) {
