@@ -36,11 +36,69 @@ void main() {
     expect(bridge.commands, [
       'policy',
       'connect',
+      'list_sessions',
       'create_session',
       'start_session',
       'send_message',
       'poll_task',
     ]);
+  });
+
+  test('reuses existing project chat session instead of creating duplicates',
+      () async {
+    late _FakeProjectChatBridge bridge;
+    final runner = ProjectChatAgentBridgeRunner(
+      bridgeFactory: ({
+        required void Function(CodeWhaleBridgeMessage message) onMessage,
+        required void Function(bool connected, String status) onStatusChange,
+      }) {
+        bridge = _FakeProjectChatBridge(
+          onMessage: onMessage,
+          onStatusChange: onStatusChange,
+          sessions: const [
+            {
+              'id': 'session-existing',
+              'workspace_id': 'workspace-1',
+              'title': 'Тудушкер: проект',
+              'status': 'idle',
+              'created_at': 1717930000000,
+              'updated_at': 1717931000000,
+              'task_card': {
+                'scope': 'project_chat',
+                'project_id': 'project-1',
+                'conversation_key': 'grp:project:project-1',
+              },
+            },
+          ],
+        );
+        return bridge;
+      },
+      taskPollDelay: Duration.zero,
+      timeout: const Duration(seconds: 2),
+    );
+
+    final result = await runner.run(
+      workspaceId: 'workspace-1',
+      title: 'Тудушкер: проект',
+      taskCard: const {
+        'scope': 'project_chat',
+        'project_id': 'project-1',
+        'conversation_key': 'grp:project:project-1',
+      },
+      policyTicket: 'ticket-1',
+      prompt: 'Верни JSON',
+    );
+
+    expect(result, contains('"reply"'));
+    expect(bridge.commands, [
+      'policy',
+      'connect',
+      'list_sessions',
+      'start_session',
+      'send_message',
+      'poll_task',
+    ]);
+    expect(bridge.usedSessionId, 'session-existing');
   });
 }
 
@@ -48,9 +106,12 @@ class _FakeProjectChatBridge extends CodeWhaleBridgeService {
   _FakeProjectChatBridge({
     required super.onMessage,
     required super.onStatusChange,
+    this.sessions = const [],
   });
 
   final List<String> commands = <String>[];
+  final List<Map<String, dynamic>> sessions;
+  String usedSessionId = '';
 
   @override
   Future<bool> connect() async {
@@ -61,6 +122,18 @@ class _FakeProjectChatBridge extends CodeWhaleBridgeService {
   @override
   void updatePolicyTicket(String policyTicket) {
     commands.add('policy');
+  }
+
+  @override
+  void requestSessionList(String workspaceId) {
+    commands.add('list_sessions');
+    onMessage(
+      CodeWhaleBridgeMessage.fromJson({
+        'type': 'session_list',
+        'workspace_id': workspaceId,
+        'sessions': sessions,
+      }),
+    );
   }
 
   @override
@@ -88,6 +161,7 @@ class _FakeProjectChatBridge extends CodeWhaleBridgeService {
   @override
   void startSession(String workspaceId, String sessionId) {
     commands.add('start_session');
+    usedSessionId = sessionId;
   }
 
   @override

@@ -738,6 +738,42 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             self.assertEqual(task_card["policy_ticket"], "ticket-1")
             self.assertEqual(task_card["workspace_id"], workspace["id"])
 
+    def test_session_create_reuses_existing_project_chat_session(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            first = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Черновик задачи: Demo",
+                    "task_card": {
+                        "scope": "project_chat",
+                        "project_id": "project-1",
+                        "conversation_key": "grp:project:project-1",
+                    },
+                }
+            )["session"]
+            second = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Тудушкер: Demo",
+                    "task_card": {
+                        "scope": "project_chat",
+                        "project_id": "project-1",
+                        "conversation_key": "grp:project:project-1",
+                    },
+                }
+            )["session"]
+
+            self.assertEqual(second["id"], first["id"])
+            self.assertEqual(second["title"], "Тудушкер: Demo")
+            self.assertEqual(len(bridge.sessions.list_sessions(workspace["id"])), 1)
+
     def test_handle_session_update_task_card_persists_existing_session_metadata(
         self,
     ) -> None:
@@ -1018,6 +1054,62 @@ class CodeWhaleBridgeTests(unittest.TestCase):
             )
             self.assertEqual(events[-1]["text"], "Привет")
             self.assertTrue(events[-1]["final"])
+
+    def test_stream_project_chat_session_uses_local_llm(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bridge = CodeWhaleBridge(root / "Desktop", root / "state")
+            workspace = bridge.handle_message(
+                {"type": "workspace_create", "name": "Demo"}
+            )["workspace"]
+            session = bridge.handle_message(
+                {
+                    "type": "session_create",
+                    "workspace_id": workspace["id"],
+                    "title": "Тудушкер: Demo",
+                    "task_card": {
+                        "scope": "project_chat",
+                        "project_id": "project-1",
+                        "conversation_key": "grp:project:project-1",
+                    },
+                }
+            )["session"]
+
+            with (
+                patch.object(
+                    bridge.project_chat_llm,
+                    "generate",
+                    return_value='{"action":"reply","reply_text":"Сделал"}',
+                ) as generate,
+                patch.object(bridge.exec_client, "stream_prompt") as stream_prompt,
+            ):
+                replies = list(
+                    bridge.stream_session_message(
+                        {
+                            "type": "session_send",
+                            "workspace_id": workspace["id"],
+                            "session_id": session["id"],
+                            "text": "CHAT_CONTEXT: проверь чат",
+                        }
+                    )
+                )
+
+            generate.assert_called_once_with("CHAT_CONTEXT: проверь чат")
+            stream_prompt.assert_not_called()
+            self.assertEqual(
+                [reply["type"] for reply in replies],
+                [
+                    "session_stream_started",
+                    "assistant_delta",
+                    "session_stream_done",
+                ],
+            )
+            self.assertEqual(
+                replies[1]["text"],
+                '{"action":"reply","reply_text":"Сделал"}',
+            )
+            updated = bridge.sessions.get_session(workspace["id"], session["id"])
+            self.assertEqual(updated["status"], "idle")
 
     def test_stream_session_message_reuses_codewhale_session(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

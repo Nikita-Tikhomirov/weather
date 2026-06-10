@@ -25,6 +25,7 @@ class WorkspaceDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final visibleSessions = _visibleSessions(sessions);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -59,13 +60,13 @@ class WorkspaceDetailView extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: sessions.isEmpty
+            child: visibleSessions.isEmpty
                 ? const Center(child: Text('Сессий пока нет'))
                 : ListView.separated(
-                    itemCount: sessions.length,
+                    itemCount: visibleSessions.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, index) {
-                      final session = sessions[index];
+                      final session = visibleSessions[index];
                       return ListTile(
                         leading: CircleAvatar(
                           child: Icon(_sessionIcon(session.status)),
@@ -85,6 +86,39 @@ class WorkspaceDetailView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  List<WorkspaceSession> _visibleSessions(List<WorkspaceSession> sessions) {
+    final result = <WorkspaceSession>[];
+    final projectChatByKey = <String, WorkspaceSession>{};
+    for (final session in sessions) {
+      if (!session.isProjectChatSession) {
+        result.add(session);
+        continue;
+      }
+      final key = session.projectChatKey.isEmpty
+          ? 'title:${session.title}'
+          : session.projectChatKey;
+      final existing = projectChatByKey[key];
+      if (existing == null || _sessionRank(session) > _sessionRank(existing)) {
+        projectChatByKey[key] = session;
+      }
+    }
+    result.addAll(projectChatByKey.values);
+    result.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    return result;
+  }
+
+  int _sessionRank(WorkspaceSession session) {
+    final statusRank = switch (session.status) {
+      WorkspaceSessionStatus.running => 5000000000000,
+      WorkspaceSessionStatus.idle => 4000000000000,
+      WorkspaceSessionStatus.unknown => 3000000000000,
+      WorkspaceSessionStatus.error => 2000000000000,
+      WorkspaceSessionStatus.stopped => 1000000000000,
+      WorkspaceSessionStatus.killed => 0,
+    };
+    return statusRank + session.updatedAt;
   }
 
   IconData _sessionIcon(WorkspaceSessionStatus status) {

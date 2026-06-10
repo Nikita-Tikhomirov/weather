@@ -68,6 +68,7 @@ class WorkspaceSession {
     this.approvalPolicy = '',
     this.sandboxMode = '',
     this.autoMode = false,
+    this.taskCard = const {},
     this.createdAt = 0,
     this.updatedAt = 0,
     this.lastEventSeq = 0,
@@ -87,9 +88,26 @@ class WorkspaceSession {
   final String approvalPolicy;
   final String sandboxMode;
   final bool autoMode;
+  final Map<String, dynamic> taskCard;
   final int createdAt;
   final int updatedAt;
   final int lastEventSeq;
+
+  bool get isProjectChatSession =>
+      (taskCard['scope'] ?? '').toString().trim() == 'project_chat';
+
+  String get projectChatKey {
+    if (!isProjectChatSession) {
+      return '';
+    }
+    final projectId = (taskCard['project_id'] ?? '').toString().trim();
+    final conversationKey =
+        (taskCard['conversation_key'] ?? '').toString().trim();
+    if (projectId.isEmpty || conversationKey.isEmpty) {
+      return '';
+    }
+    return '$projectId::$conversationKey';
+  }
 
   factory WorkspaceSession.fromJson(Map<String, dynamic> json) {
     return WorkspaceSession(
@@ -106,6 +124,9 @@ class WorkspaceSession {
       approvalPolicy: (json['approval_policy'] ?? '').toString(),
       sandboxMode: (json['sandbox_mode'] ?? '').toString(),
       autoMode: json['auto_mode'] == true,
+      taskCard: json['task_card'] is Map
+          ? Map<String, dynamic>.from(json['task_card'] as Map)
+          : const {},
       createdAt: int.tryParse((json['created_at'] ?? 0).toString()) ?? 0,
       updatedAt: int.tryParse((json['updated_at'] ?? 0).toString()) ?? 0,
       lastEventSeq: int.tryParse((json['last_event_seq'] ?? 0).toString()) ?? 0,
@@ -125,6 +146,7 @@ class WorkspaceSession {
       'approval_policy': approvalPolicy,
       'sandbox_mode': sandboxMode,
       'auto_mode': autoMode,
+      'task_card': taskCard,
       'created_at': createdAt,
       'updated_at': updatedAt,
       'last_event_seq': lastEventSeq,
@@ -147,6 +169,7 @@ class WorkspaceSession {
           approvalPolicy == other.approvalPolicy &&
           sandboxMode == other.sandboxMode &&
           autoMode == other.autoMode &&
+          mapEquals(taskCard, other.taskCard) &&
           createdAt == other.createdAt &&
           updatedAt == other.updatedAt &&
           lastEventSeq == other.lastEventSeq;
@@ -164,6 +187,9 @@ class WorkspaceSession {
       approvalPolicy.hashCode ^
       sandboxMode.hashCode ^
       autoMode.hashCode ^
+      Object.hashAll(
+        taskCard.entries.map((entry) => Object.hash(entry.key, entry.value)),
+      ) ^
       createdAt.hashCode ^
       updatedAt.hashCode ^
       lastEventSeq.hashCode;
@@ -180,6 +206,7 @@ class WorkspaceSession {
     String? approvalPolicy,
     String? sandboxMode,
     bool? autoMode,
+    Map<String, dynamic>? taskCard,
     int? createdAt,
     int? updatedAt,
     int? lastEventSeq,
@@ -196,6 +223,7 @@ class WorkspaceSession {
       approvalPolicy: approvalPolicy ?? this.approvalPolicy,
       sandboxMode: sandboxMode ?? this.sandboxMode,
       autoMode: autoMode ?? this.autoMode,
+      taskCard: taskCard ?? this.taskCard,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       lastEventSeq: lastEventSeq ?? this.lastEventSeq,

@@ -206,7 +206,7 @@ extension _ChatSection on _HomePageState {
             contextPack: request.contextPack,
             policyTicket: request.policyTicket,
             prompt: prompt,
-            title: 'Черновик задачи: ${project.name}',
+            title: 'Тудушкер: ${project.name}',
           );
         },
       );
@@ -265,7 +265,7 @@ extension _ChatSection on _HomePageState {
         contextPack: contextPack,
         policyTicket: ticket.policyTicket,
         prompt: contextPack.toPrompt(),
-        title: 'Анализ чата: ${project.name}',
+        title: 'Тудушкер: ${project.name}',
       );
       _showSnack('Агент проекта запускается в CodeWhale.');
     } catch (e, st) {
@@ -605,7 +605,7 @@ extension _ChatSection on _HomePageState {
           contextPack: contextPack,
           policyTicket: policyTicket,
           prompt: launchPrompt,
-          title: 'Работа агента: ${project.name}',
+          title: 'Тудушкер: ${project.name}',
         );
         await _sendProjectChatAgentMessage(
           store,

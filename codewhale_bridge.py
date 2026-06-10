@@ -16,6 +16,7 @@ import sys
 import threading
 import time
 import urllib.request
+import urllib.error
 import uuid
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator
@@ -88,6 +89,22 @@ def _resolve_codewhale_cmd(command: str) -> str:
     candidates = [
         Path(os.environ.get("APPDATA", "")) / "npm" / "codewhale.cmd",
         Path.home() / "AppData" / "Roaming" / "npm" / "codewhale.cmd",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+    return command
+
+
+def _resolve_ollama_cmd(command: str = "ollama") -> str:
+    configured = str(os.environ.get("OLLAMA_CMD") or "").strip()
+    if configured:
+        return configured
+    if command and (Path(command).exists() or "\\" in command or "/" in command):
+        return command
+    candidates = [
+        Path.home() / "AppData" / "Local" / "Programs" / "Ollama" / "ollama.exe",
+        Path.home() / "AppData" / "Local" / "Microsoft" / "WindowsApps" / "ollama.cmd",
     ]
     for candidate in candidates:
         if candidate.exists():
@@ -477,6 +494,32 @@ class SessionRegistry:
             if path.name != "workspaces.json"
         ]
         return sorted(sessions, key=lambda item: (item["updated_at"], item["id"]), reverse=True)
+
+    def find_reusable_project_chat_session(
+        self,
+        workspace_id: str,
+        task_card: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        if str(task_card.get("scope") or "").strip() != "project_chat":
+            return None
+        project_id = str(task_card.get("project_id") or "").strip()
+        conversation_key = str(task_card.get("conversation_key") or "").strip()
+        if not project_id or not conversation_key:
+            return None
+        for session in self.list_sessions(workspace_id):
+            if str(session.get("status") or "") in {"killed", "stopped", "error"}:
+                continue
+            existing = session.get("task_card")
+            if not isinstance(existing, dict):
+                continue
+            if str(existing.get("scope") or "").strip() != "project_chat":
+                continue
+            if str(existing.get("project_id") or "").strip() != project_id:
+                continue
+            if str(existing.get("conversation_key") or "").strip() != conversation_key:
+                continue
+            return dict(session)
+        return None
 
     def get_session(self, workspace_id: str, session_id: str) -> dict[str, Any]:
         workspace_key = self._require_key(workspace_id, "workspace_id")
@@ -1177,6 +1220,92 @@ class CodeWhaleRuntimeClient:
         return decoded
 
 
+class ProjectChatLocalLLMClient:
+    def __init__(
+        self,
+        urlopen=urllib.request.urlopen,
+        popen: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+        timeout_seconds: float = 75,
+        models: list[str] | None = None,
+    ) -> None:
+        configured = [
+            item.strip()
+            for item in str(os.environ.get("PROJECT_CHAT_OLLAMA_MODELS") or "").split(",")
+            if item.strip()
+        ]
+        self.models = configured or models or ["qwen3:8b", "qwen2.5-coder:7b"]
+        self.urlopen = urlopen
+        self.popen = popen
+        self.timeout_seconds = timeout_seconds
+        self.ollama_cmd = _resolve_ollama_cmd()
+
+    def generate(self, prompt: str) -> str:
+        clean_prompt = prompt.strip()
+        if not clean_prompt:
+            raise ValueError("project chat prompt is empty")
+        errors: list[str] = []
+        for model in self.models:
+            try:
+                response = self._generate_http(model, clean_prompt)
+                if response:
+                    return response
+            except Exception as exc:
+                errors.append(f"{model}/http: {exc}")
+        for model in self.models:
+            try:
+                response = self._generate_cli(model, clean_prompt)
+                if response:
+                    return response
+            except Exception as exc:
+                errors.append(f"{model}/cli: {exc}")
+        detail = "; ".join(errors[-3:]) if errors else "no local model response"
+        raise RuntimeError(f"local project-chat LLM is unavailable: {detail}")
+
+    def _generate_http(self, model: str, prompt: str) -> str:
+        payload = {
+            "model": model,
+            "prompt": prompt,
+            "stream": False,
+            "options": {
+                "temperature": 0.2,
+                "num_ctx": 4096,
+            },
+        }
+        request = urllib.request.Request(
+            "http://127.0.0.1:11434/api/generate",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with self.urlopen(request, timeout=self.timeout_seconds) as response:
+                body = response.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", "replace")
+            raise RuntimeError(body or str(exc)) from exc
+        decoded = json.loads(body)
+        if not isinstance(decoded, dict):
+            raise ValueError("ollama returned non-object JSON")
+        return str(decoded.get("response") or "").strip()
+
+    def _generate_cli(self, model: str, prompt: str) -> str:
+        result = self.popen(
+            [self.ollama_cmd, "run", model],
+            input=prompt,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=self.timeout_seconds,
+            check=False,
+            creationflags=_background_creation_flags(),
+        )
+        if result.returncode != 0:
+            error = str(result.stderr or result.stdout or "").strip()
+            raise RuntimeError(error or f"ollama exited with code {result.returncode}")
+        return str(result.stdout or "").strip()
+
+
 class CodeWhaleExecClient:
     def __init__(
         self,
@@ -1282,6 +1411,7 @@ class CodeWhaleBridge:
         )
         self.runtime = CodeWhaleRuntimeClient()
         self.exec_client = CodeWhaleExecClient(codewhale_cmd=codewhale_cmd)
+        self.project_chat_llm = ProjectChatLocalLLMClient()
         self._active_execs: dict[tuple[str, str], subprocess.Popen] = {}
         self._session_stream_locks: dict[tuple[str, str], threading.Lock] = {}
         self._session_stream_locks_guard = threading.Lock()
@@ -1361,10 +1491,24 @@ class CodeWhaleBridge:
             }
         if msg_type == "session_create":
             workspace = self.workspaces.get_workspace(self._workspace_id(message))
+            title = str(message.get("title") or "")
+            task_card = self._task_card_metadata(message, str(workspace["id"]))
+            existing = self.sessions.find_reusable_project_chat_session(
+                str(workspace["id"]),
+                task_card,
+            )
+            if existing is not None:
+                if title.strip() and str(existing.get("title") or "") != title.strip():
+                    existing = self.sessions.update_session(
+                        str(workspace["id"]),
+                        str(existing["id"]),
+                        title=title.strip(),
+                    )
+                return {"type": "session", "session": existing}
             session = self.sessions.create_session(
                 str(workspace["id"]),
-                str(message.get("title") or ""),
-                task_card=self._task_card_metadata(message, str(workspace["id"])),
+                title,
+                task_card=task_card,
             )
             return {"type": "session", "session": session}
         if msg_type == "session_update_task_card":
@@ -1571,6 +1715,13 @@ class CodeWhaleBridge:
         session = self.sessions.get_session(workspace_id, session_id)
         if str(session.get("status") or "") in {"killed", "stopped"}:
             raise ValueError("session is stopped; press start a new run or create a new session")
+        if self._is_project_chat_session(session):
+            yield from self._stream_project_chat_message_locked(
+                workspace_id,
+                session_id,
+                text,
+            )
+            return
         workspace = self._find_workspace(workspace_id)
         runtime_session_id = str(session.get("runtime_session_id") or "").strip() or None
 
@@ -1725,6 +1876,79 @@ class CodeWhaleBridge:
             "status": final_status,
             "runtime_session_id": runtime_session_id or "",
         }
+
+    def _stream_project_chat_message_locked(
+        self,
+        workspace_id: str,
+        session_id: str,
+        text: str,
+    ) -> Iterator[dict[str, Any]]:
+        self.sessions.append_event(
+            workspace_id,
+            session_id,
+            {"type": "user_message", "text": text},
+        )
+        self.sessions.update_session(
+            workspace_id,
+            session_id,
+            status="running",
+            active_pid=None,
+        )
+        yield {
+            "type": "session_stream_started",
+            "workspace_id": workspace_id,
+            "session_id": session_id,
+        }
+        try:
+            full_text = self.project_chat_llm.generate(text).strip()
+            if not full_text:
+                raise ValueError("local project-chat LLM returned empty response")
+        except Exception:
+            self.sessions.update_session(
+                workspace_id,
+                session_id,
+                status="idle",
+                active_pid=None,
+            )
+            raise
+
+        self.sessions.append_event(
+            workspace_id,
+            session_id,
+            {
+                "type": "assistant_delta",
+                "text": full_text,
+                "final": True,
+            },
+        )
+        yield {
+            "type": "assistant_delta",
+            "workspace_id": workspace_id,
+            "session_id": session_id,
+            "text": full_text,
+            "final": True,
+        }
+        self.sessions.update_session(
+            workspace_id,
+            session_id,
+            status="idle",
+            active_pid=None,
+        )
+        yield {
+            "type": "session_stream_done",
+            "workspace_id": workspace_id,
+            "session_id": session_id,
+            "status": "completed",
+            "runtime_session_id": "",
+        }
+
+    @staticmethod
+    def _is_project_chat_session(session: dict[str, Any]) -> bool:
+        task_card = session.get("task_card")
+        return (
+            isinstance(task_card, dict)
+            and str(task_card.get("scope") or "").strip() == "project_chat"
+        )
 
     def _auto_finish_task_card_after_completed_reply(
         self,

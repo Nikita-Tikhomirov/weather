@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import '../models/chat_models.dart';
 import '../models/project_control_models.dart';
+import '../models/workspace_session.dart';
 import 'codewhale_bridge_service.dart';
 
 enum ProjectChatAgentAction {
@@ -644,9 +645,13 @@ class ProjectChatAgentBridgeRunner {
   Completer<String>? _activeCompleter;
   StringBuffer _buffer = StringBuffer();
   final List<Timer> _pollTimers = <Timer>[];
+  Timer? _sessionListFallbackTimer;
   String _workspaceId = '';
   String _sessionId = '';
   String _prompt = '';
+  String _title = '';
+  Map<String, dynamic> _taskCard = const {};
+  bool _waitingForSessionList = false;
 
   Future<String> run({
     required String workspaceId,
@@ -667,6 +672,9 @@ class ProjectChatAgentBridgeRunner {
     _workspaceId = workspaceId.trim();
     _sessionId = '';
     _prompt = prompt.trim();
+    _title = title.trim();
+    _taskCard = Map<String, dynamic>.from(taskCard);
+    _waitingForSessionList = false;
 
     final bridge = _ensureBridge();
     bridge.updatePolicyTicket(policyTicket);
@@ -676,11 +684,17 @@ class ProjectChatAgentBridgeRunner {
       throw StateError('CodeWhale недоступен');
     }
 
-    bridge.createSession(
-      _workspaceId,
-      title: title,
-      taskCard: taskCard,
-    );
+    _waitingForSessionList = true;
+    bridge.requestSessionList(_workspaceId);
+    _sessionListFallbackTimer = Timer(const Duration(seconds: 2), () {
+      final active = _activeCompleter;
+      if (active == completer &&
+          !completer.isCompleted &&
+          _waitingForSessionList) {
+        _waitingForSessionList = false;
+        _createSession();
+      }
+    });
 
     try {
       return await completer.future.timeout(
@@ -724,25 +738,33 @@ class ProjectChatAgentBridgeRunner {
       return;
     }
     if (message.isError) {
+      if (_waitingForSessionList) {
+        _waitingForSessionList = false;
+        _sessionListFallbackTimer?.cancel();
+        _sessionListFallbackTimer = null;
+        _createSession();
+        return;
+      }
       completer.completeError(
         StateError(message.error.isEmpty ? 'Ошибка CodeWhale' : message.error),
       );
       return;
     }
 
+    if (message.type == 'session_list') {
+      _handleSessionList(message);
+      return;
+    }
+
     final session = message.session;
     if (session != null) {
-      _sessionId = session.id;
-      onSessionLinked?.call(session.id);
-      final prompt = _prompt.trim();
-      if (_workspaceId.isNotEmpty &&
-          _sessionId.isNotEmpty &&
-          prompt.isNotEmpty) {
-        _prompt = '';
-        final bridge = _bridge;
-        bridge?.startSession(_workspaceId, _sessionId);
-        bridge?.sendSessionMessage(_workspaceId, _sessionId, prompt);
+      if (_waitingForSessionList) {
+        return;
       }
+      if (_sessionId.isNotEmpty && session.id != _sessionId) {
+        return;
+      }
+      _useSession(session);
       return;
     }
 
@@ -771,15 +793,122 @@ class ProjectChatAgentBridgeRunner {
     }
 
     if (message.type == 'output' && message.text.trim().isNotEmpty) {
+      if (_sessionId.isEmpty) {
+        return;
+      }
       _buffer.write(message.text);
     }
   }
 
+  void _handleSessionList(CodeWhaleBridgeMessage message) {
+    if (!_waitingForSessionList) {
+      return;
+    }
+    final messageWorkspaceId = message.workspaceId.trim();
+    if (messageWorkspaceId.isNotEmpty && messageWorkspaceId != _workspaceId) {
+      return;
+    }
+    _waitingForSessionList = false;
+    _sessionListFallbackTimer?.cancel();
+    _sessionListFallbackTimer = null;
+
+    final reusable = _selectReusableProjectChatSession(message.sessions);
+    if (reusable != null) {
+      _useSession(reusable);
+      return;
+    }
+    _createSession();
+  }
+
+  WorkspaceSession? _selectReusableProjectChatSession(
+    List<WorkspaceSession> sessions,
+  ) {
+    final candidates = sessions
+        .where(_matchesProjectChatTaskCard)
+        .where(_isReusableSession)
+        .toList();
+    if (candidates.isEmpty) {
+      return null;
+    }
+    candidates.sort((a, b) {
+      final rank = _sessionReuseRank(b).compareTo(_sessionReuseRank(a));
+      if (rank != 0) {
+        return rank;
+      }
+      return b.updatedAt.compareTo(a.updatedAt);
+    });
+    return candidates.first;
+  }
+
+  bool _matchesProjectChatTaskCard(WorkspaceSession session) {
+    if (!session.isProjectChatSession) {
+      return false;
+    }
+    final projectId = (_taskCard['project_id'] ?? '').toString().trim();
+    final conversationKey =
+        (_taskCard['conversation_key'] ?? '').toString().trim();
+    if (projectId.isEmpty || conversationKey.isEmpty) {
+      return false;
+    }
+    return session.projectChatKey == '$projectId::$conversationKey';
+  }
+
+  bool _isReusableSession(WorkspaceSession session) {
+    return switch (session.status) {
+      WorkspaceSessionStatus.killed ||
+      WorkspaceSessionStatus.stopped ||
+      WorkspaceSessionStatus.error =>
+        false,
+      WorkspaceSessionStatus.idle ||
+      WorkspaceSessionStatus.running ||
+      WorkspaceSessionStatus.unknown =>
+        true,
+    };
+  }
+
+  int _sessionReuseRank(WorkspaceSession session) {
+    return switch (session.status) {
+      WorkspaceSessionStatus.running => 3,
+      WorkspaceSessionStatus.idle => 2,
+      WorkspaceSessionStatus.unknown => 1,
+      WorkspaceSessionStatus.stopped ||
+      WorkspaceSessionStatus.killed ||
+      WorkspaceSessionStatus.error =>
+        0,
+    };
+  }
+
+  void _createSession() {
+    _bridge?.createSession(
+      _workspaceId,
+      title: _title.isEmpty ? 'Тудушкер' : _title,
+      taskCard: _taskCard,
+    );
+  }
+
+  void _useSession(WorkspaceSession session) {
+    _sessionId = session.id;
+    onSessionLinked?.call(session.id);
+    _sendPromptToCurrentSession();
+  }
+
+  void _sendPromptToCurrentSession() {
+    final prompt = _prompt.trim();
+    if (_workspaceId.isEmpty || _sessionId.isEmpty || prompt.isEmpty) {
+      return;
+    }
+    _prompt = '';
+    final bridge = _bridge;
+    bridge?.startSession(_workspaceId, _sessionId);
+    bridge?.sendSessionMessage(_workspaceId, _sessionId, prompt);
+  }
+
   bool _belongsToCurrentSession(CodeWhaleBridgeMessage message) {
     final messageSessionId = message.sessionId.trim();
-    return messageSessionId.isEmpty ||
-        _sessionId.isEmpty ||
-        messageSessionId == _sessionId;
+    if (_sessionId.isEmpty) {
+      return false;
+    }
+    return messageSessionId.isEmpty || messageSessionId == _sessionId;
   }
 
   void _handleSessionTask(
@@ -842,6 +971,11 @@ class ProjectChatAgentBridgeRunner {
     _activeCompleter = null;
     _buffer = StringBuffer();
     _prompt = '';
+    _title = '';
+    _taskCard = const {};
+    _waitingForSessionList = false;
+    _sessionListFallbackTimer?.cancel();
+    _sessionListFallbackTimer = null;
     _cancelPollTimers();
   }
 
@@ -853,6 +987,8 @@ class ProjectChatAgentBridgeRunner {
   }
 
   void dispose() {
+    _sessionListFallbackTimer?.cancel();
+    _sessionListFallbackTimer = null;
     _cancelPollTimers();
     _bridge?.dispose();
     _bridge = null;
