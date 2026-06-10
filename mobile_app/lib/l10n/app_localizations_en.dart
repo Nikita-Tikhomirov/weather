@@ -402,6 +402,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noWorkspacesYet => 'No workspaces yet';
 
   @override
+  String get back => 'Back';
+
+  @override
+  String get createSession => 'Create session';
+
+  @override
+  String get manageSession => 'Manage session';
+
+  @override
+  String get noSessionsYet => 'No sessions yet';
+
+  @override
+  String get running => 'Running';
+
+  @override
+  String get port => 'port';
+
+  @override
+  String get waitingToStart => 'Waiting to start';
+
+  @override
+  String get stopped => 'Stopped';
+
+  @override
+  String get killed => 'Killed';
+
+  @override
+  String get unknownStatus => 'Unknown status';
+
+  @override
   String get stopGeneration => 'Stop generation';
 
   @override

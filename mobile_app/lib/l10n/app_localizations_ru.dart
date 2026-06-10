@@ -402,6 +402,36 @@ class AppLocalizationsRu extends AppLocalizations {
   String get noWorkspacesYet => 'Рабочих пространств пока нет';
 
   @override
+  String get back => 'Назад';
+
+  @override
+  String get createSession => 'Создать сессию';
+
+  @override
+  String get manageSession => 'Управление сессией';
+
+  @override
+  String get noSessionsYet => 'Сессий пока нет';
+
+  @override
+  String get running => 'Работает';
+
+  @override
+  String get port => 'порт';
+
+  @override
+  String get waitingToStart => 'Ожидает запуска';
+
+  @override
+  String get stopped => 'Остановлена';
+
+  @override
+  String get killed => 'Убита';
+
+  @override
+  String get unknownStatus => 'Неизвестный статус';
+
+  @override
   String get stopGeneration => 'Остановить генерацию';
 
   @override

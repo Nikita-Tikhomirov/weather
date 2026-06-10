@@ -112,6 +112,29 @@ void main() {
     expect(managed?.id, 'session-1');
   });
 
+  testWidgets('workspace detail uses localized session labels',
+      (tester) async {
+    await tester.pumpWidget(
+      _localizedTestApp(
+        home: WorkspaceDetailView(
+          workspace: workspace,
+          sessions: const [session],
+          onBack: () {},
+          onRefresh: () {},
+          onCreateSession: () {},
+          onOpenSession: (_) {},
+          onManageSession: (_) {},
+        ),
+      ),
+    );
+
+    expect(find.byTooltip('Back'), findsOneWidget);
+    expect(find.byTooltip('Refresh'), findsOneWidget);
+    expect(find.byTooltip('Create session'), findsOneWidget);
+    expect(find.byTooltip('Manage session'), findsOneWidget);
+    expect(find.text('Running · PID 1234 · port 43101'), findsOneWidget);
+  });
+
   testWidgets('workspace folder browser opens and selects folders',
       (tester) async {
     var openedPath = '';

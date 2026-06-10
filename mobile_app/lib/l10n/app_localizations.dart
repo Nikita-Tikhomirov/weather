@@ -884,6 +884,66 @@ abstract class AppLocalizations {
   /// **'No workspaces yet'**
   String get noWorkspacesYet;
 
+  /// No description provided for @back.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get back;
+
+  /// No description provided for @createSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Create session'**
+  String get createSession;
+
+  /// No description provided for @manageSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage session'**
+  String get manageSession;
+
+  /// No description provided for @noSessionsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No sessions yet'**
+  String get noSessionsYet;
+
+  /// No description provided for @running.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get running;
+
+  /// No description provided for @port.
+  ///
+  /// In en, this message translates to:
+  /// **'port'**
+  String get port;
+
+  /// No description provided for @waitingToStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to start'**
+  String get waitingToStart;
+
+  /// No description provided for @stopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get stopped;
+
+  /// No description provided for @killed.
+  ///
+  /// In en, this message translates to:
+  /// **'Killed'**
+  String get killed;
+
+  /// No description provided for @unknownStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown status'**
+  String get unknownStatus;
+
   /// No description provided for @stopGeneration.
   ///
   /// In en, this message translates to:

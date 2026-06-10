@@ -1,7 +1,27 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/workspace_item.dart';
 import '../../models/workspace_session.dart';
+
+class _WorkspaceDetailText {
+  const _WorkspaceDetailText(this.l10n);
+
+  final AppLocalizations? l10n;
+
+  String get back => l10n?.back ?? 'Назад';
+  String get refresh => l10n?.refresh ?? 'Обновить';
+  String get createSession => l10n?.createSession ?? 'Создать сессию';
+  String get manageSession => l10n?.manageSession ?? 'Управление сессией';
+  String get noSessionsYet => l10n?.noSessionsYet ?? 'Сессий пока нет';
+  String get running => l10n?.running ?? 'Работает';
+  String get port => l10n?.port ?? 'порт';
+  String get waitingToStart => l10n?.waitingToStart ?? 'Ожидает запуска';
+  String get stopped => l10n?.stopped ?? 'Остановлена';
+  String get killed => l10n?.killed ?? 'Убита';
+  String get error => l10n?.error ?? 'Ошибка';
+  String get unknownStatus => l10n?.unknownStatus ?? 'Неизвестный статус';
+}
 
 class WorkspaceDetailView extends StatelessWidget {
   const WorkspaceDetailView({
@@ -25,23 +45,24 @@ class WorkspaceDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = _WorkspaceDetailText(AppLocalizations.of(context));
     final visibleSessions = _visibleSessions(sessions);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          tooltip: 'Назад',
+          tooltip: text.back,
           icon: const Icon(Icons.arrow_back),
           onPressed: onBack,
         ),
         title: Text(workspace.name),
         actions: [
           IconButton(
-            tooltip: 'Обновить',
+            tooltip: text.refresh,
             icon: const Icon(Icons.refresh),
             onPressed: onRefresh,
           ),
           IconButton(
-            tooltip: 'Создать сессию',
+            tooltip: text.createSession,
             icon: const Icon(Icons.add_comment_outlined),
             onPressed: onCreateSession,
           ),
@@ -61,7 +82,7 @@ class WorkspaceDetailView extends StatelessWidget {
           ),
           Expanded(
             child: visibleSessions.isEmpty
-                ? const Center(child: Text('Сессий пока нет'))
+                ? Center(child: Text(text.noSessionsYet))
                 : ListView.separated(
                     itemCount: visibleSessions.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),
@@ -72,9 +93,9 @@ class WorkspaceDetailView extends StatelessWidget {
                           child: Icon(_sessionIcon(session.status)),
                         ),
                         title: Text(session.title),
-                        subtitle: Text(_sessionStatusText(session)),
+                        subtitle: Text(_sessionStatusText(session, text)),
                         trailing: IconButton(
-                          tooltip: 'Управление сессией',
+                          tooltip: text.manageSession,
                           icon: const Icon(Icons.tune),
                           onPressed: () => onManageSession(session),
                         ),
@@ -137,25 +158,28 @@ class WorkspaceDetailView extends StatelessWidget {
     }
   }
 
-  String _sessionStatusText(WorkspaceSession session) {
+  String _sessionStatusText(
+    WorkspaceSession session,
+    _WorkspaceDetailText text,
+  ) {
     final pid = session.workerPid;
     final port = session.workerPort;
     if (session.isRunning && pid != null && port != null) {
-      return 'Работает · PID $pid · порт $port';
+      return '${text.running} · PID $pid · ${text.port} $port';
     }
     switch (session.status) {
       case WorkspaceSessionStatus.idle:
-        return 'Ожидает запуска';
+        return text.waitingToStart;
       case WorkspaceSessionStatus.running:
-        return 'Работает';
+        return text.running;
       case WorkspaceSessionStatus.stopped:
-        return 'Остановлена';
+        return text.stopped;
       case WorkspaceSessionStatus.killed:
-        return 'Убита';
+        return text.killed;
       case WorkspaceSessionStatus.error:
-        return 'Ошибка';
+        return text.error;
       case WorkspaceSessionStatus.unknown:
-        return 'Неизвестный статус';
+        return text.unknownStatus;
     }
   }
 }
