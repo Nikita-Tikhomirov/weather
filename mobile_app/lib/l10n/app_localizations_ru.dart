@@ -508,6 +508,31 @@ class AppLocalizationsRu extends AppLocalizations {
   String get refreshWorkspaces => 'Обновить workspace';
 
   @override
+  String get selectAction => 'Выбрать';
+
+  @override
+  String projectGroupsSummary(Object groups) {
+    return 'Группы: $groups';
+  }
+
+  @override
+  String groupParticipantsSummary(Object participants) {
+    return 'Участники: $participants';
+  }
+
+  @override
+  String get deleteProjectTitle => 'Удалить проект?';
+
+  @override
+  String get deleteProjectMessage => 'Проект и привязки групп будут удалены.';
+
+  @override
+  String get deleteGroupTitle => 'Удалить группу?';
+
+  @override
+  String get deleteGroupMessage => 'Группа будет удалена из всех проектов.';
+
+  @override
   String get connecting => 'Подключение...';
 
   @override

@@ -125,6 +125,22 @@ class _ProjectsAndGroupsText {
       l10n?.workspaceSettingLoading ?? 'Загружаю настройку workspace...';
   String get refreshWorkspaces =>
       l10n?.refreshWorkspaces ?? 'Обновить workspace';
+  String get selectAction => l10n?.selectAction ?? 'Выбрать';
+  String get editAction => l10n?.edit ?? 'Редактировать';
+  String get deleteAction => l10n?.delete ?? 'Удалить';
+  String get cancelAction => l10n?.cancel ?? 'Отмена';
+  String projectGroupsSummary(String groups) =>
+      l10n?.projectGroupsSummary(groups) ?? 'Группы: $groups';
+  String groupParticipantsSummary(String participants) =>
+      l10n?.groupParticipantsSummary(participants) ??
+      'Участники: $participants';
+  String get deleteProjectTitle =>
+      l10n?.deleteProjectTitle ?? 'Удалить проект?';
+  String get deleteProjectMessage =>
+      l10n?.deleteProjectMessage ?? 'Проект и привязки групп будут удалены.';
+  String get deleteGroupTitle => l10n?.deleteGroupTitle ?? 'Удалить группу?';
+  String get deleteGroupMessage =>
+      l10n?.deleteGroupMessage ?? 'Группа будет удалена из всех проектов.';
 }
 
 class ProjectsAndGroupsScreen extends StatefulWidget {
@@ -222,19 +238,20 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
   }
 
   Future<void> _deleteProject(BuildContext context, String id) async {
+    final text = _ProjectsAndGroupsText(AppLocalizations.of(context));
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Удалить проект?'),
-        content: const Text('Проект и привязки групп будут удалены.'),
+        title: Text(text.deleteProjectTitle),
+        content: Text(text.deleteProjectMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Отмена'),
+            child: Text(text.cancelAction),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Удалить'),
+            child: Text(text.deleteAction),
           ),
         ],
       ),
@@ -267,19 +284,20 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
   }
 
   Future<void> _deleteGroup(BuildContext context, String id) async {
+    final text = _ProjectsAndGroupsText(AppLocalizations.of(context));
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Удалить группу?'),
-        content: const Text('Группа будет удалена из всех проектов.'),
+        title: Text(text.deleteGroupTitle),
+        content: Text(text.deleteGroupMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Отмена'),
+            child: Text(text.cancelAction),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Удалить'),
+            child: Text(text.deleteAction),
           ),
         ],
       ),

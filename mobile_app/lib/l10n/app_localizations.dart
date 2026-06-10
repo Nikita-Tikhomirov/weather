@@ -1040,6 +1040,48 @@ abstract class AppLocalizations {
   /// **'Refresh workspaces'**
   String get refreshWorkspaces;
 
+  /// No description provided for @selectAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get selectAction;
+
+  /// No description provided for @projectGroupsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups: {groups}'**
+  String projectGroupsSummary(Object groups);
+
+  /// No description provided for @groupParticipantsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Participants: {participants}'**
+  String groupParticipantsSummary(Object participants);
+
+  /// No description provided for @deleteProjectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete project?'**
+  String get deleteProjectTitle;
+
+  /// No description provided for @deleteProjectMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The project and group links will be deleted.'**
+  String get deleteProjectMessage;
+
+  /// No description provided for @deleteGroupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete group?'**
+  String get deleteGroupTitle;
+
+  /// No description provided for @deleteGroupMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The group will be removed from all projects.'**
+  String get deleteGroupMessage;
+
   /// No description provided for @connecting.
   ///
   /// In en, this message translates to:

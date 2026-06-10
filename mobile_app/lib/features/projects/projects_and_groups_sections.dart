@@ -352,6 +352,7 @@ extension _ProjectsAndGroupsSections on _ProjectsAndGroupsScreenState {
     return ValueListenableBuilder<String>(
       valueListenable: widget.store.currentProjectId,
       builder: (context, currentId, _) {
+        final text = _ProjectsAndGroupsText(AppLocalizations.of(context));
         final isCurrent = currentId == project.id;
         return Card(
           color:
@@ -365,7 +366,9 @@ extension _ProjectsAndGroupsSections on _ProjectsAndGroupsScreenState {
                   Text(project.description, maxLines: 1),
                 if (assignedGroups.isNotEmpty)
                   Text(
-                    'Группы: ${assignedGroups.map((g) => g.name).join(', ')}',
+                    text.projectGroupsSummary(
+                      assignedGroups.map((g) => g.name).join(', '),
+                    ),
                     style: TextStyle(
                       fontSize: 12,
                       color: Theme.of(context).colorScheme.secondary,
@@ -391,15 +394,18 @@ extension _ProjectsAndGroupsSections on _ProjectsAndGroupsScreenState {
               },
               itemBuilder: (context) => [
                 if (!isCurrent)
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'select',
-                    child: Text('Выбрать'),
+                    child: Text(text.selectAction),
                   ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'edit',
-                  child: Text('Редактировать'),
+                  child: Text(text.editAction),
                 ),
-                const PopupMenuItem(value: 'delete', child: Text('Удалить')),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Text(text.deleteAction),
+                ),
               ],
             ),
             onTap: () => widget.store.setCurrentProject(project.id),
@@ -410,11 +416,12 @@ extension _ProjectsAndGroupsSections on _ProjectsAndGroupsScreenState {
   }
 
   Widget _groupTile(BuildContext context, FamilyGroup group) {
+    final text = _ProjectsAndGroupsText(AppLocalizations.of(context));
     return Card(
       child: ListTile(
         title: Text(group.name),
         subtitle: Text(
-          'Участники: ${group.members.join(', ')}',
+          text.groupParticipantsSummary(group.members.join(', ')),
           style: const TextStyle(fontSize: 12),
         ),
         trailing: PopupMenuButton<String>(
@@ -425,9 +432,9 @@ extension _ProjectsAndGroupsSections on _ProjectsAndGroupsScreenState {
               _deleteGroup(context, group.id);
             }
           },
-          itemBuilder: (context) => const [
-            PopupMenuItem(value: 'edit', child: Text('Редактировать')),
-            PopupMenuItem(value: 'delete', child: Text('Удалить')),
+          itemBuilder: (context) => [
+            PopupMenuItem(value: 'edit', child: Text(text.editAction)),
+            PopupMenuItem(value: 'delete', child: Text(text.deleteAction)),
           ],
         ),
       ),

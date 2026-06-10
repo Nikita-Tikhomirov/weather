@@ -225,6 +225,23 @@
   "noAvailableWorkspacesToSelect": "Нет доступных workspace для выбора.",
   "workspaceSettingLoading": "Загружаю настройку workspace...",
   "refreshWorkspaces": "Обновить workspace",
+  "selectAction": "Выбрать",
+  "projectGroupsSummary": "Группы: {groups}",
+  "@projectGroupsSummary": {
+    "placeholders": {
+      "groups": {}
+    }
+  },
+  "groupParticipantsSummary": "Участники: {participants}",
+  "@groupParticipantsSummary": {
+    "placeholders": {
+      "participants": {}
+    }
+  },
+  "deleteProjectTitle": "Удалить проект?",
+  "deleteProjectMessage": "Проект и привязки групп будут удалены.",
+  "deleteGroupTitle": "Удалить группу?",
+  "deleteGroupMessage": "Группа будет удалена из всех проектов.",
   "connecting": "Подключение...",
   "reconnecting": "Переподключение...",
   "connected": "Подключено",

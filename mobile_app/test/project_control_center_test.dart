@@ -232,6 +232,94 @@ void main() {
       expect(find.text('The project agent will be disabled.'), findsOneWidget);
     });
 
+    testWidgets('project and group menus use localized labels', (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = TaskStore(
+        repository: repository,
+        domainService: TaskDomainService(),
+      );
+      store.owner.value = 'nik';
+      store.currentProjectId.value = 'project-2';
+      store.projects.value = const [
+        TaskProject(id: 'project-1', name: 'Alpha', ownerKey: 'nik'),
+        TaskProject(id: 'project-2', name: 'Beta', ownerKey: 'nik'),
+      ];
+      store.familyGroups.value = const [
+        FamilyGroup(id: 'team', name: 'Team', members: ['nik', 'mia']),
+      ];
+      store.projectGroupMap.value = const {
+        'project-1': ['team'],
+      };
+
+      Finder popupForTile(String title) {
+        final tile = find.ancestor(
+          of: find.text(title),
+          matching: find.byType(ListTile),
+        );
+        return find.descendant(
+          of: tile,
+          matching: find.byType(PopupMenuButton<String>),
+        );
+      }
+
+      await tester.pumpWidget(
+        _localizedApp(
+          home: ProjectsAndGroupsScreen(
+            store: store,
+            actorProfile: 'nik',
+            loadWorkspacesFromBridge: false,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Groups: Team'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Alpha'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(popupForTile('Alpha'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Select'), findsOneWidget);
+      expect(find.text('Edit'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
+
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete project?'), findsOneWidget);
+      expect(
+        find.text('The project and group links will be deleted.'),
+        findsOneWidget,
+      );
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      await tester.drag(find.byType(ListView), const Offset(0, -500));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Participants: nik, mia'), findsOneWidget);
+
+      await tester.tap(popupForTile('Team'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
+
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete group?'), findsOneWidget);
+      expect(
+        find.text('The group will be removed from all projects.'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('does not auto-select first workspace and saves chosen one',
         (tester) async {
       final repository = _FakeTaskRepository();

@@ -225,6 +225,23 @@
   "noAvailableWorkspacesToSelect": "No available workspaces to select.",
   "workspaceSettingLoading": "Loading workspace setting...",
   "refreshWorkspaces": "Refresh workspaces",
+  "selectAction": "Select",
+  "projectGroupsSummary": "Groups: {groups}",
+  "@projectGroupsSummary": {
+    "placeholders": {
+      "groups": {}
+    }
+  },
+  "groupParticipantsSummary": "Participants: {participants}",
+  "@groupParticipantsSummary": {
+    "placeholders": {
+      "participants": {}
+    }
+  },
+  "deleteProjectTitle": "Delete project?",
+  "deleteProjectMessage": "The project and group links will be deleted.",
+  "deleteGroupTitle": "Delete group?",
+  "deleteGroupMessage": "The group will be removed from all projects.",
   "connecting": "Connecting...",
   "reconnecting": "Reconnecting...",
   "connected": "Connected",

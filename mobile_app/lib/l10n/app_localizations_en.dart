@@ -506,6 +506,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get refreshWorkspaces => 'Refresh workspaces';
 
   @override
+  String get selectAction => 'Select';
+
+  @override
+  String projectGroupsSummary(Object groups) {
+    return 'Groups: $groups';
+  }
+
+  @override
+  String groupParticipantsSummary(Object participants) {
+    return 'Participants: $participants';
+  }
+
+  @override
+  String get deleteProjectTitle => 'Delete project?';
+
+  @override
+  String get deleteProjectMessage =>
+      'The project and group links will be deleted.';
+
+  @override
+  String get deleteGroupTitle => 'Delete group?';
+
+  @override
+  String get deleteGroupMessage =>
+      'The group will be removed from all projects.';
+
+  @override
   String get connecting => 'Connecting...';
 
   @override
