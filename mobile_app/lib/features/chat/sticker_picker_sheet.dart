@@ -1,7 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/chat_models.dart';
 import 'sticker_catalog.dart';
+
+class _StickerPickerText {
+  const _StickerPickerText(this.l10n);
+
+  final AppLocalizations? l10n;
+
+  String get stickers => l10n?.stickers ?? 'Стикеры';
+  String get search => l10n?.search ?? 'Поиск';
+  String get noStickersLoaded =>
+      l10n?.noStickersLoaded ?? 'Стикеры еще не загружены';
+  String get noSearchResults => l10n?.noSearchResults ?? 'Ничего не найдено';
+  String get allStyles => l10n?.allStyles ?? 'Все стили';
+  String get allTopics => l10n?.allTopics ?? 'Все темы';
+}
 
 class StickerPickerSheet extends StatefulWidget {
   const StickerPickerSheet({
@@ -33,6 +48,7 @@ class _StickerPickerSheetState extends State<StickerPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final text = _StickerPickerText(AppLocalizations.of(context));
     final entries = buildStickerCatalogEntries(
       widget.packs,
       resolveAssetUrl: widget.assetUrlResolver,
@@ -45,15 +61,15 @@ class _StickerPickerSheetState extends State<StickerPickerSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _StickerSheetHeader(count: entries.length),
+            _StickerSheetHeader(count: entries.length, title: text.stickers),
             const SizedBox(height: 12),
             TextField(
               controller: _searchController,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                hintText: 'Поиск',
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: text.search,
                 isDense: true,
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
               onChanged: (value) {
                 setState(() => _query = value.trim().toLowerCase());
@@ -62,7 +78,7 @@ class _StickerPickerSheetState extends State<StickerPickerSheet> {
             const SizedBox(height: 12),
             Expanded(
               child: entries.isEmpty
-                  ? const _StickerEmptyState()
+                  ? _StickerEmptyState(label: text.noStickersLoaded)
                   : DefaultTabController(
                       length: groups.length,
                       child: Column(
@@ -81,7 +97,12 @@ class _StickerPickerSheetState extends State<StickerPickerSheet> {
                             child: TabBarView(
                               children: [
                                 for (final group in groups)
-                                  _buildGroupView(context, entries, group),
+                                  _buildGroupView(
+                                    context,
+                                    entries,
+                                    group,
+                                    text,
+                                  ),
                               ],
                             ),
                           ),
@@ -99,6 +120,7 @@ class _StickerPickerSheetState extends State<StickerPickerSheet> {
     BuildContext context,
     List<StickerCatalogEntry> entries,
     String group,
+    _StickerPickerText text,
   ) {
     final groupEntries =
         entries.where((entry) => entry.meta.group == group).toList();
@@ -131,7 +153,7 @@ class _StickerPickerSheetState extends State<StickerPickerSheet> {
           values: styles,
           selected: selectedStyle,
           labelFor: (value) =>
-              value == 'all' ? 'Все стили' : stickerStyleLabel(value),
+              value == 'all' ? text.allStyles : stickerStyleLabel(value),
           onSelected: (value) {
             setState(() {
               _selectedStyleByGroup[group] = value;
@@ -144,7 +166,7 @@ class _StickerPickerSheetState extends State<StickerPickerSheet> {
           values: categories,
           selected: selectedCategory,
           labelFor: (value) =>
-              value == 'all' ? 'Все темы' : stickerCategoryLabel(value),
+              value == 'all' ? text.allTopics : stickerCategoryLabel(value),
           onSelected: (value) {
             setState(() => _selectedCategoryByGroup[group] = value);
           },
@@ -152,7 +174,7 @@ class _StickerPickerSheetState extends State<StickerPickerSheet> {
         const SizedBox(height: 8),
         Expanded(
           child: filtered.isEmpty
-              ? const _StickerSearchEmptyState()
+              ? _StickerSearchEmptyState(label: text.noSearchResults)
               : GridView.builder(
                   padding: const EdgeInsets.only(top: 4, bottom: 12),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -177,9 +199,10 @@ class _StickerPickerSheetState extends State<StickerPickerSheet> {
 }
 
 class _StickerSheetHeader extends StatelessWidget {
-  const _StickerSheetHeader({required this.count});
+  const _StickerSheetHeader({required this.count, required this.title});
 
   final int count;
+  final String title;
 
   @override
   Widget build(BuildContext context) {
@@ -187,10 +210,10 @@ class _StickerSheetHeader extends StatelessWidget {
       children: [
         const Icon(Icons.auto_awesome_motion_outlined),
         const SizedBox(width: 10),
-        const Expanded(
+        Expanded(
           child: Text(
-            'Стикеры',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            title,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
           ),
         ),
         DecoratedBox(
@@ -296,13 +319,15 @@ class _StickerTile extends StatelessWidget {
 }
 
 class _StickerEmptyState extends StatelessWidget {
-  const _StickerEmptyState();
+  const _StickerEmptyState({required this.label});
+
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Text(
-        'Стикеры еще не загружены',
+        label,
         textAlign: TextAlign.center,
       ),
     );
@@ -310,13 +335,15 @@ class _StickerEmptyState extends StatelessWidget {
 }
 
 class _StickerSearchEmptyState extends StatelessWidget {
-  const _StickerSearchEmptyState();
+  const _StickerSearchEmptyState({required this.label});
+
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Text(
-        'Ничего не найдено',
+        label,
         textAlign: TextAlign.center,
       ),
     );

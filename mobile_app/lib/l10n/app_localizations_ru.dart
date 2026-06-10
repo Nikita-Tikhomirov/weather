@@ -321,6 +321,21 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sticker => 'Стикер';
 
   @override
+  String get stickers => 'Стикеры';
+
+  @override
+  String get noStickersLoaded => 'Стикеры еще не загружены';
+
+  @override
+  String get noSearchResults => 'Ничего не найдено';
+
+  @override
+  String get allStyles => 'Все стили';
+
+  @override
+  String get allTopics => 'Все темы';
+
+  @override
   String get voiceMessage => 'Голосовое сообщение';
 
   @override

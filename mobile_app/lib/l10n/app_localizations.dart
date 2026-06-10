@@ -722,6 +722,36 @@ abstract class AppLocalizations {
   /// **'Sticker'**
   String get sticker;
 
+  /// No description provided for @stickers.
+  ///
+  /// In en, this message translates to:
+  /// **'Stickers'**
+  String get stickers;
+
+  /// No description provided for @noStickersLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'No stickers loaded yet'**
+  String get noStickersLoaded;
+
+  /// No description provided for @noSearchResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No results found'**
+  String get noSearchResults;
+
+  /// No description provided for @allStyles.
+  ///
+  /// In en, this message translates to:
+  /// **'All styles'**
+  String get allStyles;
+
+  /// No description provided for @allTopics.
+  ///
+  /// In en, this message translates to:
+  /// **'All topics'**
+  String get allTopics;
+
   /// No description provided for @voiceMessage.
   ///
   /// In en, this message translates to:

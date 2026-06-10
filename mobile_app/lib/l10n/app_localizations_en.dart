@@ -321,6 +321,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sticker => 'Sticker';
 
   @override
+  String get stickers => 'Stickers';
+
+  @override
+  String get noStickersLoaded => 'No stickers loaded yet';
+
+  @override
+  String get noSearchResults => 'No results found';
+
+  @override
+  String get allStyles => 'All styles';
+
+  @override
+  String get allTopics => 'All topics';
+
+  @override
   String get voiceMessage => 'Voice message';
 
   @override
