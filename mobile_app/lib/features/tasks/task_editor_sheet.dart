@@ -17,10 +17,10 @@ import '../../models/task_item.dart';
 import '../../models/task_project.dart';
 import '../../models/workspace_item.dart';
 import '../../models/workspace_session.dart';
-import '../../l10n/app_localizations.dart';
 import '../../services/codewhale_bridge_service.dart';
 import '../../state/task_store.dart';
 import 'agent_launch_plan.dart';
+import 'task_editor_text.dart';
 
 part 'task_editor_collaboration_widgets.dart';
 
@@ -34,48 +34,6 @@ const _reminderOptions = <int, String>{
   15: 'За 15 минут',
   5: 'За 5 минут',
 };
-
-class _TaskEditorText {
-  const _TaskEditorText(this.l10n);
-
-  final AppLocalizations? l10n;
-
-  String get newTask => l10n?.newTask ?? 'Новая задача';
-  String get editTask => l10n?.editTask ?? 'Редактирование задачи';
-  String get settingsTab => l10n?.taskSettingsTab ?? 'Настройки';
-  String get workTab => l10n?.taskWorkTab ?? 'Работа';
-  String get agentTab => l10n?.taskAgentTab ?? 'Агент';
-  String get save => l10n?.save ?? 'Сохранить';
-  String get title => l10n?.taskTitle ?? 'Название';
-  String get project => l10n?.taskProject ?? 'Проект';
-  String get group => l10n?.taskGroup ?? 'Группа';
-  String get selectProject => l10n?.selectProject ?? 'Выберите проект';
-  String get selectGroup => l10n?.selectGroup ?? 'Выберите группу';
-  String get projectHasNoGroups =>
-      l10n?.projectHasNoGroups ?? 'У проекта нет групп.';
-  String get priority => l10n?.priority ?? 'Приоритет';
-  String get status => l10n?.taskStatus ?? 'Статус';
-  String get low => l10n?.low ?? 'Низкий';
-  String get medium => l10n?.medium ?? 'Средний';
-  String get high => l10n?.high ?? 'Высокий';
-  String get workflowTodo => l10n?.workflowTodo ?? 'К выполнению';
-  String get workflowInProgress => l10n?.workflowInProgress ?? 'В работе';
-  String get workflowInReview => l10n?.workflowInReview ?? 'На проверке';
-  String get workflowDone => l10n?.workflowDone ?? 'Выполнено';
-  String get workflowArchive => l10n?.workflowArchive ?? 'Архив';
-  String get assignees => l10n?.taskAssignees ?? 'Ответственные';
-  String get selectProjectGroup =>
-      l10n?.selectProjectGroup ?? 'Выберите группу проекта.';
-  String get groupMembersMissing =>
-      l10n?.groupMembersMissing ?? 'Участники группы не найдены в контактах.';
-  String get reminders => l10n?.taskReminders ?? 'Напоминания';
-  String get duration => l10n?.taskDuration ?? 'Оценка времени (мин)';
-  String get details => l10n?.taskDetails ?? 'Описание';
-}
-
-_TaskEditorText _taskEditorText(BuildContext context) {
-  return _TaskEditorText(AppLocalizations.of(context));
-}
 
 typedef AgentBridgeFactory = CodeWhaleBridgeService Function({
   required void Function(CodeWhaleBridgeMessage message) onMessage,
@@ -3460,7 +3418,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final text = _taskEditorText(context);
+    final text = TaskEditorText.of(context);
     final title = widget.existing == null ? text.newTask : text.editTask;
     return DefaultTabController(
       length: 3,
@@ -3503,7 +3461,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   Widget _buildSettingsTab() {
-    final text = _taskEditorText(context);
+    final text = TaskEditorText.of(context);
     final projectGroups = _groupsForProject(_selectedProjectId);
     final selectedGroup = _selectedGroupId.isNotEmpty
         ? projectGroups.cast<FamilyGroup?>().firstWhere(
@@ -3787,7 +3745,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           minLines: 3,
           maxLines: 7,
           decoration: InputDecoration(
-            labelText: _taskEditorText(context).details,
+            labelText: TaskEditorText.of(context).details,
             alignLabelWithHint: true,
           ),
         ),
