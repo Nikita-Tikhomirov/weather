@@ -174,6 +174,31 @@ void main() {
     expect(selectedPath, r'C:\Users\user\Desktop\weather');
   });
 
+  testWidgets('workspace folder browser uses localized labels',
+      (tester) async {
+    await tester.pumpWidget(
+      _localizedTestApp(
+        home: WorkspaceFolderBrowserView(
+          path: r'C:\Users\user\Desktop',
+          parent: r'C:\Users\user',
+          folders: const [],
+          onBack: () {},
+          onRefresh: () {},
+          onOpenFolder: (_) {},
+          onSelectFolder: (_, __) {},
+        ),
+      ),
+    );
+
+    expect(find.text('Folder selection'), findsOneWidget);
+    expect(find.text('Current folder'), findsOneWidget);
+    expect(find.text('Parent folder'), findsOneWidget);
+    expect(find.text('No folders here'), findsOneWidget);
+    expect(find.byTooltip('Back'), findsOneWidget);
+    expect(find.byTooltip('Refresh folders'), findsOneWidget);
+    expect(find.byTooltip('Copy path'), findsOneWidget);
+  });
+
   testWidgets('session management exposes kill and stop controls',
       (tester) async {
     var stopped = false;

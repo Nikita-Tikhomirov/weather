@@ -432,6 +432,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unknownStatus => 'Unknown status';
 
   @override
+  String get folderSelection => 'Folder selection';
+
+  @override
+  String get refreshFolders => 'Refresh folders';
+
+  @override
+  String get currentFolder => 'Current folder';
+
+  @override
+  String get copyPath => 'Copy path';
+
+  @override
+  String get parentFolder => 'Parent folder';
+
+  @override
+  String get noFoldersHere => 'No folders here';
+
+  @override
+  String get connectThisFolder => 'Connect this folder';
+
+  @override
   String get stopGeneration => 'Stop generation';
 
   @override

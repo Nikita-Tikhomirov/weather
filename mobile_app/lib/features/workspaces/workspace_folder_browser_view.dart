@@ -1,6 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../l10n/app_localizations.dart';
+
+class _WorkspaceFolderBrowserText {
+  const _WorkspaceFolderBrowserText(this.l10n);
+
+  final AppLocalizations? l10n;
+
+  String get back => l10n?.back ?? 'Назад';
+  String get folderSelection => l10n?.folderSelection ?? 'Выбор папки';
+  String get refreshFolders => l10n?.refreshFolders ?? 'Обновить папки';
+  String get currentFolder => l10n?.currentFolder ?? 'Текущая папка';
+  String get loading => l10n?.loading ?? 'Загрузка...';
+  String get copyPath => l10n?.copyPath ?? 'Копировать путь';
+  String get parentFolder => l10n?.parentFolder ?? 'На уровень выше';
+  String get noFoldersHere => l10n?.noFoldersHere ?? 'Папок здесь нет';
+  String get connectThisFolder =>
+      l10n?.connectThisFolder ?? 'Подключить эту папку';
+}
+
 class WorkspaceFolderBrowserView extends StatelessWidget {
   const WorkspaceFolderBrowserView({
     super.key,
@@ -23,17 +42,18 @@ class WorkspaceFolderBrowserView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = _WorkspaceFolderBrowserText(AppLocalizations.of(context));
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          tooltip: 'Назад',
+          tooltip: text.back,
           icon: const Icon(Icons.arrow_back),
           onPressed: onBack,
         ),
-        title: const Text('Выбор папки'),
+        title: Text(text.folderSelection),
         actions: [
           IconButton(
-            tooltip: 'Обновить папки',
+            tooltip: text.refreshFolders,
             icon: const Icon(Icons.refresh),
             onPressed: onRefresh,
           ),
@@ -43,12 +63,12 @@ class WorkspaceFolderBrowserView extends StatelessWidget {
         children: [
           ListTile(
             leading: const Icon(Icons.desktop_windows_outlined),
-            title: const Text('Текущая папка'),
-            subtitle: SelectableText(path.isEmpty ? 'Загрузка...' : path),
+            title: Text(text.currentFolder),
+            subtitle: SelectableText(path.isEmpty ? text.loading : path),
             trailing: path.isEmpty
                 ? null
                 : IconButton(
-                    tooltip: 'Копировать путь',
+                    tooltip: text.copyPath,
                     icon: const Icon(Icons.copy),
                     onPressed: () =>
                         Clipboard.setData(ClipboardData(text: path)),
@@ -57,13 +77,13 @@ class WorkspaceFolderBrowserView extends StatelessWidget {
           if (parent.isNotEmpty)
             ListTile(
               leading: const Icon(Icons.arrow_upward),
-              title: const Text('На уровень выше'),
+              title: Text(text.parentFolder),
               onTap: () => onOpenFolder(parent),
             ),
           const Divider(height: 1),
           Expanded(
             child: folders.isEmpty
-                ? const Center(child: Text('Папок здесь нет'))
+                ? Center(child: Text(text.noFoldersHere))
                 : ListView.separated(
                     itemCount: folders.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),
@@ -80,14 +100,14 @@ class WorkspaceFolderBrowserView extends StatelessWidget {
                           spacing: 4,
                           children: [
                             IconButton(
-                              tooltip: 'Копировать путь',
+                              tooltip: text.copyPath,
                               icon: const Icon(Icons.copy),
                               onPressed: () => Clipboard.setData(
                                 ClipboardData(text: folderPath),
                               ),
                             ),
                             IconButton(
-                              tooltip: 'Подключить эту папку',
+                              tooltip: text.connectThisFolder,
                               icon: const Icon(Icons.add_link),
                               onPressed: () => onSelectFolder(name, folderPath),
                             ),

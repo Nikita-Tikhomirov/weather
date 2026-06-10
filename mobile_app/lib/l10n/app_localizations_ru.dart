@@ -432,6 +432,27 @@ class AppLocalizationsRu extends AppLocalizations {
   String get unknownStatus => 'Неизвестный статус';
 
   @override
+  String get folderSelection => 'Выбор папки';
+
+  @override
+  String get refreshFolders => 'Обновить папки';
+
+  @override
+  String get currentFolder => 'Текущая папка';
+
+  @override
+  String get copyPath => 'Копировать путь';
+
+  @override
+  String get parentFolder => 'На уровень выше';
+
+  @override
+  String get noFoldersHere => 'Папок здесь нет';
+
+  @override
+  String get connectThisFolder => 'Подключить эту папку';
+
+  @override
   String get stopGeneration => 'Остановить генерацию';
 
   @override

@@ -944,6 +944,48 @@ abstract class AppLocalizations {
   /// **'Unknown status'**
   String get unknownStatus;
 
+  /// No description provided for @folderSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder selection'**
+  String get folderSelection;
+
+  /// No description provided for @refreshFolders.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh folders'**
+  String get refreshFolders;
+
+  /// No description provided for @currentFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Current folder'**
+  String get currentFolder;
+
+  /// No description provided for @copyPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy path'**
+  String get copyPath;
+
+  /// No description provided for @parentFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent folder'**
+  String get parentFolder;
+
+  /// No description provided for @noFoldersHere.
+  ///
+  /// In en, this message translates to:
+  /// **'No folders here'**
+  String get noFoldersHere;
+
+  /// No description provided for @connectThisFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect this folder'**
+  String get connectThisFolder;
+
   /// No description provided for @stopGeneration.
   ///
   /// In en, this message translates to:
