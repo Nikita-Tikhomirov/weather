@@ -453,6 +453,24 @@ class AppLocalizationsRu extends AppLocalizations {
   String get connectThisFolder => 'Подключить эту папку';
 
   @override
+  String get sessionHistoryEmpty => 'История сессии пуста';
+
+  @override
+  String get attachPhoto => 'Прикрепить фото';
+
+  @override
+  String get attachDocument => 'Прикрепить документ';
+
+  @override
+  String get copyText => 'Копировать текст';
+
+  @override
+  String get copied => 'Скопировано';
+
+  @override
+  String get workProgress => 'Ход работы';
+
+  @override
   String get stopGeneration => 'Остановить генерацию';
 
   @override

@@ -453,6 +453,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connectThisFolder => 'Connect this folder';
 
   @override
+  String get sessionHistoryEmpty => 'Session history is empty';
+
+  @override
+  String get attachPhoto => 'Attach photo';
+
+  @override
+  String get attachDocument => 'Attach document';
+
+  @override
+  String get copyText => 'Copy text';
+
+  @override
+  String get copied => 'Copied';
+
+  @override
+  String get workProgress => 'Work progress';
+
+  @override
   String get stopGeneration => 'Stop generation';
 
   @override

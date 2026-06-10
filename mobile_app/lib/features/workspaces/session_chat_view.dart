@@ -1,9 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../chat/chat_scroll_policy.dart';
 import '../../models/workspace_item.dart';
 import '../../models/workspace_session.dart';
+
+class _SessionChatText {
+  const _SessionChatText(this.l10n);
+
+  final AppLocalizations? l10n;
+
+  String get back => l10n?.back ?? 'Назад';
+  String get manageSession => l10n?.manageSession ?? 'Управление сессией';
+  String get sessionHistoryEmpty =>
+      l10n?.sessionHistoryEmpty ?? 'История сессии пуста';
+  String get attachPhoto => l10n?.attachPhoto ?? 'Прикрепить фото';
+  String get attachDocument =>
+      l10n?.attachDocument ?? 'Прикрепить документ';
+  String get message => l10n?.message ?? 'Сообщение';
+  String get send => l10n?.send ?? 'Отправить';
+  String get copyText => l10n?.copyText ?? 'Копировать текст';
+  String get copied => l10n?.copied ?? 'Скопировано';
+  String get workProgress => l10n?.workProgress ?? 'Ход работы';
+}
 
 class SessionChatView extends StatefulWidget {
   const SessionChatView({
@@ -60,11 +80,12 @@ class _SessionChatViewState extends State<SessionChatView> {
 
   @override
   Widget build(BuildContext context) {
+    final text = _SessionChatText(AppLocalizations.of(context));
     final visibleEvents = _mergeAssistantDeltas(widget.events);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          tooltip: 'Назад',
+          tooltip: text.back,
           icon: const Icon(Icons.arrow_back),
           onPressed: widget.onBack,
         ),
@@ -80,7 +101,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         ),
         actions: [
           IconButton(
-            tooltip: 'Управление сессией',
+            tooltip: text.manageSession,
             icon: const Icon(Icons.tune),
             onPressed: widget.onOpenManagement,
           ),
@@ -90,7 +111,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         children: [
           Expanded(
             child: visibleEvents.isEmpty
-                ? const Center(child: Text('История сессии пуста'))
+                ? Center(child: Text(text.sessionHistoryEmpty))
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.all(12),
@@ -112,13 +133,13 @@ class _SessionChatViewState extends State<SessionChatView> {
                 children: [
                   if (widget.onSendPhoto != null)
                     IconButton(
-                      tooltip: 'Прикрепить фото',
+                      tooltip: text.attachPhoto,
                       icon: const Icon(Icons.image_outlined),
                       onPressed: widget.onSendPhoto,
                     ),
                   if (widget.onSendDocument != null)
                     IconButton(
-                      tooltip: 'Прикрепить документ',
+                      tooltip: text.attachDocument,
                       icon: const Icon(Icons.attach_file),
                       onPressed: widget.onSendDocument,
                     ),
@@ -129,15 +150,15 @@ class _SessionChatViewState extends State<SessionChatView> {
                       maxLines: 4,
                       keyboardType: TextInputType.multiline,
                       textInputAction: TextInputAction.newline,
-                      decoration: const InputDecoration(
-                        hintText: 'Сообщение',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        hintText: text.message,
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   IconButton(
-                    tooltip: 'Отправить',
+                    tooltip: text.send,
                     icon: const Icon(Icons.send),
                     onPressed: () {
                       final text = widget.inputController.text.trim();
@@ -213,6 +234,7 @@ class _EventBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textLabels = _SessionChatText(AppLocalizations.of(context));
     final type = (event['type'] ?? '').toString();
     final text = (event['text'] ?? event['status'] ?? '').toString();
     final isUser = type == 'user_message' || type == 'send';
@@ -239,7 +261,7 @@ class _EventBubble extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               IconButton(
-                tooltip: 'Копировать текст',
+                tooltip: textLabels.copyText,
                 visualDensity: VisualDensity.compact,
                 iconSize: 18,
                 onPressed: () {
@@ -247,7 +269,7 @@ class _EventBubble extends StatelessWidget {
                     ClipboardData(text: text.isEmpty ? type : text),
                   );
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Скопировано')),
+                    SnackBar(content: Text(textLabels.copied)),
                   );
                 },
                 icon: const Icon(Icons.copy),
@@ -267,6 +289,7 @@ class _ProcessEventRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textLabels = _SessionChatText(AppLocalizations.of(context));
     final text = (event['text'] ?? event['status'] ?? '').toString().trim();
     if (text.isEmpty) {
       return const SizedBox.shrink();
@@ -285,7 +308,7 @@ class _ProcessEventRow extends StatelessWidget {
           const SizedBox(width: 6),
           Expanded(
             child: SelectableText(
-              'Ход работы: $text',
+              '${textLabels.workProgress}: $text',
               style: TextStyle(
                 fontSize: 12,
                 color: colors.onSurfaceVariant,

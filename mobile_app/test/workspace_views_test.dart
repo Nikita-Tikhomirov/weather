@@ -394,6 +394,43 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('session chat uses localized composer labels', (tester) async {
+    var photoRequested = false;
+    var documentRequested = false;
+    final controller = TextEditingController();
+
+    await tester.pumpWidget(
+      _localizedTestApp(
+        home: SessionChatView(
+          workspace: workspace,
+          session: session,
+          events: const [],
+          inputController: controller,
+          onBack: () {},
+          onOpenManagement: () {},
+          onSend: (_) {},
+          onSendPhoto: () => photoRequested = true,
+          onSendDocument: () => documentRequested = true,
+        ),
+      ),
+    );
+
+    expect(find.text('Session history is empty'), findsOneWidget);
+    expect(find.byTooltip('Back'), findsOneWidget);
+    expect(find.byTooltip('Manage session'), findsOneWidget);
+    expect(find.byTooltip('Attach photo'), findsOneWidget);
+    expect(find.byTooltip('Attach document'), findsOneWidget);
+    expect(find.text('Message'), findsOneWidget);
+    expect(find.byTooltip('Send'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Attach photo'));
+    await tester.tap(find.byTooltip('Attach document'));
+    expect(photoRequested, isTrue);
+    expect(documentRequested, isTrue);
+
+    controller.dispose();
+  });
+
   testWidgets('session chat scrolls to latest event on open and update',
       (tester) async {
     final controller = TextEditingController();

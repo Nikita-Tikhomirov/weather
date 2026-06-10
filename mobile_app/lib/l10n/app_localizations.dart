@@ -986,6 +986,42 @@ abstract class AppLocalizations {
   /// **'Connect this folder'**
   String get connectThisFolder;
 
+  /// No description provided for @sessionHistoryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Session history is empty'**
+  String get sessionHistoryEmpty;
+
+  /// No description provided for @attachPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach photo'**
+  String get attachPhoto;
+
+  /// No description provided for @attachDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach document'**
+  String get attachDocument;
+
+  /// No description provided for @copyText.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy text'**
+  String get copyText;
+
+  /// No description provided for @copied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get copied;
+
+  /// No description provided for @workProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Work progress'**
+  String get workProgress;
+
   /// No description provided for @stopGeneration.
   ///
   /// In en, this message translates to:
