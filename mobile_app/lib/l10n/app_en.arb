@@ -125,6 +125,106 @@
   "createGroupAction": "Create group",
   "noProjectsYetAction": "No projects yet. Press + to create one.",
   "noGroupsYetAction": "No groups yet. Press + to create one.",
+  "projectControlCreateProjectHint": "Create a project to connect chat and agent.",
+  "projectControlChatsNotLinked": "No linked chats",
+  "projectControlChatsCount": "Chats: {count}",
+  "@projectControlChatsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectControlWorkspaceNotSelected": "Workspace not selected",
+  "projectControlWorkspaceChip": "Workspace: {label}",
+  "@projectControlWorkspaceChip": {
+    "placeholders": {
+      "label": {}
+    }
+  },
+  "projectControlWorkspaceUnavailable": "Workspace: {label} (no access)",
+  "@projectControlWorkspaceUnavailable": {
+    "placeholders": {
+      "label": {}
+    }
+  },
+  "projectControlNoAgentAccess": "No agent access",
+  "projectControlWorkspaceLoading": "Workspace is loading",
+  "projectControlAgentAvailable": "Agent available",
+  "projectControlLinkedChats": "Linked chats",
+  "projectControlAssignGroupForChat": "Assign a group to the project to create a project chat.",
+  "projectControlCreateChat": "Create project chat",
+  "projectControlRefreshChat": "Refresh project chat",
+  "projectControlAnalyzeChat": "Chat analysis",
+  "projectControlDraftTask": "Task draft",
+  "projectControlStartAgent": "Start agent",
+  "workspaceBridgeNotLoaded": "Workspace list has not loaded yet.",
+  "workspaceBridgeEmpty": "CodeWhale returned no workspaces.",
+  "workspaceBridgeLoaded": "Loaded workspaces: {count}",
+  "@workspaceBridgeLoaded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "primaryWorkspace": "Primary workspace",
+  "refreshWorkspaceList": "Refresh workspaces",
+  "workspaceSearchHint": "Search by name, id, or path",
+  "workspaceFoundSummary": "Found: {found} of {total}. Source: {source}",
+  "@workspaceFoundSummary": {
+    "placeholders": {
+      "found": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "source": {}
+    }
+  },
+  "workspaceSourceBackendAccess": "backend access",
+  "workspaceSourceCodeWhale": "CodeWhale",
+  "clearWorkspaceBinding": "Clear binding",
+  "projectAgentDisabledAfterClearing": "The project agent will be disabled.",
+  "noWorkspacesFound": "No workspaces found.",
+  "projectWorkspaceCleared": "Project workspace cleared.",
+  "projectWorkspaceSaved": "Project workspace saved.",
+  "projectWorkspaceSaveFailed": "Could not save project workspace.",
+  "projectChatReady": "Project chat \"{title}\" is ready.",
+  "@projectChatReady": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "projectChatCreateFailed": "Could not create project chat: {error}",
+  "@projectChatCreateFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "openProjectChatHint": "Open the project chat.",
+  "selectWorkspace": "Select workspace",
+  "changeWorkspace": "Change workspace",
+  "workspaceNotSelectedSentence": "Workspace not selected.",
+  "workspaceSelected": "Selected: {label}.",
+  "@workspaceSelected": {
+    "placeholders": {
+      "label": {}
+    }
+  },
+  "workspaceControlAvailable": "{selectedText} Available: {count}.",
+  "@workspaceControlAvailable": {
+    "placeholders": {
+      "selectedText": {},
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noAvailableWorkspacesToSelect": "No available workspaces to select.",
+  "workspaceSettingLoading": "Loading workspace setting...",
+  "refreshWorkspaces": "Refresh workspaces",
   "connecting": "Connecting...",
   "reconnecting": "Reconnecting...",
   "connected": "Connected",

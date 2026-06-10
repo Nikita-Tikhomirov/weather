@@ -31,6 +31,100 @@ class _ProjectsAndGroupsText {
       'Проектов пока нет. Нажмите + чтобы создать.';
   String get noGroupsYet =>
       l10n?.noGroupsYetAction ?? 'Групп пока нет. Нажмите + чтобы создать.';
+  String get projectControlCreateProjectHint =>
+      l10n?.projectControlCreateProjectHint ??
+      'Создайте проект, чтобы подключить чат и агента.';
+  String get projectControlChatsNotLinked =>
+      l10n?.projectControlChatsNotLinked ?? 'Чаты не связаны';
+  String projectControlChatsCount(int count) =>
+      l10n?.projectControlChatsCount(count) ?? 'Чатов: $count';
+  String get projectControlWorkspaceNotSelected =>
+      l10n?.projectControlWorkspaceNotSelected ?? 'Workspace не выбран';
+  String projectControlWorkspaceChip(String label) =>
+      l10n?.projectControlWorkspaceChip(label) ?? 'Workspace: $label';
+  String projectControlWorkspaceUnavailable(String label) =>
+      l10n?.projectControlWorkspaceUnavailable(label) ??
+      'Workspace: $label (нет доступа)';
+  String get projectControlNoAgentAccess =>
+      l10n?.projectControlNoAgentAccess ?? 'Нет прав на агента';
+  String get projectControlWorkspaceLoading =>
+      l10n?.projectControlWorkspaceLoading ?? 'Workspace загружается';
+  String get projectControlAgentAvailable =>
+      l10n?.projectControlAgentAvailable ?? 'Агент доступен';
+  String get projectControlLinkedChats =>
+      l10n?.projectControlLinkedChats ?? 'Связанные чаты';
+  String get projectControlAssignGroupForChat =>
+      l10n?.projectControlAssignGroupForChat ??
+      'Назначьте группу проекту, чтобы появился проектный чат.';
+  String get projectControlCreateChat =>
+      l10n?.projectControlCreateChat ?? 'Создать проектный чат';
+  String get projectControlRefreshChat =>
+      l10n?.projectControlRefreshChat ?? 'Обновить проектный чат';
+  String get projectControlAnalyzeChat =>
+      l10n?.projectControlAnalyzeChat ?? 'Анализ чата';
+  String get projectControlDraftTask =>
+      l10n?.projectControlDraftTask ?? 'Черновик задачи';
+  String get projectControlStartAgent =>
+      l10n?.projectControlStartAgent ?? 'Запустить агента';
+  String get workspaceBridgeNotLoaded =>
+      l10n?.workspaceBridgeNotLoaded ?? 'Список workspace ещё не загружен.';
+  String get workspaceBridgeEmpty =>
+      l10n?.workspaceBridgeEmpty ?? 'CodeWhale не вернул workspace.';
+  String workspaceBridgeLoaded(int count) =>
+      l10n?.workspaceBridgeLoaded(count) ?? 'Загружено workspace: $count';
+  String get primaryWorkspace => l10n?.primaryWorkspace ?? 'Основной workspace';
+  String get refreshWorkspaceList =>
+      l10n?.refreshWorkspaceList ?? 'Обновить список';
+  String get workspaceSearchHint =>
+      l10n?.workspaceSearchHint ?? 'Поиск по имени, id или пути';
+  String workspaceFoundSummary({
+    required int found,
+    required int total,
+    required String source,
+  }) =>
+      l10n?.workspaceFoundSummary(found, total, source) ??
+      'Найдено: $found из $total. Источник: $source';
+  String get workspaceSourceBackendAccess =>
+      l10n?.workspaceSourceBackendAccess ?? 'права backend';
+  String get workspaceSourceCodeWhale =>
+      l10n?.workspaceSourceCodeWhale ?? 'CodeWhale';
+  String get clearWorkspaceBinding =>
+      l10n?.clearWorkspaceBinding ?? 'Снять привязку';
+  String get projectAgentDisabledAfterClearing =>
+      l10n?.projectAgentDisabledAfterClearing ??
+      'Агент проекта будет отключён.';
+  String get noWorkspacesFound =>
+      l10n?.noWorkspacesFound ?? 'Workspace не найдены.';
+  String get projectWorkspaceCleared =>
+      l10n?.projectWorkspaceCleared ?? 'Workspace проекта очищен.';
+  String get projectWorkspaceSaved =>
+      l10n?.projectWorkspaceSaved ?? 'Workspace проекта сохранён.';
+  String get projectWorkspaceSaveFailed =>
+      l10n?.projectWorkspaceSaveFailed ??
+      'Не удалось сохранить workspace проекта.';
+  String projectChatReady(String title) =>
+      l10n?.projectChatReady(title) ?? 'Проектный чат «$title» готов.';
+  String projectChatCreateFailed(Object error) =>
+      l10n?.projectChatCreateFailed(error) ??
+      'Не удалось создать проектный чат: $error';
+  String get openProjectChatHint =>
+      l10n?.openProjectChatHint ?? 'Откройте проектный чат.';
+  String get selectWorkspace => l10n?.selectWorkspace ?? 'Выбрать workspace';
+  String get changeWorkspace => l10n?.changeWorkspace ?? 'Сменить workspace';
+  String get workspaceNotSelectedSentence =>
+      l10n?.workspaceNotSelectedSentence ?? 'Workspace не выбран.';
+  String workspaceSelected(String label) =>
+      l10n?.workspaceSelected(label) ?? 'Выбран: $label.';
+  String workspaceControlAvailable(String selectedText, int count) =>
+      l10n?.workspaceControlAvailable(selectedText, count) ??
+      '$selectedText Доступно: $count.';
+  String get noAvailableWorkspacesToSelect =>
+      l10n?.noAvailableWorkspacesToSelect ??
+      'Нет доступных workspace для выбора.';
+  String get workspaceSettingLoading =>
+      l10n?.workspaceSettingLoading ?? 'Загружаю настройку workspace...';
+  String get refreshWorkspaces =>
+      l10n?.refreshWorkspaces ?? 'Обновить workspace';
 }
 
 class ProjectsAndGroupsScreen extends StatefulWidget {
@@ -69,7 +163,7 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
   CodeWhaleBridgeService? _workspaceBridge;
   List<WorkspaceItem> _bridgeWorkspaces = const [];
   bool _workspaceBridgeConnected = false;
-  String _workspaceBridgeStatus = 'Список workspace ещё не загружен.';
+  String _workspaceBridgeStatus = '';
 
   @override
   void initState() {
@@ -268,11 +362,12 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
           return;
         }
         if (message.type == 'workspace_list' || message.workspaces.isNotEmpty) {
+          final text = _ProjectsAndGroupsText(AppLocalizations.of(context));
           setState(() {
             _bridgeWorkspaces = _sortWorkspaces(message.workspaces);
             _workspaceBridgeStatus = _bridgeWorkspaces.isEmpty
-                ? 'CodeWhale не вернул workspace.'
-                : 'Загружено workspace: ${_bridgeWorkspaces.length}';
+                ? text.workspaceBridgeEmpty
+                : text.workspaceBridgeLoaded(_bridgeWorkspaces.length);
           });
         }
       },
@@ -412,6 +507,7 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
     ProjectControlSnapshot? snapshot,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
+    final text = _ProjectsAndGroupsText(AppLocalizations.of(context));
     var query = '';
     final selected = await showModalBottomSheet<String>(
       context: context,
@@ -436,13 +532,13 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              'Основной workspace',
+                              text.primaryWorkspace,
                               style:
                                   Theme.of(sheetContext).textTheme.titleLarge,
                             ),
                           ),
                           IconButton(
-                            tooltip: 'Обновить список',
+                            tooltip: text.refreshWorkspaceList,
                             icon: const Icon(Icons.refresh),
                             onPressed: widget.loadWorkspacesFromBridge
                                 ? _requestWorkspaceList
@@ -453,10 +549,10 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
                       const SizedBox(height: 12),
                       TextField(
                         autofocus: false,
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          hintText: 'Поиск по имени, id или пути',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.search),
+                          hintText: text.workspaceSearchHint,
+                          border: const OutlineInputBorder(),
                         ),
                         onChanged: (value) {
                           setSheetState(() => query = value);
@@ -464,24 +560,30 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Найдено: ${filtered.length} из ${_availableWorkspaces.length}. '
-                        'Источник: ${_bridgeWorkspaces.isEmpty ? 'права backend' : 'CodeWhale'}',
+                        text.workspaceFoundSummary(
+                          found: filtered.length,
+                          total: _availableWorkspaces.length,
+                          source: _bridgeWorkspaces.isEmpty
+                              ? text.workspaceSourceBackendAccess
+                              : text.workspaceSourceCodeWhale,
+                        ),
                         style: Theme.of(sheetContext).textTheme.bodySmall,
                       ),
                       if (currentId.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         ListTile(
                           leading: const Icon(Icons.link_off_outlined),
-                          title: const Text('Снять привязку'),
-                          subtitle: const Text('Агент проекта будет отключён.'),
+                          title: Text(text.clearWorkspaceBinding),
+                          subtitle:
+                              Text(text.projectAgentDisabledAfterClearing),
                           onTap: () => Navigator.of(sheetContext).pop(''),
                         ),
                       ],
                       const SizedBox(height: 8),
                       if (filtered.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Text('Workspace не найдены.'),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Text(text.noWorkspacesFound),
                         )
                       else
                         for (final workspace in filtered)
@@ -541,16 +643,16 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
         SnackBar(
           content: Text(
             selected.isEmpty
-                ? 'Workspace проекта очищен.'
-                : 'Workspace проекта сохранён.',
+                ? text.projectWorkspaceCleared
+                : text.projectWorkspaceSaved,
           ),
         ),
       );
     } catch (_) {
       if (!mounted) return;
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Не удалось сохранить workspace проекта.'),
+        SnackBar(
+          content: Text(text.projectWorkspaceSaveFailed),
         ),
       );
     }
@@ -561,6 +663,7 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
     TaskProject project,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
+    final text = _ProjectsAndGroupsText(AppLocalizations.of(context));
     try {
       final actor = widget.actorProfile ?? widget.store.owner.value;
       final conversation = await widget.store.repository.api.ensureProjectChat(
@@ -584,21 +687,22 @@ class _ProjectsAndGroupsScreenState extends State<ProjectsAndGroupsScreen> {
         _snapshots[project.id] = snapshot;
       });
       messenger.showSnackBar(
-        SnackBar(content: Text('Проектный чат «${conversation.title}» готов.')),
+        SnackBar(content: Text(text.projectChatReady(conversation.title))),
       );
     } catch (error) {
       if (!mounted) {
         return;
       }
       messenger.showSnackBar(
-        SnackBar(content: Text('Не удалось создать проектный чат: $error')),
+        SnackBar(content: Text(text.projectChatCreateFailed(error))),
       );
     }
   }
 
   void _showControlActionHint(BuildContext context) {
+    final text = _ProjectsAndGroupsText(AppLocalizations.of(context));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Откройте проектный чат.')),
+      SnackBar(content: Text(text.openProjectChatHint)),
     );
   }
 }
@@ -628,19 +732,25 @@ class _WorkspaceControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label =
-        workspaceId.trim().isEmpty ? 'Выбрать workspace' : 'Сменить workspace';
+    final text = _ProjectsAndGroupsText(AppLocalizations.of(context));
+    final label = workspaceId.trim().isEmpty
+        ? text.selectWorkspace
+        : text.changeWorkspace;
     final selectedText = workspaceId.trim().isEmpty
-        ? 'Workspace не выбран.'
-        : 'Выбран: $workspaceLabel';
+        ? text.workspaceNotSelectedSentence
+        : text.workspaceSelected(workspaceLabel);
     final hint = canPick
-        ? '$selectedText Доступно: $workspaceCount.'
-        : 'Нет доступных workspace для выбора.';
+        ? text.workspaceControlAvailable(selectedText, workspaceCount)
+        : text.noAvailableWorkspacesToSelect;
+    final normalizedBridgeStatus = bridgeStatus.trim();
+    final displayBridgeStatus = normalizedBridgeStatus.isEmpty
+        ? text.workspaceBridgeNotLoaded
+        : bridgeStatus;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          isLoading ? 'Загружаю настройку workspace...' : hint,
+          isLoading ? text.workspaceSettingLoading : hint,
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 8),
@@ -648,14 +758,16 @@ class _WorkspaceControl extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                bridgeConnected ? bridgeStatus : 'CodeWhale: $bridgeStatus',
+                bridgeConnected
+                    ? displayBridgeStatus
+                    : 'CodeWhale: $displayBridgeStatus',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
             IconButton(
-              tooltip: 'Обновить workspace',
+              tooltip: text.refreshWorkspaces,
               icon: const Icon(Icons.refresh),
               onPressed: onRefresh,
             ),

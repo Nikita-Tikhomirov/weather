@@ -788,6 +788,258 @@ abstract class AppLocalizations {
   /// **'No groups yet. Press + to create one.'**
   String get noGroupsYetAction;
 
+  /// No description provided for @projectControlCreateProjectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a project to connect chat and agent.'**
+  String get projectControlCreateProjectHint;
+
+  /// No description provided for @projectControlChatsNotLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'No linked chats'**
+  String get projectControlChatsNotLinked;
+
+  /// No description provided for @projectControlChatsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Chats: {count}'**
+  String projectControlChatsCount(int count);
+
+  /// No description provided for @projectControlWorkspaceNotSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace not selected'**
+  String get projectControlWorkspaceNotSelected;
+
+  /// No description provided for @projectControlWorkspaceChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace: {label}'**
+  String projectControlWorkspaceChip(Object label);
+
+  /// No description provided for @projectControlWorkspaceUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace: {label} (no access)'**
+  String projectControlWorkspaceUnavailable(Object label);
+
+  /// No description provided for @projectControlNoAgentAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'No agent access'**
+  String get projectControlNoAgentAccess;
+
+  /// No description provided for @projectControlWorkspaceLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace is loading'**
+  String get projectControlWorkspaceLoading;
+
+  /// No description provided for @projectControlAgentAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent available'**
+  String get projectControlAgentAvailable;
+
+  /// No description provided for @projectControlLinkedChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked chats'**
+  String get projectControlLinkedChats;
+
+  /// No description provided for @projectControlAssignGroupForChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign a group to the project to create a project chat.'**
+  String get projectControlAssignGroupForChat;
+
+  /// No description provided for @projectControlCreateChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Create project chat'**
+  String get projectControlCreateChat;
+
+  /// No description provided for @projectControlRefreshChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh project chat'**
+  String get projectControlRefreshChat;
+
+  /// No description provided for @projectControlAnalyzeChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat analysis'**
+  String get projectControlAnalyzeChat;
+
+  /// No description provided for @projectControlDraftTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Task draft'**
+  String get projectControlDraftTask;
+
+  /// No description provided for @projectControlStartAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Start agent'**
+  String get projectControlStartAgent;
+
+  /// No description provided for @workspaceBridgeNotLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace list has not loaded yet.'**
+  String get workspaceBridgeNotLoaded;
+
+  /// No description provided for @workspaceBridgeEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'CodeWhale returned no workspaces.'**
+  String get workspaceBridgeEmpty;
+
+  /// No description provided for @workspaceBridgeLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Loaded workspaces: {count}'**
+  String workspaceBridgeLoaded(int count);
+
+  /// No description provided for @primaryWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary workspace'**
+  String get primaryWorkspace;
+
+  /// No description provided for @refreshWorkspaceList.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh workspaces'**
+  String get refreshWorkspaceList;
+
+  /// No description provided for @workspaceSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by name, id, or path'**
+  String get workspaceSearchHint;
+
+  /// No description provided for @workspaceFoundSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Found: {found} of {total}. Source: {source}'**
+  String workspaceFoundSummary(int found, int total, Object source);
+
+  /// No description provided for @workspaceSourceBackendAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'backend access'**
+  String get workspaceSourceBackendAccess;
+
+  /// No description provided for @workspaceSourceCodeWhale.
+  ///
+  /// In en, this message translates to:
+  /// **'CodeWhale'**
+  String get workspaceSourceCodeWhale;
+
+  /// No description provided for @clearWorkspaceBinding.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear binding'**
+  String get clearWorkspaceBinding;
+
+  /// No description provided for @projectAgentDisabledAfterClearing.
+  ///
+  /// In en, this message translates to:
+  /// **'The project agent will be disabled.'**
+  String get projectAgentDisabledAfterClearing;
+
+  /// No description provided for @noWorkspacesFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No workspaces found.'**
+  String get noWorkspacesFound;
+
+  /// No description provided for @projectWorkspaceCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Project workspace cleared.'**
+  String get projectWorkspaceCleared;
+
+  /// No description provided for @projectWorkspaceSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Project workspace saved.'**
+  String get projectWorkspaceSaved;
+
+  /// No description provided for @projectWorkspaceSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save project workspace.'**
+  String get projectWorkspaceSaveFailed;
+
+  /// No description provided for @projectChatReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Project chat \"{title}\" is ready.'**
+  String projectChatReady(Object title);
+
+  /// No description provided for @projectChatCreateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not create project chat: {error}'**
+  String projectChatCreateFailed(Object error);
+
+  /// No description provided for @openProjectChatHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the project chat.'**
+  String get openProjectChatHint;
+
+  /// No description provided for @selectWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Select workspace'**
+  String get selectWorkspace;
+
+  /// No description provided for @changeWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Change workspace'**
+  String get changeWorkspace;
+
+  /// No description provided for @workspaceNotSelectedSentence.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace not selected.'**
+  String get workspaceNotSelectedSentence;
+
+  /// No description provided for @workspaceSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected: {label}.'**
+  String workspaceSelected(Object label);
+
+  /// No description provided for @workspaceControlAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'{selectedText} Available: {count}.'**
+  String workspaceControlAvailable(Object selectedText, int count);
+
+  /// No description provided for @noAvailableWorkspacesToSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'No available workspaces to select.'**
+  String get noAvailableWorkspacesToSelect;
+
+  /// No description provided for @workspaceSettingLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading workspace setting...'**
+  String get workspaceSettingLoading;
+
+  /// No description provided for @refreshWorkspaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh workspaces'**
+  String get refreshWorkspaces;
+
   /// No description provided for @connecting.
   ///
   /// In en, this message translates to:

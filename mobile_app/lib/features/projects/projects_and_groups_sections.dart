@@ -18,12 +18,14 @@ extension _ProjectsAndGroupsSections on _ProjectsAndGroupsScreenState {
                 return ValueListenableBuilder<List<FamilyGroup>>(
                   valueListenable: widget.store.familyGroups,
                   builder: (context, groups, ____) {
+                    final text =
+                        _ProjectsAndGroupsText(AppLocalizations.of(context));
                     if (project == null) {
-                      return const Card(
+                      return Card(
                         child: Padding(
-                          padding: EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(16),
                           child: Text(
-                            'Создайте проект, чтобы подключить чат и агента.',
+                            text.projectControlCreateProjectHint,
                           ),
                         ),
                       );
@@ -54,13 +56,15 @@ extension _ProjectsAndGroupsSections on _ProjectsAndGroupsScreenState {
                         _loadingSnapshots.contains(project.id);
                     final workspaceName = _workspaceDisplayLabel(workspaceId);
                     final workspaceLabel = workspaceId.isEmpty
-                        ? 'Workspace не выбран'
+                        ? text.projectControlWorkspaceNotSelected
                         : canUseWorkspace
-                            ? 'Workspace: $workspaceName'
-                            : 'Workspace: $workspaceName (нет доступа)';
+                            ? text.projectControlWorkspaceChip(workspaceName)
+                            : text.projectControlWorkspaceUnavailable(
+                                workspaceName,
+                              );
                     final agentBlockedReason = workspaceId.isEmpty
-                        ? 'Workspace не выбран'
-                        : 'Нет прав на агента';
+                        ? text.projectControlWorkspaceNotSelected
+                        : text.projectControlNoAgentAccess;
                     final canPickWorkspace =
                         canManageProject && _availableWorkspaceIds.isNotEmpty;
                     final canUseProjectAgent =
@@ -100,19 +104,21 @@ extension _ProjectsAndGroupsSections on _ProjectsAndGroupsScreenState {
                                 _InfoChip(
                                   icon: Icons.forum_outlined,
                                   label: boundGroups.isEmpty
-                                      ? 'Чаты не связаны'
-                                      : 'Чатов: ${boundGroups.length}',
+                                      ? text.projectControlChatsNotLinked
+                                      : text.projectControlChatsCount(
+                                          boundGroups.length,
+                                        ),
                                 ),
                                 _InfoChip(
                                   icon: Icons.workspaces_outline,
                                   label: isLoadingSnapshot
-                                      ? 'Workspace загружается'
+                                      ? text.projectControlWorkspaceLoading
                                       : workspaceLabel,
                                 ),
                                 _InfoChip(
                                   icon: Icons.smart_toy_outlined,
                                   label: canUseProjectAgent
-                                      ? 'Агент доступен'
+                                      ? text.projectControlAgentAvailable
                                       : agentBlockedReason,
                                 ),
                               ],
@@ -139,13 +145,13 @@ extension _ProjectsAndGroupsSections on _ProjectsAndGroupsScreenState {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'Связанные чаты',
+                              text.projectControlLinkedChats,
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             const SizedBox(height: 8),
                             if (boundGroups.isEmpty)
                               Text(
-                                'Назначьте группу проекту, чтобы появился проектный чат.',
+                                text.projectControlAssignGroupForChat,
                                 style: TextStyle(
                                   color: Theme.of(context).disabledColor,
                                 ),
@@ -183,8 +189,8 @@ extension _ProjectsAndGroupsSections on _ProjectsAndGroupsScreenState {
                                 icon: const Icon(Icons.forum_outlined),
                                 label: Text(
                                   projectChatBinding == null
-                                      ? 'Создать проектный чат'
-                                      : 'Обновить проектный чат',
+                                      ? text.projectControlCreateChat
+                                      : text.projectControlRefreshChat,
                                 ),
                                 onPressed: canManageProject &&
                                         !isLoadingSnapshot
@@ -202,7 +208,7 @@ extension _ProjectsAndGroupsSections on _ProjectsAndGroupsScreenState {
                                     'project-control-analyze-chat',
                                   ),
                                   icon: const Icon(Icons.auto_awesome_outlined),
-                                  label: const Text('Анализ чата'),
+                                  label: Text(text.projectControlAnalyzeChat),
                                   onPressed: canUseProjectAgent &&
                                           projectChatBinding != null
                                       ? () => _showControlActionHint(context)
@@ -213,7 +219,7 @@ extension _ProjectsAndGroupsSections on _ProjectsAndGroupsScreenState {
                                     'project-control-draft-task',
                                   ),
                                   icon: const Icon(Icons.note_add_outlined),
-                                  label: const Text('Черновик задачи'),
+                                  label: Text(text.projectControlDraftTask),
                                   onPressed: canUseProjectAgent &&
                                           projectChatBinding != null
                                       ? () => _showControlActionHint(context)
@@ -224,7 +230,7 @@ extension _ProjectsAndGroupsSections on _ProjectsAndGroupsScreenState {
                                     'project-control-start-agent',
                                   ),
                                   icon: const Icon(Icons.play_arrow_outlined),
-                                  label: const Text('Запустить агента'),
+                                  label: Text(text.projectControlStartAgent),
                                   onPressed: canUseProjectAgent &&
                                           projectChatBinding != null
                                       ? () => _showControlActionHint(context)

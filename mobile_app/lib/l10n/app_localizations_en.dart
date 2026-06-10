@@ -358,6 +358,154 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noGroupsYetAction => 'No groups yet. Press + to create one.';
 
   @override
+  String get projectControlCreateProjectHint =>
+      'Create a project to connect chat and agent.';
+
+  @override
+  String get projectControlChatsNotLinked => 'No linked chats';
+
+  @override
+  String projectControlChatsCount(int count) {
+    return 'Chats: $count';
+  }
+
+  @override
+  String get projectControlWorkspaceNotSelected => 'Workspace not selected';
+
+  @override
+  String projectControlWorkspaceChip(Object label) {
+    return 'Workspace: $label';
+  }
+
+  @override
+  String projectControlWorkspaceUnavailable(Object label) {
+    return 'Workspace: $label (no access)';
+  }
+
+  @override
+  String get projectControlNoAgentAccess => 'No agent access';
+
+  @override
+  String get projectControlWorkspaceLoading => 'Workspace is loading';
+
+  @override
+  String get projectControlAgentAvailable => 'Agent available';
+
+  @override
+  String get projectControlLinkedChats => 'Linked chats';
+
+  @override
+  String get projectControlAssignGroupForChat =>
+      'Assign a group to the project to create a project chat.';
+
+  @override
+  String get projectControlCreateChat => 'Create project chat';
+
+  @override
+  String get projectControlRefreshChat => 'Refresh project chat';
+
+  @override
+  String get projectControlAnalyzeChat => 'Chat analysis';
+
+  @override
+  String get projectControlDraftTask => 'Task draft';
+
+  @override
+  String get projectControlStartAgent => 'Start agent';
+
+  @override
+  String get workspaceBridgeNotLoaded => 'Workspace list has not loaded yet.';
+
+  @override
+  String get workspaceBridgeEmpty => 'CodeWhale returned no workspaces.';
+
+  @override
+  String workspaceBridgeLoaded(int count) {
+    return 'Loaded workspaces: $count';
+  }
+
+  @override
+  String get primaryWorkspace => 'Primary workspace';
+
+  @override
+  String get refreshWorkspaceList => 'Refresh workspaces';
+
+  @override
+  String get workspaceSearchHint => 'Search by name, id, or path';
+
+  @override
+  String workspaceFoundSummary(int found, int total, Object source) {
+    return 'Found: $found of $total. Source: $source';
+  }
+
+  @override
+  String get workspaceSourceBackendAccess => 'backend access';
+
+  @override
+  String get workspaceSourceCodeWhale => 'CodeWhale';
+
+  @override
+  String get clearWorkspaceBinding => 'Clear binding';
+
+  @override
+  String get projectAgentDisabledAfterClearing =>
+      'The project agent will be disabled.';
+
+  @override
+  String get noWorkspacesFound => 'No workspaces found.';
+
+  @override
+  String get projectWorkspaceCleared => 'Project workspace cleared.';
+
+  @override
+  String get projectWorkspaceSaved => 'Project workspace saved.';
+
+  @override
+  String get projectWorkspaceSaveFailed => 'Could not save project workspace.';
+
+  @override
+  String projectChatReady(Object title) {
+    return 'Project chat \"$title\" is ready.';
+  }
+
+  @override
+  String projectChatCreateFailed(Object error) {
+    return 'Could not create project chat: $error';
+  }
+
+  @override
+  String get openProjectChatHint => 'Open the project chat.';
+
+  @override
+  String get selectWorkspace => 'Select workspace';
+
+  @override
+  String get changeWorkspace => 'Change workspace';
+
+  @override
+  String get workspaceNotSelectedSentence => 'Workspace not selected.';
+
+  @override
+  String workspaceSelected(Object label) {
+    return 'Selected: $label.';
+  }
+
+  @override
+  String workspaceControlAvailable(Object selectedText, int count) {
+    return '$selectedText Available: $count.';
+  }
+
+  @override
+  String get noAvailableWorkspacesToSelect =>
+      'No available workspaces to select.';
+
+  @override
+  String get workspaceSettingLoading => 'Loading workspace setting...';
+
+  @override
+  String get refreshWorkspaces => 'Refresh workspaces';
+
+  @override
   String get connecting => 'Connecting...';
 
   @override

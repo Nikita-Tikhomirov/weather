@@ -125,6 +125,106 @@
   "createGroupAction": "Создать группу",
   "noProjectsYetAction": "Проектов пока нет. Нажмите + чтобы создать.",
   "noGroupsYetAction": "Групп пока нет. Нажмите + чтобы создать.",
+  "projectControlCreateProjectHint": "Создайте проект, чтобы подключить чат и агента.",
+  "projectControlChatsNotLinked": "Чаты не связаны",
+  "projectControlChatsCount": "Чатов: {count}",
+  "@projectControlChatsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectControlWorkspaceNotSelected": "Workspace не выбран",
+  "projectControlWorkspaceChip": "Workspace: {label}",
+  "@projectControlWorkspaceChip": {
+    "placeholders": {
+      "label": {}
+    }
+  },
+  "projectControlWorkspaceUnavailable": "Workspace: {label} (нет доступа)",
+  "@projectControlWorkspaceUnavailable": {
+    "placeholders": {
+      "label": {}
+    }
+  },
+  "projectControlNoAgentAccess": "Нет прав на агента",
+  "projectControlWorkspaceLoading": "Workspace загружается",
+  "projectControlAgentAvailable": "Агент доступен",
+  "projectControlLinkedChats": "Связанные чаты",
+  "projectControlAssignGroupForChat": "Назначьте группу проекту, чтобы появился проектный чат.",
+  "projectControlCreateChat": "Создать проектный чат",
+  "projectControlRefreshChat": "Обновить проектный чат",
+  "projectControlAnalyzeChat": "Анализ чата",
+  "projectControlDraftTask": "Черновик задачи",
+  "projectControlStartAgent": "Запустить агента",
+  "workspaceBridgeNotLoaded": "Список workspace ещё не загружен.",
+  "workspaceBridgeEmpty": "CodeWhale не вернул workspace.",
+  "workspaceBridgeLoaded": "Загружено workspace: {count}",
+  "@workspaceBridgeLoaded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "primaryWorkspace": "Основной workspace",
+  "refreshWorkspaceList": "Обновить список",
+  "workspaceSearchHint": "Поиск по имени, id или пути",
+  "workspaceFoundSummary": "Найдено: {found} из {total}. Источник: {source}",
+  "@workspaceFoundSummary": {
+    "placeholders": {
+      "found": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "source": {}
+    }
+  },
+  "workspaceSourceBackendAccess": "права backend",
+  "workspaceSourceCodeWhale": "CodeWhale",
+  "clearWorkspaceBinding": "Снять привязку",
+  "projectAgentDisabledAfterClearing": "Агент проекта будет отключён.",
+  "noWorkspacesFound": "Workspace не найдены.",
+  "projectWorkspaceCleared": "Workspace проекта очищен.",
+  "projectWorkspaceSaved": "Workspace проекта сохранён.",
+  "projectWorkspaceSaveFailed": "Не удалось сохранить workspace проекта.",
+  "projectChatReady": "Проектный чат «{title}» готов.",
+  "@projectChatReady": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "projectChatCreateFailed": "Не удалось создать проектный чат: {error}",
+  "@projectChatCreateFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "openProjectChatHint": "Откройте проектный чат.",
+  "selectWorkspace": "Выбрать workspace",
+  "changeWorkspace": "Сменить workspace",
+  "workspaceNotSelectedSentence": "Workspace не выбран.",
+  "workspaceSelected": "Выбран: {label}.",
+  "@workspaceSelected": {
+    "placeholders": {
+      "label": {}
+    }
+  },
+  "workspaceControlAvailable": "{selectedText} Доступно: {count}.",
+  "@workspaceControlAvailable": {
+    "placeholders": {
+      "selectedText": {},
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noAvailableWorkspacesToSelect": "Нет доступных workspace для выбора.",
+  "workspaceSettingLoading": "Загружаю настройку workspace...",
+  "refreshWorkspaces": "Обновить workspace",
   "connecting": "Подключение...",
   "reconnecting": "Переподключение...",
   "connected": "Подключено",

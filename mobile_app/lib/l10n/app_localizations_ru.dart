@@ -359,6 +359,155 @@ class AppLocalizationsRu extends AppLocalizations {
   String get noGroupsYetAction => 'Групп пока нет. Нажмите + чтобы создать.';
 
   @override
+  String get projectControlCreateProjectHint =>
+      'Создайте проект, чтобы подключить чат и агента.';
+
+  @override
+  String get projectControlChatsNotLinked => 'Чаты не связаны';
+
+  @override
+  String projectControlChatsCount(int count) {
+    return 'Чатов: $count';
+  }
+
+  @override
+  String get projectControlWorkspaceNotSelected => 'Workspace не выбран';
+
+  @override
+  String projectControlWorkspaceChip(Object label) {
+    return 'Workspace: $label';
+  }
+
+  @override
+  String projectControlWorkspaceUnavailable(Object label) {
+    return 'Workspace: $label (нет доступа)';
+  }
+
+  @override
+  String get projectControlNoAgentAccess => 'Нет прав на агента';
+
+  @override
+  String get projectControlWorkspaceLoading => 'Workspace загружается';
+
+  @override
+  String get projectControlAgentAvailable => 'Агент доступен';
+
+  @override
+  String get projectControlLinkedChats => 'Связанные чаты';
+
+  @override
+  String get projectControlAssignGroupForChat =>
+      'Назначьте группу проекту, чтобы появился проектный чат.';
+
+  @override
+  String get projectControlCreateChat => 'Создать проектный чат';
+
+  @override
+  String get projectControlRefreshChat => 'Обновить проектный чат';
+
+  @override
+  String get projectControlAnalyzeChat => 'Анализ чата';
+
+  @override
+  String get projectControlDraftTask => 'Черновик задачи';
+
+  @override
+  String get projectControlStartAgent => 'Запустить агента';
+
+  @override
+  String get workspaceBridgeNotLoaded => 'Список workspace ещё не загружен.';
+
+  @override
+  String get workspaceBridgeEmpty => 'CodeWhale не вернул workspace.';
+
+  @override
+  String workspaceBridgeLoaded(int count) {
+    return 'Загружено workspace: $count';
+  }
+
+  @override
+  String get primaryWorkspace => 'Основной workspace';
+
+  @override
+  String get refreshWorkspaceList => 'Обновить список';
+
+  @override
+  String get workspaceSearchHint => 'Поиск по имени, id или пути';
+
+  @override
+  String workspaceFoundSummary(int found, int total, Object source) {
+    return 'Найдено: $found из $total. Источник: $source';
+  }
+
+  @override
+  String get workspaceSourceBackendAccess => 'права backend';
+
+  @override
+  String get workspaceSourceCodeWhale => 'CodeWhale';
+
+  @override
+  String get clearWorkspaceBinding => 'Снять привязку';
+
+  @override
+  String get projectAgentDisabledAfterClearing =>
+      'Агент проекта будет отключён.';
+
+  @override
+  String get noWorkspacesFound => 'Workspace не найдены.';
+
+  @override
+  String get projectWorkspaceCleared => 'Workspace проекта очищен.';
+
+  @override
+  String get projectWorkspaceSaved => 'Workspace проекта сохранён.';
+
+  @override
+  String get projectWorkspaceSaveFailed =>
+      'Не удалось сохранить workspace проекта.';
+
+  @override
+  String projectChatReady(Object title) {
+    return 'Проектный чат «$title» готов.';
+  }
+
+  @override
+  String projectChatCreateFailed(Object error) {
+    return 'Не удалось создать проектный чат: $error';
+  }
+
+  @override
+  String get openProjectChatHint => 'Откройте проектный чат.';
+
+  @override
+  String get selectWorkspace => 'Выбрать workspace';
+
+  @override
+  String get changeWorkspace => 'Сменить workspace';
+
+  @override
+  String get workspaceNotSelectedSentence => 'Workspace не выбран.';
+
+  @override
+  String workspaceSelected(Object label) {
+    return 'Выбран: $label.';
+  }
+
+  @override
+  String workspaceControlAvailable(Object selectedText, int count) {
+    return '$selectedText Доступно: $count.';
+  }
+
+  @override
+  String get noAvailableWorkspacesToSelect =>
+      'Нет доступных workspace для выбора.';
+
+  @override
+  String get workspaceSettingLoading => 'Загружаю настройку workspace...';
+
+  @override
+  String get refreshWorkspaces => 'Обновить workspace';
+
+  @override
   String get connecting => 'Подключение...';
 
   @override

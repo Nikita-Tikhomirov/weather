@@ -154,6 +154,84 @@ void main() {
       );
     });
 
+    testWidgets('workspace picker and status use localized labels',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = TaskStore(
+        repository: repository,
+        domainService: TaskDomainService(),
+      );
+      store.owner.value = 'nik';
+      store.currentProjectId.value = 'project-1';
+      store.projects.value = const [
+        TaskProject(id: 'project-1', name: 'Cifra', ownerKey: 'nik'),
+      ];
+      repository.fakeApi.snapshot = const ProjectControlSnapshot(
+        project: TaskProject(id: 'project-1', name: 'Cifra'),
+        chatBindings: [],
+        automation: ProjectAutomationConfig(
+          projectId: 'project-1',
+          primaryWorkspaceId: 'workspace-cifra',
+        ),
+        primaryWorkspaceId: 'workspace-cifra',
+        canManageProject: true,
+        canUseWorkspace: true,
+        canUseAgent: true,
+      );
+
+      await tester.pumpWidget(
+        _localizedApp(
+          home: ProjectsAndGroupsScreen(
+            store: store,
+            actorProfile: 'nik',
+            loadWorkspacesFromBridge: false,
+            initialWorkspaces: const [
+              WorkspaceItem(
+                id: 'workspace-cifra',
+                name: 'Cifra Tools',
+                path: 'C:/projects/cifra-tools',
+                status: WorkspaceStatus.available,
+              ),
+            ],
+            accessPolicy: const UserAccessPolicy(
+              phone: '',
+              profileKey: 'nik',
+              roles: ['workspace_user'],
+              capabilities: [
+                'messenger.use',
+                'projects.view',
+                'workspaces.use',
+                'ai.use',
+              ],
+              workspaces: [
+                {'workspace_id': 'workspace-cifra'},
+              ],
+              isSuperadmin: false,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Workspace: Cifra Tools'), findsOneWidget);
+      expect(find.text('Agent available'), findsOneWidget);
+      expect(find.text('Selected: Cifra Tools. Available: 1.'), findsOneWidget);
+      expect(find.text('Change workspace'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('project-workspace-picker')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Primary workspace'), findsOneWidget);
+      expect(find.byTooltip('Refresh workspaces'), findsWidgets);
+      expect(find.text('Search by name, id, or path'), findsOneWidget);
+      expect(
+        find.text('Found: 1 of 1. Source: CodeWhale'),
+        findsOneWidget,
+      );
+      expect(find.text('Clear binding'), findsOneWidget);
+      expect(find.text('The project agent will be disabled.'), findsOneWidget);
+    });
+
     testWidgets('does not auto-select first workspace and saves chosen one',
         (tester) async {
       final repository = _FakeTaskRepository();
