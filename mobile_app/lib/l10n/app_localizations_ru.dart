@@ -90,6 +90,27 @@ class AppLocalizationsRu extends AppLocalizations {
   String get send => 'Отправить';
 
   @override
+  String get incomingVideoCall => 'Входящий видеозвонок';
+
+  @override
+  String get incomingAudioCall => 'Входящий аудиозвонок';
+
+  @override
+  String get ongoingVideoCall => 'Идет видеозвонок';
+
+  @override
+  String get ongoingAudioCall => 'Идет аудиозвонок';
+
+  @override
+  String get openCallScreen => 'Открыть экран звонка';
+
+  @override
+  String get open => 'Открыть';
+
+  @override
+  String get returnToCall => 'Вернуться';
+
+  @override
   String get calling => 'Вызов...';
 
   @override

@@ -260,6 +260,48 @@ abstract class AppLocalizations {
   /// **'Send'**
   String get send;
 
+  /// No description provided for @incomingVideoCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming video call'**
+  String get incomingVideoCall;
+
+  /// No description provided for @incomingAudioCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming audio call'**
+  String get incomingAudioCall;
+
+  /// No description provided for @ongoingVideoCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Ongoing video call'**
+  String get ongoingVideoCall;
+
+  /// No description provided for @ongoingAudioCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Ongoing audio call'**
+  String get ongoingAudioCall;
+
+  /// No description provided for @openCallScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open call screen'**
+  String get openCallScreen;
+
+  /// No description provided for @open.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get open;
+
+  /// No description provided for @returnToCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Return'**
+  String get returnToCall;
+
   /// No description provided for @calling.
   ///
   /// In en, this message translates to:

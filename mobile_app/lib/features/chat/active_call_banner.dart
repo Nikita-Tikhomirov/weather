@@ -1,7 +1,33 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/call_models.dart';
 import '../../services/call_service.dart';
+
+class _ActiveCallText {
+  const _ActiveCallText(this.l10n);
+
+  final AppLocalizations? l10n;
+
+  String title({required bool incoming, required String callType}) {
+    final isVideo = callType == 'video';
+    if (incoming) {
+      return isVideo
+          ? l10n?.incomingVideoCall ?? 'Входящий видеозвонок'
+          : l10n?.incomingAudioCall ?? 'Входящий аудиозвонок';
+    }
+    return isVideo
+        ? l10n?.ongoingVideoCall ?? 'Идет видеозвонок'
+        : l10n?.ongoingAudioCall ?? 'Идет аудиозвонок';
+  }
+
+  String get accept => l10n?.accept ?? 'Принять';
+  String get decline => l10n?.decline ?? 'Отклонить';
+  String get endCall => l10n?.endCall ?? 'Завершить';
+  String get open => l10n?.open ?? 'Открыть';
+  String get openCallScreen => l10n?.openCallScreen ?? 'Открыть экран звонка';
+  String get returnToCall => l10n?.returnToCall ?? 'Вернуться';
+}
 
 class ActiveCallOverlay extends StatelessWidget {
   const ActiveCallOverlay({
@@ -90,7 +116,7 @@ class IncomingCallPrompt extends StatelessWidget {
         ? session.calleeProfile
         : session.callerProfile;
     final isVideo = session.callType == 'video';
-    final callKind = isVideo ? 'видеозвонок' : 'аудиозвонок';
+    final text = _ActiveCallText(AppLocalizations.of(context));
     final backgroundColor = isVideo ? Colors.black : const Color(0xFF0D47A1);
     final theme = Theme.of(context);
 
@@ -120,7 +146,7 @@ class IncomingCallPrompt extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                'Входящий $callKind',
+                text.title(incoming: true, callType: session.callType),
                 textAlign: TextAlign.center,
                 style: theme.textTheme.headlineSmall?.copyWith(
                       color: Colors.white,
@@ -150,7 +176,7 @@ class IncomingCallPrompt extends StatelessWidget {
                     child: FilledButton.icon(
                       onPressed: onEnd,
                       icon: const Icon(Icons.call_end),
-                      label: const Text('Отклонить'),
+                      label: Text(text.decline),
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFFD32F2F),
                         foregroundColor: Colors.white,
@@ -163,7 +189,7 @@ class IncomingCallPrompt extends StatelessWidget {
                     child: FilledButton.icon(
                       onPressed: onAccept,
                       icon: const Icon(Icons.call),
-                      label: const Text('Принять'),
+                      label: Text(text.accept),
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF2E7D32),
                         foregroundColor: Colors.white,
@@ -176,7 +202,7 @@ class IncomingCallPrompt extends StatelessWidget {
               const SizedBox(height: 12),
               TextButton(
                 onPressed: onOpen,
-                child: const Text('Открыть экран звонка'),
+                child: Text(text.openCallScreen),
               ),
             ],
           ),
@@ -221,8 +247,8 @@ class ActiveCallBanner extends StatelessWidget {
 
     final peerProfile =
         call.callerProfile == owner ? call.calleeProfile : call.callerProfile;
-    final callKind = call.callType == 'video' ? 'видеозвонок' : 'аудиозвонок';
-    final title = _isIncoming ? 'Входящий $callKind' : 'Идет $callKind';
+    final text = _ActiveCallText(AppLocalizations.of(context));
+    final title = text.title(incoming: _isIncoming, callType: call.callType);
     final theme = Theme.of(context);
 
     return Material(
@@ -274,7 +300,7 @@ class ActiveCallBanner extends StatelessWidget {
               ),
               if (_isIncoming && onAccept != null) ...[
                 IconButton.filled(
-                  tooltip: 'Принять',
+                  tooltip: text.accept,
                   onPressed: onAccept,
                   icon: const Icon(Icons.call),
                   style: IconButton.styleFrom(
@@ -287,13 +313,13 @@ class ActiveCallBanner extends StatelessWidget {
               TextButton(
                 onPressed: onOpen,
                 child: Text(
-                  _isIncoming ? 'Открыть' : 'Вернуться',
+                  _isIncoming ? text.open : text.returnToCall,
                   style: const TextStyle(color: Colors.white),
                 ),
               ),
               if (onEnd != null)
                 IconButton(
-                  tooltip: _isIncoming ? 'Отклонить' : 'Завершить',
+                  tooltip: _isIncoming ? text.decline : text.endCall,
                   onPressed: onEnd,
                   icon: const Icon(Icons.call_end),
                   color: const Color(0xFFFFCDD2),

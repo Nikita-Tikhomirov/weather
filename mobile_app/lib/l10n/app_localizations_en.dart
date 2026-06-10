@@ -90,6 +90,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get send => 'Send';
 
   @override
+  String get incomingVideoCall => 'Incoming video call';
+
+  @override
+  String get incomingAudioCall => 'Incoming audio call';
+
+  @override
+  String get ongoingVideoCall => 'Ongoing video call';
+
+  @override
+  String get ongoingAudioCall => 'Ongoing audio call';
+
+  @override
+  String get openCallScreen => 'Open call screen';
+
+  @override
+  String get open => 'Open';
+
+  @override
+  String get returnToCall => 'Return';
+
+  @override
   String get calling => 'Calling...';
 
   @override

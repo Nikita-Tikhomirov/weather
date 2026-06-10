@@ -1,4 +1,5 @@
 import 'package:family_todo_mobile/features/chat/messenger_page.dart';
+import 'package:family_todo_mobile/l10n/app_localizations.dart';
 import 'package:family_todo_mobile/models/call_models.dart';
 import 'package:family_todo_mobile/models/chat_models.dart';
 import 'package:family_todo_mobile/services/call_service.dart';
@@ -55,6 +56,16 @@ void main() {
     );
   }
 
+  Widget localizedApp(Widget child) {
+    return MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
+      home: Scaffold(body: child),
+    );
+  }
+
   testWidgets('shows incoming video call banner above contact list',
       (tester) async {
     var opened = false;
@@ -69,22 +80,19 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        theme: ThemeData(splashFactory: NoSplash.splashFactory),
-        home: Scaffold(
-          body: buildPage(
-            activeCallSession: session,
-            activeCallState: CallState.ringing,
-            onOpenActiveCall: () => opened = true,
-          ),
+      localizedApp(
+        buildPage(
+          activeCallSession: session,
+          activeCallState: CallState.ringing,
+          onOpenActiveCall: () => opened = true,
         ),
       ),
     );
 
-    expect(find.text('Входящий видеозвонок'), findsOneWidget);
+    expect(find.text('Incoming video call'), findsOneWidget);
     expect(find.text('User misha'), findsOneWidget);
 
-    await tester.tap(find.text('Открыть'));
+    await tester.tap(find.text('Open'));
     expect(opened, isTrue);
   });
 
@@ -102,21 +110,18 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        theme: ThemeData(splashFactory: NoSplash.splashFactory),
-        home: Scaffold(
-          body: buildPage(
-            activeCallSession: session,
-            activeCallState: CallState.connected,
-            onOpenActiveCall: () => opened = true,
-            onEndActiveCall: () => ended = true,
-          ),
+      localizedApp(
+        buildPage(
+          activeCallSession: session,
+          activeCallState: CallState.connected,
+          onOpenActiveCall: () => opened = true,
+          onEndActiveCall: () => ended = true,
         ),
       ),
     );
 
-    expect(find.text('Идет аудиозвонок'), findsOneWidget);
-    await tester.tap(find.text('Вернуться'));
+    expect(find.text('Ongoing audio call'), findsOneWidget);
+    await tester.tap(find.text('Return'));
     expect(opened, isTrue);
     await tester.tap(find.byIcon(Icons.call_end));
     expect(ended, isTrue);
