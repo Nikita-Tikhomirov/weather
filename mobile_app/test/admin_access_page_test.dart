@@ -1,4 +1,5 @@
 import 'package:family_todo_mobile/features/admin/admin_access_page.dart';
+import 'package:family_todo_mobile/l10n/app_localizations.dart';
 import 'package:family_todo_mobile/models/agent_policy.dart';
 import 'package:family_todo_mobile/models/chat_models.dart';
 import 'package:family_todo_mobile/models/task_project.dart';
@@ -8,6 +9,67 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('admin page uses localized access labels', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1000, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      _localizedApp(
+        home: AdminAccessPage(
+          api: _FakeAdminApiClient(),
+          actorProfile: 'nik',
+          actorPhone: '+7 967 981-24-38',
+          accessPolicy: const UserAccessPolicy(
+            phone: '79679812438',
+            profileKey: 'nik',
+            roles: ['messenger_user', 'superadmin'],
+            capabilities: ['workspaces.grant_access'],
+            workspaces: [],
+            isSuperadmin: true,
+          ),
+          contacts: const [
+            ChatContact(
+              profileKey: 'user-dev',
+              displayName: 'Developer',
+              phone: '79000000000',
+              conversationKey: 'dm:nik:user-dev',
+            ),
+          ],
+          projects: const [
+            TaskProject(id: 'project-system', name: 'System'),
+          ],
+          initialWorkspaces: const [
+            WorkspaceItem(
+              id: 'workspace-weather',
+              name: 'Weather',
+              path: r'C:\weather',
+              status: WorkspaceStatus.available,
+            ),
+          ],
+          connectToBridge: false,
+        ),
+      ),
+    );
+
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('Administration'), findsOneWidget);
+    expect(find.byTooltip('Refresh'), findsOneWidget);
+    expect(find.text('Users: 2'), findsOneWidget);
+    expect(find.text('Workspaces: 1'), findsOneWidget);
+    expect(find.text('Projects: 1'), findsOneWidget);
+    expect(find.text('CodeWhale disabled'), findsOneWidget);
+    expect(find.text('New access'), findsOneWidget);
+    expect(find.text('Contact from contacts'), findsOneWidget);
+    expect(find.text('Workspace'), findsOneWidget);
+    expect(find.text('Role'), findsOneWidget);
+    expect(find.text('Agent operator'), findsWidgets);
+    expect(find.text('Grant access'), findsOneWidget);
+    expect(find.text('Granted access'), findsOneWidget);
+    expect(find.text('Agent roles'), findsOneWidget);
+    expect(find.byTooltip('Revoke access'), findsOneWidget);
+  });
+
   testWidgets('admin page grants workspace access only to real workspaces',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1000, 1200));
@@ -80,6 +142,16 @@ void main() {
     expect(grant['body']['role'], 'agent_operator');
     expect(grant['body']['actor_phone'], '+7 967 981-24-38');
   });
+}
+
+Widget _localizedApp({required Widget home}) {
+  return MaterialApp(
+    locale: const Locale('en'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    theme: ThemeData(splashFactory: NoSplash.splashFactory),
+    home: home,
+  );
 }
 
 class _FakeAdminApiClient extends ApiClient {

@@ -872,6 +872,138 @@ abstract class AppLocalizations {
   /// **'Users, projects, workspaces, and agent roles'**
   String get profileAdminSubtitle;
 
+  /// No description provided for @adminNoAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'No administration access'**
+  String get adminNoAccess;
+
+  /// No description provided for @adminBridgeNotConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'CodeWhale workspaces are not connected'**
+  String get adminBridgeNotConnected;
+
+  /// No description provided for @adminCodeWhaleDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'CodeWhale disabled'**
+  String get adminCodeWhaleDisabled;
+
+  /// No description provided for @adminNewAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'New access'**
+  String get adminNewAccess;
+
+  /// No description provided for @adminContactFromContacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact from contacts'**
+  String get adminContactFromContacts;
+
+  /// No description provided for @adminContactsNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No contacts found'**
+  String get adminContactsNotFound;
+
+  /// No description provided for @adminWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace'**
+  String get adminWorkspace;
+
+  /// No description provided for @adminRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Role'**
+  String get adminRole;
+
+  /// No description provided for @adminGrantAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant access'**
+  String get adminGrantAccess;
+
+  /// No description provided for @adminGrantedAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Granted access'**
+  String get adminGrantedAccess;
+
+  /// No description provided for @adminNoActiveAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'No active access yet'**
+  String get adminNoActiveAccess;
+
+  /// No description provided for @adminRevokeAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke access'**
+  String get adminRevokeAccess;
+
+  /// No description provided for @adminAgentRoles.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent roles'**
+  String get adminAgentRoles;
+
+  /// No description provided for @adminUsersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Users: {count}'**
+  String adminUsersCount(int count);
+
+  /// No description provided for @adminWorkspacesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspaces: {count}'**
+  String adminWorkspacesCount(int count);
+
+  /// No description provided for @adminProjectsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects: {count}'**
+  String adminProjectsCount(int count);
+
+  /// No description provided for @adminRoleWorkspaceUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace member'**
+  String get adminRoleWorkspaceUser;
+
+  /// No description provided for @adminRoleWorkspaceUserDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Can view the workspace and use AI.'**
+  String get adminRoleWorkspaceUserDescription;
+
+  /// No description provided for @adminRoleAgentOperator.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent operator'**
+  String get adminRoleAgentOperator;
+
+  /// No description provided for @adminRoleAgentOperatorDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Can launch agent chats from tasks and run work in them.'**
+  String get adminRoleAgentOperatorDescription;
+
+  /// No description provided for @adminRoleWorkspaceAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace administrator'**
+  String get adminRoleWorkspaceAdmin;
+
+  /// No description provided for @adminRoleWorkspaceAdminDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Can manage access and advanced agent actions.'**
+  String get adminRoleWorkspaceAdminDescription;
+
   /// No description provided for @avatarUploadFailed.
   ///
   /// In en, this message translates to:

@@ -139,6 +139,49 @@
   "phone": "Phone",
   "administration": "Administration",
   "profileAdminSubtitle": "Users, projects, workspaces, and agent roles",
+  "adminNoAccess": "No administration access",
+  "adminBridgeNotConnected": "CodeWhale workspaces are not connected",
+  "adminCodeWhaleDisabled": "CodeWhale disabled",
+  "adminNewAccess": "New access",
+  "adminContactFromContacts": "Contact from contacts",
+  "adminContactsNotFound": "No contacts found",
+  "adminWorkspace": "Workspace",
+  "adminRole": "Role",
+  "adminGrantAccess": "Grant access",
+  "adminGrantedAccess": "Granted access",
+  "adminNoActiveAccess": "No active access yet",
+  "adminRevokeAccess": "Revoke access",
+  "adminAgentRoles": "Agent roles",
+  "adminUsersCount": "Users: {count}",
+  "@adminUsersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminWorkspacesCount": "Workspaces: {count}",
+  "@adminWorkspacesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminProjectsCount": "Projects: {count}",
+  "@adminProjectsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminRoleWorkspaceUser": "Workspace member",
+  "adminRoleWorkspaceUserDescription": "Can view the workspace and use AI.",
+  "adminRoleAgentOperator": "Agent operator",
+  "adminRoleAgentOperatorDescription": "Can launch agent chats from tasks and run work in them.",
+  "adminRoleWorkspaceAdmin": "Workspace administrator",
+  "adminRoleWorkspaceAdminDescription": "Can manage access and advanced agent actions.",
   "avatarUploadFailed": "Could not upload avatar: {error}",
   "@avatarUploadFailed": {
     "placeholders": {

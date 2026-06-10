@@ -402,6 +402,81 @@ class AppLocalizationsRu extends AppLocalizations {
       'Пользователи, проекты, воркспейсы и роли агентов';
 
   @override
+  String get adminNoAccess => 'Нет доступа к администрированию';
+
+  @override
+  String get adminBridgeNotConnected => 'Воркспейсы CodeWhale не подключены';
+
+  @override
+  String get adminCodeWhaleDisabled => 'CodeWhale отключен';
+
+  @override
+  String get adminNewAccess => 'Новый доступ';
+
+  @override
+  String get adminContactFromContacts => 'Пользователь из контактов';
+
+  @override
+  String get adminContactsNotFound => 'Контакты не найдены';
+
+  @override
+  String get adminWorkspace => 'Воркспейс';
+
+  @override
+  String get adminRole => 'Роль';
+
+  @override
+  String get adminGrantAccess => 'Выдать доступ';
+
+  @override
+  String get adminGrantedAccess => 'Кому что выдано';
+
+  @override
+  String get adminNoActiveAccess => 'Активных доступов пока нет';
+
+  @override
+  String get adminRevokeAccess => 'Отозвать доступ';
+
+  @override
+  String get adminAgentRoles => 'Агенты и роли';
+
+  @override
+  String adminUsersCount(int count) {
+    return 'Пользователи: $count';
+  }
+
+  @override
+  String adminWorkspacesCount(int count) {
+    return 'Воркспейсы: $count';
+  }
+
+  @override
+  String adminProjectsCount(int count) {
+    return 'Проекты: $count';
+  }
+
+  @override
+  String get adminRoleWorkspaceUser => 'Участник воркспейса';
+
+  @override
+  String get adminRoleWorkspaceUserDescription =>
+      'Видит рабочее пространство и может пользоваться ИИ.';
+
+  @override
+  String get adminRoleAgentOperator => 'Оператор агентов';
+
+  @override
+  String get adminRoleAgentOperatorDescription =>
+      'Запускает агентские чаты из задач и ведет работу в них.';
+
+  @override
+  String get adminRoleWorkspaceAdmin => 'Администратор воркспейса';
+
+  @override
+  String get adminRoleWorkspaceAdminDescription =>
+      'Управляет доступами и расширенными действиями агентов.';
+
+  @override
   String avatarUploadFailed(Object error) {
     return 'Не удалось загрузить аватарку: $error';
   }

@@ -2,12 +2,82 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/agent_policy.dart';
 import '../../models/chat_models.dart';
 import '../../models/task_project.dart';
 import '../../models/workspace_item.dart';
 import '../../services/api_client.dart';
 import '../../services/codewhale_bridge_service.dart';
+
+class _AdminAccessText {
+  const _AdminAccessText(this.l10n);
+
+  final AppLocalizations? l10n;
+
+  String get administration => l10n?.administration ?? 'Администрирование';
+  String get refresh => l10n?.refresh ?? 'Обновить';
+  String get noAccess =>
+      l10n?.adminNoAccess ?? 'Нет доступа к администрированию';
+  String get bridgeNotConnected =>
+      l10n?.adminBridgeNotConnected ?? 'Воркспейсы CodeWhale не подключены';
+  String get codeWhaleDisabled =>
+      l10n?.adminCodeWhaleDisabled ?? 'CodeWhale отключен';
+  String get newAccess => l10n?.adminNewAccess ?? 'Новый доступ';
+  String get contactFromContacts =>
+      l10n?.adminContactFromContacts ?? 'Пользователь из контактов';
+  String get contactsNotFound =>
+      l10n?.adminContactsNotFound ?? 'Контакты не найдены';
+  String get workspace => l10n?.adminWorkspace ?? 'Воркспейс';
+  String get role => l10n?.adminRole ?? 'Роль';
+  String get grantAccess => l10n?.adminGrantAccess ?? 'Выдать доступ';
+  String get grantedAccess => l10n?.adminGrantedAccess ?? 'Кому что выдано';
+  String get noActiveAccess =>
+      l10n?.adminNoActiveAccess ?? 'Активных доступов пока нет';
+  String get revokeAccess => l10n?.adminRevokeAccess ?? 'Отозвать доступ';
+  String get agentRoles => l10n?.adminAgentRoles ?? 'Агенты и роли';
+
+  String usersCount(int count) {
+    return l10n?.adminUsersCount(count) ?? 'Пользователи: $count';
+  }
+
+  String workspacesCount(int count) {
+    return l10n?.adminWorkspacesCount(count) ?? 'Воркспейсы: $count';
+  }
+
+  String projectsCount(int count) {
+    return l10n?.adminProjectsCount(count) ?? 'Проекты: $count';
+  }
+
+  String roleLabel(String id) {
+    switch (id) {
+      case 'workspace_user':
+        return l10n?.adminRoleWorkspaceUser ?? 'Участник воркспейса';
+      case 'agent_operator':
+        return l10n?.adminRoleAgentOperator ?? 'Оператор агентов';
+      case 'workspace_admin':
+        return l10n?.adminRoleWorkspaceAdmin ?? 'Администратор воркспейса';
+      default:
+        return id;
+    }
+  }
+
+  String roleDescription(String id) {
+    switch (id) {
+      case 'workspace_user':
+        return l10n?.adminRoleWorkspaceUserDescription ??
+            'Видит рабочее пространство и может пользоваться ИИ.';
+      case 'agent_operator':
+        return l10n?.adminRoleAgentOperatorDescription ??
+            'Запускает агентские чаты из задач и ведет работу в них.';
+      case 'workspace_admin':
+        return l10n?.adminRoleWorkspaceAdminDescription ??
+            'Управляет доступами и расширенными действиями агентов.';
+      default:
+        return id;
+    }
+  }
+}
 
 class AdminAccessPage extends StatefulWidget {
   const AdminAccessPage({
@@ -50,7 +120,7 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
   String _selectedTargetId = '';
   String _selectedRole = 'agent_operator';
   String _query = '';
-  String _bridgeStatus = 'Воркспейсы CodeWhale не подключены';
+  String _bridgeStatus = '';
   bool _bridgeConnected = false;
   bool _loading = false;
   bool _saving = false;
@@ -58,18 +128,12 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
   static const List<_RoleOption> _roles = [
     _RoleOption(
       id: 'workspace_user',
-      label: 'Участник воркспейса',
-      description: 'Видит рабочее пространство и может пользоваться ИИ.',
     ),
     _RoleOption(
       id: 'agent_operator',
-      label: 'Оператор агентов',
-      description: 'Запускает агентские чаты из задач и ведет работу в них.',
     ),
     _RoleOption(
       id: 'workspace_admin',
-      label: 'Администратор воркспейса',
-      description: 'Управляет доступами и расширенными действиями агентов.',
     ),
   ];
 
@@ -353,11 +417,7 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
   }
 
   String _roleLabel(String role) {
-    return _roles
-            .cast<_RoleOption?>()
-            .firstWhere((item) => item?.id == role, orElse: () => null)
-            ?.label ??
-        role;
+    return _AdminAccessText(AppLocalizations.of(context)).roleLabel(role);
   }
 
   void _showError(String message) {
@@ -380,9 +440,10 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
 
   @override
   Widget build(BuildContext context) {
+    final text = _AdminAccessText(AppLocalizations.of(context));
     if (!widget.accessPolicy.canManageWorkspaceAccess) {
-      return const Scaffold(
-        body: Center(child: Text('Нет доступа к администрированию')),
+      return Scaffold(
+        body: Center(child: Text(text.noAccess)),
       );
     }
 
@@ -392,10 +453,10 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Администрирование'),
+        title: Text(text.administration),
         actions: [
           IconButton(
-            tooltip: 'Обновить',
+            tooltip: text.refresh,
             onPressed: _loading || _saving ? null : _refreshAll,
             icon: const Icon(Icons.refresh),
           ),
@@ -420,25 +481,30 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
   }
 
   Widget _buildStatusRow(int targetCount) {
+    final text = _AdminAccessText(AppLocalizations.of(context));
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
         _InfoChip(
           icon: Icons.contacts_outlined,
-          text: 'Пользователи: ${_contacts.length}',
+          text: text.usersCount(_contacts.length),
         ),
         _InfoChip(
           icon: Icons.workspaces_outline,
-          text: 'Воркспейсы: $targetCount',
+          text: text.workspacesCount(targetCount),
         ),
         _InfoChip(
           icon: Icons.folder_outlined,
-          text: 'Проекты: ${_projects.length}',
+          text: text.projectsCount(_projects.length),
         ),
         _InfoChip(
           icon: _bridgeConnected ? Icons.link : Icons.link_off,
-          text: widget.connectToBridge ? _bridgeStatus : 'CodeWhale отключен',
+          text: widget.connectToBridge
+              ? (_bridgeStatus.isEmpty
+                  ? text.bridgeNotConnected
+                  : _bridgeStatus)
+              : text.codeWhaleDisabled,
         ),
       ],
     );
@@ -449,25 +515,26 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
     List<_AccessTarget> targets,
     String targetId,
   ) {
+    final text = _AdminAccessText(AppLocalizations.of(context));
     return _Panel(
-      title: 'Новый доступ',
+      title: text.newAccess,
       icon: Icons.key_outlined,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TextField(
             controller: _searchCtl,
-            decoration: const InputDecoration(
-              labelText: 'Пользователь из контактов',
-              prefixIcon: Icon(Icons.search),
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: text.contactFromContacts,
+              prefixIcon: const Icon(Icons.search),
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 10),
           if (contacts.isEmpty)
-            const _EmptyAdminLine(
+            _EmptyAdminLine(
               icon: Icons.person_off_outlined,
-              text: 'Контакты не найдены',
+              text: text.contactsNotFound,
             )
           else
             ...contacts.take(5).map(_buildContactRow),
@@ -475,9 +542,9 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
           DropdownButtonFormField<String>(
             initialValue: targetId.isEmpty ? null : targetId,
             isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Воркспейс',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: text.workspace,
+              border: const OutlineInputBorder(),
             ),
             items: targets
                 .map(
@@ -522,15 +589,15 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
           DropdownButtonFormField<String>(
             initialValue: _selectedRole,
             isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Роль',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: text.role,
+              border: const OutlineInputBorder(),
             ),
             items: _roles
                 .map(
                   (role) => DropdownMenuItem<String>(
                     value: role.id,
-                    child: Text(role.label),
+                    child: Text(text.roleLabel(role.id)),
                   ),
                 )
                 .toList(),
@@ -543,7 +610,7 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            _roles.firstWhere((role) => role.id == _selectedRole).description,
+            text.roleDescription(_selectedRole),
             style: TextStyle(color: Theme.of(context).colorScheme.outline),
           ),
           const SizedBox(height: 14),
@@ -554,7 +621,7 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
                   ? null
                   : _grantAccess,
               icon: const Icon(Icons.lock_open_outlined),
-              label: const Text('Выдать доступ'),
+              label: Text(text.grantAccess),
             ),
           ),
         ],
@@ -578,17 +645,18 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
   }
 
   Widget _buildGrantsPanel() {
+    final text = _AdminAccessText(AppLocalizations.of(context));
     return _Panel(
-      title: 'Кому что выдано',
+      title: text.grantedAccess,
       icon: Icons.assignment_ind_outlined,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (_loading || _saving) const LinearProgressIndicator(),
           if (!_loading && _grants.isEmpty)
-            const _EmptyAdminLine(
+            _EmptyAdminLine(
               icon: Icons.lock_outline,
-              text: 'Активных доступов пока нет',
+              text: text.noActiveAccess,
             )
           else
             ..._grants.map(
@@ -604,7 +672,7 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
                 ),
                 subtitle: Text(_roleLabel(grant.role)),
                 trailing: IconButton(
-                  tooltip: 'Отозвать доступ',
+                  tooltip: text.revokeAccess,
                   onPressed: grant.isActive && !_saving
                       ? () => _revokeAccess(grant)
                       : null,
@@ -618,26 +686,24 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
   }
 
   Widget _buildAgentRulesPanel() {
-    return const _Panel(
-      title: 'Агенты и роли',
+    final text = _AdminAccessText(AppLocalizations.of(context));
+    return _Panel(
+      title: text.agentRoles,
       icon: Icons.smart_toy_outlined,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _RoleRuleLine(
-            title: 'Участник воркспейса',
-            text:
-                'Может использовать ИИ только в доступном рабочем пространстве.',
+            title: text.roleLabel('workspace_user'),
+            text: text.roleDescription('workspace_user'),
           ),
           _RoleRuleLine(
-            title: 'Оператор агентов',
-            text:
-                'Может подключать чат к задаче, создавать новый агентский чат и вести ход работы в комментариях.',
+            title: text.roleLabel('agent_operator'),
+            text: text.roleDescription('agent_operator'),
           ),
           _RoleRuleLine(
-            title: 'Администратор воркспейса',
-            text:
-                'Может управлять доступами и расширенными действиями внутри рабочего пространства.',
+            title: text.roleLabel('workspace_admin'),
+            text: text.roleDescription('workspace_admin'),
           ),
         ],
       ),
@@ -670,13 +736,9 @@ class _AccessTarget {
 class _RoleOption {
   const _RoleOption({
     required this.id,
-    required this.label,
-    required this.description,
   });
 
   final String id;
-  final String label;
-  final String description;
 }
 
 class _Panel extends StatelessWidget {

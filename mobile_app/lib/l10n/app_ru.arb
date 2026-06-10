@@ -139,6 +139,49 @@
   "phone": "Телефон",
   "administration": "Администрирование",
   "profileAdminSubtitle": "Пользователи, проекты, воркспейсы и роли агентов",
+  "adminNoAccess": "Нет доступа к администрированию",
+  "adminBridgeNotConnected": "Воркспейсы CodeWhale не подключены",
+  "adminCodeWhaleDisabled": "CodeWhale отключен",
+  "adminNewAccess": "Новый доступ",
+  "adminContactFromContacts": "Пользователь из контактов",
+  "adminContactsNotFound": "Контакты не найдены",
+  "adminWorkspace": "Воркспейс",
+  "adminRole": "Роль",
+  "adminGrantAccess": "Выдать доступ",
+  "adminGrantedAccess": "Кому что выдано",
+  "adminNoActiveAccess": "Активных доступов пока нет",
+  "adminRevokeAccess": "Отозвать доступ",
+  "adminAgentRoles": "Агенты и роли",
+  "adminUsersCount": "Пользователи: {count}",
+  "@adminUsersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminWorkspacesCount": "Воркспейсы: {count}",
+  "@adminWorkspacesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminProjectsCount": "Проекты: {count}",
+  "@adminProjectsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminRoleWorkspaceUser": "Участник воркспейса",
+  "adminRoleWorkspaceUserDescription": "Видит рабочее пространство и может пользоваться ИИ.",
+  "adminRoleAgentOperator": "Оператор агентов",
+  "adminRoleAgentOperatorDescription": "Запускает агентские чаты из задач и ведет работу в них.",
+  "adminRoleWorkspaceAdmin": "Администратор воркспейса",
+  "adminRoleWorkspaceAdminDescription": "Управляет доступами и расширенными действиями агентов.",
   "avatarUploadFailed": "Не удалось загрузить аватарку: {error}",
   "@avatarUploadFailed": {
     "placeholders": {

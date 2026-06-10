@@ -401,6 +401,82 @@ class AppLocalizationsEn extends AppLocalizations {
       'Users, projects, workspaces, and agent roles';
 
   @override
+  String get adminNoAccess => 'No administration access';
+
+  @override
+  String get adminBridgeNotConnected =>
+      'CodeWhale workspaces are not connected';
+
+  @override
+  String get adminCodeWhaleDisabled => 'CodeWhale disabled';
+
+  @override
+  String get adminNewAccess => 'New access';
+
+  @override
+  String get adminContactFromContacts => 'Contact from contacts';
+
+  @override
+  String get adminContactsNotFound => 'No contacts found';
+
+  @override
+  String get adminWorkspace => 'Workspace';
+
+  @override
+  String get adminRole => 'Role';
+
+  @override
+  String get adminGrantAccess => 'Grant access';
+
+  @override
+  String get adminGrantedAccess => 'Granted access';
+
+  @override
+  String get adminNoActiveAccess => 'No active access yet';
+
+  @override
+  String get adminRevokeAccess => 'Revoke access';
+
+  @override
+  String get adminAgentRoles => 'Agent roles';
+
+  @override
+  String adminUsersCount(int count) {
+    return 'Users: $count';
+  }
+
+  @override
+  String adminWorkspacesCount(int count) {
+    return 'Workspaces: $count';
+  }
+
+  @override
+  String adminProjectsCount(int count) {
+    return 'Projects: $count';
+  }
+
+  @override
+  String get adminRoleWorkspaceUser => 'Workspace member';
+
+  @override
+  String get adminRoleWorkspaceUserDescription =>
+      'Can view the workspace and use AI.';
+
+  @override
+  String get adminRoleAgentOperator => 'Agent operator';
+
+  @override
+  String get adminRoleAgentOperatorDescription =>
+      'Can launch agent chats from tasks and run work in them.';
+
+  @override
+  String get adminRoleWorkspaceAdmin => 'Workspace administrator';
+
+  @override
+  String get adminRoleWorkspaceAdminDescription =>
+      'Can manage access and advanced agent actions.';
+
+  @override
   String avatarUploadFailed(Object error) {
     return 'Could not upload avatar: $error';
   }
