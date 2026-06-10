@@ -112,8 +112,7 @@ void main() {
     expect(managed?.id, 'session-1');
   });
 
-  testWidgets('workspace detail uses localized session labels',
-      (tester) async {
+  testWidgets('workspace detail uses localized session labels', (tester) async {
     await tester.pumpWidget(
       _localizedTestApp(
         home: WorkspaceDetailView(
@@ -174,8 +173,7 @@ void main() {
     expect(selectedPath, r'C:\Users\user\Desktop\weather');
   });
 
-  testWidgets('workspace folder browser uses localized labels',
-      (tester) async {
+  testWidgets('workspace folder browser uses localized labels', (tester) async {
     await tester.pumpWidget(
       _localizedTestApp(
         home: WorkspaceFolderBrowserView(
@@ -357,6 +355,130 @@ void main() {
     await tester.tap(find.text('Запустить выбранные'));
     expect(commands, ['/skill vision', '/skill web-screenshot']);
     expect(openedPath, isEmpty);
+  });
+
+  testWidgets('session management uses localized labels', (tester) async {
+    var stopped = false;
+    var killed = false;
+    var restarted = false;
+    var insertedPath = '';
+    var previewedPath = '';
+    final commands = <String>[];
+
+    await tester.pumpWidget(
+      _localizedTestApp(
+        home: SessionManagementView(
+          workspace: workspace,
+          session: const WorkspaceSession(
+            id: 'session-1',
+            workspaceId: 'weather',
+            title: 'Fix bridge',
+            status: WorkspaceSessionStatus.running,
+            workerPid: 1234,
+            workerPort: 43101,
+            provider: 'deepseek',
+            model: 'deepseek-v4-pro',
+            approvalPolicy: 'on-request',
+            sandboxMode: 'workspace-write',
+            autoMode: false,
+          ),
+          files: const [
+            ProjectFileNode(
+              name: 'README.md',
+              path: 'README.md',
+              isDir: false,
+              size: 12,
+            ),
+          ],
+          currentFilePath: '',
+          isFilesLoading: false,
+          filePreviewPath: 'lib/main.dart',
+          filePreviewText: 'void main() {}',
+          commands: const [
+            {
+              'group': 'skills',
+              'label': 'vision',
+              'value': '/skill vision',
+              'description': 'Inspect images',
+            },
+            {
+              'group': 'Session',
+              'label': 'Status',
+              'value': '/status',
+              'description': 'Check status',
+            },
+          ],
+          onBack: () {},
+          onStop: () => stopped = true,
+          onKill: () => killed = true,
+          onRestart: () => restarted = true,
+          onRefreshFiles: () {},
+          onOpenFilePath: (_) {},
+          onReadFile: (path) => previewedPath = path,
+          onInsertFilePath: (path) => insertedPath = path,
+          onSendPhoto: () {},
+          onSendDocument: () {},
+          onRunCommand: commands.add,
+          onUpdateSettings: ({
+            String? provider,
+            String? model,
+            String? approvalPolicy,
+            String? sandboxMode,
+            bool? autoMode,
+          }) {},
+        ),
+      ),
+    );
+
+    expect(find.text('Manage session'), findsOneWidget);
+    expect(find.byTooltip('Back'), findsOneWidget);
+    expect(find.text('Session'), findsOneWidget);
+    expect(find.text('Files'), findsOneWidget);
+    expect(find.text('Commands'), findsOneWidget);
+    expect(find.text('Status'), findsOneWidget);
+    expect(find.text('Running'), findsOneWidget);
+    expect(find.text('CodeWhale modes'), findsOneWidget);
+    expect(find.text('Provider'), findsOneWidget);
+    expect(find.text('Tool auto mode'), findsOneWidget);
+    expect(find.text('Restart'), findsOneWidget);
+    expect(find.text('Stop'), findsOneWidget);
+    expect(find.text('Kill'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Stop session'));
+    await tester.tap(find.byTooltip('Kill stuck session'));
+    await tester.tap(find.byTooltip('Restart worker'));
+    expect(stopped, isTrue);
+    expect(killed, isTrue);
+    expect(restarted, isTrue);
+
+    await tester.tap(find.text('Files'));
+    await tester.pumpAndSettle();
+    expect(find.text('Project root'), findsOneWidget);
+    expect(find.byTooltip('Up one level'), findsOneWidget);
+    expect(find.byTooltip('Refresh files'), findsOneWidget);
+    expect(find.byTooltip('Copy file text'), findsOneWidget);
+    expect(find.byTooltip('Insert path in chat'), findsOneWidget);
+    expect(find.byTooltip('Preview file'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Insert path in chat'));
+    await tester.tap(find.byTooltip('Preview file'));
+    expect(insertedPath, 'README.md');
+    expect(previewedPath, 'README.md');
+
+    await tester.tap(find.text('Commands'));
+    await tester.pumpAndSettle();
+    expect(find.text('Photo'), findsOneWidget);
+    expect(find.text('Document'), findsOneWidget);
+    expect(find.text('Skills'), findsOneWidget);
+    expect(find.text('Choose one or more skills'), findsOneWidget);
+
+    await tester.tap(find.text('Skills'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('vision'));
+    await tester.pumpAndSettle();
+    expect(find.text('Selected: 1'), findsOneWidget);
+    await tester.tap(find.text('Run selected'));
+    expect(commands, ['/skill vision']);
   });
 
   testWidgets('session chat keeps controls out of composer', (tester) async {

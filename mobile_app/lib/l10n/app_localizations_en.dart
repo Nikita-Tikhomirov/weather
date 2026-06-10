@@ -504,6 +504,122 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stopGeneration => 'Stop generation';
 
   @override
+  String get sessionTab => 'Session';
+
+  @override
+  String get filesTab => 'Files';
+
+  @override
+  String get commandsTab => 'Commands';
+
+  @override
+  String get sessionStatusLabel => 'Status';
+
+  @override
+  String get sessionPidLabel => 'PID';
+
+  @override
+  String get sessionPortLabel => 'Port';
+
+  @override
+  String get sessionEventsLabel => 'Events';
+
+  @override
+  String get noValue => 'none';
+
+  @override
+  String get sessionIdleStatus => 'Idle';
+
+  @override
+  String get sessionUnknownStatus => 'Unknown';
+
+  @override
+  String get restartWorker => 'Restart worker';
+
+  @override
+  String get stopSession => 'Stop session';
+
+  @override
+  String get killStuckSession => 'Kill stuck session';
+
+  @override
+  String get restartAction => 'Restart';
+
+  @override
+  String get stopAction => 'Stop';
+
+  @override
+  String get killAction => 'Kill';
+
+  @override
+  String get document => 'Document';
+
+  @override
+  String get projectRoot => 'Project root';
+
+  @override
+  String get upOneLevel => 'Up one level';
+
+  @override
+  String get refreshFiles => 'Refresh files';
+
+  @override
+  String get copyFileText => 'Copy file text';
+
+  @override
+  String get noFiles => 'No files';
+
+  @override
+  String get insertPathInChat => 'Insert path in chat';
+
+  @override
+  String get previewFile => 'Preview file';
+
+  @override
+  String get sessionCodeWhaleModes => 'CodeWhale modes';
+
+  @override
+  String get provider => 'Provider';
+
+  @override
+  String get model => 'Model';
+
+  @override
+  String get approvalPolicy => 'Approval policy';
+
+  @override
+  String get sandbox => 'Sandbox';
+
+  @override
+  String get defaultValue => 'default';
+
+  @override
+  String get autoModeTools => 'Tool auto mode';
+
+  @override
+  String get autoModeToolsTooltip => 'Run tools automatically';
+
+  @override
+  String get autoModeToolsSubtitle => 'Passes --auto to CodeWhale exec';
+
+  @override
+  String get codeWhaleCommandsLoading => 'CodeWhale commands are loading...';
+
+  @override
+  String get skills => 'Skills';
+
+  @override
+  String get runSelected => 'Run selected';
+
+  @override
+  String get chooseSkills => 'Choose one or more skills';
+
+  @override
+  String selectedSkillsCount(int count) {
+    return 'Selected: $count';
+  }
+
+  @override
   String get diagnostics => 'Diagnostics';
 
   @override

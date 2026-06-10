@@ -504,6 +504,122 @@ class AppLocalizationsRu extends AppLocalizations {
   String get stopGeneration => 'Остановить генерацию';
 
   @override
+  String get sessionTab => 'Сессия';
+
+  @override
+  String get filesTab => 'Файлы';
+
+  @override
+  String get commandsTab => 'Команды';
+
+  @override
+  String get sessionStatusLabel => 'Статус';
+
+  @override
+  String get sessionPidLabel => 'PID';
+
+  @override
+  String get sessionPortLabel => 'Порт';
+
+  @override
+  String get sessionEventsLabel => 'Событий';
+
+  @override
+  String get noValue => 'нет';
+
+  @override
+  String get sessionIdleStatus => 'Ожидает';
+
+  @override
+  String get sessionUnknownStatus => 'Неизвестно';
+
+  @override
+  String get restartWorker => 'Перезапустить worker';
+
+  @override
+  String get stopSession => 'Остановить сессию';
+
+  @override
+  String get killStuckSession => 'Убить зависшую сессию';
+
+  @override
+  String get restartAction => 'Перезапустить';
+
+  @override
+  String get stopAction => 'Остановить';
+
+  @override
+  String get killAction => 'Убить';
+
+  @override
+  String get document => 'Документ';
+
+  @override
+  String get projectRoot => 'Корень проекта';
+
+  @override
+  String get upOneLevel => 'Наверх';
+
+  @override
+  String get refreshFiles => 'Обновить файлы';
+
+  @override
+  String get copyFileText => 'Копировать текст файла';
+
+  @override
+  String get noFiles => 'Файлов нет';
+
+  @override
+  String get insertPathInChat => 'Путь в чат';
+
+  @override
+  String get previewFile => 'Просмотр файла';
+
+  @override
+  String get sessionCodeWhaleModes => 'Режимы CodeWhale';
+
+  @override
+  String get provider => 'Провайдер';
+
+  @override
+  String get model => 'Модель';
+
+  @override
+  String get approvalPolicy => 'Подтверждения';
+
+  @override
+  String get sandbox => 'Sandbox';
+
+  @override
+  String get defaultValue => 'по умолчанию';
+
+  @override
+  String get autoModeTools => 'Авто-режим инструментов';
+
+  @override
+  String get autoModeToolsTooltip => 'Автоматически выполнять инструменты';
+
+  @override
+  String get autoModeToolsSubtitle => 'Передает --auto в CodeWhale exec';
+
+  @override
+  String get codeWhaleCommandsLoading => 'Команды CodeWhale загружаются...';
+
+  @override
+  String get skills => 'Скиллы';
+
+  @override
+  String get runSelected => 'Запустить выбранные';
+
+  @override
+  String get chooseSkills => 'Выбери один или несколько навыков';
+
+  @override
+  String selectedSkillsCount(int count) {
+    return 'Выбрано: $count';
+  }
+
+  @override
   String get diagnostics => 'Диагностика';
 
   @override

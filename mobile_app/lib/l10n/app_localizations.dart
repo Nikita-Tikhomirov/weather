@@ -1082,6 +1082,234 @@ abstract class AppLocalizations {
   /// **'Stop generation'**
   String get stopGeneration;
 
+  /// No description provided for @sessionTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get sessionTab;
+
+  /// No description provided for @filesTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get filesTab;
+
+  /// No description provided for @commandsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands'**
+  String get commandsTab;
+
+  /// No description provided for @sessionStatusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get sessionStatusLabel;
+
+  /// No description provided for @sessionPidLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'PID'**
+  String get sessionPidLabel;
+
+  /// No description provided for @sessionPortLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get sessionPortLabel;
+
+  /// No description provided for @sessionEventsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get sessionEventsLabel;
+
+  /// No description provided for @noValue.
+  ///
+  /// In en, this message translates to:
+  /// **'none'**
+  String get noValue;
+
+  /// No description provided for @sessionIdleStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get sessionIdleStatus;
+
+  /// No description provided for @sessionUnknownStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get sessionUnknownStatus;
+
+  /// No description provided for @restartWorker.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart worker'**
+  String get restartWorker;
+
+  /// No description provided for @stopSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop session'**
+  String get stopSession;
+
+  /// No description provided for @killStuckSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Kill stuck session'**
+  String get killStuckSession;
+
+  /// No description provided for @restartAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart'**
+  String get restartAction;
+
+  /// No description provided for @stopAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get stopAction;
+
+  /// No description provided for @killAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Kill'**
+  String get killAction;
+
+  /// No description provided for @document.
+  ///
+  /// In en, this message translates to:
+  /// **'Document'**
+  String get document;
+
+  /// No description provided for @projectRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'Project root'**
+  String get projectRoot;
+
+  /// No description provided for @upOneLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Up one level'**
+  String get upOneLevel;
+
+  /// No description provided for @refreshFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh files'**
+  String get refreshFiles;
+
+  /// No description provided for @copyFileText.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy file text'**
+  String get copyFileText;
+
+  /// No description provided for @noFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'No files'**
+  String get noFiles;
+
+  /// No description provided for @insertPathInChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert path in chat'**
+  String get insertPathInChat;
+
+  /// No description provided for @previewFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview file'**
+  String get previewFile;
+
+  /// No description provided for @sessionCodeWhaleModes.
+  ///
+  /// In en, this message translates to:
+  /// **'CodeWhale modes'**
+  String get sessionCodeWhaleModes;
+
+  /// No description provided for @provider.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider'**
+  String get provider;
+
+  /// No description provided for @model.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get model;
+
+  /// No description provided for @approvalPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Approval policy'**
+  String get approvalPolicy;
+
+  /// No description provided for @sandbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Sandbox'**
+  String get sandbox;
+
+  /// No description provided for @defaultValue.
+  ///
+  /// In en, this message translates to:
+  /// **'default'**
+  String get defaultValue;
+
+  /// No description provided for @autoModeTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool auto mode'**
+  String get autoModeTools;
+
+  /// No description provided for @autoModeToolsTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Run tools automatically'**
+  String get autoModeToolsTooltip;
+
+  /// No description provided for @autoModeToolsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Passes --auto to CodeWhale exec'**
+  String get autoModeToolsSubtitle;
+
+  /// No description provided for @codeWhaleCommandsLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'CodeWhale commands are loading...'**
+  String get codeWhaleCommandsLoading;
+
+  /// No description provided for @skills.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills'**
+  String get skills;
+
+  /// No description provided for @runSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Run selected'**
+  String get runSelected;
+
+  /// No description provided for @chooseSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose one or more skills'**
+  String get chooseSkills;
+
+  /// No description provided for @selectedSkillsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected: {count}'**
+  String selectedSkillsCount(int count);
+
   /// No description provided for @diagnostics.
   ///
   /// In en, this message translates to:
