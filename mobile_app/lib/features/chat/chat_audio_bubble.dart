@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../l10n/app_localizations.dart';
+
 /// Renders audio message content.
 class ChatAudioBubble extends StatelessWidget {
   const ChatAudioBubble({
@@ -39,7 +41,9 @@ class ChatAudioBubble extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                text.isNotEmpty ? text : 'Аудио',
+                text.isNotEmpty
+                    ? text
+                    : AppLocalizations.of(context)?.audioMessage ?? 'Аудио',
                 style: TextStyle(
                   fontSize: 14,
                   color: mine ? cs.onPrimaryContainer : cs.onSurface,

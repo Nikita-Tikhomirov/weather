@@ -28,6 +28,7 @@
   "message": "Сообщение",
   "messageDeleted": "Сообщение удалено",
   "imageMessage": "Изображение",
+  "audioMessage": "Аудио",
   "uploadPhasePreparing": "Подготовка...",
   "uploadPhaseCompressing": "Сжатие...",
   "uploadPhaseReading": "Чтение...",

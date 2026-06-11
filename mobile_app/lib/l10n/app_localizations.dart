@@ -266,6 +266,12 @@ abstract class AppLocalizations {
   /// **'Image'**
   String get imageMessage;
 
+  /// No description provided for @audioMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio'**
+  String get audioMessage;
+
   /// No description provided for @uploadPhasePreparing.
   ///
   /// In en, this message translates to:

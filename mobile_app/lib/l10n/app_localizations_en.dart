@@ -93,6 +93,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get imageMessage => 'Image';
 
   @override
+  String get audioMessage => 'Audio';
+
+  @override
   String get uploadPhasePreparing => 'Preparing...';
 
   @override

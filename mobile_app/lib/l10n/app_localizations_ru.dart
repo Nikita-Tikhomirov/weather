@@ -93,6 +93,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get imageMessage => 'Изображение';
 
   @override
+  String get audioMessage => 'Аудио';
+
+  @override
   String get uploadPhasePreparing => 'Подготовка...';
 
   @override

@@ -111,6 +111,38 @@ void main() {
     expect(find.text('Изображение'), findsNothing);
   });
 
+  testWidgets('uses localized audio placeholder', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: ChatMessagesList(
+            messages: [
+              _message(
+                id: 'audio-msg',
+                text: '',
+                messageType: 'audio',
+              ),
+            ],
+            owner: 'nik',
+            compact: true,
+            textFor: (message) => message.text,
+            senderLabelFor: (profile) => profile,
+            stickerAssetFor: (_) => '',
+            imageUrlFor: (_) => '',
+            onLongPress: (_) {},
+            onImageTap: (_, __) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Audio'), findsOneWidget);
+    expect(find.text('Аудио'), findsNothing);
+  });
+
   testWidgets('uses localized edited message footer', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
