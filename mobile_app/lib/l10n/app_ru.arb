@@ -41,6 +41,8 @@
   "editingMessage": "Редактирование сообщения",
   "incomingVideoCall": "Входящий видеозвонок",
   "incomingAudioCall": "Входящий аудиозвонок",
+  "videoCall": "Видеозвонок",
+  "audioCall": "Аудиозвонок",
   "ongoingVideoCall": "Идет видеозвонок",
   "ongoingAudioCall": "Идет аудиозвонок",
   "openCallScreen": "Открыть экран звонка",

@@ -113,6 +113,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get incomingAudioCall => 'Входящий аудиозвонок';
 
   @override
+  String get videoCall => 'Видеозвонок';
+
+  @override
+  String get audioCall => 'Аудиозвонок';
+
+  @override
   String get ongoingVideoCall => 'Идет видеозвонок';
 
   @override

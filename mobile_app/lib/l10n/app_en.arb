@@ -41,6 +41,8 @@
   "editingMessage": "Editing message",
   "incomingVideoCall": "Incoming video call",
   "incomingAudioCall": "Incoming audio call",
+  "videoCall": "Video call",
+  "audioCall": "Audio call",
   "ongoingVideoCall": "Ongoing video call",
   "ongoingAudioCall": "Ongoing audio call",
   "openCallScreen": "Open call screen",

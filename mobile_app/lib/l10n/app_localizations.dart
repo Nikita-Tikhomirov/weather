@@ -302,6 +302,18 @@ abstract class AppLocalizations {
   /// **'Incoming audio call'**
   String get incomingAudioCall;
 
+  /// No description provided for @videoCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Video call'**
+  String get videoCall;
+
+  /// No description provided for @audioCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio call'**
+  String get audioCall;
+
   /// No description provided for @ongoingVideoCall.
   ///
   /// In en, this message translates to:

@@ -113,6 +113,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get incomingAudioCall => 'Incoming audio call';
 
   @override
+  String get videoCall => 'Video call';
+
+  @override
+  String get audioCall => 'Audio call';
+
+  @override
   String get ongoingVideoCall => 'Ongoing video call';
 
   @override

@@ -571,13 +571,13 @@ class _ChatHeader extends StatelessWidget {
               if (onCallTap != null)
                 IconButton(
                   icon: const Icon(Icons.call),
-                  tooltip: 'Аудиозвонок',
+                  tooltip: l10n?.audioCall ?? 'Аудиозвонок',
                   onPressed: onCallTap,
                 ),
               if (onVideoCallTap != null)
                 IconButton(
                   icon: const Icon(Icons.videocam),
-                  tooltip: 'Видеозвонок',
+                  tooltip: l10n?.videoCall ?? 'Видеозвонок',
                   onPressed: onVideoCallTap,
                 ),
             ],

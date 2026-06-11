@@ -176,6 +176,33 @@ void main() {
       expect(find.byTooltip('Создать группу'), findsNothing);
     });
 
+    testWidgets('uses localized chat header call tooltips', (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: _page(
+              controller: controller,
+              onCallTap: () {},
+              onVideoCallTap: () {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byTooltip('Contacts'), findsOneWidget);
+      expect(find.byTooltip('Audio call'), findsOneWidget);
+      expect(find.byTooltip('Video call'), findsOneWidget);
+      expect(find.byTooltip('Аудиозвонок'), findsNothing);
+      expect(find.byTooltip('Видеозвонок'), findsNothing);
+    });
+
     testWidgets('uses localized project action labels', (tester) async {
       final controller = TextEditingController();
       addTearDown(controller.dispose);
@@ -291,6 +318,8 @@ MessengerPage _page({
   ChatMessage? replyToMessage,
   String? editingMessageId,
   VoidCallback? onAnalyze,
+  VoidCallback? onCallTap,
+  VoidCallback? onVideoCallTap,
   void Function(String conversationKey)? onOpenConversation,
 }) {
   return MessengerPage(
@@ -329,6 +358,8 @@ MessengerPage _page({
     onStopRecord: () {},
     onSendText: () {},
     onManageGroup: (_) {},
+    onCallTap: onCallTap,
+    onVideoCallTap: onVideoCallTap,
     activeProject: activeProject,
     onAnalyzeProjectChat: onAnalyze,
     onDraftProjectTask: activeProject == null ? null : () {},
