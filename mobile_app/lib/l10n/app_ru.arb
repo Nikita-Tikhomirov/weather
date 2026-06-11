@@ -28,6 +28,15 @@
   "message": "Сообщение",
   "messageDeleted": "Сообщение удалено",
   "send": "Отправить",
+  "replyPreview": "Ответ: {message}",
+  "@replyPreview": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "editingMessage": "Редактирование сообщения",
   "incomingVideoCall": "Входящий видеозвонок",
   "incomingAudioCall": "Входящий аудиозвонок",
   "ongoingVideoCall": "Идет видеозвонок",

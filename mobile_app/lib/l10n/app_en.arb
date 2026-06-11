@@ -28,6 +28,15 @@
   "message": "Message",
   "messageDeleted": "Message deleted",
   "send": "Send",
+  "replyPreview": "Reply: {message}",
+  "@replyPreview": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "editingMessage": "Editing message",
   "incomingVideoCall": "Incoming video call",
   "incomingAudioCall": "Incoming audio call",
   "ongoingVideoCall": "Ongoing video call",

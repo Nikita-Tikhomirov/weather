@@ -658,6 +658,10 @@ class _ChatComposer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final replyPreview =
+        replyToMessage == null ? null : chatMessageText(replyToMessage!);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
       child: Column(
@@ -672,14 +676,15 @@ class _ChatComposer extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Ответ: ${chatMessageText(replyToMessage!)}',
+                      l10n?.replyPreview(replyPreview!) ??
+                          'Ответ: $replyPreview',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   TextButton(
                     onPressed: onClearReply,
-                    child: const Text('Отмена'),
+                    child: Text(l10n?.cancel ?? 'Отмена'),
                   ),
                 ],
               ),
@@ -691,10 +696,14 @@ class _ChatComposer extends StatelessWidget {
                 children: [
                   const Icon(Icons.edit_outlined, size: 18),
                   const SizedBox(width: 8),
-                  const Expanded(child: Text('Редактирование сообщения')),
+                  Expanded(
+                    child: Text(
+                      l10n?.editingMessage ?? 'Редактирование сообщения',
+                    ),
+                  ),
                   TextButton(
                     onPressed: onCancelEdit,
-                    child: const Text('Отмена'),
+                    child: Text(l10n?.cancel ?? 'Отмена'),
                   ),
                 ],
               ),

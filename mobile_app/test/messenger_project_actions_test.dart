@@ -141,6 +141,41 @@ void main() {
       expect(find.text('Project status'), findsOneWidget);
       expect(find.text('Анализ чата'), findsNothing);
     });
+
+    testWidgets('uses localized composer reply and edit labels',
+        (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: _page(
+              controller: controller,
+              replyToMessage: const ChatMessage(
+                id: 'message-1',
+                conversationKey: 'grp:family:group-1',
+                senderProfile: 'nik',
+                messageType: 'text',
+                text: 'status update',
+                createdAt: '2026-06-11T10:00:00Z',
+              ),
+              editingMessageId: 'message-1',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Reply: status update'), findsOneWidget);
+      expect(find.text('Editing message'), findsOneWidget);
+      expect(find.text('Cancel'), findsNWidgets(2));
+      expect(find.textContaining('Ответ'), findsNothing);
+      expect(find.text('Редактирование сообщения'), findsNothing);
+    });
   });
 }
 
@@ -156,6 +191,8 @@ MessengerPage _page({
   ],
   String activeConversationKey = 'grp:family:group-1',
   TaskProject? activeProject,
+  ChatMessage? replyToMessage,
+  String? editingMessageId,
   VoidCallback? onAnalyze,
   void Function(String conversationKey)? onOpenConversation,
 }) {
@@ -167,8 +204,8 @@ MessengerPage _page({
     owner: 'nik',
     compact: false,
     chatInputController: controller,
-    replyToMessage: null,
-    editingMessageId: null,
+    replyToMessage: replyToMessage,
+    editingMessageId: editingMessageId,
     isRecording: false,
     conversationLabel: (conversation, actor) => conversation.title,
     contactLabel: (contact) => contact.displayName,

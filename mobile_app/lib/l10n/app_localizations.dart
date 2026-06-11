@@ -266,6 +266,18 @@ abstract class AppLocalizations {
   /// **'Send'**
   String get send;
 
+  /// No description provided for @replyPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply: {message}'**
+  String replyPreview(String message);
+
+  /// No description provided for @editingMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Editing message'**
+  String get editingMessage;
+
   /// No description provided for @incomingVideoCall.
   ///
   /// In en, this message translates to:

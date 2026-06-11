@@ -93,6 +93,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get send => 'Отправить';
 
   @override
+  String replyPreview(String message) {
+    return 'Ответ: $message';
+  }
+
+  @override
+  String get editingMessage => 'Редактирование сообщения';
+
+  @override
   String get incomingVideoCall => 'Входящий видеозвонок';
 
   @override
