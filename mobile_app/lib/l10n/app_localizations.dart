@@ -1538,6 +1538,18 @@ abstract class AppLocalizations {
   /// **'typing...'**
   String get typing;
 
+  /// No description provided for @profileTyping.
+  ///
+  /// In en, this message translates to:
+  /// **'{profile} is typing...'**
+  String profileTyping(String profile);
+
+  /// No description provided for @peopleTyping.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} people are typing...'**
+  String peopleTyping(int count);
+
   /// No description provided for @online.
   ///
   /// In en, this message translates to:

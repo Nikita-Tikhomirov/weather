@@ -203,6 +203,60 @@ void main() {
       expect(find.byTooltip('Видеозвонок'), findsNothing);
     });
 
+    testWidgets('uses localized typing labels', (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: _page(
+              controller: controller,
+              typingUsers: const {
+                'grp:family:group-1': {'nastya'},
+              },
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('nastya is typing...'), findsOneWidget);
+      expect(find.textContaining('печатает'), findsNothing);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: _page(
+              controller: controller,
+              activeConversationKey: '',
+              contacts: const [
+                ChatContact(
+                  profileKey: 'nastya',
+                  displayName: 'Nastya',
+                  phone: '+100',
+                  conversationKey: 'direct:nastya',
+                ),
+              ],
+              typingUsers: const {
+                'direct:nastya': {'nastya'},
+              },
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('typing...'), findsOneWidget);
+      expect(find.text('печатает...'), findsNothing);
+    });
+
     testWidgets('uses localized project action labels', (tester) async {
       final controller = TextEditingController();
       addTearDown(controller.dispose);
@@ -305,6 +359,7 @@ void main() {
 
 MessengerPage _page({
   required TextEditingController controller,
+  List<ChatContact> contacts = const [],
   List<ChatConversation> conversations = const [
     ChatConversation(
       conversationKey: 'grp:family:group-1',
@@ -320,11 +375,12 @@ MessengerPage _page({
   VoidCallback? onAnalyze,
   VoidCallback? onCallTap,
   VoidCallback? onVideoCallTap,
+  Map<String, Set<String>> typingUsers = const {},
   void Function(String conversationKey)? onOpenConversation,
 }) {
   return MessengerPage(
     conversations: conversations,
-    contacts: const [],
+    contacts: contacts,
     messages: const [],
     activeConversationKey: activeConversationKey,
     owner: 'nik',
@@ -358,6 +414,7 @@ MessengerPage _page({
     onStopRecord: () {},
     onSendText: () {},
     onManageGroup: (_) {},
+    typingUsers: typingUsers,
     onCallTap: onCallTap,
     onVideoCallTap: onVideoCallTap,
     activeProject: activeProject,

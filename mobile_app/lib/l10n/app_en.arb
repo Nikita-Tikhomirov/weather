@@ -358,6 +358,22 @@
   "allTopics": "All topics",
   "voiceMessage": "Voice message",
   "typing": "typing...",
+  "profileTyping": "{profile} is typing...",
+  "@profileTyping": {
+    "placeholders": {
+      "profile": {
+        "type": "String"
+      }
+    }
+  },
+  "peopleTyping": "{count} people are typing...",
+  "@peopleTyping": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "online": "online",
   "offline": "offline",
   "markRead": "Mark read",

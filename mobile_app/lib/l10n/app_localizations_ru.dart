@@ -777,6 +777,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get typing => 'печатает...';
 
   @override
+  String profileTyping(String profile) {
+    return '$profile печатает...';
+  }
+
+  @override
+  String peopleTyping(int count) {
+    return '$count человека печатают...';
+  }
+
+  @override
   String get online => 'в сети';
 
   @override

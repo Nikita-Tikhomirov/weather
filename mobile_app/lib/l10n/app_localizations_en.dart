@@ -778,6 +778,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get typing => 'typing...';
 
   @override
+  String profileTyping(String profile) {
+    return '$profile is typing...';
+  }
+
+  @override
+  String peopleTyping(int count) {
+    return '$count people are typing...';
+  }
+
+  @override
   String get online => 'online';
 
   @override

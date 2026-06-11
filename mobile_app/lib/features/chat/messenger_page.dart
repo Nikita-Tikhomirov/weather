@@ -405,7 +405,7 @@ class _ContactList extends StatelessWidget {
                     leading: _buildContactAvatar(contact),
                     title: Text(contactLabel(contact)),
                     subtitle: Text(
-                      typing ? 'печатает...' : contact.phone,
+                      typing ? (l10n?.typing ?? 'печатает...') : contact.phone,
                       style: typing
                           ? TextStyle(
                               color: Theme.of(context).colorScheme.primary,
@@ -617,13 +617,16 @@ class _TypingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final users = typingUsers[conversationKey];
     if (users == null || users.isEmpty) return const SizedBox.shrink();
     final others = users.where((p) => p != owner).toList();
     if (others.isEmpty) return const SizedBox.shrink();
     final label = others.length == 1
-        ? '${profileLabel(others.first)} печатает...'
-        : '${others.length} человека печатают...';
+        ? l10n?.profileTyping(profileLabel(others.first)) ??
+            '${profileLabel(others.first)} печатает...'
+        : l10n?.peopleTyping(others.length) ??
+            '${others.length} человека печатают...';
     return Padding(
       padding: const EdgeInsets.only(left: 16, bottom: 4),
       child: Text(

@@ -358,6 +358,22 @@
   "allTopics": "Все темы",
   "voiceMessage": "Голосовое сообщение",
   "typing": "печатает...",
+  "profileTyping": "{profile} печатает...",
+  "@profileTyping": {
+    "placeholders": {
+      "profile": {
+        "type": "String"
+      }
+    }
+  },
+  "peopleTyping": "{count} человека печатают...",
+  "@peopleTyping": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "online": "в сети",
   "offline": "не в сети",
   "markRead": "Пометить прочитанным",
