@@ -427,6 +427,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get projectControlStartAgent => 'Запустить агента';
 
   @override
+  String get projectAgentMenu => 'Агент проекта';
+
+  @override
+  String get projectControlProjectStatus => 'Статус проекта';
+
+  @override
   String get workspaceBridgeNotLoaded => 'Список workspace ещё не загружен.';
 
   @override

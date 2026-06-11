@@ -162,6 +162,8 @@
   "projectControlAnalyzeChat": "Chat analysis",
   "projectControlDraftTask": "Task draft",
   "projectControlStartAgent": "Start agent",
+  "projectAgentMenu": "Project agent",
+  "projectControlProjectStatus": "Project status",
   "workspaceBridgeNotLoaded": "Workspace list has not loaded yet.",
   "workspaceBridgeEmpty": "CodeWhale returned no workspaces.",
   "workspaceBridgeLoaded": "Loaded workspaces: {count}",

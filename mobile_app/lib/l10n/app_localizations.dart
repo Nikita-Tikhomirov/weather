@@ -908,6 +908,18 @@ abstract class AppLocalizations {
   /// **'Start agent'**
   String get projectControlStartAgent;
 
+  /// No description provided for @projectAgentMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Project agent'**
+  String get projectAgentMenu;
+
+  /// No description provided for @projectControlProjectStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Project status'**
+  String get projectControlProjectStatus;
+
   /// No description provided for @workspaceBridgeNotLoaded.
   ///
   /// In en, this message translates to:

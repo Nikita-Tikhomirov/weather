@@ -1,4 +1,5 @@
 import 'package:family_todo_mobile/features/chat/messenger_page.dart';
+import 'package:family_todo_mobile/l10n/app_localizations.dart';
 import 'package:family_todo_mobile/models/chat_models.dart';
 import 'package:family_todo_mobile/models/task_project.dart';
 import 'package:flutter/material.dart';
@@ -104,6 +105,41 @@ void main() {
       await tester.tap(find.text('Цифра'));
       await tester.pumpAndSettle();
       expect(openedKey, 'grp:project:project-1');
+    });
+
+    testWidgets('uses localized project action labels', (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: _page(
+              controller: controller,
+              activeProject: const TaskProject(
+                id: 'project-1',
+                name: 'Weather',
+              ),
+              onAnalyze: () {},
+            ),
+          ),
+        ),
+      );
+
+      await tester
+          .tap(find.byKey(const ValueKey('messenger-project-agent-menu')));
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Project agent'), findsOneWidget);
+      expect(find.text('Chat analysis'), findsOneWidget);
+      expect(find.text('Task draft'), findsOneWidget);
+      expect(find.text('Start agent'), findsOneWidget);
+      expect(find.text('Project status'), findsOneWidget);
+      expect(find.text('Анализ чата'), findsNothing);
     });
   });
 }

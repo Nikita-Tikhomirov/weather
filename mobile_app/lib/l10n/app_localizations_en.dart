@@ -426,6 +426,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectControlStartAgent => 'Start agent';
 
   @override
+  String get projectAgentMenu => 'Project agent';
+
+  @override
+  String get projectControlProjectStatus => 'Project status';
+
+  @override
   String get workspaceBridgeNotLoaded => 'Workspace list has not loaded yet.';
 
   @override

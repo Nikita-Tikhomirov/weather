@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../app/app_config.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/call_models.dart';
 import '../../models/chat_models.dart';
 import '../../models/task_project.dart';
@@ -469,6 +470,7 @@ class _ChatHeader extends StatelessWidget {
     const baseUrl = AppConfig.apiBaseUrl;
 
     final project = activeProject;
+    final l10n = AppLocalizations.of(context);
     final hasProjectActions = project != null &&
         (onAnalyzeProjectChat != null ||
             onDraftProjectTask != null ||
@@ -517,7 +519,7 @@ class _ChatHeader extends StatelessWidget {
               if (hasProjectActions)
                 PopupMenuButton<String>(
                   key: const ValueKey('messenger-project-agent-menu'),
-                  tooltip: 'Агент проекта',
+                  tooltip: l10n?.projectAgentMenu ?? 'Агент проекта',
                   icon: const Icon(Icons.smart_toy_outlined),
                   onSelected: (value) {
                     if (value == 'analyze') {
@@ -530,22 +532,30 @@ class _ChatHeader extends StatelessWidget {
                       onShowProjectStatus?.call();
                     }
                   },
-                  itemBuilder: (context) => const [
+                  itemBuilder: (context) => [
                     PopupMenuItem(
                       value: 'analyze',
-                      child: Text('Анализ чата'),
+                      child: Text(
+                        l10n?.projectControlAnalyzeChat ?? 'Анализ чата',
+                      ),
                     ),
                     PopupMenuItem(
                       value: 'draft',
-                      child: Text('Черновик задачи'),
+                      child: Text(
+                        l10n?.projectControlDraftTask ?? 'Черновик задачи',
+                      ),
                     ),
                     PopupMenuItem(
                       value: 'start',
-                      child: Text('Запустить агента'),
+                      child: Text(
+                        l10n?.projectControlStartAgent ?? 'Запустить агента',
+                      ),
                     ),
                     PopupMenuItem(
                       value: 'status',
-                      child: Text('Статус проекта'),
+                      child: Text(
+                        l10n?.projectControlProjectStatus ?? 'Статус проекта',
+                      ),
                     ),
                   ],
                 ),

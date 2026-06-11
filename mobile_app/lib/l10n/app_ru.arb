@@ -162,6 +162,8 @@
   "projectControlAnalyzeChat": "Анализ чата",
   "projectControlDraftTask": "Черновик задачи",
   "projectControlStartAgent": "Запустить агента",
+  "projectAgentMenu": "Агент проекта",
+  "projectControlProjectStatus": "Статус проекта",
   "workspaceBridgeNotLoaded": "Список workspace ещё не загружен.",
   "workspaceBridgeEmpty": "CodeWhale не вернул workspace.",
   "workspaceBridgeLoaded": "Загружено workspace: {count}",
