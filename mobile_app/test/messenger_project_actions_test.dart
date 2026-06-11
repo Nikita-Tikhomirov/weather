@@ -176,6 +176,33 @@ void main() {
       expect(find.byTooltip('Создать группу'), findsNothing);
     });
 
+    testWidgets('uses localized empty contacts state', (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: _page(
+              controller: controller,
+              activeConversationKey: '',
+              conversations: const [],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('No registered phone contacts'), findsOneWidget);
+      expect(
+        find.text('Нет зарегистрированных контактов из телефона'),
+        findsNothing,
+      );
+    });
+
     testWidgets('uses localized chat header call tooltips', (tester) async {
       final controller = TextEditingController();
       addTearDown(controller.dispose);

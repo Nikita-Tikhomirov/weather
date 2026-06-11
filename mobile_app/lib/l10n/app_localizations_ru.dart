@@ -370,6 +370,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get noContacts => 'Нет контактов. Добавьте контакты в мессенджере.';
 
   @override
+  String get noRegisteredPhoneContacts =>
+      'Нет зарегистрированных контактов из телефона';
+
+  @override
   String get groupNameRequired => 'Введите название группы';
 
   @override

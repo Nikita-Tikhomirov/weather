@@ -812,6 +812,12 @@ abstract class AppLocalizations {
   /// **'No contacts. Add contacts in Messenger.'**
   String get noContacts;
 
+  /// No description provided for @noRegisteredPhoneContacts.
+  ///
+  /// In en, this message translates to:
+  /// **'No registered phone contacts'**
+  String get noRegisteredPhoneContacts;
+
   /// No description provided for @groupNameRequired.
   ///
   /// In en, this message translates to:

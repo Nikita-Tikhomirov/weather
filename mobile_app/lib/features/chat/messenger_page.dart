@@ -390,9 +390,12 @@ class _ContactList extends StatelessWidget {
                 const Divider(height: 24),
               ],
               if (contacts.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('Нет зарегистрированных контактов из телефона'),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    l10n?.noRegisteredPhoneContacts ??
+                        'Нет зарегистрированных контактов из телефона',
+                  ),
                 )
               else
                 ...List.generate(contacts.length, (index) {

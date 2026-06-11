@@ -370,6 +370,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noContacts => 'No contacts. Add contacts in Messenger.';
 
   @override
+  String get noRegisteredPhoneContacts => 'No registered phone contacts';
+
+  @override
   String get groupNameRequired => 'Enter group name';
 
   @override
