@@ -28,6 +28,8 @@
   "message": "Message",
   "messageDeleted": "Message deleted",
   "send": "Send",
+  "attachment": "Attachment",
+  "editMessage": "Edit message",
   "replyPreview": "Reply: {message}",
   "@replyPreview": {
     "placeholders": {

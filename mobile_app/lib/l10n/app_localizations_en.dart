@@ -93,6 +93,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get send => 'Send';
 
   @override
+  String get attachment => 'Attachment';
+
+  @override
+  String get editMessage => 'Edit message';
+
+  @override
   String replyPreview(String message) {
     return 'Reply: $message';
   }

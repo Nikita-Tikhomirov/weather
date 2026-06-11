@@ -711,7 +711,7 @@ class _ChatComposer extends StatelessWidget {
           Row(
             children: [
               IconButton(
-                tooltip: 'Вложение',
+                tooltip: l10n?.attachment ?? 'Вложение',
                 icon: const Icon(Icons.attach_file),
                 onPressed: onOpenAttachMenu,
               ),
@@ -725,8 +725,8 @@ class _ChatComposer extends StatelessWidget {
                       editingMessageId != null ? (_) => onSendText() : null,
                   decoration: InputDecoration(
                     hintText: editingMessageId == null
-                        ? 'Сообщение'
-                        : 'Изменить сообщение',
+                        ? l10n?.message ?? 'Сообщение'
+                        : l10n?.editMessage ?? 'Изменить сообщение',
                     border: const OutlineInputBorder(
                       borderRadius: BorderRadius.all(Radius.circular(24)),
                     ),
@@ -751,7 +751,7 @@ class _ChatComposer extends StatelessWidget {
                 ),
               ),
               IconButton.filled(
-                tooltip: 'Отправить',
+                tooltip: l10n?.send ?? 'Отправить',
                 onPressed: onSendText,
                 icon: const Icon(Icons.send),
               ),

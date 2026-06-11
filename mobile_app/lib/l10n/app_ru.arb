@@ -28,6 +28,8 @@
   "message": "Сообщение",
   "messageDeleted": "Сообщение удалено",
   "send": "Отправить",
+  "attachment": "Вложение",
+  "editMessage": "Изменить сообщение",
   "replyPreview": "Ответ: {message}",
   "@replyPreview": {
     "placeholders": {

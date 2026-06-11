@@ -93,6 +93,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get send => 'Отправить';
 
   @override
+  String get attachment => 'Вложение';
+
+  @override
+  String get editMessage => 'Изменить сообщение';
+
+  @override
   String replyPreview(String message) {
     return 'Ответ: $message';
   }

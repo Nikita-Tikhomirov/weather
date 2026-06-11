@@ -176,6 +176,34 @@ void main() {
       expect(find.textContaining('Ответ'), findsNothing);
       expect(find.text('Редактирование сообщения'), findsNothing);
     });
+
+    testWidgets('uses localized composer input labels and actions',
+        (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: _page(
+              controller: controller,
+              editingMessageId: 'message-1',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byTooltip('Attachment'), findsOneWidget);
+      expect(find.byTooltip('Send'), findsOneWidget);
+      expect(find.text('Edit message'), findsOneWidget);
+      expect(find.byTooltip('Вложение'), findsNothing);
+      expect(find.byTooltip('Отправить'), findsNothing);
+      expect(find.text('Изменить сообщение'), findsNothing);
+    });
   });
 }
 
