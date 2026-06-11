@@ -107,6 +107,47 @@ void main() {
       expect(openedKey, 'grp:project:project-1');
     });
 
+    testWidgets('uses localized conversation section labels', (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: _page(
+              controller: controller,
+              activeConversationKey: '',
+              conversations: const [
+                ChatConversation(
+                  conversationKey: 'grp:project:project-1',
+                  kind: 'group',
+                  title: 'Weather',
+                  members: ['nik', 'nastya'],
+                ),
+                ChatConversation(
+                  conversationKey: 'grp:family:group-1',
+                  kind: 'group',
+                  title: 'Family',
+                  members: ['nik', 'nastya'],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Project chats'), findsOneWidget);
+      expect(find.text('Regular groups'), findsOneWidget);
+      expect(find.text('Participants: 2'), findsOneWidget);
+      expect(find.text('Проектные чаты'), findsNothing);
+      expect(find.text('Обычные группы'), findsNothing);
+      expect(find.textContaining('Участники:'), findsNothing);
+    });
+
     testWidgets('uses localized project action labels', (tester) async {
       final controller = TextEditingController();
       addTearDown(controller.dispose);

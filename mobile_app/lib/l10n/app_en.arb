@@ -138,6 +138,16 @@
   "projectsSection": "Projects",
   "createProjectAction": "Create project",
   "createGroupAction": "Create group",
+  "projectChats": "Project chats",
+  "regularGroups": "Regular groups",
+  "chatParticipantsCount": "Participants: {count}",
+  "@chatParticipantsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "noProjectsYetAction": "No projects yet. Press + to create one.",
   "noGroupsYetAction": "No groups yet. Press + to create one.",
   "projectControlCreateProjectHint": "Create a project to connect chat and agent.",

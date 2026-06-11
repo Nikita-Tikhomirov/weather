@@ -378,6 +378,17 @@ class AppLocalizationsRu extends AppLocalizations {
   String get createGroupAction => 'Создать группу';
 
   @override
+  String get projectChats => 'Проектные чаты';
+
+  @override
+  String get regularGroups => 'Обычные группы';
+
+  @override
+  String chatParticipantsCount(int count) {
+    return 'Участники: $count';
+  }
+
+  @override
   String get noProjectsYetAction =>
       'Проектов пока нет. Нажмите + чтобы создать.';
 

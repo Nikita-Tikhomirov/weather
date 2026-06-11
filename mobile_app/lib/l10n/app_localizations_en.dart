@@ -378,6 +378,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createGroupAction => 'Create group';
 
   @override
+  String get projectChats => 'Project chats';
+
+  @override
+  String get regularGroups => 'Regular groups';
+
+  @override
+  String chatParticipantsCount(int count) {
+    return 'Participants: $count';
+  }
+
+  @override
   String get noProjectsYetAction => 'No projects yet. Press + to create one.';
 
   @override

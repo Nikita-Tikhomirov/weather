@@ -293,6 +293,7 @@ class _ContactList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final projectChats = groupConversations
         .where(
           (conv) => _isGroupConversation(conv) && _isProjectConversation(conv),
@@ -337,11 +338,11 @@ class _ContactList extends StatelessWidget {
           child: ListView(
             children: [
               if (projectChats.isNotEmpty) ...[
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 8, 8, 4),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
                   child: Text(
-                    'Проектные чаты',
-                    style: TextStyle(
+                    l10n?.projectChats ?? 'Проектные чаты',
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -353,7 +354,10 @@ class _ContactList extends StatelessWidget {
                       child: Icon(Icons.hub_outlined),
                     ),
                     title: Text(groupLabel(conv, owner)),
-                    subtitle: Text('Участники: ${conv.members.length}'),
+                    subtitle: Text(
+                      l10n?.chatParticipantsCount(conv.members.length) ??
+                          'Участники: ${conv.members.length}',
+                    ),
                     onTap: () => onOpenConversation(conv.conversationKey),
                   );
                 }),
@@ -363,7 +367,9 @@ class _ContactList extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
                   child: Text(
-                    projectChats.isEmpty ? 'Группы' : 'Обычные группы',
+                    projectChats.isEmpty
+                        ? l10n?.groups ?? 'Группы'
+                        : l10n?.regularGroups ?? 'Обычные группы',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,

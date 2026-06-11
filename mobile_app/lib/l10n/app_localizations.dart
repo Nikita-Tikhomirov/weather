@@ -824,6 +824,24 @@ abstract class AppLocalizations {
   /// **'Create group'**
   String get createGroupAction;
 
+  /// No description provided for @projectChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Project chats'**
+  String get projectChats;
+
+  /// No description provided for @regularGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'Regular groups'**
+  String get regularGroups;
+
+  /// No description provided for @chatParticipantsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Participants: {count}'**
+  String chatParticipantsCount(int count);
+
   /// No description provided for @noProjectsYetAction.
   ///
   /// In en, this message translates to:

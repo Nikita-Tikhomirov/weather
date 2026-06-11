@@ -138,6 +138,16 @@
   "projectsSection": "Проекты",
   "createProjectAction": "Создать проект",
   "createGroupAction": "Создать группу",
+  "projectChats": "Проектные чаты",
+  "regularGroups": "Обычные группы",
+  "chatParticipantsCount": "Участники: {count}",
+  "@chatParticipantsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "noProjectsYetAction": "Проектов пока нет. Нажмите + чтобы создать.",
   "noGroupsYetAction": "Групп пока нет. Нажмите + чтобы создать.",
   "projectControlCreateProjectHint": "Создайте проект, чтобы подключить чат и агента.",
