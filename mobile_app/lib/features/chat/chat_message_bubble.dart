@@ -426,7 +426,7 @@ class ChatMessageBubble extends StatelessWidget {
     final kind = message.messageType;
     final isImageUpload = kind == 'image' || kind == 'image_group';
     final isVideo = kind == 'video' || kind == 'video_group';
-    final phaseLabel = _uploadPhaseLabel(progress, isVideo);
+    final phaseLabel = _uploadPhaseLabel(context, progress, isVideo);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -569,16 +569,21 @@ class ChatMessageBubble extends StatelessWidget {
 
   // -- Upload phase label --------------------------------------------------
 
-  static String _uploadPhaseLabel(double progress, bool isVideo) {
+  static String _uploadPhaseLabel(
+    BuildContext context,
+    double progress,
+    bool isVideo,
+  ) {
+    final l10n = AppLocalizations.of(context);
     if (!isVideo) {
-      if (progress < 0.5) return 'Загрузка...';
-      if (progress < 0.9) return 'Отправка...';
-      return 'Завершение...';
+      if (progress < 0.5) return l10n?.uploadPhaseUploading ?? 'Загрузка...';
+      if (progress < 0.9) return l10n?.uploadPhaseSending ?? 'Отправка...';
+      return l10n?.uploadPhaseFinishing ?? 'Завершение...';
     }
-    if (progress < 0.01) return 'Подготовка...';
-    if (progress < 0.25) return 'Сжатие...';
-    if (progress < 0.30) return 'Чтение...';
-    if (progress < 0.98) return 'Загрузка...';
-    return 'Завершение...';
+    if (progress < 0.01) return l10n?.uploadPhasePreparing ?? 'Подготовка...';
+    if (progress < 0.25) return l10n?.uploadPhaseCompressing ?? 'Сжатие...';
+    if (progress < 0.30) return l10n?.uploadPhaseReading ?? 'Чтение...';
+    if (progress < 0.98) return l10n?.uploadPhaseUploading ?? 'Загрузка...';
+    return l10n?.uploadPhaseFinishing ?? 'Завершение...';
   }
 }

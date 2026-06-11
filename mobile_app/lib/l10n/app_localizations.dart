@@ -266,6 +266,42 @@ abstract class AppLocalizations {
   /// **'Image'**
   String get imageMessage;
 
+  /// No description provided for @uploadPhasePreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing...'**
+  String get uploadPhasePreparing;
+
+  /// No description provided for @uploadPhaseCompressing.
+  ///
+  /// In en, this message translates to:
+  /// **'Compressing...'**
+  String get uploadPhaseCompressing;
+
+  /// No description provided for @uploadPhaseReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading...'**
+  String get uploadPhaseReading;
+
+  /// No description provided for @uploadPhaseUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading...'**
+  String get uploadPhaseUploading;
+
+  /// No description provided for @uploadPhaseSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending...'**
+  String get uploadPhaseSending;
+
+  /// No description provided for @uploadPhaseFinishing.
+  ///
+  /// In en, this message translates to:
+  /// **'Finishing...'**
+  String get uploadPhaseFinishing;
+
   /// No description provided for @send.
   ///
   /// In en, this message translates to:

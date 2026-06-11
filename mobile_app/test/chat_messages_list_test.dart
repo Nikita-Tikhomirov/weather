@@ -142,6 +142,40 @@ void main() {
     expect(find.textContaining('· edited'), findsOneWidget);
     expect(find.textContaining(RegExp('[А-Яа-яЁё]')), findsNothing);
   });
+
+  testWidgets('uses localized upload phase label', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: ChatMessagesList(
+            messages: [
+              _message(
+                id: 'upload-msg',
+                text: '',
+                messageType: 'image',
+                isUploading: true,
+                uploadProgress: 0.75,
+              ),
+            ],
+            owner: 'nik',
+            compact: true,
+            textFor: (message) => message.text,
+            senderLabelFor: (profile) => profile,
+            stickerAssetFor: (_) => '',
+            imageUrlFor: (_) => '',
+            onLongPress: (_) {},
+            onImageTap: (_, __) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Sending... 75%'), findsOneWidget);
+    expect(find.text('Отправка... 75%'), findsNothing);
+  });
 }
 
 ChatMessage _message({
@@ -150,6 +184,8 @@ ChatMessage _message({
   String messageType = 'text',
   String? deletedAt,
   String? editedAt,
+  bool isUploading = false,
+  double uploadProgress = 0.0,
 }) {
   return ChatMessage(
     id: id,
@@ -160,5 +196,7 @@ ChatMessage _message({
     createdAt: '2026-06-08T10:00:00Z',
     deletedAt: deletedAt,
     editedAt: editedAt,
+    isUploading: isUploading,
+    uploadProgress: uploadProgress,
   );
 }
