@@ -148,6 +148,34 @@ void main() {
       expect(find.textContaining('Участники:'), findsNothing);
     });
 
+    testWidgets('uses localized contacts toolbar labels', (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: _page(
+              controller: controller,
+              activeConversationKey: '',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Contacts'), findsOneWidget);
+      expect(find.byTooltip('Workspaces'), findsOneWidget);
+      expect(find.byTooltip('Refresh contacts'), findsOneWidget);
+      expect(find.byTooltip('Create group'), findsOneWidget);
+      expect(find.text('Контакты'), findsNothing);
+      expect(find.byTooltip('Обновить контакты'), findsNothing);
+      expect(find.byTooltip('Создать группу'), findsNothing);
+    });
+
     testWidgets('uses localized project action labels', (tester) async {
       final controller = TextEditingController();
       addTearDown(controller.dispose);

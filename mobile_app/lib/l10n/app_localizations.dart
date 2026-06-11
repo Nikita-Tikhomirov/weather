@@ -782,6 +782,18 @@ abstract class AppLocalizations {
   /// **'Group name'**
   String get groupNameLabel;
 
+  /// No description provided for @contacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Contacts'**
+  String get contacts;
+
+  /// No description provided for @refreshContacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh contacts'**
+  String get refreshContacts;
+
   /// No description provided for @noContacts.
   ///
   /// In en, this message translates to:

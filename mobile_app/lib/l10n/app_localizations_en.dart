@@ -355,6 +355,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupNameLabel => 'Group name';
 
   @override
+  String get contacts => 'Contacts';
+
+  @override
+  String get refreshContacts => 'Refresh contacts';
+
+  @override
   String get noContacts => 'No contacts. Add contacts in Messenger.';
 
   @override

@@ -126,6 +126,8 @@
   "newGroup": "Новая группа",
   "editGroup": "Редактировать группу",
   "groupNameLabel": "Название группы",
+  "contacts": "Контакты",
+  "refreshContacts": "Обновить контакты",
   "noContacts": "Нет контактов. Добавьте контакты в мессенджере.",
   "groupNameRequired": "Введите название группы",
   "groupMemberRequired": "Выберите хотя бы одного участника",

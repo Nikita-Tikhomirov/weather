@@ -355,6 +355,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get groupNameLabel => 'Название группы';
 
   @override
+  String get contacts => 'Контакты';
+
+  @override
+  String get refreshContacts => 'Обновить контакты';
+
+  @override
   String get noContacts => 'Нет контактов. Добавьте контакты в мессенджере.';
 
   @override

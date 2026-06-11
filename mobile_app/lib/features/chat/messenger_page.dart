@@ -310,24 +310,27 @@ class _ContactList extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
           child: Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Контакты',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  l10n?.contacts ?? 'Контакты',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               IconButton(
-                tooltip: 'Рабочие пространства',
+                tooltip: l10n?.workspaces ?? 'Рабочие пространства',
                 icon: const Icon(Icons.workspaces_outline),
                 onPressed: onOpenWorkspaces,
               ),
               IconButton(
-                tooltip: 'Обновить контакты',
+                tooltip: l10n?.refreshContacts ?? 'Обновить контакты',
                 icon: const Icon(Icons.refresh),
                 onPressed: onRefreshContacts,
               ),
               IconButton.filled(
-                tooltip: 'Создать группу',
+                tooltip: l10n?.createGroupAction ?? 'Создать группу',
                 icon: const Icon(Icons.group_add_outlined),
                 onPressed: onCreateGroup,
               ),
@@ -497,7 +500,7 @@ class _ChatHeader extends StatelessWidget {
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back),
-                tooltip: 'Контакты',
+                tooltip: l10n?.contacts ?? 'Контакты',
                 onPressed: onBackToContacts,
               ),
               if (isGroup && avatarUrl != null && avatarUrl.isNotEmpty)
