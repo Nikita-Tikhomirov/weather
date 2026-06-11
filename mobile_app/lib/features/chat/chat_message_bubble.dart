@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' as intl;
 
 import '../../l10n/app_localizations.dart';
 import '../../models/chat_models.dart';
@@ -88,7 +89,7 @@ class ChatMessageBubble extends StatelessWidget {
               if (message.reactions.isNotEmpty) _buildReactionsRow(context),
               if (message.reactions.isNotEmpty) const SizedBox(height: 4),
               Text(
-                _messageFooter(),
+                _messageFooter(context),
                 style: TextStyle(
                   fontSize: 10,
                   color: Theme.of(context)
@@ -523,10 +524,12 @@ class ChatMessageBubble extends StatelessWidget {
 
   // -- Footer / date formatting --------------------------------------------
 
-  String _messageFooter() {
-    final formatted = _formatIsoDate(message.createdAt);
+  String _messageFooter(BuildContext context) {
+    final localeName = Localizations.localeOf(context).toLanguageTag();
+    final formatted = _formatIsoDate(message.createdAt, localeName);
     if ((message.editedAt ?? '').isNotEmpty) {
-      return '$formatted · изменено';
+      final edited = AppLocalizations.of(context)?.edited ?? 'изменено';
+      return '$formatted · $edited';
     }
     if (mine) {
       final status = _deliveryStatusIcon();
@@ -535,28 +538,12 @@ class ChatMessageBubble extends StatelessWidget {
     return formatted;
   }
 
-  static String _formatIsoDate(String iso) {
+  static String _formatIsoDate(String iso, String localeName) {
     try {
       final dt = DateTime.parse(iso).toLocal();
-      const months = [
-        'янв',
-        'фев',
-        'мар',
-        'апр',
-        'мая',
-        'июн',
-        'июл',
-        'авг',
-        'сен',
-        'окт',
-        'ноя',
-        'дек',
-      ];
-      final day = dt.day;
-      final month = months[dt.month - 1];
-      final hour = dt.hour.toString().padLeft(2, '0');
-      final minute = dt.minute.toString().padLeft(2, '0');
-      return '$day $month $hour:$minute';
+      final date = intl.DateFormat.MMMd(localeName).format(dt);
+      final time = intl.DateFormat.Hm(localeName).format(dt);
+      return '$date $time';
     } catch (e, st) {
       debugPrint('[chat] date format error: $e\n$st');
       return iso;

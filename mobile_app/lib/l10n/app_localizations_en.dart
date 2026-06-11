@@ -185,6 +185,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get edit => 'Edit';
 
   @override
+  String get edited => 'edited';
+
+  @override
   String get cancel => 'Cancel';
 
   @override

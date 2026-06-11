@@ -110,6 +110,38 @@ void main() {
     expect(find.text('Image'), findsOneWidget);
     expect(find.text('Изображение'), findsNothing);
   });
+
+  testWidgets('uses localized edited message footer', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: ChatMessagesList(
+            messages: [
+              _message(
+                id: 'edited-msg',
+                text: 'edited body',
+                editedAt: '2026-06-08T10:05:00Z',
+              ),
+            ],
+            owner: 'nik',
+            compact: true,
+            textFor: (message) => message.text,
+            senderLabelFor: (profile) => profile,
+            stickerAssetFor: (_) => '',
+            imageUrlFor: (_) => '',
+            onLongPress: (_) {},
+            onImageTap: (_, __) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('· edited'), findsOneWidget);
+    expect(find.textContaining(RegExp('[А-Яа-яЁё]')), findsNothing);
+  });
 }
 
 ChatMessage _message({
@@ -117,6 +149,7 @@ ChatMessage _message({
   required String text,
   String messageType = 'text',
   String? deletedAt,
+  String? editedAt,
 }) {
   return ChatMessage(
     id: id,
@@ -126,5 +159,6 @@ ChatMessage _message({
     text: text,
     createdAt: '2026-06-08T10:00:00Z',
     deletedAt: deletedAt,
+    editedAt: editedAt,
   );
 }

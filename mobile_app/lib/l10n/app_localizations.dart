@@ -446,6 +446,12 @@ abstract class AppLocalizations {
   /// **'Edit'**
   String get edit;
 
+  /// No description provided for @edited.
+  ///
+  /// In en, this message translates to:
+  /// **'edited'**
+  String get edited;
+
   /// No description provided for @cancel.
   ///
   /// In en, this message translates to:

@@ -185,6 +185,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get edit => 'Редактировать';
 
   @override
+  String get edited => 'изменено';
+
+  @override
   String get cancel => 'Отмена';
 
   @override
