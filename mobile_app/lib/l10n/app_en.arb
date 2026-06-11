@@ -27,6 +27,7 @@
   "dropHere": "Drop here",
   "message": "Message",
   "messageDeleted": "Message deleted",
+  "imageMessage": "Image",
   "send": "Send",
   "attachment": "Attachment",
   "editMessage": "Edit message",

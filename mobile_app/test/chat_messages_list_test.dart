@@ -78,18 +78,51 @@ void main() {
 
     expect(find.text('Message deleted'), findsOneWidget);
   });
+
+  testWidgets('uses localized image placeholder', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: ChatMessagesList(
+            messages: [
+              _message(
+                id: 'image-msg',
+                text: '',
+                messageType: 'image',
+              ),
+            ],
+            owner: 'nik',
+            compact: true,
+            textFor: (message) => message.text,
+            senderLabelFor: (profile) => profile,
+            stickerAssetFor: (_) => '',
+            imageUrlFor: (_) => '',
+            onLongPress: (_) {},
+            onImageTap: (_, __) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Image'), findsOneWidget);
+    expect(find.text('Изображение'), findsNothing);
+  });
 }
 
 ChatMessage _message({
   required String id,
   required String text,
+  String messageType = 'text',
   String? deletedAt,
 }) {
   return ChatMessage(
     id: id,
     conversationKey: 'direct:nik:misha',
     senderProfile: id.hashCode.isEven ? 'nik' : 'misha',
-    messageType: 'text',
+    messageType: messageType,
     text: text,
     createdAt: '2026-06-08T10:00:00Z',
     deletedAt: deletedAt,

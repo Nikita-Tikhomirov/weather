@@ -260,6 +260,12 @@ abstract class AppLocalizations {
   /// **'Message deleted'**
   String get messageDeleted;
 
+  /// No description provided for @imageMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get imageMessage;
+
   /// No description provided for @send.
   ///
   /// In en, this message translates to:

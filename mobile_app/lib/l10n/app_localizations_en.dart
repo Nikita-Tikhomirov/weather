@@ -90,6 +90,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get messageDeleted => 'Message deleted';
 
   @override
+  String get imageMessage => 'Image';
+
+  @override
   String get send => 'Send';
 
   @override

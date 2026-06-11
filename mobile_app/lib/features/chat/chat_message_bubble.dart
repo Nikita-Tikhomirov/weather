@@ -190,7 +190,11 @@ class ChatMessageBubble extends StatelessWidget {
         message.messageType == 'image_group') {
       final urls = _messageImageUrls();
       if (urls.isEmpty) {
-        return Text(text.isEmpty ? 'Изображение' : text);
+        return Text(
+          text.isEmpty
+              ? AppLocalizations.of(context)?.imageMessage ?? 'Изображение'
+              : text,
+        );
       }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
