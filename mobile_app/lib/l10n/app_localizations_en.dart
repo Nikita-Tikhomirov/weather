@@ -111,6 +111,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get open => 'Open';
 
   @override
+  String get shareText => 'Share text';
+
+  @override
+  String get sharePhoto => 'Share photo';
+
+  @override
   String get returnToCall => 'Return';
 
   @override

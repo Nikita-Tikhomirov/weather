@@ -302,6 +302,18 @@ abstract class AppLocalizations {
   /// **'Open'**
   String get open;
 
+  /// No description provided for @shareText.
+  ///
+  /// In en, this message translates to:
+  /// **'Share text'**
+  String get shareText;
+
+  /// No description provided for @sharePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Share photo'**
+  String get sharePhoto;
+
   /// No description provided for @returnToCall.
   ///
   /// In en, this message translates to:

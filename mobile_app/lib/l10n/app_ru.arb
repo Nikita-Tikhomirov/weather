@@ -34,6 +34,8 @@
   "ongoingAudioCall": "Идет аудиозвонок",
   "openCallScreen": "Открыть экран звонка",
   "open": "Открыть",
+  "shareText": "Поделиться текстом",
+  "sharePhoto": "Поделиться фото",
   "returnToCall": "Вернуться",
   "calling": "Вызов...",
   "incomingCall": "Входящий звонок...",

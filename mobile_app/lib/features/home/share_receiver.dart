@@ -33,28 +33,34 @@ extension _ShareReceiverExtension on _HomePageState {
 
       final selected = await showDialog<ChatContact>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title:
-              Text(text.isNotEmpty ? 'Поделиться текстом' : 'Поделиться фото'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: allContacts.length,
-              itemBuilder: (_, i) => ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.person)),
-                title: Text(contactLabel(allContacts[i])),
-                onTap: () => Navigator.pop(ctx, allContacts[i]),
+        builder: (ctx) {
+          final l10n = AppLocalizations.of(ctx);
+          return AlertDialog(
+            title: Text(
+              text.isNotEmpty
+                  ? l10n?.shareText ?? 'Поделиться текстом'
+                  : l10n?.sharePhoto ?? 'Поделиться фото',
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: allContacts.length,
+                itemBuilder: (_, i) => ListTile(
+                  leading: const CircleAvatar(child: Icon(Icons.person)),
+                  title: Text(contactLabel(allContacts[i])),
+                  onTap: () => Navigator.pop(ctx, allContacts[i]),
+                ),
               ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Отмена'),
-            ),
-          ],
-        ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(l10n?.cancel ?? 'Отмена'),
+              ),
+            ],
+          );
+        },
       );
       if (selected == null || !mounted) return;
 

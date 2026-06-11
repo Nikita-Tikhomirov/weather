@@ -111,6 +111,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get open => 'Открыть';
 
   @override
+  String get shareText => 'Поделиться текстом';
+
+  @override
+  String get sharePhoto => 'Поделиться фото';
+
+  @override
   String get returnToCall => 'Вернуться';
 
   @override
