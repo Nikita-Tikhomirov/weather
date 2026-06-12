@@ -2751,6 +2751,55 @@ TASK_CARD_ACTIONS_JSON:
       expect(find.text('Пропустить'), findsNothing);
     });
 
+    testWidgets('uses localized file read error snackbar', (tester) async {
+      FilePicker? previousPicker;
+      try {
+        previousPicker = FilePicker.platform;
+      } catch (_) {
+        previousPicker = null;
+      }
+      final fakePicker = _FakeFilePicker(
+        FilePickerResult([
+          PlatformFile(name: 'note.txt', size: 4),
+        ]),
+      );
+      FilePicker.platform = fakePicker;
+      addTearDown(() {
+        if (previousPicker != null) {
+          FilePicker.platform = previousPicker;
+        }
+      });
+
+      final store = _FakeTaskStore();
+      _seedProjectAccess(store);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Work'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('File'));
+      await tester.pump();
+
+      expect(fakePicker.pickFilesCount, 1);
+      expect(find.text('Could not read file'), findsOneWidget);
+      expect(find.text('Не удалось прочитать файл'), findsNothing);
+    });
+
     testWidgets('uses localized checklist item controls', (tester) async {
       final task = _editableTask.copyWith(
         collaboration: const TaskCollaboration(

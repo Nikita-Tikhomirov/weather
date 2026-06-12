@@ -13,6 +13,8 @@ void main() {
     expect(text.openPhotoAttachment, 'Открыть фото');
     expect(text.openFileAttachment, 'Открыть файл');
     expect(text.removeAttachment, 'Убрать вложение');
+    expect(text.fileReadFailed, 'Не удалось прочитать файл');
+    expect(text.fileOpenFailed, 'Не удалось открыть файл');
   });
 
   testWidgets('reads English labels from AppLocalizations', (tester) async {
@@ -39,5 +41,16 @@ void main() {
     expect(text.openPhotoAttachment, 'Open photo');
     expect(text.openFileAttachment, 'Open file');
     expect(text.removeAttachment, 'Remove attachment');
+    expect(
+      text.attachmentUploadFailed('network'),
+      'Could not upload attachment: network',
+    );
+    expect(text.attachmentEmptyOrCorrupt, 'The file is empty or corrupted.');
+    expect(
+      text.attachmentUploadMissingUrl,
+      'The server did not return a file URL.',
+    );
+    expect(text.fileReadFailed, 'Could not read file');
+    expect(text.fileOpenFailed, 'Could not open file');
   });
 }

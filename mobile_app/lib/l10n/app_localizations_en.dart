@@ -433,6 +433,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskSkipAttachmentCaption => 'Skip';
 
   @override
+  String taskAttachmentUploadFailed(Object error) {
+    return 'Could not upload attachment: $error';
+  }
+
+  @override
+  String get taskAttachmentEmptyOrCorrupt => 'The file is empty or corrupted.';
+
+  @override
+  String get taskAttachmentUploadMissingUrl =>
+      'The server did not return a file URL.';
+
+  @override
+  String get taskFileReadFailed => 'Could not read file';
+
+  @override
+  String get taskFileOpenFailed => 'Could not open file';
+
+  @override
   String get taskNoComments => 'No comments';
 
   @override

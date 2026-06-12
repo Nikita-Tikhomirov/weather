@@ -173,6 +173,18 @@ class TaskEditorText {
       l10n?.taskAttachmentCaptionHint ?? 'Добавить подпись (необязательно)';
   String get skipAttachmentCaption =>
       l10n?.taskSkipAttachmentCaption ?? 'Пропустить';
+  String attachmentUploadFailed(Object error) =>
+      l10n?.taskAttachmentUploadFailed(error) ??
+      'Не удалось загрузить вложение: $error';
+  String get attachmentEmptyOrCorrupt =>
+      l10n?.taskAttachmentEmptyOrCorrupt ?? 'Файл пустой или повреждён.';
+  String get attachmentUploadMissingUrl =>
+      l10n?.taskAttachmentUploadMissingUrl ??
+      'Сервер не вернул ссылку на файл.';
+  String get fileReadFailed =>
+      l10n?.taskFileReadFailed ?? 'Не удалось прочитать файл';
+  String get fileOpenFailed =>
+      l10n?.taskFileOpenFailed ?? 'Не удалось открыть файл';
   String get reply => l10n?.reply ?? 'Ответить';
   String get edit => l10n?.edit ?? 'Редактировать';
   String get delete => l10n?.delete ?? 'Удалить';

@@ -154,6 +154,16 @@
   "taskFileCaptionTitle": "File caption",
   "taskAttachmentCaptionHint": "Add caption (optional)",
   "taskSkipAttachmentCaption": "Skip",
+  "taskAttachmentUploadFailed": "Could not upload attachment: {error}",
+  "@taskAttachmentUploadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "taskAttachmentEmptyOrCorrupt": "The file is empty or corrupted.",
+  "taskAttachmentUploadMissingUrl": "The server did not return a file URL.",
+  "taskFileReadFailed": "Could not read file",
+  "taskFileOpenFailed": "Could not open file",
   "taskNoComments": "No comments",
   "checklist": "Checklist",
   "taskChecklists": "Checklists",

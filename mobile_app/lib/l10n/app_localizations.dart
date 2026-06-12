@@ -935,6 +935,36 @@ abstract class AppLocalizations {
   /// **'Skip'**
   String get taskSkipAttachmentCaption;
 
+  /// No description provided for @taskAttachmentUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not upload attachment: {error}'**
+  String taskAttachmentUploadFailed(Object error);
+
+  /// No description provided for @taskAttachmentEmptyOrCorrupt.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is empty or corrupted.'**
+  String get taskAttachmentEmptyOrCorrupt;
+
+  /// No description provided for @taskAttachmentUploadMissingUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not return a file URL.'**
+  String get taskAttachmentUploadMissingUrl;
+
+  /// No description provided for @taskFileReadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read file'**
+  String get taskFileReadFailed;
+
+  /// No description provided for @taskFileOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open file'**
+  String get taskFileOpenFailed;
+
   /// No description provided for @taskNoComments.
   ///
   /// In en, this message translates to:

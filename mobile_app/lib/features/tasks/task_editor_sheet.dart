@@ -524,18 +524,20 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     }
 
     late final List<TaskAttachment> attachments;
+    final uiText = TaskEditorText.of(context);
     try {
       attachments = [];
       for (final item in pending) {
         attachments.add(
           await _uploadAttachmentIfNeeded(
             item.copyWith(caption: text, createdAt: now),
+            uiText,
           ),
         );
       }
     } catch (error) {
       if (mounted) {
-        _showSnack('Не удалось загрузить вложение: $error');
+        _showSnack(TaskEditorText.of(context).attachmentUploadFailed(error));
         setState(() {
           _sendingComment = false;
           _attachmentUploadProgress.clear();
@@ -583,6 +585,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   Future<TaskAttachment> _uploadAttachmentIfNeeded(
     TaskAttachment attachment,
+    TaskEditorText text,
   ) async {
     if (attachment.assetUrl.trim().isNotEmpty) {
       return attachment.copyWith(dataBase64: '');
@@ -590,7 +593,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
     final bytes = _decodeAttachmentBytes(attachment.dataBase64);
     if (bytes == null || bytes.isEmpty) {
-      throw StateError('файл пустой или повреждён');
+      throw StateError(text.attachmentEmptyOrCorrupt);
     }
 
     final api = widget.store.repository.api;
@@ -621,7 +624,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           );
 
     if (upload.assetUrl.trim().isEmpty) {
-      throw StateError('сервер не вернул ссылку на файл');
+      throw StateError(text.attachmentUploadMissingUrl);
     }
 
     return attachment.copyWith(
@@ -688,7 +691,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     final bytes = file.bytes ??
         (file.path == null ? null : await File(file.path!).readAsBytes());
     if (bytes == null) {
-      if (mounted) _showSnack('Не удалось прочитать файл');
+      if (mounted) _showSnack(text.fileReadFailed);
       return;
     }
     final caption = await _promptAttachmentCaption(
@@ -1256,7 +1259,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     } catch (error) {
       debugPrint('[tasks] open attachment error: $error');
       if (mounted) {
-        _showSnack('Не удалось открыть файл');
+        _showSnack(TaskEditorText.of(context).fileOpenFailed);
       }
     }
   }

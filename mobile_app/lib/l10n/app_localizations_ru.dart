@@ -433,6 +433,24 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskSkipAttachmentCaption => 'Пропустить';
 
   @override
+  String taskAttachmentUploadFailed(Object error) {
+    return 'Не удалось загрузить вложение: $error';
+  }
+
+  @override
+  String get taskAttachmentEmptyOrCorrupt => 'Файл пустой или повреждён.';
+
+  @override
+  String get taskAttachmentUploadMissingUrl =>
+      'Сервер не вернул ссылку на файл.';
+
+  @override
+  String get taskFileReadFailed => 'Не удалось прочитать файл';
+
+  @override
+  String get taskFileOpenFailed => 'Не удалось открыть файл';
+
+  @override
   String get taskNoComments => 'Комментариев нет';
 
   @override

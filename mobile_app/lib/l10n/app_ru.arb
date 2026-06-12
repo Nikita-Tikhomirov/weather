@@ -154,6 +154,16 @@
   "taskFileCaptionTitle": "Подпись к файлу",
   "taskAttachmentCaptionHint": "Добавить подпись (необязательно)",
   "taskSkipAttachmentCaption": "Пропустить",
+  "taskAttachmentUploadFailed": "Не удалось загрузить вложение: {error}",
+  "@taskAttachmentUploadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "taskAttachmentEmptyOrCorrupt": "Файл пустой или повреждён.",
+  "taskAttachmentUploadMissingUrl": "Сервер не вернул ссылку на файл.",
+  "taskFileReadFailed": "Не удалось прочитать файл",
+  "taskFileOpenFailed": "Не удалось открыть файл",
   "taskNoComments": "Комментариев нет",
   "checklist": "Чеклист",
   "taskChecklists": "Чеклисты",
