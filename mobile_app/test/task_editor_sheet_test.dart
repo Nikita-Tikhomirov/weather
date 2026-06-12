@@ -2530,6 +2530,59 @@ TASK_CARD_ACTIONS_JSON:
       expect(find.byTooltip('Редактировать чеклист'), findsNothing);
       expect(find.byTooltip('Удалить пункт'), findsNothing);
       expect(find.widgetWithText(TextField, 'Пункт'), findsNothing);
+
+      await tester.tap(find.byTooltip('Edit checklist'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit checklist'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Checklist name'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Cancel'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Save'), findsOneWidget);
+      expect(find.text('Редактировать чеклист'), findsNothing);
+      expect(find.widgetWithText(TextField, 'Название чеклиста'), findsNothing);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byTooltip('Delete checklist'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Delete checklist'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete checklist?'), findsOneWidget);
+      expect(
+        find.text('The checklist and its items will be removed from the task.'),
+        findsOneWidget,
+      );
+      expect(find.widgetWithText(FilledButton, 'Delete'), findsOneWidget);
+      expect(find.text('Удалить чеклист?'), findsNothing);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byTooltip('Edit item'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Edit item'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit item'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Item text'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Save'), findsOneWidget);
+      expect(find.text('Редактировать пункт'), findsNothing);
+      expect(find.widgetWithText(TextField, 'Текст пункта'), findsNothing);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byTooltip('Delete item'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Delete item'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete item?'), findsOneWidget);
+      expect(
+        find.text('The item will be removed from the checklist.'),
+        findsOneWidget,
+      );
+      expect(find.widgetWithText(FilledButton, 'Delete'), findsOneWidget);
+      expect(find.text('Удалить пункт?'), findsNothing);
     });
 
     testWidgets('autosaves comment without pressing save', (tester) async {

@@ -436,13 +436,33 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskEditChecklist => 'Редактировать чеклист';
 
   @override
+  String get taskChecklistName => 'Название чеклиста';
+
+  @override
   String get taskDeleteChecklist => 'Удалить чеклист';
+
+  @override
+  String get taskDeleteChecklistTitle => 'Удалить чеклист?';
+
+  @override
+  String get taskDeleteChecklistMessage =>
+      'Чеклист и все его пункты будут удалены из задачи.';
 
   @override
   String get taskEditChecklistItem => 'Редактировать пункт';
 
   @override
+  String get taskChecklistItemText => 'Текст пункта';
+
+  @override
   String get taskDeleteChecklistItem => 'Удалить пункт';
+
+  @override
+  String get taskDeleteChecklistItemTitle => 'Удалить пункт?';
+
+  @override
+  String get taskDeleteChecklistItemMessage =>
+      'Пункт будет удалён из чеклиста.';
 
   @override
   String get taskChecklistItem => 'Пункт';

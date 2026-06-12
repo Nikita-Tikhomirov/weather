@@ -941,11 +941,29 @@ abstract class AppLocalizations {
   /// **'Edit checklist'**
   String get taskEditChecklist;
 
+  /// No description provided for @taskChecklistName.
+  ///
+  /// In en, this message translates to:
+  /// **'Checklist name'**
+  String get taskChecklistName;
+
   /// No description provided for @taskDeleteChecklist.
   ///
   /// In en, this message translates to:
   /// **'Delete checklist'**
   String get taskDeleteChecklist;
+
+  /// No description provided for @taskDeleteChecklistTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete checklist?'**
+  String get taskDeleteChecklistTitle;
+
+  /// No description provided for @taskDeleteChecklistMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The checklist and its items will be removed from the task.'**
+  String get taskDeleteChecklistMessage;
 
   /// No description provided for @taskEditChecklistItem.
   ///
@@ -953,11 +971,29 @@ abstract class AppLocalizations {
   /// **'Edit item'**
   String get taskEditChecklistItem;
 
+  /// No description provided for @taskChecklistItemText.
+  ///
+  /// In en, this message translates to:
+  /// **'Item text'**
+  String get taskChecklistItemText;
+
   /// No description provided for @taskDeleteChecklistItem.
   ///
   /// In en, this message translates to:
   /// **'Delete item'**
   String get taskDeleteChecklistItem;
+
+  /// No description provided for @taskDeleteChecklistItemTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete item?'**
+  String get taskDeleteChecklistItemTitle;
+
+  /// No description provided for @taskDeleteChecklistItemMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The item will be removed from the checklist.'**
+  String get taskDeleteChecklistItemMessage;
 
   /// No description provided for @taskChecklistItem.
   ///

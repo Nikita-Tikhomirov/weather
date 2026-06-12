@@ -143,11 +143,24 @@ class TaskEditorText {
   String get noChecklists => l10n?.taskNoChecklists ?? 'Чеклистов нет';
   String get editChecklist =>
       l10n?.taskEditChecklist ?? 'Редактировать чеклист';
+  String get checklistName =>
+      l10n?.taskChecklistName ?? 'Название чеклиста';
   String get deleteChecklist => l10n?.taskDeleteChecklist ?? 'Удалить чеклист';
+  String get deleteChecklistTitle =>
+      l10n?.taskDeleteChecklistTitle ?? 'Удалить чеклист?';
+  String get deleteChecklistMessage =>
+      l10n?.taskDeleteChecklistMessage ??
+      'Чеклист и все его пункты будут удалены из задачи.';
   String get editChecklistItem =>
       l10n?.taskEditChecklistItem ?? 'Редактировать пункт';
+  String get checklistItemText =>
+      l10n?.taskChecklistItemText ?? 'Текст пункта';
   String get deleteChecklistItem =>
       l10n?.taskDeleteChecklistItem ?? 'Удалить пункт';
+  String get deleteChecklistItemTitle =>
+      l10n?.taskDeleteChecklistItemTitle ?? 'Удалить пункт?';
+  String get deleteChecklistItemMessage =>
+      l10n?.taskDeleteChecklistItemMessage ?? 'Пункт будет удалён из чеклиста.';
   String get checklistItem => l10n?.taskChecklistItem ?? 'Пункт';
   String get addChecklistItem => l10n?.taskAddChecklistItem ?? 'Добавить пункт';
 }

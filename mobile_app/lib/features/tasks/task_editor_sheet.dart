@@ -1025,9 +1025,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   Future<void> _renameChecklist(TaskChecklist checklist) async {
     if (!_canEdit) return;
+    final strings = TaskEditorText.of(context);
     final title = await _promptTextEdit(
-      title: 'Редактировать чеклист',
-      label: 'Название чеклиста',
+      title: strings.editChecklist,
+      label: strings.checklistName,
       initialValue: checklist.title,
     );
     final nextTitle = title?.trim() ?? '';
@@ -1055,9 +1056,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   Future<void> _deleteChecklist(TaskChecklist checklist) async {
     if (!_canEdit) return;
+    final strings = TaskEditorText.of(context);
     final confirmed = await _confirmDelete(
-      title: 'Удалить чеклист?',
-      message: 'Чеклист и все его пункты будут удалены из задачи.',
+      title: strings.deleteChecklistTitle,
+      message: strings.deleteChecklistMessage,
     );
     if (!confirmed) return;
 
@@ -1085,12 +1087,13 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     TaskChecklistItem item,
   ) async {
     if (!_canEdit) return;
-    final text = await _promptTextEdit(
-      title: 'Редактировать пункт',
-      label: 'Текст пункта',
+    final strings = TaskEditorText.of(context);
+    final editedText = await _promptTextEdit(
+      title: strings.editChecklistItem,
+      label: strings.checklistItemText,
       initialValue: item.text,
     );
-    final nextText = text?.trim() ?? '';
+    final nextText = editedText?.trim() ?? '';
     if (nextText.isEmpty || nextText == item.text) return;
 
     final nextChecklists = _collaboration.checklists.map((checklist) {
@@ -1123,9 +1126,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     TaskChecklistItem item,
   ) async {
     if (!_canEdit) return;
+    final strings = TaskEditorText.of(context);
     final confirmed = await _confirmDelete(
-      title: 'Удалить пункт?',
-      message: 'Пункт будет удалён из чеклиста.',
+      title: strings.deleteChecklistItemTitle,
+      message: strings.deleteChecklistItemMessage,
     );
     if (!confirmed) return;
 
@@ -1159,6 +1163,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     required String initialValue,
   }) async {
     if (!mounted) return null;
+    final strings = TaskEditorText.of(context);
     final controller = TextEditingController(text: initialValue);
     var disposeAfterFrame = false;
     try {
@@ -1178,13 +1183,13 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Отмена'),
+                child: Text(strings.cancel),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(dialogContext).pop(
                   controller.text.trim(),
                 ),
-                child: const Text('Сохранить'),
+                child: Text(strings.save),
               ),
             ],
           );
@@ -1207,6 +1212,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     required String message,
   }) async {
     if (!mounted) return false;
+    final strings = TaskEditorText.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -1216,11 +1222,11 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Отмена'),
+              child: Text(strings.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Удалить'),
+              child: Text(strings.delete),
             ),
           ],
         );
