@@ -134,6 +134,7 @@
   "chatTaskDraft": "Черновик задачи",
   "taskSummary": "Резюме",
   "taskComments": "Комментарии",
+  "taskCommentComposerHint": "Комментарий или подпись",
   "taskNoComments": "Комментариев нет",
   "checklist": "Чеклист",
   "taskChecklists": "Чеклисты",

@@ -134,6 +134,7 @@
   "chatTaskDraft": "Task draft",
   "taskSummary": "Summary",
   "taskComments": "Comments",
+  "taskCommentComposerHint": "Comment or caption",
   "taskNoComments": "No comments",
   "checklist": "Checklist",
   "taskChecklists": "Checklists",

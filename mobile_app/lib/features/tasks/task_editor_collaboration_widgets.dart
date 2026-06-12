@@ -162,6 +162,7 @@ class _CommentComposer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = TaskEditorText.of(context);
     final editing = editingComment;
     final reply = replyToComment;
     return Padding(
@@ -185,12 +186,12 @@ class _CommentComposer extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               IconButton(
-                tooltip: 'Фото',
+                tooltip: text.photo,
                 onPressed: attachmentsEnabled ? onPickPhoto : null,
                 icon: const Icon(Icons.image_outlined),
               ),
               IconButton(
-                tooltip: 'Файл',
+                tooltip: text.file,
                 onPressed: attachmentsEnabled ? onPickFile : null,
                 icon: const Icon(Icons.attach_file),
               ),
@@ -201,9 +202,9 @@ class _CommentComposer extends StatelessWidget {
                   minLines: 1,
                   maxLines: 4,
                   textInputAction: TextInputAction.newline,
-                  decoration: const InputDecoration(
-                    hintText: 'Комментарий или подпись',
-                    border: OutlineInputBorder(
+                  decoration: InputDecoration(
+                    hintText: text.commentOrCaption,
+                    border: const OutlineInputBorder(
                       borderRadius: BorderRadius.all(Radius.circular(24)),
                     ),
                     isDense: true,
@@ -212,7 +213,7 @@ class _CommentComposer extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               IconButton.filled(
-                tooltip: 'Отправить',
+                tooltip: text.send,
                 onPressed: enabled ? onSend : null,
                 icon: const Icon(Icons.send),
               ),

@@ -815,6 +815,12 @@ abstract class AppLocalizations {
   /// **'Comments'**
   String get taskComments;
 
+  /// No description provided for @taskCommentComposerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment or caption'**
+  String get taskCommentComposerHint;
+
   /// No description provided for @taskNoComments.
   ///
   /// In en, this message translates to:

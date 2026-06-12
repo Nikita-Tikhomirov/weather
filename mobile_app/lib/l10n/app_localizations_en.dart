@@ -373,6 +373,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskComments => 'Comments';
 
   @override
+  String get taskCommentComposerHint => 'Comment or caption';
+
+  @override
   String get taskNoComments => 'No comments';
 
   @override

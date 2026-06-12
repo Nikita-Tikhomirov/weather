@@ -2331,6 +2331,57 @@ TASK_CARD_ACTIONS_JSON:
       expect(find.text('Новый чеклист'), findsNothing);
     });
 
+    testWidgets('uses localized comment composer controls', (tester) async {
+      final store = _FakeTaskStore();
+      store.selectedDate.value = DateTime(2026, 5, 31);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  showTaskEditorSheet(
+                    context: context,
+                    store: store,
+                    knownContacts: const [],
+                    contactLabel: (c) => c.displayName,
+                    dateKey: (d) => d.toIso8601String(),
+                    onSaved: () async {},
+                  );
+                },
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Work'));
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Photo'), findsOneWidget);
+      expect(find.byTooltip('File'), findsOneWidget);
+      expect(
+        find.widgetWithText(TextField, 'Comment or caption'),
+        findsOneWidget,
+      );
+      expect(find.byTooltip('Send'), findsOneWidget);
+      expect(find.byTooltip('Фото'), findsNothing);
+      expect(find.byTooltip('Файл'), findsNothing);
+      expect(
+        find.widgetWithText(TextField, 'Комментарий или подпись'),
+        findsNothing,
+      );
+      expect(find.byTooltip('Отправить'), findsNothing);
+    });
+
     testWidgets('uses localized checklist item controls', (tester) async {
       final task = _editableTask.copyWith(
         collaboration: const TaskCollaboration(

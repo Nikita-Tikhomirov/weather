@@ -96,6 +96,11 @@ class TaskEditorText {
   String get duration => l10n?.taskDuration ?? 'Оценка времени (мин)';
   String get details => l10n?.taskDetails ?? 'Описание';
   String get comments => l10n?.taskComments ?? 'Комментарии';
+  String get commentOrCaption =>
+      l10n?.taskCommentComposerHint ?? 'Комментарий или подпись';
+  String get photo => l10n?.photo ?? 'Фото';
+  String get file => l10n?.file ?? 'Файл';
+  String get send => l10n?.send ?? 'Отправить';
   String get noComments => l10n?.taskNoComments ?? 'Комментариев нет';
   String get checklists => l10n?.taskChecklists ?? 'Чеклисты';
   String get newChecklist => l10n?.taskNewChecklist ?? 'Новый чеклист';

@@ -373,6 +373,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskComments => 'Комментарии';
 
   @override
+  String get taskCommentComposerHint => 'Комментарий или подпись';
+
+  @override
   String get taskNoComments => 'Комментариев нет';
 
   @override
