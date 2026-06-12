@@ -914,13 +914,13 @@ class _AgentSessionRow extends StatelessWidget {
     final subtitle = [
       if (session.workspaceId.isNotEmpty) session.workspaceId,
       if (session.mode.isNotEmpty) session.mode,
-      if (session.status.isNotEmpty) _agentStatusText(session.status),
+      if (session.status.isNotEmpty) _agentStatusText(session.status, text),
     ].join(' · ');
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: const Icon(Icons.smart_toy_outlined),
       title: Text(
-        session.title.isEmpty ? 'Агентский чат' : session.title,
+        session.title.isEmpty ? text.agentChat : session.title,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -1090,16 +1090,16 @@ class _PhotoViewer extends StatelessWidget {
   }
 }
 
-String _agentStatusText(String value) {
+String _agentStatusText(String value, TaskEditorText text) {
   switch (value) {
     case 'pending':
-      return 'ожидает запуска';
+      return text.agentStatusPending;
     case 'linked':
-      return 'подключен';
+      return text.agentStatusLinked;
     case 'running':
-      return 'в работе';
+      return text.agentStatusRunning;
     case 'done':
-      return 'готово';
+      return text.agentStatusDone;
     default:
       return value;
   }

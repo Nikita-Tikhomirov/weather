@@ -869,6 +869,16 @@ void main() {
               createdBy: 'test_user',
               createdAt: '2026-06-01T10:00:00',
             ),
+            TaskAgentSession(
+              id: 'agent-session-running',
+              workspaceId: 'weather',
+              sessionId: 'bridge-session-running',
+              title: '',
+              mode: 'executor',
+              status: 'running',
+              createdBy: 'test_user',
+              createdAt: '2026-06-01T10:05:00',
+            ),
           ],
         ),
       );
@@ -921,7 +931,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Continue'), findsOneWidget);
+      expect(find.text('Agent chat'), findsOneWidget);
+      expect(find.textContaining('Running'), findsOneWidget);
       expect(find.text('Продолжить'), findsNothing);
+      expect(find.text('Агентский чат'), findsNothing);
+      expect(find.textContaining('в работе'), findsNothing);
     });
 
     testWidgets('agent tab displays open agent questions', (tester) async {
