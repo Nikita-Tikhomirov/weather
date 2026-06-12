@@ -329,6 +329,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskAgentToolsNotLoaded => 'Инструменты CodeWhale не загружены';
 
   @override
+  String get taskContinueWork => 'Продолжить работу';
+
+  @override
   String get taskAgentSkills => 'Скиллы';
 
   @override

@@ -910,6 +910,7 @@ class _AgentSessionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = TaskEditorText.of(context);
     final subtitle = [
       if (session.workspaceId.isNotEmpty) session.workspaceId,
       if (session.mode.isNotEmpty) session.mode,
@@ -927,7 +928,7 @@ class _AgentSessionRow extends StatelessWidget {
       trailing: canContinue
           ? TextButton.icon(
               icon: const Icon(Icons.play_arrow_outlined),
-              label: const Text('Продолжить'),
+              label: Text(text.continueAction),
               onPressed: onContinue,
             )
           : session.sessionId.isEmpty
@@ -949,6 +950,7 @@ class _AgentContinuationPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final text = TaskEditorText.of(context);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -982,7 +984,7 @@ class _AgentContinuationPanel extends StatelessWidget {
           FilledButton.icon(
             onPressed: onPressed,
             icon: const Icon(Icons.play_arrow),
-            label: const Text('Продолжить работу'),
+            label: Text(text.continueWork),
           ),
         ],
       ),

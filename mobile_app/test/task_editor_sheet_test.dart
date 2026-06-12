@@ -855,6 +855,75 @@ void main() {
       expect(find.text('Очередь выполнения'), findsNothing);
     });
 
+    testWidgets('uses localized agent continuation actions', (tester) async {
+      final task = _editableTask.copyWith(
+        collaboration: const TaskCollaboration(
+          agentSessions: [
+            TaskAgentSession(
+              id: 'agent-session-localized',
+              workspaceId: 'weather',
+              sessionId: 'bridge-session-localized',
+              title: 'Agent continuation',
+              mode: 'executor',
+              status: 'waiting_review',
+              createdBy: 'test_user',
+              createdAt: '2026-06-01T10:00:00',
+            ),
+          ],
+        ),
+      );
+      final store = _FakeTaskStore();
+      _seedProjectAccess(store);
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Executor',
+        plugins: [],
+        allowedCommands: ['session_send', 'session_update_task_card'],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: task,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              return _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              );
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Agent'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Continue work'), findsOneWidget);
+      expect(find.text('Продолжить работу'), findsNothing);
+
+      await tester.drag(find.byType(ListView).first, const Offset(0, -900));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Continue'), findsOneWidget);
+      expect(find.text('Продолжить'), findsNothing);
+    });
+
     testWidgets('agent tab displays open agent questions', (tester) async {
       final task = _editableTask.copyWith(
         collaboration: const TaskCollaboration(

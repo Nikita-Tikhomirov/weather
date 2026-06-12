@@ -54,6 +54,8 @@ class TaskEditorText {
       l10n?.taskAgentToolsLoading ?? 'Список инструментов загружается';
   String get agentToolsNotLoaded =>
       l10n?.taskAgentToolsNotLoaded ?? 'Инструменты CodeWhale не загружены';
+  String get continueAction => l10n?.continueAction ?? 'Продолжить';
+  String get continueWork => l10n?.taskContinueWork ?? 'Продолжить работу';
   String get agentSkills => l10n?.taskAgentSkills ?? 'Скиллы';
   String get agentCommands => l10n?.taskAgentCommands ?? 'Команды';
   String agentAvailableCount(int count) =>

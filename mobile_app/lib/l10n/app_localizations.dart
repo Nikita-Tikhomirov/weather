@@ -731,6 +731,12 @@ abstract class AppLocalizations {
   /// **'CodeWhale tools are not loaded'**
   String get taskAgentToolsNotLoaded;
 
+  /// No description provided for @taskContinueWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue work'**
+  String get taskContinueWork;
+
   /// No description provided for @taskAgentSkills.
   ///
   /// In en, this message translates to:

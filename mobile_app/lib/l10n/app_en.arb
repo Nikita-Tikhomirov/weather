@@ -113,6 +113,7 @@
   "taskAgentTools": "Tools",
   "taskAgentToolsLoading": "Tool list is loading",
   "taskAgentToolsNotLoaded": "CodeWhale tools are not loaded",
+  "taskContinueWork": "Continue work",
   "taskAgentSkills": "Skills",
   "taskAgentCommands": "Commands",
   "taskAgentAvailableCount": "Available: {count}",
