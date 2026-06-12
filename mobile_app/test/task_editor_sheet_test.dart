@@ -715,6 +715,72 @@ void main() {
       expect(find.text('Плагины'), findsNothing);
     });
 
+    testWidgets('uses localized task agent panel labels', (tester) async {
+      final task = _editableTask.copyWith(
+        collaboration: const TaskCollaboration(
+          questions: [
+            TaskAgentQuestion(
+              id: 'question-1',
+              text: 'Need form mockup?',
+              status: 'open',
+              createdAt: '2026-06-05T10:00:00Z',
+              blocking: true,
+            ),
+          ],
+        ),
+      );
+      final store = _FakeTaskStore();
+      store.selectedDate.value = DateTime(2026, 5, 31);
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: '',
+        plugins: [],
+        allowedCommands: ['session_open', 'session_create', 'session_send'],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: task,
+            agentPolicy: policy,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Agent'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Agent'), findsWidgets);
+      expect(find.text('Access granted'), findsOneWidget);
+      expect(find.text('Agent questions'), findsOneWidget);
+      expect(find.text('Connect chat'), findsOneWidget);
+      expect(find.text('New chat'), findsOneWidget);
+      expect(find.text('Агент'), findsNothing);
+      expect(find.text('Доступ есть'), findsNothing);
+      expect(find.text('Вопросы агента'), findsNothing);
+      expect(find.text('Подключить чат'), findsNothing);
+      expect(find.text('Новый чат'), findsNothing);
+
+      await tester.drag(find.byType(ListView).first, const Offset(0, -900));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Task chats'), findsOneWidget);
+      expect(find.text('No agent chats connected'), findsOneWidget);
+      expect(find.text('Чаты задачи'), findsNothing);
+    });
+
     testWidgets('agent tab displays open agent questions', (tester) async {
       final task = _editableTask.copyWith(
         collaboration: const TaskCollaboration(

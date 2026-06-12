@@ -248,6 +248,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskAgentTab => 'Agent';
 
   @override
+  String get taskAgent => 'Agent';
+
+  @override
+  String get taskAgentAccessGranted => 'Access granted';
+
+  @override
+  String get taskAgentNoAccess => 'No access';
+
+  @override
+  String get taskAgentQuestions => 'Agent questions';
+
+  @override
+  String get taskAgentLoadingChats => 'Loading chats';
+
+  @override
+  String get taskAgentConnectChat => 'Connect chat';
+
+  @override
+  String get taskAgentNewChat => 'New chat';
+
+  @override
+  String get taskAgentChat => 'Agent chat';
+
+  @override
+  String get taskAgentTaskChats => 'Task chats';
+
+  @override
+  String get taskAgentNoChats => 'No agent chats connected';
+
+  @override
+  String get taskAgentQueueRunning => 'Queue running';
+
+  @override
   String get taskTitle => 'Title';
 
   @override

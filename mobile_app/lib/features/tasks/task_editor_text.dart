@@ -18,6 +18,20 @@ class TaskEditorText {
   String get settingsTab => l10n?.taskSettingsTab ?? 'Настройки';
   String get workTab => l10n?.taskWorkTab ?? 'Работа';
   String get agentTab => l10n?.taskAgentTab ?? 'Агент';
+  String get agent => l10n?.taskAgent ?? 'Агент';
+  String get agentAccessGranted =>
+      l10n?.taskAgentAccessGranted ?? 'Доступ есть';
+  String get agentNoAccess => l10n?.taskAgentNoAccess ?? 'Нет доступа';
+  String get agentQuestions => l10n?.taskAgentQuestions ?? 'Вопросы агента';
+  String get agentLoadingChats =>
+      l10n?.taskAgentLoadingChats ?? 'Загружаю чаты';
+  String get agentConnectChat => l10n?.taskAgentConnectChat ?? 'Подключить чат';
+  String get agentNewChat => l10n?.taskAgentNewChat ?? 'Новый чат';
+  String get agentChat => l10n?.taskAgentChat ?? 'Агентский чат';
+  String get agentTaskChats => l10n?.taskAgentTaskChats ?? 'Чаты задачи';
+  String get agentNoChats =>
+      l10n?.taskAgentNoChats ?? 'Агентские чаты не подключены';
+  String get agentQueueRunning => l10n?.taskAgentQueueRunning ?? 'Очередь идет';
   String get save => l10n?.save ?? 'Сохранить';
   String get title => l10n?.taskTitle ?? 'Название';
   String get project => l10n?.taskProject ?? 'Проект';

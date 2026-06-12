@@ -3221,6 +3221,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   Future<WorkspaceSession?> _showAgentSessionPicker(
     List<WorkspaceSession> sessions,
   ) {
+    final text = TaskEditorText.of(context);
     return showModalBottomSheet<WorkspaceSession>(
       context: context,
       showDragHandle: true,
@@ -3242,7 +3243,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                   leading: const Icon(Icons.smart_toy_outlined),
                   title: Text(
                     session.title.trim().isEmpty
-                        ? 'Агентский чат'
+                        ? text.agentChat
                         : session.title.trim(),
                   ),
                   subtitle: Text(
@@ -3872,6 +3873,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   Widget _buildAgentTab() {
     final policy = widget.agentPolicy;
+    final text = TaskEditorText.of(context);
     if (policy.allowed &&
         !_agentWorkspaceAutoRequested &&
         !_agentWorkspacesLoading &&
@@ -3897,10 +3899,12 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       children: [
         _SectionHeader(
           icon: Icons.smart_toy_outlined,
-          title: 'Агент',
+          title: text.agent,
           trailing: policy.allowed
-              ? (policy.modeLabel.isEmpty ? 'Доступ есть' : policy.modeLabel)
-              : 'Нет доступа',
+              ? (policy.modeLabel.isEmpty
+                  ? text.agentAccessGranted
+                  : policy.modeLabel)
+              : text.agentNoAccess,
         ),
         const SizedBox(height: 10),
         if (!policy.allowed && policy.reason.trim().isNotEmpty) ...[
@@ -3928,7 +3932,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         if (openQuestions.isNotEmpty) ...[
           _SectionHeader(
             icon: Icons.help_outline,
-            title: 'Вопросы агента',
+            title: text.agentQuestions,
             trailing: '${openQuestions.length}',
           ),
           const SizedBox(height: 10),
@@ -3945,7 +3949,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
               child: OutlinedButton.icon(
                 icon: const Icon(Icons.link),
                 label: Text(
-                  _agentSessionsLoading ? 'Загружаю чаты' : 'Подключить чат',
+                  _agentSessionsLoading
+                      ? text.agentLoadingChats
+                      : text.agentConnectChat,
                 ),
                 onPressed: _canEdit &&
                         policy.canLinkExistingChat &&
@@ -3958,7 +3964,11 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             Expanded(
               child: FilledButton.icon(
                 icon: const Icon(Icons.add_comment_outlined),
-                label: Text(_agentQueueActive ? 'Очередь идет' : 'Новый чат'),
+                label: Text(
+                  _agentQueueActive
+                      ? text.agentQueueRunning
+                      : text.agentNewChat,
+                ),
                 onPressed:
                     _canEdit && policy.canStartAgentChat && !_agentQueueActive
                         ? _requestNewAgentChat
@@ -3971,7 +3981,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           const SizedBox(height: 12),
           _AgentContinuationPanel(
             title: continuationSession.title.isEmpty
-                ? 'Агентский чат'
+                ? text.agentChat
                 : continuationSession.title,
             onPressed: () => _continueAgentSession(continuationSession),
           ),
@@ -3984,14 +3994,14 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         const SizedBox(height: 22),
         _SectionHeader(
           icon: Icons.forum_outlined,
-          title: 'Чаты задачи',
+          title: text.agentTaskChats,
           trailing: '${_collaboration.agentSessionCount}',
         ),
         const SizedBox(height: 10),
         if (_collaboration.agentSessions.isEmpty)
-          const _EmptyLine(
+          _EmptyLine(
             icon: Icons.chat_bubble_outline,
-            text: 'Агентские чаты не подключены',
+            text: text.agentNoChats,
           )
         else
           ..._collaboration.agentSessions.map(

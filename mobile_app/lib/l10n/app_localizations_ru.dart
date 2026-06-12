@@ -248,6 +248,39 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskAgentTab => 'Агент';
 
   @override
+  String get taskAgent => 'Агент';
+
+  @override
+  String get taskAgentAccessGranted => 'Доступ есть';
+
+  @override
+  String get taskAgentNoAccess => 'Нет доступа';
+
+  @override
+  String get taskAgentQuestions => 'Вопросы агента';
+
+  @override
+  String get taskAgentLoadingChats => 'Загружаю чаты';
+
+  @override
+  String get taskAgentConnectChat => 'Подключить чат';
+
+  @override
+  String get taskAgentNewChat => 'Новый чат';
+
+  @override
+  String get taskAgentChat => 'Агентский чат';
+
+  @override
+  String get taskAgentTaskChats => 'Чаты задачи';
+
+  @override
+  String get taskAgentNoChats => 'Агентские чаты не подключены';
+
+  @override
+  String get taskAgentQueueRunning => 'Очередь идет';
+
+  @override
   String get taskTitle => 'Название';
 
   @override

@@ -572,6 +572,72 @@ abstract class AppLocalizations {
   /// **'Agent'**
   String get taskAgentTab;
 
+  /// No description provided for @taskAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent'**
+  String get taskAgent;
+
+  /// No description provided for @taskAgentAccessGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Access granted'**
+  String get taskAgentAccessGranted;
+
+  /// No description provided for @taskAgentNoAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'No access'**
+  String get taskAgentNoAccess;
+
+  /// No description provided for @taskAgentQuestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent questions'**
+  String get taskAgentQuestions;
+
+  /// No description provided for @taskAgentLoadingChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading chats'**
+  String get taskAgentLoadingChats;
+
+  /// No description provided for @taskAgentConnectChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect chat'**
+  String get taskAgentConnectChat;
+
+  /// No description provided for @taskAgentNewChat.
+  ///
+  /// In en, this message translates to:
+  /// **'New chat'**
+  String get taskAgentNewChat;
+
+  /// No description provided for @taskAgentChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent chat'**
+  String get taskAgentChat;
+
+  /// No description provided for @taskAgentTaskChats.
+  ///
+  /// In en, this message translates to:
+  /// **'Task chats'**
+  String get taskAgentTaskChats;
+
+  /// No description provided for @taskAgentNoChats.
+  ///
+  /// In en, this message translates to:
+  /// **'No agent chats connected'**
+  String get taskAgentNoChats;
+
+  /// No description provided for @taskAgentQueueRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Queue running'**
+  String get taskAgentQueueRunning;
+
   /// No description provided for @taskTitle.
   ///
   /// In en, this message translates to:
