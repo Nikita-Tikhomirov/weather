@@ -94,6 +94,7 @@
   "taskAgentQuestions": "Вопросы агента",
   "taskAgentLoadingChats": "Загружаю чаты",
   "taskAgentConnectChat": "Подключить чат",
+  "taskSelectAgentChat": "Выберите агентский чат",
   "taskAgentNewChat": "Новый чат",
   "taskAgentChat": "Агентский чат",
   "taskAgentTaskChats": "Чаты задачи",

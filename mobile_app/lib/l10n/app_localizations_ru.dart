@@ -272,6 +272,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskAgentConnectChat => 'Подключить чат';
 
   @override
+  String get taskSelectAgentChat => 'Выберите агентский чат';
+
+  @override
   String get taskAgentNewChat => 'Новый чат';
 
   @override

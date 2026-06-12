@@ -617,6 +617,12 @@ abstract class AppLocalizations {
   /// **'Connect chat'**
   String get taskAgentConnectChat;
 
+  /// No description provided for @taskSelectAgentChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Select agent chat'**
+  String get taskSelectAgentChat;
+
   /// No description provided for @taskAgentNewChat.
   ///
   /// In en, this message translates to:

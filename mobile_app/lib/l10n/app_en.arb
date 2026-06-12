@@ -94,6 +94,7 @@
   "taskAgentQuestions": "Agent questions",
   "taskAgentLoadingChats": "Loading chats",
   "taskAgentConnectChat": "Connect chat",
+  "taskSelectAgentChat": "Select agent chat",
   "taskAgentNewChat": "New chat",
   "taskAgentChat": "Agent chat",
   "taskAgentTaskChats": "Task chats",

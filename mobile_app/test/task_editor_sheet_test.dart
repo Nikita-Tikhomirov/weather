@@ -1060,6 +1060,72 @@ void main() {
       expect(find.text('Продолжить работу'), findsOneWidget);
     });
 
+    testWidgets('uses localized agent session picker labels', (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      _FakeAgentBridge? bridge;
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Executor',
+        plugins: [],
+        allowedCommands: [
+          'session_open',
+          'session_send',
+          'session_update_task_card',
+        ],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              )..sessions = const [
+                  WorkspaceSession(
+                    id: 'bridge-session-idle',
+                    workspaceId: 'weather',
+                    title: '',
+                    status: WorkspaceSessionStatus.idle,
+                  ),
+                ];
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Agent'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Connect chat'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Select agent chat'), findsOneWidget);
+      expect(find.text('Agent chat'), findsOneWidget);
+      expect(find.textContaining('Idle'), findsOneWidget);
+      expect(find.text('Выберите агентский чат'), findsNothing);
+      expect(find.textContaining('Ожидает'), findsNothing);
+    });
+
     testWidgets(
       'agent launch uses local task card context when backend context is 400',
       (tester) async {

@@ -26,6 +26,8 @@ class TaskEditorText {
   String get agentLoadingChats =>
       l10n?.taskAgentLoadingChats ?? 'Загружаю чаты';
   String get agentConnectChat => l10n?.taskAgentConnectChat ?? 'Подключить чат';
+  String get selectAgentChat =>
+      l10n?.taskSelectAgentChat ?? 'Выберите агентский чат';
   String get agentNewChat => l10n?.taskAgentNewChat ?? 'Новый чат';
   String get agentChat => l10n?.taskAgentChat ?? 'Агентский чат';
   String get agentTaskChats => l10n?.taskAgentTaskChats ?? 'Чаты задачи';
@@ -61,6 +63,13 @@ class TaskEditorText {
   String get agentStatusLinked => l10n?.connected ?? 'подключен';
   String get agentStatusRunning => l10n?.running ?? 'в работе';
   String get agentStatusDone => l10n?.done ?? 'готово';
+  String get sessionStatusIdle => l10n?.sessionIdleStatus ?? 'Ожидает';
+  String get sessionStatusRunning => l10n?.running ?? 'Запущен';
+  String get sessionStatusStopped => l10n?.stopped ?? 'Остановлен';
+  String get sessionStatusKilled => l10n?.killed ?? 'Завершен';
+  String get sessionStatusError => l10n?.error ?? 'Ошибка';
+  String get sessionStatusUnknown =>
+      l10n?.sessionUnknownStatus ?? 'Статус неизвестен';
   String get agentQuestionBlocksWork =>
       l10n?.taskAgentQuestionBlocksWork ?? 'Блокирует работу';
   String get agentSkills => l10n?.taskAgentSkills ?? 'Скиллы';

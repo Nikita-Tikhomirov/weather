@@ -272,6 +272,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskAgentConnectChat => 'Connect chat';
 
   @override
+  String get taskSelectAgentChat => 'Select agent chat';
+
+  @override
   String get taskAgentNewChat => 'New chat';
 
   @override

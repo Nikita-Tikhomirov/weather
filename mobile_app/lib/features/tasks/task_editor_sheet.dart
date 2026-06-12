@@ -3239,9 +3239,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             shrinkWrap: true,
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             children: [
-              const _SectionHeader(
+              _SectionHeader(
                 icon: Icons.forum_outlined,
-                title: 'Выберите агентский чат',
+                title: text.selectAgentChat,
                 trailing: '',
               ),
               const SizedBox(height: 8),
@@ -3409,19 +3409,20 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   String _workspaceSessionStatusText(WorkspaceSessionStatus status) {
+    final text = TaskEditorText.of(context);
     switch (status) {
       case WorkspaceSessionStatus.idle:
-        return 'Ожидает';
+        return text.sessionStatusIdle;
       case WorkspaceSessionStatus.running:
-        return 'Запущен';
+        return text.sessionStatusRunning;
       case WorkspaceSessionStatus.stopped:
-        return 'Остановлен';
+        return text.sessionStatusStopped;
       case WorkspaceSessionStatus.killed:
-        return 'Завершен';
+        return text.sessionStatusKilled;
       case WorkspaceSessionStatus.error:
-        return 'Ошибка';
+        return text.sessionStatusError;
       case WorkspaceSessionStatus.unknown:
-        return 'Статус неизвестен';
+        return text.sessionStatusUnknown;
     }
   }
 
