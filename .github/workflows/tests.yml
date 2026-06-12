@@ -46,6 +46,8 @@ jobs:
           else
             echo "No requirements.txt — skipping pip install"
           fi
-      - run: python -m unittest discover -s tests -v || echo "No Python unit tests found"
+      - name: Run Python unit tests
+        run: python scripts/run_unittest.py --start tests --verbosity 2
+        timeout-minutes: 5
       - run: python -c "import family_todo; print('family_todo imports OK')" 2>&1 || echo "family_todo not importable"
       - run: python -c "import desktop_app; print('desktop_app imports OK')" 2>&1 || echo "desktop_app not importable"
