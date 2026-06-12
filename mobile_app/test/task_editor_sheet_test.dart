@@ -17,6 +17,7 @@ import 'package:family_todo_mobile/services/local_db.dart';
 import 'package:family_todo_mobile/domain/task_domain_service.dart';
 import 'package:family_todo_mobile/l10n/app_localizations.dart';
 import 'package:family_todo_mobile/state/task_store.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -401,6 +402,32 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
 
   @override
   void dispose() {}
+}
+
+class _FakeFilePicker extends FilePicker {
+  _FakeFilePicker(this.result);
+
+  final FilePickerResult? result;
+  int pickFilesCount = 0;
+
+  @override
+  Future<FilePickerResult?> pickFiles({
+    String? dialogTitle,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    Function(FilePickerStatus)? onFileLoading,
+    bool allowCompression = true,
+    int compressionQuality = 30,
+    bool allowMultiple = false,
+    bool withData = false,
+    bool withReadStream = false,
+    bool lockParentWindow = false,
+    bool readSequential = false,
+  }) async {
+    pickFilesCount += 1;
+    return result;
+  }
 }
 
 class _FakeTaskRepository implements TaskRepository {
@@ -2592,6 +2619,66 @@ TASK_CARD_ACTIONS_JSON:
         findsNothing,
       );
       expect(find.byTooltip('Отправить'), findsNothing);
+    });
+
+    testWidgets('uses localized attachment caption dialog', (tester) async {
+      FilePicker? previousPicker;
+      try {
+        previousPicker = FilePicker.platform;
+      } catch (_) {
+        previousPicker = null;
+      }
+      final fakePicker = _FakeFilePicker(
+        FilePickerResult([
+          PlatformFile(
+            name: 'note.txt',
+            size: 4,
+            bytes: Uint8List.fromList([1, 2, 3, 4]),
+          ),
+        ]),
+      );
+      FilePicker.platform = fakePicker;
+      addTearDown(() {
+        if (previousPicker != null) {
+          FilePicker.platform = previousPicker;
+        }
+      });
+
+      final store = _FakeTaskStore();
+      _seedProjectAccess(store);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Work'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('File'));
+      await tester.pumpAndSettle();
+
+      expect(fakePicker.pickFilesCount, 1);
+      expect(find.text('File caption'), findsOneWidget);
+      expect(
+        find.widgetWithText(TextField, 'Add caption (optional)'),
+        findsOneWidget,
+      );
+      expect(find.widgetWithText(TextButton, 'Skip'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Done'), findsOneWidget);
+      expect(find.text('Подпись к файлу'), findsNothing);
+      expect(find.text('Пропустить'), findsNothing);
     });
 
     testWidgets('uses localized checklist item controls', (tester) async {

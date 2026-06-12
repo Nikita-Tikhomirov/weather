@@ -141,10 +141,19 @@ class TaskEditorText {
       l10n?.taskOpenFileAttachment ?? 'Открыть файл';
   String get removeAttachment =>
       l10n?.taskRemoveAttachment ?? 'Убрать вложение';
+  String get photoCaptionTitle =>
+      l10n?.taskPhotoCaptionTitle ?? 'Подпись к фото';
+  String get fileCaptionTitle =>
+      l10n?.taskFileCaptionTitle ?? 'Подпись к файлу';
+  String get attachmentCaptionHint =>
+      l10n?.taskAttachmentCaptionHint ?? 'Добавить подпись (необязательно)';
+  String get skipAttachmentCaption =>
+      l10n?.taskSkipAttachmentCaption ?? 'Пропустить';
   String get reply => l10n?.reply ?? 'Ответить';
   String get edit => l10n?.edit ?? 'Редактировать';
   String get delete => l10n?.delete ?? 'Удалить';
   String get cancel => l10n?.cancel ?? 'Отмена';
+  String get done => l10n?.done ?? 'Готово';
   String get noComments => l10n?.taskNoComments ?? 'Комментариев нет';
   String get checklists => l10n?.taskChecklists ?? 'Чеклисты';
   String get newChecklist => l10n?.taskNewChecklist ?? 'Новый чеклист';

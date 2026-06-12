@@ -418,6 +418,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskRemoveAttachment => 'Remove attachment';
 
   @override
+  String get taskPhotoCaptionTitle => 'Photo caption';
+
+  @override
+  String get taskFileCaptionTitle => 'File caption';
+
+  @override
+  String get taskAttachmentCaptionHint => 'Add caption (optional)';
+
+  @override
+  String get taskSkipAttachmentCaption => 'Skip';
+
+  @override
   String get taskNoComments => 'No comments';
 
   @override

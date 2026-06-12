@@ -643,6 +643,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   Future<void> _pickPhoto() async {
     if (!_canEdit || _editingCommentId.isNotEmpty) return;
+    final text = TaskEditorText.of(context);
     final picker = ImagePicker();
     List<XFile> picked;
     try {
@@ -661,7 +662,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       picked = one == null ? const <XFile>[] : [one];
     }
     if (picked.isEmpty) return;
-    final caption = await _promptAttachmentCaption('Подпись к фото');
+    final caption = await _promptAttachmentCaption(
+      text.photoCaptionTitle,
+    );
     _applyAttachmentCaption(caption);
     final attachments = <TaskAttachment>[];
     for (final item in picked) {
@@ -687,6 +690,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   Future<void> _pickFile() async {
     if (!_canEdit || _editingCommentId.isNotEmpty) return;
+    final text = TaskEditorText.of(context);
     final result = await FilePicker.platform.pickFiles(withData: true);
     if (result == null || result.files.isEmpty) return;
     final file = result.files.single;
@@ -696,7 +700,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       if (mounted) _showSnack('Не удалось прочитать файл');
       return;
     }
-    final caption = await _promptAttachmentCaption('Подпись к файлу');
+    final caption = await _promptAttachmentCaption(
+      text.fileCaptionTitle,
+    );
     _applyAttachmentCaption(caption);
     if (!mounted) return;
     setState(() {
@@ -724,6 +730,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   Future<String?> _promptAttachmentCaption(String title) async {
     if (!mounted) return null;
+    final text = TaskEditorText.of(context);
     final controller = TextEditingController();
     var disposeAfterFrame = false;
     try {
@@ -735,21 +742,21 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             content: TextField(
               controller: controller,
               maxLines: 3,
-              decoration: const InputDecoration(
-                hintText: 'Добавить подпись (необязательно)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: text.attachmentCaptionHint,
+                border: const OutlineInputBorder(),
               ),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(''),
-                child: const Text('Пропустить'),
+                child: Text(text.skipAttachmentCaption),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(dialogContext).pop(
                   controller.text.trim(),
                 ),
-                child: const Text('Готово'),
+                child: Text(text.done),
               ),
             ],
           );

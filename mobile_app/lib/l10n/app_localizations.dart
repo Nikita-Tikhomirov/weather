@@ -905,6 +905,30 @@ abstract class AppLocalizations {
   /// **'Remove attachment'**
   String get taskRemoveAttachment;
 
+  /// No description provided for @taskPhotoCaptionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo caption'**
+  String get taskPhotoCaptionTitle;
+
+  /// No description provided for @taskFileCaptionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'File caption'**
+  String get taskFileCaptionTitle;
+
+  /// No description provided for @taskAttachmentCaptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add caption (optional)'**
+  String get taskAttachmentCaptionHint;
+
+  /// No description provided for @taskSkipAttachmentCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get taskSkipAttachmentCaption;
+
   /// No description provided for @taskNoComments.
   ///
   /// In en, this message translates to:

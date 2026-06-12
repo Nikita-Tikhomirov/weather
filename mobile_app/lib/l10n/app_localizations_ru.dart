@@ -418,6 +418,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskRemoveAttachment => 'Убрать вложение';
 
   @override
+  String get taskPhotoCaptionTitle => 'Подпись к фото';
+
+  @override
+  String get taskFileCaptionTitle => 'Подпись к файлу';
+
+  @override
+  String get taskAttachmentCaptionHint => 'Добавить подпись (необязательно)';
+
+  @override
+  String get taskSkipAttachmentCaption => 'Пропустить';
+
+  @override
   String get taskNoComments => 'Комментариев нет';
 
   @override
