@@ -623,6 +623,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectControlProjectStatus => 'Project status';
 
   @override
+  String get homeProjectDescriptionMissing => 'No description';
+
+  @override
+  String homeProjectParticipants(Object members) {
+    return 'Participants: $members';
+  }
+
+  @override
+  String get homeProjectWorkspaceNotSelected => 'Workspace is not selected';
+
+  @override
+  String get homeProjectWorkspaceHint =>
+      'Select workspace in Project Control Center';
+
+  @override
+  String get homeProjectAgentAvailableByButton =>
+      'Agent is available from the button';
+
+  @override
+  String get homeProjectAgentNoAccess => 'No access to AI agent';
+
+  @override
+  String get homeProjectActiveAgentSession => 'Active agent session';
+
+  @override
   String get workspaceBridgeNotLoaded => 'Workspace list has not loaded yet.';
 
   @override

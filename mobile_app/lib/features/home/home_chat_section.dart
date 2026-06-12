@@ -717,59 +717,14 @@ extension _ChatSection on _HomePageState {
     }
     showModalBottomSheet<void>(
       context: context,
-      builder: (sheetContext) {
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Статус проекта',
-                style: Theme.of(sheetContext).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.folder_outlined),
-                title: Text(project.name),
-                subtitle: Text(
-                  project.description.isEmpty
-                      ? 'Описание не задано'
-                      : project.description,
-                ),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.forum_outlined),
-                title: Text(group?.name ?? _activeConversationKey),
-                subtitle: Text(
-                  'Участники: ${(group?.members ?? const <String>[]).join(', ')}',
-                ),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.workspaces_outline),
-                title: Text(
-                  workspaceId.isEmpty ? 'Workspace не выбран' : workspaceId,
-                ),
-                subtitle: Text(
-                  workspaceId.isEmpty
-                      ? 'Выберите workspace в Project Control Center'
-                      : _accessPolicy.canUseAi
-                          ? 'Агент доступен по кнопке'
-                          : 'Нет прав на AI-агента',
-                ),
-              ),
-              if (_projectChatAgentSessionId.isNotEmpty)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.smart_toy_outlined),
-                  title: const Text('Активная сессия агента'),
-                  subtitle: Text(_projectChatAgentSessionId),
-                ),
-            ],
-          ),
+      builder: (_) {
+        return ProjectChatStatusSheet(
+          project: project,
+          conversationTitle: group?.name ?? _activeConversationKey,
+          members: group?.members ?? const <String>[],
+          workspaceId: workspaceId,
+          canUseAi: _accessPolicy.canUseAi,
+          agentSessionId: _projectChatAgentSessionId,
         );
       },
     );

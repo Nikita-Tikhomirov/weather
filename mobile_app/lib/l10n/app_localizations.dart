@@ -1286,6 +1286,48 @@ abstract class AppLocalizations {
   /// **'Project status'**
   String get projectControlProjectStatus;
 
+  /// No description provided for @homeProjectDescriptionMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No description'**
+  String get homeProjectDescriptionMissing;
+
+  /// No description provided for @homeProjectParticipants.
+  ///
+  /// In en, this message translates to:
+  /// **'Participants: {members}'**
+  String homeProjectParticipants(Object members);
+
+  /// No description provided for @homeProjectWorkspaceNotSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace is not selected'**
+  String get homeProjectWorkspaceNotSelected;
+
+  /// No description provided for @homeProjectWorkspaceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select workspace in Project Control Center'**
+  String get homeProjectWorkspaceHint;
+
+  /// No description provided for @homeProjectAgentAvailableByButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent is available from the button'**
+  String get homeProjectAgentAvailableByButton;
+
+  /// No description provided for @homeProjectAgentNoAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'No access to AI agent'**
+  String get homeProjectAgentNoAccess;
+
+  /// No description provided for @homeProjectActiveAgentSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Active agent session'**
+  String get homeProjectActiveAgentSession;
+
   /// No description provided for @workspaceBridgeNotLoaded.
   ///
   /// In en, this message translates to:

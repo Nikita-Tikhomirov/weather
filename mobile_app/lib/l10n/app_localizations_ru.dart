@@ -626,6 +626,30 @@ class AppLocalizationsRu extends AppLocalizations {
   String get projectControlProjectStatus => 'Статус проекта';
 
   @override
+  String get homeProjectDescriptionMissing => 'Описание не задано';
+
+  @override
+  String homeProjectParticipants(Object members) {
+    return 'Участники: $members';
+  }
+
+  @override
+  String get homeProjectWorkspaceNotSelected => 'Workspace не выбран';
+
+  @override
+  String get homeProjectWorkspaceHint =>
+      'Выберите workspace в Project Control Center';
+
+  @override
+  String get homeProjectAgentAvailableByButton => 'Агент доступен по кнопке';
+
+  @override
+  String get homeProjectAgentNoAccess => 'Нет прав на AI-агента';
+
+  @override
+  String get homeProjectActiveAgentSession => 'Активная сессия агента';
+
+  @override
   String get workspaceBridgeNotLoaded => 'Список workspace ещё не загружен.';
 
   @override

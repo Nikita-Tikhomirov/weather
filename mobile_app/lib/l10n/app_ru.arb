@@ -246,6 +246,18 @@
   "projectControlStartAgent": "Запустить агента",
   "projectAgentMenu": "Агент проекта",
   "projectControlProjectStatus": "Статус проекта",
+  "homeProjectDescriptionMissing": "Описание не задано",
+  "homeProjectParticipants": "Участники: {members}",
+  "@homeProjectParticipants": {
+    "placeholders": {
+      "members": {}
+    }
+  },
+  "homeProjectWorkspaceNotSelected": "Workspace не выбран",
+  "homeProjectWorkspaceHint": "Выберите workspace в Project Control Center",
+  "homeProjectAgentAvailableByButton": "Агент доступен по кнопке",
+  "homeProjectAgentNoAccess": "Нет прав на AI-агента",
+  "homeProjectActiveAgentSession": "Активная сессия агента",
   "workspaceBridgeNotLoaded": "Список workspace ещё не загружен.",
   "workspaceBridgeEmpty": "CodeWhale не вернул workspace.",
   "workspaceBridgeLoaded": "Загружено workspace: {count}",

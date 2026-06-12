@@ -246,6 +246,18 @@
   "projectControlStartAgent": "Start agent",
   "projectAgentMenu": "Project agent",
   "projectControlProjectStatus": "Project status",
+  "homeProjectDescriptionMissing": "No description",
+  "homeProjectParticipants": "Participants: {members}",
+  "@homeProjectParticipants": {
+    "placeholders": {
+      "members": {}
+    }
+  },
+  "homeProjectWorkspaceNotSelected": "Workspace is not selected",
+  "homeProjectWorkspaceHint": "Select workspace in Project Control Center",
+  "homeProjectAgentAvailableByButton": "Agent is available from the button",
+  "homeProjectAgentNoAccess": "No access to AI agent",
+  "homeProjectActiveAgentSession": "Active agent session",
   "workspaceBridgeNotLoaded": "Workspace list has not loaded yet.",
   "workspaceBridgeEmpty": "CodeWhale returned no workspaces.",
   "workspaceBridgeLoaded": "Loaded workspaces: {count}",
