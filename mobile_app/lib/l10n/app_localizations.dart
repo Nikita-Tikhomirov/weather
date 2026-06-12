@@ -596,11 +596,47 @@ abstract class AppLocalizations {
   /// **'Summary'**
   String get taskSummary;
 
+  /// No description provided for @taskComments.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments'**
+  String get taskComments;
+
+  /// No description provided for @taskNoComments.
+  ///
+  /// In en, this message translates to:
+  /// **'No comments'**
+  String get taskNoComments;
+
   /// No description provided for @checklist.
   ///
   /// In en, this message translates to:
   /// **'Checklist'**
   String get checklist;
+
+  /// No description provided for @taskChecklists.
+  ///
+  /// In en, this message translates to:
+  /// **'Checklists'**
+  String get taskChecklists;
+
+  /// No description provided for @taskNewChecklist.
+  ///
+  /// In en, this message translates to:
+  /// **'New checklist'**
+  String get taskNewChecklist;
+
+  /// No description provided for @taskAddChecklist.
+  ///
+  /// In en, this message translates to:
+  /// **'Add checklist'**
+  String get taskAddChecklist;
+
+  /// No description provided for @taskNoChecklists.
+  ///
+  /// In en, this message translates to:
+  /// **'No checklists'**
+  String get taskNoChecklists;
 
   /// No description provided for @actionItems.
   ///

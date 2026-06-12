@@ -44,4 +44,10 @@ class TaskEditorText {
   String get reminders => l10n?.taskReminders ?? 'Напоминания';
   String get duration => l10n?.taskDuration ?? 'Оценка времени (мин)';
   String get details => l10n?.taskDetails ?? 'Описание';
+  String get comments => l10n?.taskComments ?? 'Комментарии';
+  String get noComments => l10n?.taskNoComments ?? 'Комментариев нет';
+  String get checklists => l10n?.taskChecklists ?? 'Чеклисты';
+  String get newChecklist => l10n?.taskNewChecklist ?? 'Новый чеклист';
+  String get addChecklist => l10n?.taskAddChecklist ?? 'Добавить чеклист';
+  String get noChecklists => l10n?.taskNoChecklists ?? 'Чеклистов нет';
 }

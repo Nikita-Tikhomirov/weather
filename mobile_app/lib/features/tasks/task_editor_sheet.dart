@@ -3734,6 +3734,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   Widget _buildWorkTab() {
+    final text = TaskEditorText.of(context);
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
       children: [
@@ -3745,21 +3746,21 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           minLines: 3,
           maxLines: 7,
           decoration: InputDecoration(
-            labelText: TaskEditorText.of(context).details,
+            labelText: text.details,
             alignLabelWithHint: true,
           ),
         ),
         const SizedBox(height: 18),
         _SectionHeader(
           icon: Icons.forum_outlined,
-          title: 'Комментарии',
+          title: text.comments,
           trailing: '${_collaboration.commentCount}',
         ),
         const SizedBox(height: 10),
         if (_collaboration.comments.isEmpty)
-          const _EmptyLine(
+          _EmptyLine(
             icon: Icons.chat_bubble_outline,
-            text: 'Комментариев нет',
+            text: text.noComments,
           )
         else
           ..._collaboration.comments.map(
@@ -3801,7 +3802,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         const SizedBox(height: 22),
         _SectionHeader(
           icon: Icons.checklist,
-          title: 'Чеклисты',
+          title: text.checklists,
           trailing:
               '${_collaboration.checklistDoneCount}/${_collaboration.checklistTotalCount}',
         ),
@@ -3812,13 +3813,13 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
               child: TextField(
                 controller: _checklistTitleCtl,
                 enabled: _canEdit,
-                decoration: const InputDecoration(labelText: 'Новый чеклист'),
+                decoration: InputDecoration(labelText: text.newChecklist),
                 onSubmitted: (_) => _addChecklist(),
               ),
             ),
             const SizedBox(width: 8),
             IconButton.filledTonal(
-              tooltip: 'Добавить чеклист',
+              tooltip: text.addChecklist,
               onPressed: _canEdit ? _addChecklist : null,
               icon: const Icon(Icons.add),
             ),
@@ -3826,9 +3827,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         ),
         const SizedBox(height: 10),
         if (_collaboration.checklists.isEmpty)
-          const _EmptyLine(
+          _EmptyLine(
             icon: Icons.playlist_add_check,
-            text: 'Чеклистов нет',
+            text: text.noChecklists,
           )
         else
           ..._collaboration.checklists.map(

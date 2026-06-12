@@ -2145,6 +2145,52 @@ TASK_CARD_ACTIONS_JSON:
       expect(checklistItem.value, isTrue);
     });
 
+    testWidgets('uses localized comments and checklist labels', (tester) async {
+      final store = _FakeTaskStore();
+      store.selectedDate.value = DateTime(2026, 5, 31);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  showTaskEditorSheet(
+                    context: context,
+                    store: store,
+                    knownContacts: const [],
+                    contactLabel: (c) => c.displayName,
+                    dateKey: (d) => d.toIso8601String(),
+                    onSaved: () async {},
+                  );
+                },
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Work'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Comments'), findsOneWidget);
+      expect(find.text('No comments'), findsOneWidget);
+      expect(find.text('Checklists'), findsOneWidget);
+      expect(find.text('New checklist'), findsOneWidget);
+      expect(find.byTooltip('Add checklist'), findsOneWidget);
+      expect(find.text('No checklists'), findsOneWidget);
+      expect(find.text('Комментарии'), findsNothing);
+      expect(find.text('Чеклисты'), findsNothing);
+      expect(find.text('Новый чеклист'), findsNothing);
+    });
+
     testWidgets('autosaves comment without pressing save', (tester) async {
       final repository = _FakeTaskRepository();
       repository.tasks.add(_editableTask);

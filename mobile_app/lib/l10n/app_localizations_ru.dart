@@ -260,7 +260,25 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskSummary => 'Резюме';
 
   @override
+  String get taskComments => 'Комментарии';
+
+  @override
+  String get taskNoComments => 'Комментариев нет';
+
+  @override
   String get checklist => 'Чеклист';
+
+  @override
+  String get taskChecklists => 'Чеклисты';
+
+  @override
+  String get taskNewChecklist => 'Новый чеклист';
+
+  @override
+  String get taskAddChecklist => 'Добавить чеклист';
+
+  @override
+  String get taskNoChecklists => 'Чеклистов нет';
 
   @override
   String get actionItems => 'Action items';

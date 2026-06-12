@@ -260,7 +260,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskSummary => 'Summary';
 
   @override
+  String get taskComments => 'Comments';
+
+  @override
+  String get taskNoComments => 'No comments';
+
+  @override
   String get checklist => 'Checklist';
+
+  @override
+  String get taskChecklists => 'Checklists';
+
+  @override
+  String get taskNewChecklist => 'New checklist';
+
+  @override
+  String get taskAddChecklist => 'Add checklist';
+
+  @override
+  String get taskNoChecklists => 'No checklists';
 
   @override
   String get actionItems => 'Action items';
