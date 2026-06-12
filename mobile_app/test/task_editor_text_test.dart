@@ -10,6 +10,9 @@ void main() {
     expect(text.newTask, 'Новая задача');
     expect(text.settingsTab, 'Настройки');
     expect(text.title, 'Название');
+    expect(text.openPhotoAttachment, 'Открыть фото');
+    expect(text.openFileAttachment, 'Открыть файл');
+    expect(text.removeAttachment, 'Убрать вложение');
   });
 
   testWidgets('reads English labels from AppLocalizations', (tester) async {
@@ -33,5 +36,8 @@ void main() {
     expect(text.settingsTab, 'Settings');
     expect(text.title, 'Title');
     expect(text.selectProject, 'Select project');
+    expect(text.openPhotoAttachment, 'Open photo');
+    expect(text.openFileAttachment, 'Open file');
+    expect(text.removeAttachment, 'Remove attachment');
   });
 }

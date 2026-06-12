@@ -400,6 +400,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskDeleteCommentMessage => 'Комментарий будет удалён из карточки задачи.';
 
   @override
+  String get taskOpenPhotoAttachment => 'Открыть фото';
+
+  @override
+  String get taskOpenFileAttachment => 'Открыть файл';
+
+  @override
+  String get taskRemoveAttachment => 'Убрать вложение';
+
+  @override
   String get taskNoComments => 'Комментариев нет';
 
   @override

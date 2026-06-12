@@ -351,6 +351,7 @@ class _PendingPhotoAttachment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = TaskEditorText.of(context);
     final bytes = _decodeAttachmentBytes(attachment.dataBase64);
     final imageUrl = _absoluteAttachmentUrl(attachment.assetUrl, assetBaseUrl);
     final uploadProgress = progress;
@@ -363,7 +364,7 @@ class _PendingPhotoAttachment extends StatelessWidget {
           Stack(
             children: [
               Tooltip(
-                message: 'Открыть фото',
+                message: text.openPhotoAttachment,
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
@@ -386,7 +387,7 @@ class _PendingPhotoAttachment extends StatelessWidget {
                 top: 2,
                 right: 2,
                 child: IconButton.filledTonal(
-                  tooltip: 'Убрать вложение',
+                  tooltip: text.removeAttachment,
                   style: IconButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -445,6 +446,7 @@ class _PendingFileAttachment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = TaskEditorText.of(context);
     final uploadProgress = progress;
     return Container(
       constraints: const BoxConstraints(maxWidth: 240),
@@ -470,7 +472,7 @@ class _PendingFileAttachment extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               IconButton(
-                tooltip: 'Убрать вложение',
+                tooltip: text.removeAttachment,
                 visualDensity: VisualDensity.compact,
                 onPressed: onDeleted,
                 icon: const Icon(Icons.close, size: 16),
@@ -667,12 +669,13 @@ class _AttachmentPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = TaskEditorText.of(context);
     if (attachment.isPhoto) {
       final bytes = _decodeAttachmentBytes(attachment.dataBase64);
       final imageUrl =
           _absoluteAttachmentUrl(attachment.assetUrl, assetBaseUrl);
       return Tooltip(
-        message: 'Открыть фото',
+        message: text.openPhotoAttachment,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () => onPhotoTap(attachment),
@@ -693,7 +696,8 @@ class _AttachmentPreview extends StatelessWidget {
       );
     }
     return Tooltip(
-      message: attachment.assetUrl.isEmpty ? 'Файл' : 'Открыть файл',
+      message:
+          attachment.assetUrl.isEmpty ? text.file : text.openFileAttachment,
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
         onTap: attachment.assetUrl.isEmpty ? null : () => onFileTap(attachment),

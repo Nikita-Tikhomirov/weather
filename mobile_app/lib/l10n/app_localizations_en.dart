@@ -400,6 +400,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskDeleteCommentMessage => 'The comment will be removed from the task card.';
 
   @override
+  String get taskOpenPhotoAttachment => 'Open photo';
+
+  @override
+  String get taskOpenFileAttachment => 'Open file';
+
+  @override
+  String get taskRemoveAttachment => 'Remove attachment';
+
+  @override
   String get taskNoComments => 'No comments';
 
   @override

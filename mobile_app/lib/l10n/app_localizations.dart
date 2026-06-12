@@ -869,6 +869,24 @@ abstract class AppLocalizations {
   /// **'The comment will be removed from the task card.'**
   String get taskDeleteCommentMessage;
 
+  /// No description provided for @taskOpenPhotoAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Open photo'**
+  String get taskOpenPhotoAttachment;
+
+  /// No description provided for @taskOpenFileAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Open file'**
+  String get taskOpenFileAttachment;
+
+  /// No description provided for @taskRemoveAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove attachment'**
+  String get taskRemoveAttachment;
+
   /// No description provided for @taskNoComments.
   ///
   /// In en, this message translates to:

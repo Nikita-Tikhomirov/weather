@@ -116,6 +116,12 @@ class TaskEditorText {
   String get file => l10n?.file ?? 'Файл';
   String get send => l10n?.send ?? 'Отправить';
   String get attachment => l10n?.attachment ?? 'Вложение';
+  String get openPhotoAttachment =>
+      l10n?.taskOpenPhotoAttachment ?? 'Открыть фото';
+  String get openFileAttachment =>
+      l10n?.taskOpenFileAttachment ?? 'Открыть файл';
+  String get removeAttachment =>
+      l10n?.taskRemoveAttachment ?? 'Убрать вложение';
   String get reply => l10n?.reply ?? 'Ответить';
   String get edit => l10n?.edit ?? 'Редактировать';
   String get delete => l10n?.delete ?? 'Удалить';
