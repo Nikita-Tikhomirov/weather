@@ -1865,6 +1865,12 @@ abstract class AppLocalizations {
   /// **'No stickers loaded yet'**
   String get noStickersLoaded;
 
+  /// No description provided for @stickerUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Sticker unavailable'**
+  String get stickerUnavailable;
+
   /// No description provided for @noSearchResults.
   ///
   /// In en, this message translates to:

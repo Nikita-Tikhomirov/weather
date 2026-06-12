@@ -936,6 +936,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get noStickersLoaded => 'Стикеры еще не загружены';
 
   @override
+  String get stickerUnavailable => 'Стикер недоступен';
+
+  @override
   String get noSearchResults => 'Ничего не найдено';
 
   @override

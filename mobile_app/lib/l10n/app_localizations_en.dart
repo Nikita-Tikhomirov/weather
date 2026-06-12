@@ -936,6 +936,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noStickersLoaded => 'No stickers loaded yet';
 
   @override
+  String get stickerUnavailable => 'Sticker unavailable';
+
+  @override
   String get noSearchResults => 'No results found';
 
   @override

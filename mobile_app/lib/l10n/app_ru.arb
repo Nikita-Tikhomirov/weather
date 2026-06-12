@@ -425,6 +425,7 @@
   "sticker": "Стикер",
   "stickers": "Стикеры",
   "noStickersLoaded": "Стикеры еще не загружены",
+  "stickerUnavailable": "Стикер недоступен",
   "noSearchResults": "Ничего не найдено",
   "allStyles": "Все стили",
   "allTopics": "Все темы",

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
+
 /// Renders sticker content for sticker messages.
 class ChatStickerBubble extends StatelessWidget {
   const ChatStickerBubble({
@@ -39,7 +41,10 @@ class _StickerUnavailable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = text.trim().isEmpty ? 'Стикер недоступен' : text.trim();
+    final l10n = AppLocalizations.of(context);
+    final label = text.trim().isEmpty
+        ? l10n?.stickerUnavailable ?? 'Стикер недоступен'
+        : text.trim();
     return SizedBox(
       width: size,
       height: size,

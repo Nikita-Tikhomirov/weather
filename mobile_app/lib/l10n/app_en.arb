@@ -425,6 +425,7 @@
   "sticker": "Sticker",
   "stickers": "Stickers",
   "noStickersLoaded": "No stickers loaded yet",
+  "stickerUnavailable": "Sticker unavailable",
   "noSearchResults": "No results found",
   "allStyles": "All styles",
   "allTopics": "All topics",
