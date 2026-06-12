@@ -366,7 +366,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     if (!_canEdit) return;
     if (_saving) return;
     if (_selectedProjectId.isEmpty && !automatic) {
-      _showSnack('Выберите проект');
+      _showSnack(TaskEditorText.of(context).selectProject);
       return;
     }
 
