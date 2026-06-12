@@ -603,7 +603,7 @@ class _CommentBubble extends StatelessWidget {
             Text(
               comment.editedAt.isEmpty
                   ? _shortDateTime(comment.createdAt)
-                  : '${_shortDateTime(comment.createdAt)} · изменено',
+                  : '${_shortDateTime(comment.createdAt)} · ${text.edited}',
               style: TextStyle(fontSize: 11, color: cs.outline),
             ),
           ],

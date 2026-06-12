@@ -3301,6 +3301,7 @@ TASK_CARD_ACTIONS_JSON:
               authorProfile: 'test_user',
               text: 'Need review',
               createdAt: '2026-06-01T10:00:00',
+              editedAt: '2026-06-01T10:02:00',
             ),
             TaskComment(
               id: 'comment-deleted',
@@ -3338,8 +3339,10 @@ TASK_CARD_ACTIONS_JSON:
       await tester.pumpAndSettle();
 
       expect(find.byTooltip('Comment actions'), findsOneWidget);
+      expect(find.textContaining('· edited'), findsOneWidget);
       expect(find.text('Comment deleted'), findsOneWidget);
       expect(find.byTooltip('Действия комментария'), findsNothing);
+      expect(find.textContaining('изменено'), findsNothing);
       expect(find.text('Комментарий удалён'), findsNothing);
 
       await tester.ensureVisible(find.byTooltip('Comment actions'));

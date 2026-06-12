@@ -120,6 +120,7 @@ class TaskEditorText {
       l10n?.taskDeleteCommentMessage ??
       'Комментарий будет удалён из карточки задачи.';
   String get cancelCommentAction => l10n?.taskCancelCommentAction ?? 'Отменить';
+  String get edited => l10n?.edited ?? 'изменено';
   String get photo => l10n?.photo ?? 'Фото';
   String get file => l10n?.file ?? 'Файл';
   String get send => l10n?.send ?? 'Отправить';
