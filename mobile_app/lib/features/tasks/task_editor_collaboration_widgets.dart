@@ -43,6 +43,7 @@ class _AgentModeDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = TaskEditorText.of(context);
     final safeValue = values.contains(value) ? value : '';
     return DropdownButtonFormField<String>(
       key: ValueKey('agent-mode-$label-$safeValue'),
@@ -56,7 +57,7 @@ class _AgentModeDropdown extends StatelessWidget {
         for (final item in values)
           DropdownMenuItem<String>(
             value: item,
-            child: Text(item.isEmpty ? 'по умолчанию' : item),
+            child: Text(item.isEmpty ? text.defaultValue : item),
           ),
       ],
       onChanged: (value) => onChanged(value ?? ''),

@@ -835,8 +835,10 @@ void main() {
       expect(find.text('Model'), findsOneWidget);
       expect(find.text('Confirmations'), findsOneWidget);
       expect(find.text('Tool auto mode'), findsOneWidget);
+      expect(find.text('default'), findsWidgets);
       expect(find.text('Режим запуска'), findsNothing);
       expect(find.text('Провайдер'), findsNothing);
+      expect(find.text('по умолчанию'), findsNothing);
 
       await tester.drag(agentList, const Offset(0, -700));
       await tester.pumpAndSettle();

@@ -45,6 +45,7 @@ class TaskEditorText {
   String get launchManual => l10n?.taskLaunchManual ?? 'Ручной';
   String get agentProvider => l10n?.taskAgentProvider ?? 'Провайдер';
   String get agentModel => l10n?.taskAgentModel ?? 'Модель';
+  String get defaultValue => l10n?.defaultValue ?? 'по умолчанию';
   String get agentConfirmations =>
       l10n?.taskAgentConfirmations ?? 'Подтверждения';
   String get agentToolAutoMode =>
