@@ -391,6 +391,24 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskNoChecklists => 'Чеклистов нет';
 
   @override
+  String get taskEditChecklist => 'Редактировать чеклист';
+
+  @override
+  String get taskDeleteChecklist => 'Удалить чеклист';
+
+  @override
+  String get taskEditChecklistItem => 'Редактировать пункт';
+
+  @override
+  String get taskDeleteChecklistItem => 'Удалить пункт';
+
+  @override
+  String get taskChecklistItem => 'Пункт';
+
+  @override
+  String get taskAddChecklistItem => 'Добавить пункт';
+
+  @override
   String get actionItems => 'Action items';
 
   @override

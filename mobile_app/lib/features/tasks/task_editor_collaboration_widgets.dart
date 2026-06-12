@@ -749,6 +749,7 @@ class _ChecklistPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = TaskEditorText.of(context);
     final progress = checklist.totalCount == 0
         ? 0.0
         : checklist.doneCount / checklist.totalCount;
@@ -773,13 +774,13 @@ class _ChecklistPanel extends StatelessWidget {
               Text('${checklist.doneCount}/${checklist.totalCount}'),
               const SizedBox(width: 4),
               IconButton(
-                tooltip: 'Редактировать чеклист',
+                tooltip: text.editChecklist,
                 visualDensity: VisualDensity.compact,
                 onPressed: enabled ? onRenameChecklist : null,
                 icon: const Icon(Icons.edit_outlined, size: 18),
               ),
               IconButton(
-                tooltip: 'Удалить чеклист',
+                tooltip: text.deleteChecklist,
                 visualDensity: VisualDensity.compact,
                 onPressed: enabled ? onDeleteChecklist : null,
                 icon: const Icon(Icons.delete_outline, size: 18),
@@ -808,13 +809,13 @@ class _ChecklistPanel extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          tooltip: 'Редактировать пункт',
+                          tooltip: text.editChecklistItem,
                           visualDensity: VisualDensity.compact,
                           onPressed: () => onRenameItem(item),
                           icon: const Icon(Icons.edit_outlined, size: 18),
                         ),
                         IconButton(
-                          tooltip: 'Удалить пункт',
+                          tooltip: text.deleteChecklistItem,
                           visualDensity: VisualDensity.compact,
                           onPressed: () => onDeleteItem(item),
                           icon: const Icon(Icons.delete_outline, size: 18),
@@ -832,13 +833,13 @@ class _ChecklistPanel extends StatelessWidget {
                 child: TextField(
                   controller: itemController,
                   enabled: enabled,
-                  decoration: const InputDecoration(labelText: 'Пункт'),
+                  decoration: InputDecoration(labelText: text.checklistItem),
                   onSubmitted: (_) => onAddItem(),
                 ),
               ),
               const SizedBox(width: 8),
               IconButton(
-                tooltip: 'Добавить пункт',
+                tooltip: text.addChecklistItem,
                 onPressed: enabled ? onAddItem : null,
                 icon: const Icon(Icons.add_task),
               ),

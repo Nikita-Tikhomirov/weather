@@ -2331,6 +2331,69 @@ TASK_CARD_ACTIONS_JSON:
       expect(find.text('Новый чеклист'), findsNothing);
     });
 
+    testWidgets('uses localized checklist item controls', (tester) async {
+      final task = _editableTask.copyWith(
+        collaboration: const TaskCollaboration(
+          checklists: [
+            TaskChecklist(
+              id: 'checklist-localized',
+              title: 'Launch',
+              createdBy: 'test_user',
+              createdAt: '2026-06-01T10:00:00',
+              items: [
+                TaskChecklistItem(
+                  id: 'item-localized',
+                  text: 'Existing item',
+                  createdBy: 'test_user',
+                  createdAt: '2026-06-01T10:00:00',
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+      final repository = _FakeTaskRepository();
+      repository.tasks.add(task);
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: task,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Work'));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Launch'),
+        240,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Edit checklist'), findsOneWidget);
+      expect(find.byTooltip('Delete checklist'), findsOneWidget);
+      expect(find.byTooltip('Edit item'), findsOneWidget);
+      expect(find.byTooltip('Delete item'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Item'), findsOneWidget);
+      expect(find.byTooltip('Add item'), findsOneWidget);
+      expect(find.byTooltip('Редактировать чеклист'), findsNothing);
+      expect(find.byTooltip('Удалить пункт'), findsNothing);
+      expect(find.widgetWithText(TextField, 'Пункт'), findsNothing);
+    });
+
     testWidgets('autosaves comment without pressing save', (tester) async {
       final repository = _FakeTaskRepository();
       repository.tasks.add(_editableTask);

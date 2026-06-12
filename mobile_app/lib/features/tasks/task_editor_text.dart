@@ -101,4 +101,13 @@ class TaskEditorText {
   String get newChecklist => l10n?.taskNewChecklist ?? 'Новый чеклист';
   String get addChecklist => l10n?.taskAddChecklist ?? 'Добавить чеклист';
   String get noChecklists => l10n?.taskNoChecklists ?? 'Чеклистов нет';
+  String get editChecklist =>
+      l10n?.taskEditChecklist ?? 'Редактировать чеклист';
+  String get deleteChecklist => l10n?.taskDeleteChecklist ?? 'Удалить чеклист';
+  String get editChecklistItem =>
+      l10n?.taskEditChecklistItem ?? 'Редактировать пункт';
+  String get deleteChecklistItem =>
+      l10n?.taskDeleteChecklistItem ?? 'Удалить пункт';
+  String get checklistItem => l10n?.taskChecklistItem ?? 'Пункт';
+  String get addChecklistItem => l10n?.taskAddChecklistItem ?? 'Добавить пункт';
 }

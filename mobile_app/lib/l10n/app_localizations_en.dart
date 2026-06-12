@@ -391,6 +391,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskNoChecklists => 'No checklists';
 
   @override
+  String get taskEditChecklist => 'Edit checklist';
+
+  @override
+  String get taskDeleteChecklist => 'Delete checklist';
+
+  @override
+  String get taskEditChecklistItem => 'Edit item';
+
+  @override
+  String get taskDeleteChecklistItem => 'Delete item';
+
+  @override
+  String get taskChecklistItem => 'Item';
+
+  @override
+  String get taskAddChecklistItem => 'Add item';
+
+  @override
   String get actionItems => 'Action items';
 
   @override

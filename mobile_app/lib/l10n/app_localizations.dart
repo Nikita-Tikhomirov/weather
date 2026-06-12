@@ -851,6 +851,42 @@ abstract class AppLocalizations {
   /// **'No checklists'**
   String get taskNoChecklists;
 
+  /// No description provided for @taskEditChecklist.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit checklist'**
+  String get taskEditChecklist;
+
+  /// No description provided for @taskDeleteChecklist.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete checklist'**
+  String get taskDeleteChecklist;
+
+  /// No description provided for @taskEditChecklistItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit item'**
+  String get taskEditChecklistItem;
+
+  /// No description provided for @taskDeleteChecklistItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete item'**
+  String get taskDeleteChecklistItem;
+
+  /// No description provided for @taskChecklistItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Item'**
+  String get taskChecklistItem;
+
+  /// No description provided for @taskAddChecklistItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Add item'**
+  String get taskAddChecklistItem;
+
   /// No description provided for @actionItems.
   ///
   /// In en, this message translates to:
