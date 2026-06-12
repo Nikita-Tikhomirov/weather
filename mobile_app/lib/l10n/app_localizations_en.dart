@@ -290,8 +290,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskWorkspaceNotSelected => 'Not selected';
 
   @override
-  String get taskWorkspaceListNotLoaded =>
-      'CodeWhale workspace list is not loaded';
+  String get taskWorkspaceListNotLoaded => 'CodeWhale workspace list is not loaded';
 
   @override
   String get taskLaunchMode => 'Launch mode';
@@ -350,8 +349,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskWorkStep => 'Task work';
 
   @override
-  String get taskWorkStepSubtitle =>
-      'Checklists, comments, and task files are required';
+  String get taskWorkStepSubtitle => 'Checklists, comments, and task files are required';
 
   @override
   String get taskTitle => 'Title';
@@ -561,8 +559,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noGroupsYetAction => 'No groups yet. Press + to create one.';
 
   @override
-  String get projectControlCreateProjectHint =>
-      'Create a project to connect chat and agent.';
+  String get projectControlCreateProjectHint => 'Create a project to connect chat and agent.';
 
   @override
   String get projectControlChatsNotLinked => 'No linked chats';
@@ -598,8 +595,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectControlLinkedChats => 'Linked chats';
 
   @override
-  String get projectControlAssignGroupForChat =>
-      'Assign a group to the project to create a project chat.';
+  String get projectControlAssignGroupForChat => 'Assign a group to the project to create a project chat.';
 
   @override
   String get projectControlCreateChat => 'Create project chat';
@@ -634,12 +630,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeProjectWorkspaceNotSelected => 'Workspace is not selected';
 
   @override
-  String get homeProjectWorkspaceHint =>
-      'Select workspace in Project Control Center';
+  String get homeProjectWorkspaceHint => 'Select workspace in Project Control Center';
 
   @override
-  String get homeProjectAgentAvailableByButton =>
-      'Agent is available from the button';
+  String get homeProjectAgentAvailableByButton => 'Agent is available from the button';
 
   @override
   String get homeProjectAgentNoAccess => 'No access to AI agent';
@@ -682,8 +676,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clearWorkspaceBinding => 'Clear binding';
 
   @override
-  String get projectAgentDisabledAfterClearing =>
-      'The project agent will be disabled.';
+  String get projectAgentDisabledAfterClearing => 'The project agent will be disabled.';
 
   @override
   String get noWorkspacesFound => 'No workspaces found.';
@@ -730,8 +723,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get noAvailableWorkspacesToSelect =>
-      'No available workspaces to select.';
+  String get noAvailableWorkspacesToSelect => 'No available workspaces to select.';
 
   @override
   String get workspaceSettingLoading => 'Loading workspace setting...';
@@ -756,15 +748,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteProjectTitle => 'Delete project?';
 
   @override
-  String get deleteProjectMessage =>
-      'The project and group links will be deleted.';
+  String get deleteProjectMessage => 'The project and group links will be deleted.';
 
   @override
   String get deleteGroupTitle => 'Delete group?';
 
   @override
-  String get deleteGroupMessage =>
-      'The group will be removed from all projects.';
+  String get deleteGroupMessage => 'The group will be removed from all projects.';
 
   @override
   String get connecting => 'Connecting...';
@@ -815,15 +805,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get administration => 'Administration';
 
   @override
-  String get profileAdminSubtitle =>
-      'Users, projects, workspaces, and agent roles';
+  String get profileAdminSubtitle => 'Users, projects, workspaces, and agent roles';
 
   @override
   String get adminNoAccess => 'No administration access';
 
   @override
-  String get adminBridgeNotConnected =>
-      'CodeWhale workspaces are not connected';
+  String get adminBridgeNotConnected => 'CodeWhale workspaces are not connected';
 
   @override
   String get adminCodeWhaleDisabled => 'CodeWhale disabled';
@@ -877,22 +865,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminRoleWorkspaceUser => 'Workspace member';
 
   @override
-  String get adminRoleWorkspaceUserDescription =>
-      'Can view the workspace and use AI.';
+  String get adminRoleWorkspaceUserDescription => 'Can view the workspace and use AI.';
 
   @override
   String get adminRoleAgentOperator => 'Agent operator';
 
   @override
-  String get adminRoleAgentOperatorDescription =>
-      'Can launch agent chats from tasks and run work in them.';
+  String get adminRoleAgentOperatorDescription => 'Can launch agent chats from tasks and run work in them.';
 
   @override
   String get adminRoleWorkspaceAdmin => 'Workspace administrator';
 
   @override
-  String get adminRoleWorkspaceAdminDescription =>
-      'Can manage access and advanced agent actions.';
+  String get adminRoleWorkspaceAdminDescription => 'Can manage access and advanced agent actions.';
 
   @override
   String avatarUploadFailed(Object error) {
@@ -995,6 +980,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get createWorkspace => 'Create workspace';
+
+  @override
+  String get codeWhaleConnecting => 'Connecting to CodeWhale...';
+
+  @override
+  String get codeWhaleErrorFallback => 'CodeWhale error';
+
+  @override
+  String get codeWhaleThinking => 'CodeWhale is thinking...';
+
+  @override
+  String get codeWhaleStartingEvent => 'Starting CodeWhale';
+
+  @override
+  String codeWhaleFileAttachedEvent(Object path) {
+    return 'File attached: $path';
+  }
+
+  @override
+  String get codeWhaleFileAttachedStatus => 'File attached';
+
+  @override
+  String get codeWhaleReadyStatus => 'CodeWhale ready';
+
+  @override
+  String get codeWhaleNewWorkspaceTitle => 'New workspace';
+
+  @override
+  String get workspaceNameLabel => 'Name';
+
+  @override
+  String get codeWhalePhotoCommentTitle => 'Photo comment';
+
+  @override
+  String get codeWhaleDocumentCommentTitle => 'Document comment';
+
+  @override
+  String get codeWhaleUploadPromptHint => 'Empty = save only';
 
   @override
   String get noWorkspacesYet => 'No workspaces yet';
@@ -1217,8 +1240,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationChannelName => 'Notifications';
 
   @override
-  String get notificationChannelDesc =>
-      'Push notifications for tasks and reminders';
+  String get notificationChannelDesc => 'Push notifications for tasks and reminders';
 
   @override
   String get notificationNewMessage => 'New message';

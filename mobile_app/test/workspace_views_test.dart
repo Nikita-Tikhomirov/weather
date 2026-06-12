@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:family_todo_mobile/features/workspaces/codewhale_workspaces_page.dart';
 import 'package:family_todo_mobile/features/workspaces/session_chat_view.dart';
 import 'package:family_todo_mobile/features/workspaces/session_management_view.dart';
 import 'package:family_todo_mobile/features/workspaces/workspace_detail_view.dart';
@@ -7,6 +10,7 @@ import 'package:family_todo_mobile/l10n/app_localizations.dart';
 import 'package:family_todo_mobile/models/project_file.dart';
 import 'package:family_todo_mobile/models/workspace_item.dart';
 import 'package:family_todo_mobile/models/workspace_session.dart';
+import 'package:family_todo_mobile/services/codewhale_bridge_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -78,6 +82,44 @@ void main() {
     expect(find.byTooltip('Refresh'), findsOneWidget);
     expect(find.byTooltip('Attach folder'), findsOneWidget);
     expect(find.byTooltip('Create workspace'), findsOneWidget);
+  });
+
+  testWidgets('CodeWhale page uses localized workspace prompt labels',
+      (tester) async {
+    final service = _FakeCodeWhaleBridgeClient();
+
+    await tester.pumpWidget(
+      _localizedTestApp(
+        home: CodeWhaleWorkspacesPage(
+          bridgeFactory: ({
+            required onMessage,
+            required onStatusChange,
+          }) {
+            service
+              ..onMessage = onMessage
+              ..onStatusChange = onStatusChange;
+            return service;
+          },
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Create workspace'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('New workspace'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField && widget.decoration?.hintText == 'Name',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('Done'), findsOneWidget);
+    expect(find.text('Новое рабочее пространство'), findsNothing);
+    expect(find.text('Название'), findsNothing);
   });
 
   testWidgets('workspace detail shows sessions and opens management',
@@ -750,4 +792,95 @@ ScrollableState _mainScrollable(WidgetTester tester) {
   return tester.stateList<ScrollableState>(find.byType(Scrollable)).firstWhere(
         (state) => state.widget.controller != null,
       );
+}
+
+class _FakeCodeWhaleBridgeClient implements CodeWhaleBridgeClient {
+  late void Function(CodeWhaleBridgeMessage message) onMessage;
+  late void Function(bool connected, String status) onStatusChange;
+
+  @override
+  Future<bool> connect() async => true;
+
+  @override
+  void requestWorkspaceList() {}
+
+  @override
+  void requestCodeWhaleCommands() {}
+
+  @override
+  void requestWorkspaceFolderList({String path = ''}) {}
+
+  @override
+  void requestWorkspaceFileList(String workspaceId, {String path = ''}) {}
+
+  @override
+  void requestWorkspaceFileRead(String workspaceId, String path) {}
+
+  @override
+  void createWorkspace(String name) {}
+
+  @override
+  void attachWorkspace(String name, String path) {}
+
+  @override
+  void requestSessionList(String workspaceId) {}
+
+  @override
+  void createSession(
+    String workspaceId, {
+    String title = '',
+    Map<String, dynamic> taskCard = const {},
+  }) {}
+
+  @override
+  void updateSessionTaskCard({
+    required String workspaceId,
+    required String sessionId,
+    Map<String, dynamic> taskCard = const {},
+  }) {}
+
+  @override
+  void openSession(String workspaceId, String sessionId) {}
+
+  @override
+  void startSession(String workspaceId, String sessionId) {}
+
+  @override
+  void stopSession(String workspaceId, String sessionId) {}
+
+  @override
+  void killSession(String workspaceId, String sessionId) {}
+
+  @override
+  void updateSessionSettings({
+    required String workspaceId,
+    required String sessionId,
+    String provider = '',
+    String model = '',
+    String approvalPolicy = '',
+    String sandboxMode = '',
+    bool autoMode = false,
+  }) {}
+
+  @override
+  void sendSessionMessage(String workspaceId, String sessionId, String text) {}
+
+  @override
+  void uploadSessionFile({
+    required String workspaceId,
+    required String sessionId,
+    required Uint8List bytes,
+    required String filename,
+    required String mimeType,
+    String caption = '',
+  }) {}
+
+  @override
+  void requestSessionHealth(String workspaceId, String sessionId) {}
+
+  @override
+  void pollSessionTask(String workspaceId, String sessionId, String taskId) {}
+
+  @override
+  void dispose() {}
 }

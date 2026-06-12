@@ -453,6 +453,23 @@
   "workspaces": "Workspaces",
   "attachFolder": "Attach folder",
   "createWorkspace": "Create workspace",
+  "codeWhaleConnecting": "Connecting to CodeWhale...",
+  "codeWhaleErrorFallback": "CodeWhale error",
+  "codeWhaleThinking": "CodeWhale is thinking...",
+  "codeWhaleStartingEvent": "Starting CodeWhale",
+  "codeWhaleFileAttachedEvent": "File attached: {path}",
+  "@codeWhaleFileAttachedEvent": {
+    "placeholders": {
+      "path": {}
+    }
+  },
+  "codeWhaleFileAttachedStatus": "File attached",
+  "codeWhaleReadyStatus": "CodeWhale ready",
+  "codeWhaleNewWorkspaceTitle": "New workspace",
+  "workspaceNameLabel": "Name",
+  "codeWhalePhotoCommentTitle": "Photo comment",
+  "codeWhaleDocumentCommentTitle": "Document comment",
+  "codeWhaleUploadPromptHint": "Empty = save only",
   "noWorkspacesYet": "No workspaces yet",
   "back": "Back",
   "createSession": "Create session",

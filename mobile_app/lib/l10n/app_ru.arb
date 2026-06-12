@@ -453,6 +453,23 @@
   "workspaces": "Рабочие пространства",
   "attachFolder": "Подключить папку",
   "createWorkspace": "Создать рабочее пространство",
+  "codeWhaleConnecting": "Подключение к CodeWhale...",
+  "codeWhaleErrorFallback": "Ошибка CodeWhale",
+  "codeWhaleThinking": "CodeWhale думает...",
+  "codeWhaleStartingEvent": "Запуск CodeWhale",
+  "codeWhaleFileAttachedEvent": "Файл прикреплен: {path}",
+  "@codeWhaleFileAttachedEvent": {
+    "placeholders": {
+      "path": {}
+    }
+  },
+  "codeWhaleFileAttachedStatus": "Файл прикреплен",
+  "codeWhaleReadyStatus": "CodeWhale готов",
+  "codeWhaleNewWorkspaceTitle": "Новое рабочее пространство",
+  "workspaceNameLabel": "Название",
+  "codeWhalePhotoCommentTitle": "Комментарий к фото",
+  "codeWhaleDocumentCommentTitle": "Комментарий к документу",
+  "codeWhaleUploadPromptHint": "Пусто = только сохранить",
   "noWorkspacesYet": "Рабочих пространств пока нет",
   "back": "Назад",
   "createSession": "Создать сессию",

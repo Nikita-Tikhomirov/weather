@@ -151,7 +151,61 @@ class CodeWhaleBridgeMessage {
   }
 }
 
-class CodeWhaleBridgeService {
+abstract class CodeWhaleBridgeClient {
+  Future<bool> connect();
+  void requestCodeWhaleCommands();
+  void requestWorkspaceList();
+  void requestWorkspaceFolderList({String path = ''});
+  void requestWorkspaceFileList(String workspaceId, {String path = ''});
+  void requestWorkspaceFileRead(String workspaceId, String path);
+  void createWorkspace(String name);
+  void attachWorkspace(String name, String path);
+  void requestSessionList(String workspaceId);
+
+  void createSession(
+    String workspaceId, {
+    String title = '',
+    Map<String, dynamic> taskCard = const {},
+  });
+
+  void updateSessionTaskCard({
+    required String workspaceId,
+    required String sessionId,
+    Map<String, dynamic> taskCard = const {},
+  });
+
+  void openSession(String workspaceId, String sessionId);
+  void startSession(String workspaceId, String sessionId);
+  void stopSession(String workspaceId, String sessionId);
+  void killSession(String workspaceId, String sessionId);
+
+  void updateSessionSettings({
+    required String workspaceId,
+    required String sessionId,
+    String provider = '',
+    String model = '',
+    String approvalPolicy = '',
+    String sandboxMode = '',
+    bool autoMode = false,
+  });
+
+  void sendSessionMessage(String workspaceId, String sessionId, String text);
+
+  void uploadSessionFile({
+    required String workspaceId,
+    required String sessionId,
+    required Uint8List bytes,
+    required String filename,
+    required String mimeType,
+    String caption = '',
+  });
+
+  void requestSessionHealth(String workspaceId, String sessionId);
+  void pollSessionTask(String workspaceId, String sessionId, String taskId);
+  void dispose();
+}
+
+class CodeWhaleBridgeService implements CodeWhaleBridgeClient {
   CodeWhaleBridgeService({
     required this.onMessage,
     required this.onStatusChange,
@@ -178,6 +232,7 @@ class CodeWhaleBridgeService {
         AppConfig.bridgeDefaultHost;
   }
 
+  @override
   Future<bool> connect() async {
     if (_disposed) {
       return false;
@@ -246,6 +301,7 @@ class CodeWhaleBridgeService {
     }
   }
 
+  @override
   void requestCodeWhaleCommands() {
     _sendCommand({'type': 'codewhale_command_list'});
   }
@@ -254,10 +310,12 @@ class CodeWhaleBridgeService {
     _policyTicket = policyTicket.trim();
   }
 
+  @override
   void requestWorkspaceList() {
     _sendCommand({'type': 'workspace_list'});
   }
 
+  @override
   void requestWorkspaceFolderList({String path = ''}) {
     _sendCommand({
       'type': 'workspace_folder_list',
@@ -265,6 +323,7 @@ class CodeWhaleBridgeService {
     });
   }
 
+  @override
   void requestWorkspaceFileList(String workspaceId, {String path = ''}) {
     _sendCommand({
       'type': 'workspace_file_list',
@@ -273,6 +332,7 @@ class CodeWhaleBridgeService {
     });
   }
 
+  @override
   void requestWorkspaceFileRead(String workspaceId, String path) {
     _sendCommand({
       'type': 'workspace_file_read',
@@ -281,10 +341,12 @@ class CodeWhaleBridgeService {
     });
   }
 
+  @override
   void createWorkspace(String name) {
     _sendCommand({'type': 'workspace_create', 'name': name.trim()});
   }
 
+  @override
   void attachWorkspace(String name, String path) {
     _sendCommand({
       'type': 'workspace_attach',
@@ -293,10 +355,12 @@ class CodeWhaleBridgeService {
     });
   }
 
+  @override
   void requestSessionList(String workspaceId) {
     _sendCommand({'type': 'session_list', 'workspace_id': workspaceId});
   }
 
+  @override
   void createSession(
     String workspaceId, {
     String title = '',
@@ -310,6 +374,7 @@ class CodeWhaleBridgeService {
     });
   }
 
+  @override
   void updateSessionTaskCard({
     required String workspaceId,
     required String sessionId,
@@ -326,6 +391,7 @@ class CodeWhaleBridgeService {
     });
   }
 
+  @override
   void openSession(String workspaceId, String sessionId) {
     _sendCommand({
       'type': 'session_open',
@@ -334,6 +400,7 @@ class CodeWhaleBridgeService {
     });
   }
 
+  @override
   void startSession(String workspaceId, String sessionId) {
     _sendCommand({
       'type': 'session_start',
@@ -342,6 +409,7 @@ class CodeWhaleBridgeService {
     });
   }
 
+  @override
   void stopSession(String workspaceId, String sessionId) {
     _sendCommand({
       'type': 'session_stop',
@@ -350,6 +418,7 @@ class CodeWhaleBridgeService {
     });
   }
 
+  @override
   void killSession(String workspaceId, String sessionId) {
     _sendCommand({
       'type': 'session_kill',
@@ -358,6 +427,7 @@ class CodeWhaleBridgeService {
     });
   }
 
+  @override
   void updateSessionSettings({
     required String workspaceId,
     required String sessionId,
@@ -379,6 +449,7 @@ class CodeWhaleBridgeService {
     });
   }
 
+  @override
   void sendSessionMessage(String workspaceId, String sessionId, String text) {
     final trimmed = text.trim();
     if (trimmed.isEmpty) {
@@ -392,6 +463,7 @@ class CodeWhaleBridgeService {
     });
   }
 
+  @override
   void uploadSessionFile({
     required String workspaceId,
     required String sessionId,
@@ -416,6 +488,7 @@ class CodeWhaleBridgeService {
     });
   }
 
+  @override
   void requestSessionHealth(String workspaceId, String sessionId) {
     _sendCommand({
       'type': 'session_health',
@@ -424,6 +497,7 @@ class CodeWhaleBridgeService {
     });
   }
 
+  @override
   void pollSessionTask(String workspaceId, String sessionId, String taskId) {
     _sendCommand({
       'type': 'session_task_poll',
@@ -531,6 +605,7 @@ class CodeWhaleBridgeService {
     });
   }
 
+  @override
   void dispose() {
     _disposed = true;
     _reconnectTimer?.cancel();

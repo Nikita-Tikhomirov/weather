@@ -290,8 +290,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskWorkspaceNotSelected => 'Не выбран';
 
   @override
-  String get taskWorkspaceListNotLoaded =>
-      'Список воркспейсов CodeWhale не загружен';
+  String get taskWorkspaceListNotLoaded => 'Список воркспейсов CodeWhale не загружен';
 
   @override
   String get taskLaunchMode => 'Режим запуска';
@@ -338,8 +337,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskAgentQueue => 'Очередь выполнения';
 
   @override
-  String get taskAgentQueueHint =>
-      'Выберите инструменты; рабочий шаг пойдет последним';
+  String get taskAgentQueueHint => 'Выберите инструменты; рабочий шаг пойдет последним';
 
   @override
   String get taskMoveUp => 'Выше';
@@ -351,8 +349,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskWorkStep => 'Работа по задаче';
 
   @override
-  String get taskWorkStepSubtitle =>
-      'Чеклисты, комментарии и файлы карточки обязательны';
+  String get taskWorkStepSubtitle => 'Чеклисты, комментарии и файлы карточки обязательны';
 
   @override
   String get taskTitle => 'Название';
@@ -522,8 +519,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get noContacts => 'Нет контактов. Добавьте контакты в мессенджере.';
 
   @override
-  String get noRegisteredPhoneContacts =>
-      'Нет зарегистрированных контактов из телефона';
+  String get noRegisteredPhoneContacts => 'Нет зарегистрированных контактов из телефона';
 
   @override
   String get groupNameRequired => 'Введите название группы';
@@ -557,15 +553,13 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get noProjectsYetAction =>
-      'Проектов пока нет. Нажмите + чтобы создать.';
+  String get noProjectsYetAction => 'Проектов пока нет. Нажмите + чтобы создать.';
 
   @override
   String get noGroupsYetAction => 'Групп пока нет. Нажмите + чтобы создать.';
 
   @override
-  String get projectControlCreateProjectHint =>
-      'Создайте проект, чтобы подключить чат и агента.';
+  String get projectControlCreateProjectHint => 'Создайте проект, чтобы подключить чат и агента.';
 
   @override
   String get projectControlChatsNotLinked => 'Чаты не связаны';
@@ -601,8 +595,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get projectControlLinkedChats => 'Связанные чаты';
 
   @override
-  String get projectControlAssignGroupForChat =>
-      'Назначьте группу проекту, чтобы появился проектный чат.';
+  String get projectControlAssignGroupForChat => 'Назначьте группу проекту, чтобы появился проектный чат.';
 
   @override
   String get projectControlCreateChat => 'Создать проектный чат';
@@ -637,8 +630,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get homeProjectWorkspaceNotSelected => 'Workspace не выбран';
 
   @override
-  String get homeProjectWorkspaceHint =>
-      'Выберите workspace в Project Control Center';
+  String get homeProjectWorkspaceHint => 'Выберите workspace в Project Control Center';
 
   @override
   String get homeProjectAgentAvailableByButton => 'Агент доступен по кнопке';
@@ -684,8 +676,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get clearWorkspaceBinding => 'Снять привязку';
 
   @override
-  String get projectAgentDisabledAfterClearing =>
-      'Агент проекта будет отключён.';
+  String get projectAgentDisabledAfterClearing => 'Агент проекта будет отключён.';
 
   @override
   String get noWorkspacesFound => 'Workspace не найдены.';
@@ -697,8 +688,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get projectWorkspaceSaved => 'Workspace проекта сохранён.';
 
   @override
-  String get projectWorkspaceSaveFailed =>
-      'Не удалось сохранить workspace проекта.';
+  String get projectWorkspaceSaveFailed => 'Не удалось сохранить workspace проекта.';
 
   @override
   String projectChatReady(Object title) {
@@ -733,8 +723,7 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get noAvailableWorkspacesToSelect =>
-      'Нет доступных workspace для выбора.';
+  String get noAvailableWorkspacesToSelect => 'Нет доступных workspace для выбора.';
 
   @override
   String get workspaceSettingLoading => 'Загружаю настройку workspace...';
@@ -816,8 +805,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get administration => 'Администрирование';
 
   @override
-  String get profileAdminSubtitle =>
-      'Пользователи, проекты, воркспейсы и роли агентов';
+  String get profileAdminSubtitle => 'Пользователи, проекты, воркспейсы и роли агентов';
 
   @override
   String get adminNoAccess => 'Нет доступа к администрированию';
@@ -877,22 +865,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get adminRoleWorkspaceUser => 'Участник воркспейса';
 
   @override
-  String get adminRoleWorkspaceUserDescription =>
-      'Видит рабочее пространство и может пользоваться ИИ.';
+  String get adminRoleWorkspaceUserDescription => 'Видит рабочее пространство и может пользоваться ИИ.';
 
   @override
   String get adminRoleAgentOperator => 'Оператор агентов';
 
   @override
-  String get adminRoleAgentOperatorDescription =>
-      'Запускает агентские чаты из задач и ведет работу в них.';
+  String get adminRoleAgentOperatorDescription => 'Запускает агентские чаты из задач и ведет работу в них.';
 
   @override
   String get adminRoleWorkspaceAdmin => 'Администратор воркспейса';
 
   @override
-  String get adminRoleWorkspaceAdminDescription =>
-      'Управляет доступами и расширенными действиями агентов.';
+  String get adminRoleWorkspaceAdminDescription => 'Управляет доступами и расширенными действиями агентов.';
 
   @override
   String avatarUploadFailed(Object error) {
@@ -995,6 +980,44 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get createWorkspace => 'Создать рабочее пространство';
+
+  @override
+  String get codeWhaleConnecting => 'Подключение к CodeWhale...';
+
+  @override
+  String get codeWhaleErrorFallback => 'Ошибка CodeWhale';
+
+  @override
+  String get codeWhaleThinking => 'CodeWhale думает...';
+
+  @override
+  String get codeWhaleStartingEvent => 'Запуск CodeWhale';
+
+  @override
+  String codeWhaleFileAttachedEvent(Object path) {
+    return 'Файл прикреплен: $path';
+  }
+
+  @override
+  String get codeWhaleFileAttachedStatus => 'Файл прикреплен';
+
+  @override
+  String get codeWhaleReadyStatus => 'CodeWhale готов';
+
+  @override
+  String get codeWhaleNewWorkspaceTitle => 'Новое рабочее пространство';
+
+  @override
+  String get workspaceNameLabel => 'Название';
+
+  @override
+  String get codeWhalePhotoCommentTitle => 'Комментарий к фото';
+
+  @override
+  String get codeWhaleDocumentCommentTitle => 'Комментарий к документу';
+
+  @override
+  String get codeWhaleUploadPromptHint => 'Пусто = только сохранить';
 
   @override
   String get noWorkspacesYet => 'Рабочих пространств пока нет';
@@ -1217,8 +1240,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get notificationChannelName => 'Уведомления';
 
   @override
-  String get notificationChannelDesc =>
-      'Пуш-уведомления о задачах и напоминаниях';
+  String get notificationChannelDesc => 'Пуш-уведомления о задачах и напоминаниях';
 
   @override
   String get notificationNewMessage => 'Новое сообщение';

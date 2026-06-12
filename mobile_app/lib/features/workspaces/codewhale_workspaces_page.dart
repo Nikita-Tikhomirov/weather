@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/project_file.dart';
 import '../../models/workspace_item.dart';
 import '../../models/workspace_session.dart';
@@ -17,13 +18,51 @@ import 'workspace_detail_view.dart';
 import 'workspace_list_view.dart';
 import 'workspace_restore_policy.dart';
 
+typedef CodeWhaleBridgeFactory = CodeWhaleBridgeClient Function({
+  required void Function(CodeWhaleBridgeMessage message) onMessage,
+  required void Function(bool connected, String status) onStatusChange,
+});
+
+class CodeWhaleWorkspacesText {
+  const CodeWhaleWorkspacesText(this.l10n);
+
+  final AppLocalizations? l10n;
+
+  String get connecting =>
+      l10n?.codeWhaleConnecting ?? 'Подключение к CodeWhale...';
+  String get error => l10n?.codeWhaleErrorFallback ?? 'Ошибка CodeWhale';
+  String get thinking => l10n?.codeWhaleThinking ?? 'CodeWhale думает...';
+  String get starting => l10n?.codeWhaleStartingEvent ?? 'Запуск CodeWhale';
+  String fileAttached(String path) {
+    return l10n?.codeWhaleFileAttachedEvent(path) ?? 'Файл прикреплен: $path';
+  }
+
+  String get fileAttachedStatus =>
+      l10n?.codeWhaleFileAttachedStatus ?? 'Файл прикреплен';
+  String get ready => l10n?.codeWhaleReadyStatus ?? 'CodeWhale готов';
+  String get done => l10n?.done ?? 'Готово';
+  String get newWorkspace =>
+      l10n?.codeWhaleNewWorkspaceTitle ?? 'Новое рабочее пространство';
+  String get newSession => l10n?.newSession ?? 'Новая сессия';
+  String get workspaceName => l10n?.workspaceNameLabel ?? 'Название';
+  String get cancel => l10n?.cancel ?? 'Отмена';
+  String get photoComment =>
+      l10n?.codeWhalePhotoCommentTitle ?? 'Комментарий к фото';
+  String get documentComment =>
+      l10n?.codeWhaleDocumentCommentTitle ?? 'Комментарий к документу';
+  String get uploadPromptHint =>
+      l10n?.codeWhaleUploadPromptHint ?? 'Пусто = только сохранить';
+}
+
 class CodeWhaleWorkspacesPage extends StatefulWidget {
   const CodeWhaleWorkspacesPage({
     super.key,
     this.restoreLastSelectionOnOpen = false,
+    this.bridgeFactory,
   });
 
   final bool restoreLastSelectionOnOpen;
+  final CodeWhaleBridgeFactory? bridgeFactory;
 
   @override
   State<CodeWhaleWorkspacesPage> createState() =>
@@ -32,7 +71,7 @@ class CodeWhaleWorkspacesPage extends StatefulWidget {
 
 class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
     with WidgetsBindingObserver {
-  late final CodeWhaleBridgeService _service;
+  late final CodeWhaleBridgeClient _service;
   final TextEditingController _inputController = TextEditingController();
   final Map<String, Timer> _taskPollers = {};
   List<WorkspaceItem> _workspaces = const [];
@@ -52,7 +91,7 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
   _WorkspacePageMode _mode = _WorkspacePageMode.list;
   bool _connected = false;
   bool _filesLoading = false;
-  String _statusText = 'Подключение к CodeWhale...';
+  String _statusText = '';
   bool _restoreWorkspaceAttempted = false;
   String _pendingRestoreSessionWorkspaceId = '';
 
@@ -66,7 +105,7 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _service = CodeWhaleBridgeService(
+    _service = (widget.bridgeFactory ?? CodeWhaleBridgeService.new)(
       onMessage: _handleMessage,
       onStatusChange: _handleStatus,
     );
@@ -215,12 +254,12 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
     if (!mounted) {
       return;
     }
+    final text = CodeWhaleWorkspacesText(AppLocalizations.of(context));
     var shouldRestoreWorkspace = false;
     var sessionWorkspaceToRestore = '';
     setState(() {
       if (message.isError) {
-        _statusText =
-            message.error.isEmpty ? 'Ошибка CodeWhale' : message.error;
+        _statusText = message.error.isEmpty ? text.error : message.error;
         _connected = false;
       }
       if (message.workspaces.isNotEmpty || message.type == 'workspace_list') {
@@ -275,10 +314,10 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
         _mode = _WorkspacePageMode.chat;
       }
       if (message.type == 'session_stream_started') {
-        _statusText = 'CodeWhale думает...';
+        _statusText = text.thinking;
         _appendSessionEvent(
           message,
-          {'type': 'session_process_event', 'text': 'Запуск CodeWhale'},
+          {'type': 'session_process_event', 'text': text.starting},
         );
       }
       if (message.type == 'assistant_delta') {
@@ -293,13 +332,13 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
       if (message.type == 'session_file_uploaded') {
         _appendSessionEvent(message, {
           'type': 'file_attachment',
-          'text': 'Файл прикреплен: ${message.filePath}',
+          'text': text.fileAttached(message.filePath),
           'path': message.filePath,
           'filename': message.filename,
           'mime_type': message.mimeType,
           'size': message.fileSize,
         });
-        _statusText = 'Файл прикреплен';
+        _statusText = text.fileAttachedStatus;
         var promptPrefix =
             _pendingUploadPromptsByName.remove(message.originalName) ??
                 _pendingUploadPromptsByName.remove(message.filename) ??
@@ -320,10 +359,10 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
         }
       }
       if (message.type == 'session_stream_done') {
-        _statusText = 'CodeWhale готов';
+        _statusText = text.ready;
         _appendSessionEvent(
           message,
-          {'type': 'session_process_event', 'text': 'Готово'},
+          {'type': 'session_process_event', 'text': text.done},
         );
         final workspace = _activeWorkspace;
         final session = _activeSession;
@@ -442,6 +481,7 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
 
   @override
   Widget build(BuildContext context) {
+    final text = CodeWhaleWorkspacesText(AppLocalizations.of(context));
     final workspace = _activeWorkspace;
     final session = _activeSession;
     switch (_mode) {
@@ -449,7 +489,7 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
         return WorkspaceListView(
           workspaces: _workspaces,
           connected: _connected,
-          statusText: _statusText,
+          statusText: _statusText.isEmpty ? text.connecting : _statusText,
           onRefresh: _service.requestWorkspaceList,
           onCreateWorkspace: _createWorkspace,
           onAttachWorkspace: _attachWorkspace,
@@ -566,7 +606,8 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
   }
 
   Future<void> _createWorkspace() async {
-    final name = await _promptText('Новое рабочее пространство', 'Название');
+    final text = CodeWhaleWorkspacesText(AppLocalizations.of(context));
+    final name = await _promptText(text.newWorkspace, text.workspaceName);
     if (name == null || name.isEmpty) {
       return;
     }
@@ -584,11 +625,13 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
   }
 
   Future<void> _createSession(WorkspaceItem workspace) async {
-    final title = await _promptText('Новая сессия', 'Название');
+    final text = CodeWhaleWorkspacesText(AppLocalizations.of(context));
+    final title = await _promptText(text.newSession, text.workspaceName);
     _service.createSession(workspace.id, title: title ?? '');
   }
 
   Future<String?> _promptText(String title, String hint) async {
+    final text = CodeWhaleWorkspacesText(AppLocalizations.of(context));
     final controller = TextEditingController();
     final result = await showDialog<String>(
       context: context,
@@ -602,11 +645,11 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
+            child: Text(text.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Готово'),
+            child: Text(text.done),
           ),
         ],
       ),
@@ -693,9 +736,13 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
     if (photo == null) {
       return;
     }
+    if (!mounted) {
+      return;
+    }
+    final text = CodeWhaleWorkspacesText(AppLocalizations.of(context));
     final caption = await _promptText(
-      'Комментарий к фото',
-      'Пусто = только сохранить',
+      text.photoComment,
+      text.uploadPromptHint,
     );
     if (caption == null) {
       return;
@@ -729,9 +776,13 @@ class _CodeWhaleWorkspacesPageState extends State<CodeWhaleWorkspacesPage>
     if (bytes == null || bytes.isEmpty) {
       return;
     }
+    if (!mounted) {
+      return;
+    }
+    final text = CodeWhaleWorkspacesText(AppLocalizations.of(context));
     final caption = await _promptText(
-      'Комментарий к документу',
-      'Пусто = только сохранить',
+      text.documentComment,
+      text.uploadPromptHint,
     );
     if (caption == null) {
       return;
