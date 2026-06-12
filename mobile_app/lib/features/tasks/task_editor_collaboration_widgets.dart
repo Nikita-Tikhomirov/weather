@@ -171,15 +171,15 @@ class _CommentComposer extends StatelessWidget {
         children: [
           if (editing != null)
             _ComposerContextBanner(
-              title: 'Редактирование комментария',
-              subtitle: _commentPreview(editing),
+              title: text.editingComment,
+              subtitle: _commentPreview(editing, text),
               onClose: onCancelEdit,
             )
           else if (reply != null)
             _ComposerContextBanner(
-              title: 'Ответ на комментарий',
+              title: text.replyToComment,
               subtitle:
-                  '${labelFor(reply.authorProfile)}: ${_commentPreview(reply)}',
+                  '${labelFor(reply.authorProfile)}: ${_commentPreview(reply, text)}',
               onClose: onCancelReply,
             ),
           Row(
@@ -238,6 +238,7 @@ class _ComposerContextBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = TaskEditorText.of(context);
     final cs = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
@@ -280,7 +281,7 @@ class _ComposerContextBanner extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Отменить',
+            tooltip: text.cancelCommentAction,
             onPressed: onClose,
             icon: const Icon(Icons.close, size: 18),
           ),
@@ -520,6 +521,7 @@ class _CommentBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = TaskEditorText.of(context);
     final mine = comment.authorProfile == owner;
     final cs = Theme.of(context).colorScheme;
     final deleted = comment.isDeleted;
@@ -552,7 +554,7 @@ class _CommentBubble extends StatelessWidget {
                 ),
                 if (!deleted)
                   IconButton(
-                    tooltip: 'Действия комментария',
+                    tooltip: text.commentActions,
                     visualDensity: VisualDensity.compact,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(
@@ -568,13 +570,13 @@ class _CommentBubble extends StatelessWidget {
               const SizedBox(height: 4),
               _CommentReplyQuote(
                 author: labelFor(replyToComment!.authorProfile),
-                preview: _commentPreview(replyToComment!),
+                preview: _commentPreview(replyToComment!, text),
               ),
             ],
             if (deleted) ...[
               const SizedBox(height: 4),
               Text(
-                'Комментарий удалён',
+                text.commentDeleted,
                 style: TextStyle(
                   color: cs.outline,
                   fontStyle: FontStyle.italic,
@@ -1225,18 +1227,18 @@ String _mimeTypeForName(String name) {
   return 'application/octet-stream';
 }
 
-String _commentPreview(TaskComment comment) {
+String _commentPreview(TaskComment comment, TaskEditorText text) {
   if (comment.isDeleted) {
-    return 'Комментарий удалён';
+    return text.commentDeleted;
   }
-  final text = comment.text.trim();
-  if (text.isNotEmpty) {
-    return text;
+  final body = comment.text.trim();
+  if (body.isNotEmpty) {
+    return body;
   }
   if (comment.attachmentIds.isNotEmpty) {
-    return 'Вложение';
+    return text.attachment;
   }
-  return 'Комментарий';
+  return text.commentFallback;
 }
 
 String _shortDateTime(String raw) {

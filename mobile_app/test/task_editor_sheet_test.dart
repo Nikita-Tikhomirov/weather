@@ -3206,6 +3206,109 @@ TASK_CARD_ACTIONS_JSON:
       expect(repository.upserts, isNotEmpty);
     });
 
+    testWidgets('uses localized task comment actions and banners',
+        (tester) async {
+      final task = _editableTask.copyWith(
+        collaboration: const TaskCollaboration(
+          comments: [
+            TaskComment(
+              id: 'comment-root',
+              authorProfile: 'test_user',
+              text: 'Need review',
+              createdAt: '2026-06-01T10:00:00',
+            ),
+            TaskComment(
+              id: 'comment-deleted',
+              authorProfile: 'test_user',
+              text: '',
+              createdAt: '2026-06-01T10:05:00',
+              deletedAt: '2026-06-01T10:06:00',
+            ),
+          ],
+        ),
+      );
+      final repository = _FakeTaskRepository();
+      repository.tasks.add(task);
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: task,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Work'));
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Comment actions'), findsOneWidget);
+      expect(find.text('Comment deleted'), findsOneWidget);
+      expect(find.byTooltip('Действия комментария'), findsNothing);
+      expect(find.text('Комментарий удалён'), findsNothing);
+
+      await tester.ensureVisible(find.byTooltip('Comment actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Comment actions'));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(ListTile, 'Reply'), findsOneWidget);
+      expect(find.widgetWithText(ListTile, 'Edit'), findsOneWidget);
+      expect(find.widgetWithText(ListTile, 'Delete'), findsOneWidget);
+      expect(find.text('Ответить'), findsNothing);
+
+      await tester.tap(find.widgetWithText(ListTile, 'Reply'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Reply to comment'), findsOneWidget);
+      expect(find.byTooltip('Cancel'), findsOneWidget);
+      expect(find.text('Ответ на комментарий'), findsNothing);
+
+      await tester.ensureVisible(find.byTooltip('Cancel'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Cancel'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byTooltip('Comment actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Comment actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ListTile, 'Edit'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Editing comment'), findsOneWidget);
+      expect(find.text('Редактирование комментария'), findsNothing);
+
+      await tester.ensureVisible(find.byTooltip('Cancel'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Cancel'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byTooltip('Comment actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Comment actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ListTile, 'Delete'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete comment?'), findsOneWidget);
+      expect(
+        find.text('The comment will be removed from the task card.'),
+        findsOneWidget,
+      );
+      expect(find.widgetWithText(TextButton, 'Cancel'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Delete'), findsOneWidget);
+      expect(find.text('Удалить комментарий?'), findsNothing);
+    });
+
     testWidgets('can reply to a task comment and autosaves it', (tester) async {
       final task = _editableTask.copyWith(
         collaboration: const TaskCollaboration(

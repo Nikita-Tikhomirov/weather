@@ -821,6 +821,54 @@ abstract class AppLocalizations {
   /// **'Comment or caption'**
   String get taskCommentComposerHint;
 
+  /// No description provided for @taskCommentActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment actions'**
+  String get taskCommentActions;
+
+  /// No description provided for @taskReplyToComment.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply to comment'**
+  String get taskReplyToComment;
+
+  /// No description provided for @taskEditingComment.
+  ///
+  /// In en, this message translates to:
+  /// **'Editing comment'**
+  String get taskEditingComment;
+
+  /// No description provided for @taskCommentDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment deleted'**
+  String get taskCommentDeleted;
+
+  /// No description provided for @taskCommentFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment'**
+  String get taskCommentFallback;
+
+  /// No description provided for @taskCancelCommentAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get taskCancelCommentAction;
+
+  /// No description provided for @taskDeleteCommentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete comment?'**
+  String get taskDeleteCommentTitle;
+
+  /// No description provided for @taskDeleteCommentMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The comment will be removed from the task card.'**
+  String get taskDeleteCommentMessage;
+
   /// No description provided for @taskNoComments.
   ///
   /// In en, this message translates to:

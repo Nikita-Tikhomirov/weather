@@ -376,6 +376,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskCommentComposerHint => 'Comment or caption';
 
   @override
+  String get taskCommentActions => 'Comment actions';
+
+  @override
+  String get taskReplyToComment => 'Reply to comment';
+
+  @override
+  String get taskEditingComment => 'Editing comment';
+
+  @override
+  String get taskCommentDeleted => 'Comment deleted';
+
+  @override
+  String get taskCommentFallback => 'Comment';
+
+  @override
+  String get taskCancelCommentAction => 'Cancel';
+
+  @override
+  String get taskDeleteCommentTitle => 'Delete comment?';
+
+  @override
+  String get taskDeleteCommentMessage => 'The comment will be removed from the task card.';
+
+  @override
   String get taskNoComments => 'No comments';
 
   @override

@@ -98,9 +98,28 @@ class TaskEditorText {
   String get comments => l10n?.taskComments ?? 'Комментарии';
   String get commentOrCaption =>
       l10n?.taskCommentComposerHint ?? 'Комментарий или подпись';
+  String get commentActions =>
+      l10n?.taskCommentActions ?? 'Действия комментария';
+  String get replyToComment =>
+      l10n?.taskReplyToComment ?? 'Ответ на комментарий';
+  String get editingComment =>
+      l10n?.taskEditingComment ?? 'Редактирование комментария';
+  String get commentDeleted => l10n?.taskCommentDeleted ?? 'Комментарий удалён';
+  String get commentFallback => l10n?.taskCommentFallback ?? 'Комментарий';
+  String get deleteCommentTitle =>
+      l10n?.taskDeleteCommentTitle ?? 'Удалить комментарий?';
+  String get deleteCommentMessage =>
+      l10n?.taskDeleteCommentMessage ??
+      'Комментарий будет удалён из карточки задачи.';
+  String get cancelCommentAction => l10n?.taskCancelCommentAction ?? 'Отменить';
   String get photo => l10n?.photo ?? 'Фото';
   String get file => l10n?.file ?? 'Файл';
   String get send => l10n?.send ?? 'Отправить';
+  String get attachment => l10n?.attachment ?? 'Вложение';
+  String get reply => l10n?.reply ?? 'Ответить';
+  String get edit => l10n?.edit ?? 'Редактировать';
+  String get delete => l10n?.delete ?? 'Удалить';
+  String get cancel => l10n?.cancel ?? 'Отмена';
   String get noComments => l10n?.taskNoComments ?? 'Комментариев нет';
   String get checklists => l10n?.taskChecklists ?? 'Чеклисты';
   String get newChecklist => l10n?.taskNewChecklist ?? 'Новый чеклист';

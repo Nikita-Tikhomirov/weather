@@ -820,20 +820,21 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   Future<void> _deleteComment(TaskComment comment) async {
     if (!_canEdit || comment.isDeleted) return;
+    final text = TaskEditorText.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Удалить комментарий?'),
-          content: const Text('Комментарий будет удалён из карточки задачи.'),
+          title: Text(text.deleteCommentTitle),
+          content: Text(text.deleteCommentMessage),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Отмена'),
+              child: Text(text.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Удалить'),
+              child: Text(text.delete),
             ),
           ],
         );
@@ -882,6 +883,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   Future<void> _openCommentActions(TaskComment comment) async {
     if (!_canEdit || comment.isDeleted) return;
+    final text = TaskEditorText.of(context);
     final action = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -892,17 +894,17 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.reply_outlined),
-                title: const Text('Ответить'),
+                title: Text(text.reply),
                 onTap: () => Navigator.of(sheetContext).pop('reply'),
               ),
               ListTile(
                 leading: const Icon(Icons.edit_outlined),
-                title: const Text('Редактировать'),
+                title: Text(text.edit),
                 onTap: () => Navigator.of(sheetContext).pop('edit'),
               ),
               ListTile(
                 leading: const Icon(Icons.delete_outline),
-                title: const Text('Удалить'),
+                title: Text(text.delete),
                 onTap: () => Navigator.of(sheetContext).pop('delete'),
               ),
             ],

@@ -376,6 +376,30 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskCommentComposerHint => 'Комментарий или подпись';
 
   @override
+  String get taskCommentActions => 'Действия комментария';
+
+  @override
+  String get taskReplyToComment => 'Ответ на комментарий';
+
+  @override
+  String get taskEditingComment => 'Редактирование комментария';
+
+  @override
+  String get taskCommentDeleted => 'Комментарий удалён';
+
+  @override
+  String get taskCommentFallback => 'Комментарий';
+
+  @override
+  String get taskCancelCommentAction => 'Отменить';
+
+  @override
+  String get taskDeleteCommentTitle => 'Удалить комментарий?';
+
+  @override
+  String get taskDeleteCommentMessage => 'Комментарий будет удалён из карточки задачи.';
+
+  @override
   String get taskNoComments => 'Комментариев нет';
 
   @override
