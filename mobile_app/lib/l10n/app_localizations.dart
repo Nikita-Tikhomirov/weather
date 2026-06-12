@@ -1181,6 +1181,54 @@ abstract class AppLocalizations {
   /// **'Reminders'**
   String get taskReminders;
 
+  /// No description provided for @taskReminderBefore24Hours.
+  ///
+  /// In en, this message translates to:
+  /// **'24 hours before'**
+  String get taskReminderBefore24Hours;
+
+  /// No description provided for @taskReminderBefore12Hours.
+  ///
+  /// In en, this message translates to:
+  /// **'12 hours before'**
+  String get taskReminderBefore12Hours;
+
+  /// No description provided for @taskReminderBefore3Hours.
+  ///
+  /// In en, this message translates to:
+  /// **'3 hours before'**
+  String get taskReminderBefore3Hours;
+
+  /// No description provided for @taskReminderBefore2Hours.
+  ///
+  /// In en, this message translates to:
+  /// **'2 hours before'**
+  String get taskReminderBefore2Hours;
+
+  /// No description provided for @taskReminderBefore1Hour.
+  ///
+  /// In en, this message translates to:
+  /// **'1 hour before'**
+  String get taskReminderBefore1Hour;
+
+  /// No description provided for @taskReminderBefore30Minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'30 minutes before'**
+  String get taskReminderBefore30Minutes;
+
+  /// No description provided for @taskReminderBefore15Minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'15 minutes before'**
+  String get taskReminderBefore15Minutes;
+
+  /// No description provided for @taskReminderBefore5Minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'5 minutes before'**
+  String get taskReminderBefore5Minutes;
+
   /// No description provided for @participants.
   ///
   /// In en, this message translates to:

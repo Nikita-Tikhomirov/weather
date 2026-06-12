@@ -111,6 +111,28 @@ class TaskEditorText {
   String get groupMembersMissing =>
       l10n?.groupMembersMissing ?? 'Участники группы не найдены в контактах.';
   String get reminders => l10n?.taskReminders ?? 'Напоминания';
+  String reminderLabel(int minutes) {
+    switch (minutes) {
+      case 1440:
+        return l10n?.taskReminderBefore24Hours ?? 'За 24 часа';
+      case 720:
+        return l10n?.taskReminderBefore12Hours ?? 'За 12 часов';
+      case 180:
+        return l10n?.taskReminderBefore3Hours ?? 'За 3 часа';
+      case 120:
+        return l10n?.taskReminderBefore2Hours ?? 'За 2 часа';
+      case 60:
+        return l10n?.taskReminderBefore1Hour ?? 'За 1 час';
+      case 30:
+        return l10n?.taskReminderBefore30Minutes ?? 'За 30 минут';
+      case 15:
+        return l10n?.taskReminderBefore15Minutes ?? 'За 15 минут';
+      case 5:
+        return l10n?.taskReminderBefore5Minutes ?? 'За 5 минут';
+    }
+    return '$minutes min';
+  }
+
   String get duration => l10n?.taskDuration ?? 'Оценка времени (мин)';
   String get details => l10n?.taskDetails ?? 'Описание';
   String get comments => l10n?.taskComments ?? 'Комментарии';

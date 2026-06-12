@@ -558,6 +558,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskReminders => 'Reminders';
 
   @override
+  String get taskReminderBefore24Hours => '24 hours before';
+
+  @override
+  String get taskReminderBefore12Hours => '12 hours before';
+
+  @override
+  String get taskReminderBefore3Hours => '3 hours before';
+
+  @override
+  String get taskReminderBefore2Hours => '2 hours before';
+
+  @override
+  String get taskReminderBefore1Hour => '1 hour before';
+
+  @override
+  String get taskReminderBefore30Minutes => '30 minutes before';
+
+  @override
+  String get taskReminderBefore15Minutes => '15 minutes before';
+
+  @override
+  String get taskReminderBefore5Minutes => '5 minutes before';
+
+  @override
   String get participants => 'Participants';
 
   @override

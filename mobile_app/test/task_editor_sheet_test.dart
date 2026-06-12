@@ -688,6 +688,13 @@ void main() {
       expect(find.text('Status'), findsOneWidget);
       expect(find.text('Assignees'), findsOneWidget);
       expect(find.text('Reminders'), findsOneWidget);
+
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -450));
+      await tester.pumpAndSettle();
+
+      expect(find.text('24 hours before'), findsOneWidget);
+      expect(find.text('30 minutes before'), findsOneWidget);
+      expect(find.text('За 24 часа'), findsNothing);
     });
 
     testWidgets('uses localized save validation snackbar', (tester) async {

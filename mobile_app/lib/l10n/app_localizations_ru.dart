@@ -558,6 +558,30 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskReminders => 'Напоминания';
 
   @override
+  String get taskReminderBefore24Hours => 'За 24 часа';
+
+  @override
+  String get taskReminderBefore12Hours => 'За 12 часов';
+
+  @override
+  String get taskReminderBefore3Hours => 'За 3 часа';
+
+  @override
+  String get taskReminderBefore2Hours => 'За 2 часа';
+
+  @override
+  String get taskReminderBefore1Hour => 'За 1 час';
+
+  @override
+  String get taskReminderBefore30Minutes => 'За 30 минут';
+
+  @override
+  String get taskReminderBefore15Minutes => 'За 15 минут';
+
+  @override
+  String get taskReminderBefore5Minutes => 'За 5 минут';
+
+  @override
   String get participants => 'Участники';
 
   @override

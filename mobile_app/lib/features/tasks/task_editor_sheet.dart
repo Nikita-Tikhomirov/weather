@@ -24,16 +24,7 @@ import 'task_editor_text.dart';
 
 part 'task_editor_collaboration_widgets.dart';
 
-const _reminderOptions = <int, String>{
-  1440: 'За 24 часа',
-  720: 'За 12 часов',
-  180: 'За 3 часа',
-  120: 'За 2 часа',
-  60: 'За 1 час',
-  30: 'За 30 минут',
-  15: 'За 15 минут',
-  5: 'За 5 минут',
-};
+const _reminderOptions = <int>[1440, 720, 180, 120, 60, 30, 15, 5];
 
 typedef AgentBridgeFactory = CodeWhaleBridgeService Function({
   required void Function(CodeWhaleBridgeMessage message) onMessage,
@@ -3719,10 +3710,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: _reminderOptions.entries.map((entry) {
-            final offset = entry.key;
+          children: _reminderOptions.map((offset) {
             return FilterChip(
-              label: Text(entry.value),
+              label: Text(text.reminderLabel(offset)),
               selected: _selectedReminderOffsets.contains(offset),
               onSelected: !_canEdit
                   ? null
