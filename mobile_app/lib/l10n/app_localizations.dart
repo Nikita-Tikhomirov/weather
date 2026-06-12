@@ -749,6 +749,12 @@ abstract class AppLocalizations {
   /// **'Continue work'**
   String get taskContinueWork;
 
+  /// No description provided for @taskSaveTaskFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Save the task first'**
+  String get taskSaveTaskFirst;
+
   /// No description provided for @taskAgentSkills.
   ///
   /// In en, this message translates to:

@@ -338,6 +338,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskContinueWork => 'Продолжить работу';
 
   @override
+  String get taskSaveTaskFirst => 'Сначала сохраните задачу';
+
+  @override
   String get taskAgentSkills => 'Скиллы';
 
   @override

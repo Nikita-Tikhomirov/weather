@@ -1552,7 +1552,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     if (saved == null || saved.id.trim().isEmpty) {
       if (mounted) {
         setState(() => _agentLaunching = false);
-        _showSnack('Сначала сохраните задачу');
+        _showSnack(TaskEditorText.of(context).saveTaskFirst);
       }
       return;
     }
@@ -1905,7 +1905,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     if (saved == null || saved.id.trim().isEmpty) {
       if (mounted) {
         setState(() => _agentLaunching = false);
-        _showSnack('Сначала сохраните задачу');
+        _showSnack(TaskEditorText.of(context).saveTaskFirst);
       }
       return;
     }
@@ -3175,6 +3175,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   Future<void> _connectAgentChatFlow() async {
     final policy = widget.agentPolicy;
+    final text = TaskEditorText.of(context);
     if (!_canEdit) return;
     if (!policy.canLinkExistingChat) {
       _showSnack(
@@ -3185,7 +3186,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     await _persistDraft(automatic: true);
     final saved = _savedTask ?? widget.existing;
     if (saved == null || saved.id.trim().isEmpty) {
-      _showSnack('Сначала сохраните задачу');
+      _showSnack(text.saveTaskFirst);
       return;
     }
     final bridge = _ensureAgentBridge();

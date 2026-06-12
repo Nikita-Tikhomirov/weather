@@ -116,6 +116,7 @@
   "taskAgentToolsLoading": "Список инструментов загружается",
   "taskAgentToolsNotLoaded": "Инструменты CodeWhale не загружены",
   "taskContinueWork": "Продолжить работу",
+  "taskSaveTaskFirst": "Сначала сохраните задачу",
   "taskAgentSkills": "Скиллы",
   "taskAgentCommands": "Команды",
   "taskAgentAvailableCount": "Доступно: {count}",

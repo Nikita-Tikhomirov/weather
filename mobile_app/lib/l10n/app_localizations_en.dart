@@ -338,6 +338,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskContinueWork => 'Continue work';
 
   @override
+  String get taskSaveTaskFirst => 'Save the task first';
+
+  @override
   String get taskAgentSkills => 'Skills';
 
   @override

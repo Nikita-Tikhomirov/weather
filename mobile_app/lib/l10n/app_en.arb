@@ -116,6 +116,7 @@
   "taskAgentToolsLoading": "Tool list is loading",
   "taskAgentToolsNotLoaded": "CodeWhale tools are not loaded",
   "taskContinueWork": "Continue work",
+  "taskSaveTaskFirst": "Save the task first",
   "taskAgentSkills": "Skills",
   "taskAgentCommands": "Commands",
   "taskAgentAvailableCount": "Available: {count}",

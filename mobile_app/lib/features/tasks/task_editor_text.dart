@@ -59,6 +59,8 @@ class TaskEditorText {
       l10n?.taskAgentToolsNotLoaded ?? 'Инструменты CodeWhale не загружены';
   String get continueAction => l10n?.continueAction ?? 'Продолжить';
   String get continueWork => l10n?.taskContinueWork ?? 'Продолжить работу';
+  String get saveTaskFirst =>
+      l10n?.taskSaveTaskFirst ?? 'Сначала сохраните задачу';
   String get agentStatusPending => l10n?.waitingToStart ?? 'ожидает запуска';
   String get agentStatusLinked => l10n?.connected ?? 'подключен';
   String get agentStatusRunning => l10n?.running ?? 'в работе';
