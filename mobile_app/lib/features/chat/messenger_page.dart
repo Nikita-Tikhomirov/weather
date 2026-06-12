@@ -417,7 +417,7 @@ class _ContactList extends StatelessWidget {
                           : null,
                     ),
                     trailing: IconButton(
-                      tooltip: 'Добавить в семью',
+                      tooltip: l10n?.addToFamily ?? 'Добавить в семью',
                       icon: const Icon(Icons.family_restroom_outlined),
                       onPressed: () => onAddContactToFamily(contact),
                     ),

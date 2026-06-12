@@ -522,6 +522,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get noRegisteredPhoneContacts => 'Нет зарегистрированных контактов из телефона';
 
   @override
+  String get addToFamily => 'Добавить в семью';
+
+  @override
   String get groupNameRequired => 'Введите название группы';
 
   @override

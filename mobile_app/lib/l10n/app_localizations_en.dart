@@ -522,6 +522,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noRegisteredPhoneContacts => 'No registered phone contacts';
 
   @override
+  String get addToFamily => 'Add to family';
+
+  @override
   String get groupNameRequired => 'Enter group name';
 
   @override

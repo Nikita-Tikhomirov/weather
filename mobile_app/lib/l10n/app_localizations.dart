@@ -1109,6 +1109,12 @@ abstract class AppLocalizations {
   /// **'No registered phone contacts'**
   String get noRegisteredPhoneContacts;
 
+  /// No description provided for @addToFamily.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to family'**
+  String get addToFamily;
+
   /// No description provided for @groupNameRequired.
   ///
   /// In en, this message translates to:

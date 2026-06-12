@@ -203,6 +203,38 @@ void main() {
       );
     });
 
+    testWidgets('uses localized add-to-family contact tooltip', (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: _page(
+              controller: controller,
+              activeConversationKey: '',
+              contacts: const [
+                ChatContact(
+                  profileKey: 'nastya',
+                  phone: '+10000000000',
+                  displayName: 'Nastya',
+                  conversationKey: 'dm:nastya',
+                ),
+              ],
+              conversations: const [],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byTooltip('Add to family'), findsOneWidget);
+      expect(find.byTooltip('Добавить в семью'), findsNothing);
+    });
+
     testWidgets('uses localized chat header call tooltips', (tester) async {
       final controller = TextEditingController();
       addTearDown(controller.dispose);

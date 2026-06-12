@@ -188,6 +188,7 @@
   "refreshContacts": "Обновить контакты",
   "noContacts": "Нет контактов. Добавьте контакты в мессенджере.",
   "noRegisteredPhoneContacts": "Нет зарегистрированных контактов из телефона",
+  "addToFamily": "Добавить в семью",
   "groupNameRequired": "Введите название группы",
   "groupMemberRequired": "Выберите хотя бы одного участника",
   "groupSaveFailed": "Ошибка: {error}",

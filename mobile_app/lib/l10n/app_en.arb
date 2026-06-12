@@ -188,6 +188,7 @@
   "refreshContacts": "Refresh contacts",
   "noContacts": "No contacts. Add contacts in Messenger.",
   "noRegisteredPhoneContacts": "No registered phone contacts",
+  "addToFamily": "Add to family",
   "groupNameRequired": "Enter group name",
   "groupMemberRequired": "Select at least one participant",
   "groupSaveFailed": "Error: {error}",
