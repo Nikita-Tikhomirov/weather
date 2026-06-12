@@ -32,6 +32,43 @@ class TaskEditorText {
   String get agentNoChats =>
       l10n?.taskAgentNoChats ?? 'Агентские чаты не подключены';
   String get agentQueueRunning => l10n?.taskAgentQueueRunning ?? 'Очередь идет';
+  String get workspace => l10n?.taskWorkspace ?? 'Воркспейс';
+  String get workspaceField =>
+      l10n?.taskWorkspaceField ?? 'Рабочее пространство';
+  String get workspaceNotSelected =>
+      l10n?.taskWorkspaceNotSelected ?? 'Не выбран';
+  String get workspaceListNotLoaded =>
+      l10n?.taskWorkspaceListNotLoaded ??
+      'Список воркспейсов CodeWhale не загружен';
+  String get launchMode => l10n?.taskLaunchMode ?? 'Режим запуска';
+  String get launchAuto => l10n?.taskLaunchAuto ?? 'Авто';
+  String get launchManual => l10n?.taskLaunchManual ?? 'Ручной';
+  String get agentProvider => l10n?.taskAgentProvider ?? 'Провайдер';
+  String get agentModel => l10n?.taskAgentModel ?? 'Модель';
+  String get agentConfirmations =>
+      l10n?.taskAgentConfirmations ?? 'Подтверждения';
+  String get agentToolAutoMode =>
+      l10n?.taskAgentToolAutoMode ?? 'Авто-режим инструментов';
+  String get agentTools => l10n?.taskAgentTools ?? 'Инструменты';
+  String get agentToolsLoading =>
+      l10n?.taskAgentToolsLoading ?? 'Список инструментов загружается';
+  String get agentToolsNotLoaded =>
+      l10n?.taskAgentToolsNotLoaded ?? 'Инструменты CodeWhale не загружены';
+  String get agentSkills => l10n?.taskAgentSkills ?? 'Скиллы';
+  String get agentCommands => l10n?.taskAgentCommands ?? 'Команды';
+  String agentAvailableCount(int count) =>
+      l10n?.taskAgentAvailableCount(count) ?? 'Доступно: $count';
+  String get agentQueue => l10n?.taskAgentQueue ?? 'Очередь выполнения';
+  String get agentQueueHint =>
+      l10n?.taskAgentQueueHint ??
+      'Выберите инструменты; рабочий шаг пойдет последним';
+  String get moveUp => l10n?.taskMoveUp ?? 'Выше';
+  String get moveDown => l10n?.taskMoveDown ?? 'Ниже';
+  String get workStep => l10n?.taskWorkStep ?? 'Работа по задаче';
+  String get workStepSubtitle =>
+      l10n?.taskWorkStepSubtitle ??
+      'Чеклисты, комментарии и файлы карточки обязательны';
+  String get refresh => l10n?.refresh ?? 'Обновить';
   String get save => l10n?.save ?? 'Сохранить';
   String get title => l10n?.taskTitle ?? 'Название';
   String get project => l10n?.taskProject ?? 'Проект';

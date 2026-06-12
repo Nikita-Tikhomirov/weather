@@ -638,6 +638,144 @@ abstract class AppLocalizations {
   /// **'Queue running'**
   String get taskAgentQueueRunning;
 
+  /// No description provided for @taskWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace'**
+  String get taskWorkspace;
+
+  /// No description provided for @taskWorkspaceField.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace'**
+  String get taskWorkspaceField;
+
+  /// No description provided for @taskWorkspaceNotSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not selected'**
+  String get taskWorkspaceNotSelected;
+
+  /// No description provided for @taskWorkspaceListNotLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'CodeWhale workspace list is not loaded'**
+  String get taskWorkspaceListNotLoaded;
+
+  /// No description provided for @taskLaunchMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch mode'**
+  String get taskLaunchMode;
+
+  /// No description provided for @taskLaunchAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get taskLaunchAuto;
+
+  /// No description provided for @taskLaunchManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get taskLaunchManual;
+
+  /// No description provided for @taskAgentProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider'**
+  String get taskAgentProvider;
+
+  /// No description provided for @taskAgentModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get taskAgentModel;
+
+  /// No description provided for @taskAgentConfirmations.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmations'**
+  String get taskAgentConfirmations;
+
+  /// No description provided for @taskAgentToolAutoMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool auto mode'**
+  String get taskAgentToolAutoMode;
+
+  /// No description provided for @taskAgentTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Tools'**
+  String get taskAgentTools;
+
+  /// No description provided for @taskAgentToolsLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool list is loading'**
+  String get taskAgentToolsLoading;
+
+  /// No description provided for @taskAgentToolsNotLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'CodeWhale tools are not loaded'**
+  String get taskAgentToolsNotLoaded;
+
+  /// No description provided for @taskAgentSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills'**
+  String get taskAgentSkills;
+
+  /// No description provided for @taskAgentCommands.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands'**
+  String get taskAgentCommands;
+
+  /// No description provided for @taskAgentAvailableCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Available: {count}'**
+  String taskAgentAvailableCount(int count);
+
+  /// No description provided for @taskAgentQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Execution queue'**
+  String get taskAgentQueue;
+
+  /// No description provided for @taskAgentQueueHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select tools; the work step will run last'**
+  String get taskAgentQueueHint;
+
+  /// No description provided for @taskMoveUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Up'**
+  String get taskMoveUp;
+
+  /// No description provided for @taskMoveDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Down'**
+  String get taskMoveDown;
+
+  /// No description provided for @taskWorkStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Task work'**
+  String get taskWorkStep;
+
+  /// No description provided for @taskWorkStepSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Checklists, comments, and task files are required'**
+  String get taskWorkStepSubtitle;
+
   /// No description provided for @taskTitle.
   ///
   /// In en, this message translates to:

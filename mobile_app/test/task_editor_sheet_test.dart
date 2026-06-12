@@ -781,6 +781,80 @@ void main() {
       expect(find.text('Чаты задачи'), findsNothing);
     });
 
+    testWidgets('uses localized task workspace and launch settings labels',
+        (tester) async {
+      final store = _FakeTaskStore();
+      store.selectedDate.value = DateTime(2026, 5, 31);
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: '',
+        plugins: [],
+        allowedCommands: ['session_open', 'session_create', 'session_send'],
+        reason: '',
+        workspaceId: '',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            agentPolicy: policy,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Agent'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Workspace'), findsOneWidget);
+      expect(find.text('Not selected'), findsOneWidget);
+      expect(
+        find.text('CodeWhale workspace list is not loaded'),
+        findsOneWidget,
+      );
+      expect(find.text('Воркспейс'), findsNothing);
+      expect(find.text('Не выбран'), findsNothing);
+
+      final agentList = find.byType(ListView).first;
+      await tester.drag(agentList, const Offset(0, -650));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Launch mode'), findsOneWidget);
+      expect(find.text('Provider'), findsOneWidget);
+      expect(find.text('Model'), findsOneWidget);
+      expect(find.text('Confirmations'), findsOneWidget);
+      expect(find.text('Tool auto mode'), findsOneWidget);
+      expect(find.text('Режим запуска'), findsNothing);
+      expect(find.text('Провайдер'), findsNothing);
+
+      await tester.drag(agentList, const Offset(0, -700));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tools'), findsOneWidget);
+      expect(find.text('CodeWhale tools are not loaded'), findsOneWidget);
+      expect(find.text('Execution queue'), findsOneWidget);
+      expect(
+        find.text('Select tools; the work step will run last'),
+        findsOneWidget,
+      );
+      expect(find.text('Task work'), findsOneWidget);
+      expect(
+        find.text('Checklists, comments, and task files are required'),
+        findsOneWidget,
+      );
+      expect(find.text('Инструменты'), findsNothing);
+      expect(find.text('Очередь выполнения'), findsNothing);
+    });
+
     testWidgets('agent tab displays open agent questions', (tester) async {
       final task = _editableTask.copyWith(
         collaboration: const TaskCollaboration(

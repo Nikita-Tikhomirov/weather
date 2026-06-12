@@ -281,6 +281,79 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskAgentQueueRunning => 'Queue running';
 
   @override
+  String get taskWorkspace => 'Workspace';
+
+  @override
+  String get taskWorkspaceField => 'Workspace';
+
+  @override
+  String get taskWorkspaceNotSelected => 'Not selected';
+
+  @override
+  String get taskWorkspaceListNotLoaded =>
+      'CodeWhale workspace list is not loaded';
+
+  @override
+  String get taskLaunchMode => 'Launch mode';
+
+  @override
+  String get taskLaunchAuto => 'Auto';
+
+  @override
+  String get taskLaunchManual => 'Manual';
+
+  @override
+  String get taskAgentProvider => 'Provider';
+
+  @override
+  String get taskAgentModel => 'Model';
+
+  @override
+  String get taskAgentConfirmations => 'Confirmations';
+
+  @override
+  String get taskAgentToolAutoMode => 'Tool auto mode';
+
+  @override
+  String get taskAgentTools => 'Tools';
+
+  @override
+  String get taskAgentToolsLoading => 'Tool list is loading';
+
+  @override
+  String get taskAgentToolsNotLoaded => 'CodeWhale tools are not loaded';
+
+  @override
+  String get taskAgentSkills => 'Skills';
+
+  @override
+  String get taskAgentCommands => 'Commands';
+
+  @override
+  String taskAgentAvailableCount(int count) {
+    return 'Available: $count';
+  }
+
+  @override
+  String get taskAgentQueue => 'Execution queue';
+
+  @override
+  String get taskAgentQueueHint => 'Select tools; the work step will run last';
+
+  @override
+  String get taskMoveUp => 'Up';
+
+  @override
+  String get taskMoveDown => 'Down';
+
+  @override
+  String get taskWorkStep => 'Task work';
+
+  @override
+  String get taskWorkStepSubtitle =>
+      'Checklists, comments, and task files are required';
+
+  @override
   String get taskTitle => 'Title';
 
   @override

@@ -281,6 +281,80 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskAgentQueueRunning => 'Очередь идет';
 
   @override
+  String get taskWorkspace => 'Воркспейс';
+
+  @override
+  String get taskWorkspaceField => 'Рабочее пространство';
+
+  @override
+  String get taskWorkspaceNotSelected => 'Не выбран';
+
+  @override
+  String get taskWorkspaceListNotLoaded =>
+      'Список воркспейсов CodeWhale не загружен';
+
+  @override
+  String get taskLaunchMode => 'Режим запуска';
+
+  @override
+  String get taskLaunchAuto => 'Авто';
+
+  @override
+  String get taskLaunchManual => 'Ручной';
+
+  @override
+  String get taskAgentProvider => 'Провайдер';
+
+  @override
+  String get taskAgentModel => 'Модель';
+
+  @override
+  String get taskAgentConfirmations => 'Подтверждения';
+
+  @override
+  String get taskAgentToolAutoMode => 'Авто-режим инструментов';
+
+  @override
+  String get taskAgentTools => 'Инструменты';
+
+  @override
+  String get taskAgentToolsLoading => 'Список инструментов загружается';
+
+  @override
+  String get taskAgentToolsNotLoaded => 'Инструменты CodeWhale не загружены';
+
+  @override
+  String get taskAgentSkills => 'Скиллы';
+
+  @override
+  String get taskAgentCommands => 'Команды';
+
+  @override
+  String taskAgentAvailableCount(int count) {
+    return 'Доступно: $count';
+  }
+
+  @override
+  String get taskAgentQueue => 'Очередь выполнения';
+
+  @override
+  String get taskAgentQueueHint =>
+      'Выберите инструменты; рабочий шаг пойдет последним';
+
+  @override
+  String get taskMoveUp => 'Выше';
+
+  @override
+  String get taskMoveDown => 'Ниже';
+
+  @override
+  String get taskWorkStep => 'Работа по задаче';
+
+  @override
+  String get taskWorkStepSubtitle =>
+      'Чеклисты, комментарии и файлы карточки обязательны';
+
+  @override
   String get taskTitle => 'Название';
 
   @override

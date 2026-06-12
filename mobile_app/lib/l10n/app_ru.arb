@@ -97,6 +97,36 @@
   "taskAgentTaskChats": "Чаты задачи",
   "taskAgentNoChats": "Агентские чаты не подключены",
   "taskAgentQueueRunning": "Очередь идет",
+  "taskWorkspace": "Воркспейс",
+  "taskWorkspaceField": "Рабочее пространство",
+  "taskWorkspaceNotSelected": "Не выбран",
+  "taskWorkspaceListNotLoaded": "Список воркспейсов CodeWhale не загружен",
+  "taskLaunchMode": "Режим запуска",
+  "taskLaunchAuto": "Авто",
+  "taskLaunchManual": "Ручной",
+  "taskAgentProvider": "Провайдер",
+  "taskAgentModel": "Модель",
+  "taskAgentConfirmations": "Подтверждения",
+  "taskAgentToolAutoMode": "Авто-режим инструментов",
+  "taskAgentTools": "Инструменты",
+  "taskAgentToolsLoading": "Список инструментов загружается",
+  "taskAgentToolsNotLoaded": "Инструменты CodeWhale не загружены",
+  "taskAgentSkills": "Скиллы",
+  "taskAgentCommands": "Команды",
+  "taskAgentAvailableCount": "Доступно: {count}",
+  "@taskAgentAvailableCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "taskAgentQueue": "Очередь выполнения",
+  "taskAgentQueueHint": "Выберите инструменты; рабочий шаг пойдет последним",
+  "taskMoveUp": "Выше",
+  "taskMoveDown": "Ниже",
+  "taskWorkStep": "Работа по задаче",
+  "taskWorkStepSubtitle": "Чеклисты, комментарии и файлы карточки обязательны",
   "taskTitle": "Название",
   "taskDetails": "Описание",
   "chatTaskDraft": "Черновик задачи",

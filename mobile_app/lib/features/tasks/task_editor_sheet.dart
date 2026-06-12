@@ -4018,6 +4018,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   Widget _buildAgentWorkspacePanel(AgentRunPolicy policy) {
+    final text = TaskEditorText.of(context);
     final selected = _effectiveAgentWorkspaceId(policy);
     final ids = _agentWorkspaces.map((item) => item.id).toSet();
     final selectedValue = ids.contains(selected) ? selected : null;
@@ -4026,15 +4027,15 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       children: [
         _SectionHeader(
           icon: Icons.workspaces_outline,
-          title: 'Воркспейс',
-          trailing: selected.isEmpty ? 'Не выбран' : selected,
+          title: text.workspace,
+          trailing: selected.isEmpty ? text.workspaceNotSelected : selected,
         ),
         const SizedBox(height: 10),
         if (_agentWorkspacesLoading) const LinearProgressIndicator(),
         if (_agentWorkspaces.isEmpty)
-          const _EmptyLine(
+          _EmptyLine(
             icon: Icons.cloud_off_outlined,
-            text: 'Список воркспейсов CodeWhale не загружен',
+            text: text.workspaceListNotLoaded,
           )
         else
           DropdownButtonFormField<String>(
@@ -4043,9 +4044,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             ),
             initialValue: selectedValue,
             isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Рабочее пространство',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: text.workspaceField,
+              border: const OutlineInputBorder(),
             ),
             items: _agentWorkspaces.map((workspace) {
               final title = workspace.name.trim().isEmpty
@@ -4085,7 +4086,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                 ? null
                 : () => unawaited(_refreshAgentWorkspaces()),
             icon: const Icon(Icons.refresh),
-            label: const Text('Обновить'),
+            label: Text(text.refresh),
           ),
         ),
       ],
@@ -4093,17 +4094,18 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   Widget _buildAgentModePanel() {
+    final text = TaskEditorText.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _SectionHeader(
           icon: Icons.tune,
-          title: 'Режим запуска',
-          trailing: _agentAutoMode ? 'Авто' : 'Ручной',
+          title: text.launchMode,
+          trailing: _agentAutoMode ? text.launchAuto : text.launchManual,
         ),
         const SizedBox(height: 10),
         _AgentModeDropdown(
-          label: 'Провайдер',
+          label: text.agentProvider,
           value: _agentProvider,
           values: const [
             '',
@@ -4125,7 +4127,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         ),
         const SizedBox(height: 8),
         _AgentModeDropdown(
-          label: 'Модель',
+          label: text.agentModel,
           value: _agentModel,
           values: const [
             '',
@@ -4147,7 +4149,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           children: [
             Expanded(
               child: _AgentModeDropdown(
-                label: 'Подтверждения',
+                label: text.agentConfirmations,
                 value: _agentApprovalPolicy,
                 values: const ['', 'on-request', 'on-failure', 'never'],
                 onChanged: (value) {
@@ -4178,7 +4180,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Авто-режим инструментов'),
+          title: Text(text.agentToolAutoMode),
           value: _agentAutoMode,
           onChanged: (value) {
             setState(() {
@@ -4193,6 +4195,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   Widget _buildAgentToolsPanel() {
+    final text = TaskEditorText.of(context);
     final skillCommands = _agentCommands.where(_isAgentSkillCommand).toList();
     final otherCommands = _agentCommands.where((command) {
       return !_isAgentSkillCommand(command);
@@ -4202,7 +4205,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       children: [
         _SectionHeader(
           icon: Icons.extension_outlined,
-          title: 'Инструменты',
+          title: text.agentTools,
           trailing: '${_agentCommands.length}',
         ),
         const SizedBox(height: 10),
@@ -4211,21 +4214,21 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           _EmptyLine(
             icon: Icons.refresh,
             text: _agentCommandsLoading
-                ? 'Список инструментов загружается'
-                : 'Инструменты CodeWhale не загружены',
+                ? text.agentToolsLoading
+                : text.agentToolsNotLoaded,
           )
         else ...[
           if (skillCommands.isNotEmpty)
-            _buildAgentCommandGroup('Скиллы', skillCommands),
+            _buildAgentCommandGroup(text.agentSkills, skillCommands, text),
           if (otherCommands.isNotEmpty)
-            _buildAgentCommandGroup('Команды', otherCommands),
+            _buildAgentCommandGroup(text.agentCommands, otherCommands, text),
         ],
         Align(
           alignment: Alignment.centerRight,
           child: TextButton.icon(
             onPressed: _agentCommandsLoading ? null : _loadAgentCommands,
             icon: const Icon(Icons.refresh),
-            label: const Text('Обновить'),
+            label: Text(text.refresh),
           ),
         ),
       ],
@@ -4235,11 +4238,12 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   Widget _buildAgentCommandGroup(
     String title,
     List<Map<String, dynamic>> commands,
+    TaskEditorText text,
   ) {
     return ExpansionTile(
       tilePadding: EdgeInsets.zero,
       title: Text(title),
-      subtitle: Text('Доступно: ${commands.length}'),
+      subtitle: Text(text.agentAvailableCount(commands.length)),
       children: [
         for (final command in commands)
           CheckboxListTile(
@@ -4261,20 +4265,21 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   Widget _buildAgentQueuePanel() {
+    final text = TaskEditorText.of(context);
     final selected = _selectedAgentCommands();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _SectionHeader(
           icon: Icons.playlist_play,
-          title: 'Очередь выполнения',
+          title: text.agentQueue,
           trailing: '${selected.length + 1}',
         ),
         const SizedBox(height: 10),
         if (selected.isEmpty)
-          const _EmptyLine(
+          _EmptyLine(
             icon: Icons.info_outline,
-            text: 'Выберите инструменты; рабочий шаг пойдет последним',
+            text: text.agentQueueHint,
           )
         else
           ...selected.asMap().entries.map((entry) {
@@ -4288,14 +4293,14 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    tooltip: 'Выше',
+                    tooltip: text.moveUp,
                     onPressed: entry.key == 0
                         ? null
                         : () => _moveAgentCommand(value, -1),
                     icon: const Icon(Icons.keyboard_arrow_up),
                   ),
                   IconButton(
-                    tooltip: 'Ниже',
+                    tooltip: text.moveDown,
                     onPressed: entry.key == selected.length - 1
                         ? null
                         : () => _moveAgentCommand(value, 1),
@@ -4305,11 +4310,11 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
               ),
             );
           }),
-        const ListTile(
+        ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.flag_outlined),
-          title: Text('Работа по задаче'),
-          subtitle: Text('Чеклисты, комментарии и файлы карточки обязательны'),
+          leading: const Icon(Icons.flag_outlined),
+          title: Text(text.workStep),
+          subtitle: Text(text.workStepSubtitle),
         ),
       ],
     );

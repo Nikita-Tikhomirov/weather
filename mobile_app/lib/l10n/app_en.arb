@@ -97,6 +97,36 @@
   "taskAgentTaskChats": "Task chats",
   "taskAgentNoChats": "No agent chats connected",
   "taskAgentQueueRunning": "Queue running",
+  "taskWorkspace": "Workspace",
+  "taskWorkspaceField": "Workspace",
+  "taskWorkspaceNotSelected": "Not selected",
+  "taskWorkspaceListNotLoaded": "CodeWhale workspace list is not loaded",
+  "taskLaunchMode": "Launch mode",
+  "taskLaunchAuto": "Auto",
+  "taskLaunchManual": "Manual",
+  "taskAgentProvider": "Provider",
+  "taskAgentModel": "Model",
+  "taskAgentConfirmations": "Confirmations",
+  "taskAgentToolAutoMode": "Tool auto mode",
+  "taskAgentTools": "Tools",
+  "taskAgentToolsLoading": "Tool list is loading",
+  "taskAgentToolsNotLoaded": "CodeWhale tools are not loaded",
+  "taskAgentSkills": "Skills",
+  "taskAgentCommands": "Commands",
+  "taskAgentAvailableCount": "Available: {count}",
+  "@taskAgentAvailableCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "taskAgentQueue": "Execution queue",
+  "taskAgentQueueHint": "Select tools; the work step will run last",
+  "taskMoveUp": "Up",
+  "taskMoveDown": "Down",
+  "taskWorkStep": "Task work",
+  "taskWorkStepSubtitle": "Checklists, comments, and task files are required",
   "taskTitle": "Title",
   "taskDetails": "Details",
   "chatTaskDraft": "Task draft",
