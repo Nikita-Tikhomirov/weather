@@ -287,6 +287,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskAgentQueueRunning => 'Очередь идет';
 
   @override
+  String get taskAgentQuestionBlocksWork => 'Блокирует работу';
+
+  @override
   String get taskWorkspace => 'Воркспейс';
 
   @override

@@ -99,6 +99,7 @@
   "taskAgentTaskChats": "Чаты задачи",
   "taskAgentNoChats": "Агентские чаты не подключены",
   "taskAgentQueueRunning": "Очередь идет",
+  "taskAgentQuestionBlocksWork": "Блокирует работу",
   "taskWorkspace": "Воркспейс",
   "taskWorkspaceField": "Рабочее пространство",
   "taskWorkspaceNotSelected": "Не выбран",

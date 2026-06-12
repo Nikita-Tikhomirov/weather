@@ -60,6 +60,8 @@ class TaskEditorText {
   String get agentStatusLinked => l10n?.connected ?? 'подключен';
   String get agentStatusRunning => l10n?.running ?? 'в работе';
   String get agentStatusDone => l10n?.done ?? 'готово';
+  String get agentQuestionBlocksWork =>
+      l10n?.taskAgentQuestionBlocksWork ?? 'Блокирует работу';
   String get agentSkills => l10n?.taskAgentSkills ?? 'Скиллы';
   String get agentCommands => l10n?.taskAgentCommands ?? 'Команды';
   String agentAvailableCount(int count) =>

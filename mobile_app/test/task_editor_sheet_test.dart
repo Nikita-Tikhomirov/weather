@@ -765,11 +765,13 @@ void main() {
       expect(find.text('Agent'), findsWidgets);
       expect(find.text('Access granted'), findsOneWidget);
       expect(find.text('Agent questions'), findsOneWidget);
+      expect(find.text('Blocks work'), findsOneWidget);
       expect(find.text('Connect chat'), findsOneWidget);
       expect(find.text('New chat'), findsOneWidget);
       expect(find.text('Агент'), findsNothing);
       expect(find.text('Доступ есть'), findsNothing);
       expect(find.text('Вопросы агента'), findsNothing);
+      expect(find.text('Блокирует работу'), findsNothing);
       expect(find.text('Подключить чат'), findsNothing);
       expect(find.text('Новый чат'), findsNothing);
 

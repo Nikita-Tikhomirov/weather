@@ -1000,6 +1000,7 @@ class _AgentQuestionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final text = TaskEditorText.of(context);
     final blocking = question.blocking;
     final borderColor = blocking
         ? theme.colorScheme.error.withValues(alpha: 0.35)
@@ -1033,7 +1034,7 @@ class _AgentQuestionTile extends StatelessWidget {
                 if (blocking) ...[
                   const SizedBox(height: 4),
                   Text(
-                    'Блокирует работу',
+                    text.agentQuestionBlocksWork,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.error,
                     ),

@@ -287,6 +287,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskAgentQueueRunning => 'Queue running';
 
   @override
+  String get taskAgentQuestionBlocksWork => 'Blocks work';
+
+  @override
   String get taskWorkspace => 'Workspace';
 
   @override

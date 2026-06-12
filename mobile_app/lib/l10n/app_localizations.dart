@@ -647,6 +647,12 @@ abstract class AppLocalizations {
   /// **'Queue running'**
   String get taskAgentQueueRunning;
 
+  /// No description provided for @taskAgentQuestionBlocksWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocks work'**
+  String get taskAgentQuestionBlocksWork;
+
   /// No description provided for @taskWorkspace.
   ///
   /// In en, this message translates to:

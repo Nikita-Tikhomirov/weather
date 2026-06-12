@@ -99,6 +99,7 @@
   "taskAgentTaskChats": "Task chats",
   "taskAgentNoChats": "No agent chats connected",
   "taskAgentQueueRunning": "Queue running",
+  "taskAgentQuestionBlocksWork": "Blocks work",
   "taskWorkspace": "Workspace",
   "taskWorkspaceField": "Workspace",
   "taskWorkspaceNotSelected": "Not selected",
