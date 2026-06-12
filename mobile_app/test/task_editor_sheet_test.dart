@@ -2416,6 +2416,14 @@ TASK_CARD_ACTIONS_JSON:
       expect(find.text('Комментарии'), findsNothing);
       expect(find.text('Чеклисты'), findsNothing);
       expect(find.text('Новый чеклист'), findsNothing);
+
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -700));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Activity'), findsOneWidget);
+      expect(find.text('Nothing yet'), findsOneWidget);
+      expect(find.text('Активность'), findsNothing);
+      expect(find.text('Пока пусто'), findsNothing);
     });
 
     testWidgets('uses localized comment composer controls', (tester) async {

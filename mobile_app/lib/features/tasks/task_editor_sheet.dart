@@ -3862,12 +3862,12 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         const SizedBox(height: 22),
         _SectionHeader(
           icon: Icons.history,
-          title: 'Активность',
+          title: text.activity,
           trailing: '${_collaboration.activity.length}',
         ),
         const SizedBox(height: 10),
         if (_collaboration.activity.isEmpty)
-          const _EmptyLine(icon: Icons.bolt_outlined, text: 'Пока пусто')
+          _EmptyLine(icon: Icons.bolt_outlined, text: text.activityEmpty)
         else
           ..._collaboration.activity.reversed.take(12).map(
                 (entry) => _ActivityRow(

@@ -163,4 +163,6 @@ class TaskEditorText {
       l10n?.taskDeleteChecklistItemMessage ?? 'Пункт будет удалён из чеклиста.';
   String get checklistItem => l10n?.taskChecklistItem ?? 'Пункт';
   String get addChecklistItem => l10n?.taskAddChecklistItem ?? 'Добавить пункт';
+  String get activity => l10n?.taskActivity ?? 'Активность';
+  String get activityEmpty => l10n?.taskActivityEmpty ?? 'Пока пусто';
 }

@@ -166,6 +166,8 @@
   "taskDeleteChecklistItemMessage": "The item will be removed from the checklist.",
   "taskChecklistItem": "Item",
   "taskAddChecklistItem": "Add item",
+  "taskActivity": "Activity",
+  "taskActivityEmpty": "Nothing yet",
   "actionItems": "Action items",
   "decisions": "Decisions",
   "blockers": "Blockers",

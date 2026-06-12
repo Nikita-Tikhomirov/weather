@@ -471,6 +471,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskAddChecklistItem => 'Добавить пункт';
 
   @override
+  String get taskActivity => 'Активность';
+
+  @override
+  String get taskActivityEmpty => 'Пока пусто';
+
+  @override
   String get actionItems => 'Action items';
 
   @override

@@ -1007,6 +1007,18 @@ abstract class AppLocalizations {
   /// **'Add item'**
   String get taskAddChecklistItem;
 
+  /// No description provided for @taskActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get taskActivity;
+
+  /// No description provided for @taskActivityEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing yet'**
+  String get taskActivityEmpty;
+
   /// No description provided for @actionItems.
   ///
   /// In en, this message translates to:

@@ -471,6 +471,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskAddChecklistItem => 'Add item';
 
   @override
+  String get taskActivity => 'Activity';
+
+  @override
+  String get taskActivityEmpty => 'Nothing yet';
+
+  @override
   String get actionItems => 'Action items';
 
   @override

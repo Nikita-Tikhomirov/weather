@@ -166,6 +166,8 @@
   "taskDeleteChecklistItemMessage": "Пункт будет удалён из чеклиста.",
   "taskChecklistItem": "Пункт",
   "taskAddChecklistItem": "Добавить пункт",
+  "taskActivity": "Активность",
+  "taskActivityEmpty": "Пока пусто",
   "actionItems": "Action items",
   "decisions": "Решения",
   "blockers": "Блокеры",
