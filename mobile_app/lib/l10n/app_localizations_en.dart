@@ -227,6 +227,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voice => 'Voice';
 
   @override
+  String get playVoiceMessage => 'Play voice message';
+
+  @override
+  String get pauseVoiceMessage => 'Pause voice message';
+
+  @override
   String get today => 'Today';
 
   @override

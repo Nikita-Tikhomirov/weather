@@ -227,6 +227,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get voice => 'Голос';
 
   @override
+  String get playVoiceMessage => 'Воспроизвести';
+
+  @override
+  String get pauseVoiceMessage => 'Пауза';
+
+  @override
   String get today => 'Сегодня';
 
   @override

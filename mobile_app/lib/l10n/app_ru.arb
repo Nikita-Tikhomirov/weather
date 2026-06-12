@@ -79,6 +79,8 @@
   "undo": "Отменить",
   "syncAction": "Синхронизировать",
   "voice": "Голос",
+  "playVoiceMessage": "Воспроизвести",
+  "pauseVoiceMessage": "Пауза",
   "today": "Сегодня",
   "addTask": "Добавить задачу",
   "newTask": "Новая задача",

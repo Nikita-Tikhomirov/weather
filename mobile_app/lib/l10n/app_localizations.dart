@@ -527,6 +527,18 @@ abstract class AppLocalizations {
   /// **'Voice'**
   String get voice;
 
+  /// No description provided for @playVoiceMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Play voice message'**
+  String get playVoiceMessage;
+
+  /// No description provided for @pauseVoiceMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause voice message'**
+  String get pauseVoiceMessage;
+
   /// No description provided for @today.
   ///
   /// In en, this message translates to:

@@ -79,6 +79,8 @@
   "undo": "Undo",
   "syncAction": "Sync",
   "voice": "Voice",
+  "playVoiceMessage": "Play voice message",
+  "pauseVoiceMessage": "Pause voice message",
   "today": "Today",
   "addTask": "Add Task",
   "newTask": "New task",

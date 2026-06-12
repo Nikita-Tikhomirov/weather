@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../l10n/app_localizations.dart';
+
 /// Voice message bubble with animated waveform.
 class VoiceBubble extends StatefulWidget {
   const VoiceBubble({
@@ -78,6 +80,7 @@ class _VoiceBubbleState extends State<VoiceBubble>
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     final d = Duration(milliseconds: widget.durationMs);
     final timeStr = widget.durationMs > 0
         ? '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}'
@@ -95,7 +98,9 @@ class _VoiceBubbleState extends State<VoiceBubble>
         children: [
           IconButton.filled(
             visualDensity: VisualDensity.compact,
-            tooltip: _playing ? 'Пауза' : 'Воспроизвести',
+            tooltip: _playing
+                ? l10n?.pauseVoiceMessage ?? 'Пауза'
+                : l10n?.playVoiceMessage ?? 'Воспроизвести',
             onPressed: _togglePlay,
             icon: Icon(_playing ? Icons.pause : Icons.play_arrow),
           ),
