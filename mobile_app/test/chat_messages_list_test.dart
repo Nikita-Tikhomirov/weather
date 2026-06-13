@@ -208,6 +208,61 @@ void main() {
     expect(find.text('Sending... 75%'), findsOneWidget);
     expect(find.text('Отправка... 75%'), findsNothing);
   });
+
+  testWidgets('falls back to English chat message labels', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 560,
+            child: ChatMessagesList(
+              messages: [
+                _message(
+                  id: 'deleted-fallback',
+                  text: '',
+                  deletedAt: '2026-06-08T10:05:00Z',
+                ),
+                _message(
+                  id: 'image-fallback',
+                  text: '',
+                  messageType: 'image',
+                ),
+                _message(
+                  id: 'edited-fallback',
+                  text: 'edited body',
+                  editedAt: '2026-06-08T10:05:00Z',
+                ),
+                _message(
+                  id: 'upload-fallback',
+                  text: '',
+                  messageType: 'image',
+                  isUploading: true,
+                  uploadProgress: 0.75,
+                ),
+              ],
+              owner: 'nik',
+              compact: true,
+              textFor: (message) => message.text,
+              senderLabelFor: (profile) => profile,
+              stickerAssetFor: (_) => '',
+              imageUrlFor: (_) => '',
+              onLongPress: (_) {},
+              onImageTap: (_, __) {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Message deleted'), findsOneWidget);
+    expect(find.text('Image'), findsOneWidget);
+    expect(find.textContaining('· edited'), findsOneWidget);
+    expect(find.text('Sending... 75%'), findsOneWidget);
+    expect(find.text('Сообщение удалено'), findsNothing);
+    expect(find.text('Изображение'), findsNothing);
+    expect(find.textContaining('изменено'), findsNothing);
+    expect(find.text('Отправка... 75%'), findsNothing);
+  });
 }
 
 ChatMessage _message({

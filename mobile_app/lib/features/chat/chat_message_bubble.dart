@@ -136,7 +136,7 @@ class ChatMessageBubble extends StatelessWidget {
     }
     if (deleted) {
       return Text(
-        AppLocalizations.of(context)?.messageDeleted ?? 'Сообщение удалено',
+        AppLocalizations.of(context)?.messageDeleted ?? 'Message deleted',
         style: const TextStyle(
           fontStyle: FontStyle.italic,
           color: Color(0xFF9CA3AF),
@@ -193,7 +193,7 @@ class ChatMessageBubble extends StatelessWidget {
       if (urls.isEmpty) {
         return Text(
           text.isEmpty
-              ? AppLocalizations.of(context)?.imageMessage ?? 'Изображение'
+              ? AppLocalizations.of(context)?.imageMessage ?? 'Image'
               : text,
         );
       }
@@ -528,7 +528,7 @@ class ChatMessageBubble extends StatelessWidget {
     final localeName = Localizations.localeOf(context).toLanguageTag();
     final formatted = _formatIsoDate(message.createdAt, localeName);
     if ((message.editedAt ?? '').isNotEmpty) {
-      final edited = AppLocalizations.of(context)?.edited ?? 'изменено';
+      final edited = AppLocalizations.of(context)?.edited ?? 'edited';
       return '$formatted · $edited';
     }
     if (mine) {
@@ -576,14 +576,16 @@ class ChatMessageBubble extends StatelessWidget {
   ) {
     final l10n = AppLocalizations.of(context);
     if (!isVideo) {
-      if (progress < 0.5) return l10n?.uploadPhaseUploading ?? 'Загрузка...';
-      if (progress < 0.9) return l10n?.uploadPhaseSending ?? 'Отправка...';
-      return l10n?.uploadPhaseFinishing ?? 'Завершение...';
+      if (progress < 0.5) return l10n?.uploadPhaseUploading ?? 'Uploading...';
+      if (progress < 0.9) return l10n?.uploadPhaseSending ?? 'Sending...';
+      return l10n?.uploadPhaseFinishing ?? 'Finishing...';
     }
-    if (progress < 0.01) return l10n?.uploadPhasePreparing ?? 'Подготовка...';
-    if (progress < 0.25) return l10n?.uploadPhaseCompressing ?? 'Сжатие...';
-    if (progress < 0.30) return l10n?.uploadPhaseReading ?? 'Чтение...';
-    if (progress < 0.98) return l10n?.uploadPhaseUploading ?? 'Загрузка...';
-    return l10n?.uploadPhaseFinishing ?? 'Завершение...';
+    if (progress < 0.01) return l10n?.uploadPhasePreparing ?? 'Preparing...';
+    if (progress < 0.25) {
+      return l10n?.uploadPhaseCompressing ?? 'Compressing...';
+    }
+    if (progress < 0.30) return l10n?.uploadPhaseReading ?? 'Reading...';
+    if (progress < 0.98) return l10n?.uploadPhaseUploading ?? 'Uploading...';
+    return l10n?.uploadPhaseFinishing ?? 'Finishing...';
   }
 }
