@@ -9,13 +9,13 @@ class _FamilyViewText {
 
   final AppLocalizations? l10n;
 
-  String get upcoming => l10n?.filterUpcoming ?? 'Предстоящие';
-  String get overdue => l10n?.filterOverdue ?? 'Просроченные';
-  String get done => l10n?.filterDone ?? 'Выполненные';
-  String get all => l10n?.filterAll ?? 'Все';
-  String get familyTasks => l10n?.familyTasks ?? 'Семейные задачи';
+  String get upcoming => l10n?.filterUpcoming ?? 'Upcoming';
+  String get overdue => l10n?.filterOverdue ?? 'Overdue';
+  String get done => l10n?.filterDone ?? 'Done';
+  String get all => l10n?.filterAll ?? 'All';
+  String get familyTasks => l10n?.familyTasks ?? 'Family Tasks';
   String get noTasksForFilter =>
-      l10n?.noTasksForFilter ?? 'Под выбранный фильтр задач нет';
+      l10n?.noTasksForFilter ?? 'No tasks match this filter';
 }
 
 class FamilyView extends StatelessWidget {

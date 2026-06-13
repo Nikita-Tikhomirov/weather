@@ -36,4 +36,32 @@ void main() {
     await tester.tap(find.text('Overdue'));
     expect(selectedFilter, 'overdue');
   });
+
+  testWidgets('falls back to English filter and empty-state labels',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: Scaffold(
+          body: FamilyView(
+            familyTasks: const [],
+            familyFilter: 'upcoming',
+            labelFor: (profile) => profile,
+            onFilterChanged: (_) {},
+            onEdit: (_) async {},
+            onDelete: (_) async {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Upcoming'), findsOneWidget);
+    expect(find.text('Overdue'), findsOneWidget);
+    expect(find.text('Done'), findsOneWidget);
+    expect(find.text('All'), findsOneWidget);
+    expect(find.text('Family Tasks'), findsOneWidget);
+    expect(find.text('No tasks match this filter'), findsOneWidget);
+    expect(find.text('Предстоящие'), findsNothing);
+    expect(find.text('Семейные задачи'), findsNothing);
+  });
 }
