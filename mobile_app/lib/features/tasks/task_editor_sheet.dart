@@ -1544,7 +1544,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     if (!_canEdit || _agentLaunching) return;
     if (!policy.canStartAgentChat) {
       _showSnack(
-        policy.reason.isEmpty ? 'Нет прав на запуск агента' : policy.reason,
+        policy.reason.isEmpty ? text.agentStartNoAccess : policy.reason,
       );
       return;
     }
@@ -1689,7 +1689,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       }
     } catch (error) {
       if (!mounted) return;
-      final message = 'Не удалось запустить агента: $error';
+      final message = text.agentStartFailed(error);
       setState(() {
         _upsertAgentSession(session.copyWith(status: 'error'));
         _appendAgentActivity(

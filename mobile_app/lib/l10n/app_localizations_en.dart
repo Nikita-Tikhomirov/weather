@@ -328,6 +328,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get taskAgentStartNoAccess => 'No permission to start agent';
+
+  @override
+  String taskAgentStartFailed(Object error) {
+    return 'Could not start agent: $error';
+  }
+
+  @override
   String get taskAgentQueueRunning => 'Queue running';
 
   @override

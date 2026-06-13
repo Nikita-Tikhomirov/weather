@@ -330,6 +330,14 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get taskAgentStartNoAccess => 'Нет прав на запуск агента';
+
+  @override
+  String taskAgentStartFailed(Object error) {
+    return 'Не удалось запустить агента: $error';
+  }
+
+  @override
   String get taskAgentQueueRunning => 'Очередь идет';
 
   @override

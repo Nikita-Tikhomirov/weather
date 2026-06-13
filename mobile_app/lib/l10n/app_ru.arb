@@ -129,6 +129,13 @@
       }
     }
   },
+  "taskAgentStartNoAccess": "Нет прав на запуск агента",
+  "taskAgentStartFailed": "Не удалось запустить агента: {error}",
+  "@taskAgentStartFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "taskAgentQueueRunning": "Очередь идет",
   "taskAgentQuestionBlocksWork": "Блокирует работу",
   "taskWorkspace": "Воркспейс",

@@ -60,6 +60,11 @@ class TaskEditorText {
   String agentQueueLaunchStarted(int count) =>
       l10n?.taskAgentQueueLaunchStarted(count) ??
       'Агент запускает очередь: $count инструментов';
+  String get agentStartNoAccess =>
+      l10n?.taskAgentStartNoAccess ?? 'Нет прав на запуск агента';
+  String agentStartFailed(Object error) =>
+      l10n?.taskAgentStartFailed(error) ??
+      'Не удалось запустить агента: $error';
   String get agentQueueRunning => l10n?.taskAgentQueueRunning ?? 'Очередь идет';
   String get workspace => l10n?.taskWorkspace ?? 'Воркспейс';
   String get workspaceField =>

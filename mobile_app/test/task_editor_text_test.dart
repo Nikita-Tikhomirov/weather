@@ -45,6 +45,11 @@ void main() {
       text.agentQueueLaunchStarted(2),
       'Агент запускает очередь: 2 инструментов',
     );
+    expect(text.agentStartNoAccess, 'Нет прав на запуск агента');
+    expect(
+      text.agentStartFailed('ошибка'),
+      'Не удалось запустить агента: ошибка',
+    );
     expect(text.agentContinueNoAccess, 'Нет прав на продолжение агента');
     expect(
       text.agentContinuesFreshCard,
@@ -127,6 +132,11 @@ void main() {
     expect(
       text.agentQueueLaunchStarted(2),
       'Agent is starting the queue: 2 tools',
+    );
+    expect(text.agentStartNoAccess, 'No permission to start agent');
+    expect(
+      text.agentStartFailed('network'),
+      'Could not start agent: network',
     );
     expect(text.agentContinueNoAccess, 'No permission to continue agent');
     expect(

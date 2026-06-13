@@ -713,6 +713,18 @@ abstract class AppLocalizations {
   /// **'Agent is starting the queue: {count} tools'**
   String taskAgentQueueLaunchStarted(int count);
 
+  /// No description provided for @taskAgentStartNoAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'No permission to start agent'**
+  String get taskAgentStartNoAccess;
+
+  /// No description provided for @taskAgentStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start agent: {error}'**
+  String taskAgentStartFailed(Object error);
+
   /// No description provided for @taskAgentQueueRunning.
   ///
   /// In en, this message translates to:

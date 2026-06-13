@@ -129,6 +129,13 @@
       }
     }
   },
+  "taskAgentStartNoAccess": "No permission to start agent",
+  "taskAgentStartFailed": "Could not start agent: {error}",
+  "@taskAgentStartFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "taskAgentQueueRunning": "Queue running",
   "taskAgentQuestionBlocksWork": "Blocks work",
   "taskWorkspace": "Workspace",

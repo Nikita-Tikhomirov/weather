@@ -38,6 +38,7 @@ class _FakeApiClient extends ApiClient {
   final List<Map<String, dynamic>> agentContextResponses = [];
   Completer<void>? mediaUploadGate;
   Completer<void>? documentUploadGate;
+  bool failAgentTicket = false;
   bool failAgentContext = false;
   bool failAgentSessionRecord = false;
   bool failAgentEventRecord = false;
@@ -88,6 +89,9 @@ class _FakeApiClient extends ApiClient {
   }) async {
     agentTicketCount += 1;
     agentTicketWorkspaceIds.add(workspaceId);
+    if (failAgentTicket) {
+      throw StateError('ticket failed');
+    }
     return AgentTicketResult(
       policy: AgentRunPolicy(
         allowed: true,
@@ -1792,6 +1796,67 @@ void main() {
       expect(find.text('New agent chat is starting'), findsOneWidget);
       expect(find.text('Новый агентский чат запускается'), findsNothing);
       expect(find.text('Агент: Editable Task'), findsNothing);
+    });
+
+    testWidgets('uses localized agent launch failure snackbar', (tester) async {
+      final repository = _FakeTaskRepository();
+      repository.fakeApi.failAgentTicket = true;
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Executor',
+        plugins: [],
+        allowedCommands: ['session_create', 'session_send'],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              return _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              );
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Agent'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('New chat'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(repository.fakeApi.agentTicketCount, 1);
+      expect(
+        find.descendant(
+          of: find.byType(SnackBar),
+          matching: find.textContaining(
+            'Could not start agent: Bad state: ticket failed',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Не удалось запустить агента'), findsNothing);
     });
 
     testWidgets('agent launch stops when task card skill is missing',
