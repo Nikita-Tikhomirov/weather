@@ -497,6 +497,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         _cancelCommentEdit();
         return;
       }
+      final uiText = TaskEditorText.of(context);
       setState(() {
         _collaboration = _collaboration.copyWith(
           comments: comments,
@@ -504,7 +505,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             ..._collaboration.activity,
             _activity(
               type: 'comment_edited',
-              text: 'отредактировал комментарий',
+              text: uiText.activityCommentEdited,
               targetId: editingId,
             ),
           ],
@@ -568,9 +569,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             type: replyTo == null ? 'comment_added' : 'comment_replied',
             text: replyTo == null
                 ? attachments.isEmpty
-                    ? 'добавил комментарий'
-                    : 'добавил комментарий с вложением'
-                : 'ответил на комментарий',
+                    ? uiText.activityCommentAdded
+                    : uiText.activityCommentAddedWithAttachment
+                : uiText.activityCommentReplied,
             targetId: comment.id,
           ),
         ],
@@ -846,6 +847,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     );
     if (confirmed != true || !mounted) return;
 
+    final uiText = TaskEditorText.of(context);
     final now = DateTime.now().toIso8601String();
     final nextComments = _collaboration.comments.map((item) {
       if (item.id != comment.id) return item;
@@ -869,7 +871,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           ..._collaboration.activity,
           _activity(
             type: 'comment_deleted',
-            text: 'удалил комментарий',
+            text: uiText.activityCommentDeleted,
             targetId: comment.id,
           ),
         ],

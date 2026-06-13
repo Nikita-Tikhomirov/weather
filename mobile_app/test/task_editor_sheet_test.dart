@@ -3142,6 +3142,44 @@ TASK_CARD_ACTIONS_JSON:
       expect(find.text('Пока пусто'), findsNothing);
     });
 
+    testWidgets('saves localized comment activity text', (tester) async {
+      final repository = _FakeTaskRepository();
+      repository.tasks.add(_editableTask);
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Work'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Comment or caption'),
+        'Ready for review',
+      );
+      await tester.tap(find.byTooltip('Send'));
+      await tester.pumpAndSettle();
+
+      expect(repository.upserts, isNotEmpty);
+      final activity = repository.upserts.last.collaboration.activity.last;
+      expect(activity.text, 'added a comment');
+      expect(activity.text, isNot('добавил комментарий'));
+    });
+
     testWidgets('uses localized fallback profile labels in comments',
         (tester) async {
       final task = _editableTask.copyWith(

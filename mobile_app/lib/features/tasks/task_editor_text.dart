@@ -229,6 +229,17 @@ class TaskEditorText {
       l10n?.taskEditingComment ?? 'Редактирование комментария';
   String get commentDeleted => l10n?.taskCommentDeleted ?? 'Комментарий удалён';
   String get commentFallback => l10n?.taskCommentFallback ?? 'Комментарий';
+  String get activityCommentEdited =>
+      l10n?.taskActivityCommentEdited ?? 'отредактировал комментарий';
+  String get activityCommentAdded =>
+      l10n?.taskActivityCommentAdded ?? 'добавил комментарий';
+  String get activityCommentAddedWithAttachment =>
+      l10n?.taskActivityCommentAddedWithAttachment ??
+      'добавил комментарий с вложением';
+  String get activityCommentReplied =>
+      l10n?.taskActivityCommentReplied ?? 'ответил на комментарий';
+  String get activityCommentDeleted =>
+      l10n?.taskActivityCommentDeleted ?? 'удалил комментарий';
   String get deleteCommentTitle =>
       l10n?.taskDeleteCommentTitle ?? 'Удалить комментарий?';
   String get deleteCommentMessage =>

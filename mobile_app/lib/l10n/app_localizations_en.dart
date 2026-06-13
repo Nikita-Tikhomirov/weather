@@ -504,6 +504,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskCommentFallback => 'Comment';
 
   @override
+  String get taskActivityCommentEdited => 'edited a comment';
+
+  @override
+  String get taskActivityCommentAdded => 'added a comment';
+
+  @override
+  String get taskActivityCommentAddedWithAttachment =>
+      'added a comment with an attachment';
+
+  @override
+  String get taskActivityCommentReplied => 'replied to a comment';
+
+  @override
+  String get taskActivityCommentDeleted => 'deleted a comment';
+
+  @override
   String get taskCancelCommentAction => 'Cancel';
 
   @override

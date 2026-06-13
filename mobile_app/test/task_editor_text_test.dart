@@ -60,6 +60,14 @@ void main() {
       'Не удалось продолжить агента: ошибка',
     );
     expect(text.codeWhaleError, 'Ошибка CodeWhale');
+    expect(text.activityCommentEdited, 'отредактировал комментарий');
+    expect(text.activityCommentAdded, 'добавил комментарий');
+    expect(
+      text.activityCommentAddedWithAttachment,
+      'добавил комментарий с вложением',
+    );
+    expect(text.activityCommentReplied, 'ответил на комментарий');
+    expect(text.activityCommentDeleted, 'удалил комментарий');
     expect(
       text.saveError('Укажите название задачи.'),
       'Укажите название задачи.',
@@ -157,6 +165,14 @@ void main() {
       'Could not continue agent: network',
     );
     expect(text.codeWhaleError, 'CodeWhale error');
+    expect(text.activityCommentEdited, 'edited a comment');
+    expect(text.activityCommentAdded, 'added a comment');
+    expect(
+      text.activityCommentAddedWithAttachment,
+      'added a comment with an attachment',
+    );
+    expect(text.activityCommentReplied, 'replied to a comment');
+    expect(text.activityCommentDeleted, 'deleted a comment');
     expect(text.saveError('Укажите название задачи.'), 'Enter a task title');
     expect(text.saveError('Выберите проект.'), 'Select project');
     expect(

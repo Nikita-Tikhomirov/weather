@@ -1037,6 +1037,36 @@ abstract class AppLocalizations {
   /// **'Comment'**
   String get taskCommentFallback;
 
+  /// No description provided for @taskActivityCommentEdited.
+  ///
+  /// In en, this message translates to:
+  /// **'edited a comment'**
+  String get taskActivityCommentEdited;
+
+  /// No description provided for @taskActivityCommentAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'added a comment'**
+  String get taskActivityCommentAdded;
+
+  /// No description provided for @taskActivityCommentAddedWithAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'added a comment with an attachment'**
+  String get taskActivityCommentAddedWithAttachment;
+
+  /// No description provided for @taskActivityCommentReplied.
+  ///
+  /// In en, this message translates to:
+  /// **'replied to a comment'**
+  String get taskActivityCommentReplied;
+
+  /// No description provided for @taskActivityCommentDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'deleted a comment'**
+  String get taskActivityCommentDeleted;
+
   /// No description provided for @taskCancelCommentAction.
   ///
   /// In en, this message translates to:

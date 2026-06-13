@@ -507,6 +507,22 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskCommentFallback => 'Комментарий';
 
   @override
+  String get taskActivityCommentEdited => 'отредактировал комментарий';
+
+  @override
+  String get taskActivityCommentAdded => 'добавил комментарий';
+
+  @override
+  String get taskActivityCommentAddedWithAttachment =>
+      'добавил комментарий с вложением';
+
+  @override
+  String get taskActivityCommentReplied => 'ответил на комментарий';
+
+  @override
+  String get taskActivityCommentDeleted => 'удалил комментарий';
+
+  @override
   String get taskCancelCommentAction => 'Отменить';
 
   @override
