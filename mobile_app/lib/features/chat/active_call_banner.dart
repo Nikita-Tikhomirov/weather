@@ -13,20 +13,20 @@ class _ActiveCallText {
     final isVideo = callType == 'video';
     if (incoming) {
       return isVideo
-          ? l10n?.incomingVideoCall ?? 'Входящий видеозвонок'
-          : l10n?.incomingAudioCall ?? 'Входящий аудиозвонок';
+          ? l10n?.incomingVideoCall ?? 'Incoming video call'
+          : l10n?.incomingAudioCall ?? 'Incoming audio call';
     }
     return isVideo
-        ? l10n?.ongoingVideoCall ?? 'Идет видеозвонок'
-        : l10n?.ongoingAudioCall ?? 'Идет аудиозвонок';
+        ? l10n?.ongoingVideoCall ?? 'Ongoing video call'
+        : l10n?.ongoingAudioCall ?? 'Ongoing audio call';
   }
 
-  String get accept => l10n?.accept ?? 'Принять';
-  String get decline => l10n?.decline ?? 'Отклонить';
-  String get endCall => l10n?.endCall ?? 'Завершить';
-  String get open => l10n?.open ?? 'Открыть';
-  String get openCallScreen => l10n?.openCallScreen ?? 'Открыть экран звонка';
-  String get returnToCall => l10n?.returnToCall ?? 'Вернуться';
+  String get accept => l10n?.accept ?? 'Accept';
+  String get decline => l10n?.decline ?? 'Decline';
+  String get endCall => l10n?.endCall ?? 'End';
+  String get open => l10n?.open ?? 'Open';
+  String get openCallScreen => l10n?.openCallScreen ?? 'Open call screen';
+  String get returnToCall => l10n?.returnToCall ?? 'Return';
 }
 
 class ActiveCallOverlay extends StatelessWidget {

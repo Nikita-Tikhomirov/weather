@@ -34,6 +34,13 @@ void main() {
     );
   }
 
+  Widget plainApp(Widget child) {
+    return MaterialApp(
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
+      home: Scaffold(body: child),
+    );
+  }
+
   testWidgets('shows incoming call banner above any app tab', (tester) async {
     var opened = false;
     var accepted = false;
@@ -118,5 +125,31 @@ void main() {
           .first,
     );
     expect(material.color, isNot(Colors.black));
+  });
+
+  testWidgets('falls back to English labels without localizations',
+      (tester) async {
+    await tester.pumpWidget(
+      plainApp(
+        ActiveCallOverlay(
+          session: session(callType: 'audio'),
+          state: CallState.ringing,
+          owner: owner,
+          profileLabel: (profile) => 'User $profile',
+          onOpen: () {},
+          onAccept: () {},
+          onEnd: () {},
+          child: const Center(child: Text('Tasks')),
+        ),
+      ),
+    );
+
+    expect(find.text('Incoming audio call'), findsOneWidget);
+    expect(find.text('Accept'), findsOneWidget);
+    expect(find.text('Decline'), findsOneWidget);
+    expect(find.text('Open call screen'), findsOneWidget);
+    expect(find.text('Входящий аудиозвонок'), findsNothing);
+    expect(find.text('Принять'), findsNothing);
+    expect(find.text('Отклонить'), findsNothing);
   });
 }
