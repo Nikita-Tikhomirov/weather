@@ -15,73 +15,72 @@ class _AdminAccessText {
 
   final AppLocalizations? l10n;
 
-  String get administration => l10n?.administration ?? 'Администрирование';
-  String get refresh => l10n?.refresh ?? 'Обновить';
-  String get noAccess =>
-      l10n?.adminNoAccess ?? 'Нет доступа к администрированию';
+  String get administration => l10n?.administration ?? 'Administration';
+  String get refresh => l10n?.refresh ?? 'Refresh';
+  String get noAccess => l10n?.adminNoAccess ?? 'No administration access';
   String get bridgeNotConnected =>
-      l10n?.adminBridgeNotConnected ?? 'Воркспейсы CodeWhale не подключены';
+      l10n?.adminBridgeNotConnected ?? 'CodeWhale workspaces are not connected';
   String get codeWhaleDisabled =>
-      l10n?.adminCodeWhaleDisabled ?? 'CodeWhale отключен';
-  String get newAccess => l10n?.adminNewAccess ?? 'Новый доступ';
+      l10n?.adminCodeWhaleDisabled ?? 'CodeWhale disabled';
+  String get newAccess => l10n?.adminNewAccess ?? 'New access';
   String get contactFromContacts =>
-      l10n?.adminContactFromContacts ?? 'Пользователь из контактов';
+      l10n?.adminContactFromContacts ?? 'Contact from contacts';
   String get contactsNotFound =>
-      l10n?.adminContactsNotFound ?? 'Контакты не найдены';
-  String get workspace => l10n?.adminWorkspace ?? 'Воркспейс';
-  String get role => l10n?.adminRole ?? 'Роль';
-  String get grantAccess => l10n?.adminGrantAccess ?? 'Выдать доступ';
-  String get grantedAccess => l10n?.adminGrantedAccess ?? 'Кому что выдано';
+      l10n?.adminContactsNotFound ?? 'No contacts found';
+  String get workspace => l10n?.adminWorkspace ?? 'Workspace';
+  String get role => l10n?.adminRole ?? 'Role';
+  String get grantAccess => l10n?.adminGrantAccess ?? 'Grant access';
+  String get grantedAccess => l10n?.adminGrantedAccess ?? 'Granted access';
   String get noActiveAccess =>
-      l10n?.adminNoActiveAccess ?? 'Активных доступов пока нет';
-  String get revokeAccess => l10n?.adminRevokeAccess ?? 'Отозвать доступ';
-  String get agentRoles => l10n?.adminAgentRoles ?? 'Агенты и роли';
-  String get workspaceKind => l10n?.adminWorkspaceKind ?? 'Воркспейс';
+      l10n?.adminNoActiveAccess ?? 'No active access yet';
+  String get revokeAccess => l10n?.adminRevokeAccess ?? 'Revoke access';
+  String get agentRoles => l10n?.adminAgentRoles ?? 'Agent roles';
+  String get workspaceKind => l10n?.adminWorkspaceKind ?? 'Workspace';
   String get selectUserAndWorkspace =>
-      l10n?.adminSelectUserAndWorkspace ?? 'Выберите пользователя и воркспейс';
-  String get accessGranted => l10n?.adminAccessGranted ?? 'Доступ выдан';
-  String get accessRevoked => l10n?.adminAccessRevoked ?? 'Доступ отозван';
+      l10n?.adminSelectUserAndWorkspace ?? 'Select a user and workspace';
+  String get accessGranted => l10n?.adminAccessGranted ?? 'Access granted';
+  String get accessRevoked => l10n?.adminAccessRevoked ?? 'Access revoked';
 
   String refreshProjectsFailed(Object error) {
     return l10n?.adminRefreshProjectsFailed(error) ??
-        'Не удалось обновить проекты: $error';
+        'Could not refresh projects: $error';
   }
 
   String loadAccessFailed(Object error) {
     return l10n?.adminLoadAccessFailed(error) ??
-        'Не удалось загрузить доступы: $error';
+        'Could not load access grants: $error';
   }
 
   String grantAccessFailed(Object error) {
     return l10n?.adminGrantAccessFailed(error) ??
-        'Не удалось выдать доступ: $error';
+        'Could not grant access: $error';
   }
 
   String revokeAccessFailed(Object error) {
     return l10n?.adminRevokeAccessFailed(error) ??
-        'Не удалось отозвать доступ: $error';
+        'Could not revoke access: $error';
   }
 
   String usersCount(int count) {
-    return l10n?.adminUsersCount(count) ?? 'Пользователи: $count';
+    return l10n?.adminUsersCount(count) ?? 'Users: $count';
   }
 
   String workspacesCount(int count) {
-    return l10n?.adminWorkspacesCount(count) ?? 'Воркспейсы: $count';
+    return l10n?.adminWorkspacesCount(count) ?? 'Workspaces: $count';
   }
 
   String projectsCount(int count) {
-    return l10n?.adminProjectsCount(count) ?? 'Проекты: $count';
+    return l10n?.adminProjectsCount(count) ?? 'Projects: $count';
   }
 
   String roleLabel(String id) {
     switch (id) {
       case 'workspace_user':
-        return l10n?.adminRoleWorkspaceUser ?? 'Участник воркспейса';
+        return l10n?.adminRoleWorkspaceUser ?? 'Workspace member';
       case 'agent_operator':
-        return l10n?.adminRoleAgentOperator ?? 'Оператор агентов';
+        return l10n?.adminRoleAgentOperator ?? 'Agent operator';
       case 'workspace_admin':
-        return l10n?.adminRoleWorkspaceAdmin ?? 'Администратор воркспейса';
+        return l10n?.adminRoleWorkspaceAdmin ?? 'Workspace administrator';
       default:
         return id;
     }
@@ -91,13 +90,13 @@ class _AdminAccessText {
     switch (id) {
       case 'workspace_user':
         return l10n?.adminRoleWorkspaceUserDescription ??
-            'Видит рабочее пространство и может пользоваться ИИ.';
+            'Can view the workspace and use AI.';
       case 'agent_operator':
         return l10n?.adminRoleAgentOperatorDescription ??
-            'Запускает агентские чаты из задач и ведет работу в них.';
+            'Can launch agent chats from tasks and run work in them.';
       case 'workspace_admin':
         return l10n?.adminRoleWorkspaceAdminDescription ??
-            'Управляет доступами и расширенными действиями агентов.';
+            'Can manage access and advanced agent actions.';
       default:
         return id;
     }

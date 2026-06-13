@@ -18,6 +18,7 @@ import '../../l10n/app_localizations.dart';
 import 'home_dashboard_labels.dart';
 import 'home_navigation_widget.dart';
 import 'home_project_status_sheet.dart';
+import 'home_voice_recorder_messages.dart';
 import '../../shared/utils/avatar_url_resolver.dart';
 import 'home_helpers.dart';
 import 'desktop_shell_labels.dart';
@@ -278,15 +279,7 @@ class _HomePageState extends State<HomePage> {
     final l10n = AppLocalizations.of(context);
     _voiceRecorder = VoiceRecorderService(
       store: store,
-      messages: VoiceRecorderMessages(
-        permissionRequired:
-            l10n?.voicePermissionRequired ?? 'Нужен доступ к микрофону',
-        microphoneErrorPrefix:
-            l10n?.voiceMicrophoneErrorPrefix ?? 'Ошибка микрофона: ',
-        tooShort: l10n?.voiceRecordingTooShort ?? 'Слишком коротко',
-        voiceMessage: l10n?.voiceMessage ?? 'Голосовое сообщение',
-        sendErrorPrefix: l10n?.voiceSendErrorPrefix ?? 'Ошибка: ',
-      ),
+      messages: buildHomeVoiceRecorderMessages(l10n),
       onRecordingChanged: (_) {
         if (mounted) setState(() {});
       },

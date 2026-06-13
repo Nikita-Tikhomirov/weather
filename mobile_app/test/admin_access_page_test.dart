@@ -70,6 +70,69 @@ void main() {
     expect(find.byTooltip('Revoke access'), findsOneWidget);
   });
 
+  testWidgets('admin page uses English fallback labels without localizations',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1000, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      _plainApp(
+        home: AdminAccessPage(
+          api: _EmptyAdminApiClient(),
+          actorProfile: '',
+          actorPhone: '',
+          accessPolicy: const UserAccessPolicy(
+            phone: '79679812438',
+            profileKey: 'nik',
+            roles: ['messenger_user', 'superadmin'],
+            capabilities: ['workspaces.grant_access'],
+            workspaces: [],
+            isSuperadmin: true,
+          ),
+          contacts: const [],
+          projects: const [
+            TaskProject(id: 'project-system', name: 'System'),
+          ],
+          initialWorkspaces: const [
+            WorkspaceItem(
+              id: 'workspace-weather',
+              name: 'Weather',
+              path: r'C:\weather',
+              status: WorkspaceStatus.available,
+            ),
+          ],
+          connectToBridge: false,
+        ),
+      ),
+    );
+
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('Administration'), findsOneWidget);
+    expect(find.byTooltip('Refresh'), findsOneWidget);
+    expect(find.text('Users: 0'), findsOneWidget);
+    expect(find.text('Workspaces: 1'), findsOneWidget);
+    expect(find.text('Projects: 1'), findsOneWidget);
+    expect(find.text('CodeWhale disabled'), findsOneWidget);
+    expect(find.text('New access'), findsOneWidget);
+    expect(find.text('Contact from contacts'), findsOneWidget);
+    expect(find.text('No contacts found'), findsOneWidget);
+    expect(find.text('Workspace'), findsOneWidget);
+    expect(find.text('Role'), findsOneWidget);
+    expect(find.text('Agent operator'), findsWidgets);
+    expect(
+      find.text('Can launch agent chats from tasks and run work in them.'),
+      findsWidgets,
+    );
+    expect(find.text('Grant access'), findsOneWidget);
+    expect(find.text('Granted access'), findsOneWidget);
+    expect(find.text('No active access yet'), findsOneWidget);
+    expect(find.text('Agent roles'), findsOneWidget);
+    expect(find.text('Workspace member'), findsOneWidget);
+    expect(find.text('Workspace administrator'), findsOneWidget);
+    expect(find.textContaining(RegExp(r'[А-Яа-яЁё]')), findsNothing);
+  });
+
   testWidgets('admin page grants workspace access only to real workspaces',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1000, 1200));
@@ -156,6 +219,13 @@ Widget _localizedApp({required Widget home}) {
   );
 }
 
+Widget _plainApp({required Widget home}) {
+  return MaterialApp(
+    theme: ThemeData(splashFactory: NoSplash.splashFactory),
+    home: home,
+  );
+}
+
 class _FakeAdminApiClient extends ApiClient {
   _FakeAdminApiClient() : super(baseUrl: 'http://localhost', apiKey: 'test');
 
@@ -225,5 +295,24 @@ class _FakeAdminApiClient extends ApiClient {
         'workspace_id': workspaceId,
       },
     });
+  }
+}
+
+class _EmptyAdminApiClient extends _FakeAdminApiClient {
+  @override
+  Future<List<WorkspaceAccessGrant>> listWorkspaceAccess({
+    required String actorProfile,
+    String actorPhone = '',
+    String workspaceId = '',
+  }) async {
+    requests.add({
+      'path': '/admin/workspace-access',
+      'query': {
+        'actor_profile': actorProfile,
+        'phone': actorPhone,
+        'workspace_id': workspaceId,
+      },
+    });
+    return const [];
   }
 }
