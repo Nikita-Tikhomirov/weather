@@ -101,6 +101,37 @@ class TaskEditorText {
   String get continueWork => l10n?.taskContinueWork ?? 'Продолжить работу';
   String get saveTaskFirst =>
       l10n?.taskSaveTaskFirst ?? 'Сначала сохраните задачу';
+  String saveError(String error) {
+    switch (error) {
+      case 'Укажите название задачи.':
+        return l10n?.taskSaveTitleRequired ?? 'Укажите название задачи.';
+      case 'Выберите проект.':
+        return selectProject;
+      case 'Выберите группу проекта.':
+        return selectProjectGroup;
+      case 'Выбранная группа не входит в проект.':
+        return l10n?.taskSaveGroupNotInProject ??
+            'Выбранная группа не входит в проект.';
+      case 'Нет прав на создание задачи в этой группе.':
+        return l10n?.taskSaveGroupCreateNoAccess ??
+            'Нет прав на создание задачи в этой группе.';
+      case 'Ответственные должны входить в выбранную группу.':
+        return l10n?.taskSaveAssigneesOutsideGroup ??
+            'Ответственные должны входить в выбранную группу.';
+      case 'Некорректный статус задачи.':
+        return l10n?.taskSaveInvalidStatus ?? 'Некорректный статус задачи.';
+      case 'Некорректный приоритет задачи.':
+        return l10n?.taskSaveInvalidPriority ??
+            'Некорректный приоритет задачи.';
+      case 'Некорректные интервалы напоминаний.':
+        return l10n?.taskSaveInvalidReminders ??
+            'Некорректные интервалы напоминаний.';
+      case 'Невозможно сохранить задачу.':
+        return l10n?.taskSaveGenericFailure ?? 'Невозможно сохранить задачу.';
+    }
+    return error;
+  }
+
   String get agentContinueNoAccess =>
       l10n?.taskAgentContinueNoAccess ?? 'Нет прав на продолжение агента';
   String get agentContinuesFreshCard =>

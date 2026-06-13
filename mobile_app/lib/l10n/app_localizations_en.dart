@@ -403,6 +403,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskSaveTaskFirst => 'Save the task first';
 
   @override
+  String get taskSaveTitleRequired => 'Enter a task title';
+
+  @override
+  String get taskSaveGroupNotInProject =>
+      'Selected group is not in the project.';
+
+  @override
+  String get taskSaveGroupCreateNoAccess =>
+      'No permission to create a task in this group.';
+
+  @override
+  String get taskSaveAssigneesOutsideGroup =>
+      'Assignees must belong to the selected group.';
+
+  @override
+  String get taskSaveInvalidStatus => 'Invalid task status.';
+
+  @override
+  String get taskSaveInvalidPriority => 'Invalid task priority.';
+
+  @override
+  String get taskSaveInvalidReminders => 'Invalid reminder intervals.';
+
+  @override
+  String get taskSaveGenericFailure => 'Could not save task.';
+
+  @override
   String get taskAgentContinueNoAccess => 'No permission to continue agent';
 
   @override

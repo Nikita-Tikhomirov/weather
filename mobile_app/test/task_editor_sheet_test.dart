@@ -762,6 +762,49 @@ void main() {
       );
     });
 
+    testWidgets('uses localized domain save validation snackbar',
+        (tester) async {
+      final store = _FakeTaskStore();
+      _seedProjectAccess(store);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+          ),
+        ),
+      );
+
+      await tester.enterText(find.byType(TextField).first, '');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Save'));
+      await tester.pump();
+
+      expect(
+        find.descendant(
+          of: find.byType(SnackBar),
+          matching: find.text('Enter a task title'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(SnackBar),
+          matching: find.text('Укажите название задачи.'),
+        ),
+        findsNothing,
+      );
+    });
+
     testWidgets('agent tab shows actions without static abilities block',
         (tester) async {
       final store = _FakeTaskStore();

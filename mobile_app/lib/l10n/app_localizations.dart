@@ -851,6 +851,54 @@ abstract class AppLocalizations {
   /// **'Save the task first'**
   String get taskSaveTaskFirst;
 
+  /// No description provided for @taskSaveTitleRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a task title'**
+  String get taskSaveTitleRequired;
+
+  /// No description provided for @taskSaveGroupNotInProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected group is not in the project.'**
+  String get taskSaveGroupNotInProject;
+
+  /// No description provided for @taskSaveGroupCreateNoAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'No permission to create a task in this group.'**
+  String get taskSaveGroupCreateNoAccess;
+
+  /// No description provided for @taskSaveAssigneesOutsideGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Assignees must belong to the selected group.'**
+  String get taskSaveAssigneesOutsideGroup;
+
+  /// No description provided for @taskSaveInvalidStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid task status.'**
+  String get taskSaveInvalidStatus;
+
+  /// No description provided for @taskSaveInvalidPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid task priority.'**
+  String get taskSaveInvalidPriority;
+
+  /// No description provided for @taskSaveInvalidReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid reminder intervals.'**
+  String get taskSaveInvalidReminders;
+
+  /// No description provided for @taskSaveGenericFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save task.'**
+  String get taskSaveGenericFailure;
+
   /// No description provided for @taskAgentContinueNoAccess.
   ///
   /// In en, this message translates to:

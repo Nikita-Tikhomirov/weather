@@ -356,8 +356,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }) async {
     if (!_canEdit) return;
     if (_saving) return;
+    final text = TaskEditorText.of(context);
     if (_selectedProjectId.isEmpty && !automatic) {
-      _showSnack(TaskEditorText.of(context).selectProject);
+      _showSnack(text.selectProject);
       return;
     }
 
@@ -391,7 +392,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     }
     if (!result.isSuccess) {
       if (!automatic) {
-        messenger?.showSnackBar(SnackBar(content: Text(result.error!)));
+        messenger?.showSnackBar(
+          SnackBar(content: Text(text.saveError(result.error!))),
+        );
       }
       return;
     }

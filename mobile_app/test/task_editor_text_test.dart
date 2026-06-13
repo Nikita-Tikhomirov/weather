@@ -60,6 +60,15 @@ void main() {
       'Не удалось продолжить агента: ошибка',
     );
     expect(text.codeWhaleError, 'Ошибка CodeWhale');
+    expect(
+      text.saveError('Укажите название задачи.'),
+      'Укажите название задачи.',
+    );
+    expect(text.saveError('Выберите проект.'), 'Выберите проект');
+    expect(
+      text.saveError('Неизвестная ошибка'),
+      'Неизвестная ошибка',
+    );
     expect(text.codeWhaleUnavailable, 'CodeWhale недоступен');
     expect(
       text.agentToolsLoadFailed('ошибка'),
@@ -148,6 +157,12 @@ void main() {
       'Could not continue agent: network',
     );
     expect(text.codeWhaleError, 'CodeWhale error');
+    expect(text.saveError('Укажите название задачи.'), 'Enter a task title');
+    expect(text.saveError('Выберите проект.'), 'Select project');
+    expect(
+      text.saveError('Неизвестная ошибка'),
+      'Неизвестная ошибка',
+    );
     expect(text.codeWhaleUnavailable, 'CodeWhale is unavailable');
     expect(
       text.agentToolsLoadFailed('network'),

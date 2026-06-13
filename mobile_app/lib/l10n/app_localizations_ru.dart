@@ -405,6 +405,34 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskSaveTaskFirst => 'Сначала сохраните задачу';
 
   @override
+  String get taskSaveTitleRequired => 'Укажите название задачи.';
+
+  @override
+  String get taskSaveGroupNotInProject =>
+      'Выбранная группа не входит в проект.';
+
+  @override
+  String get taskSaveGroupCreateNoAccess =>
+      'Нет прав на создание задачи в этой группе.';
+
+  @override
+  String get taskSaveAssigneesOutsideGroup =>
+      'Ответственные должны входить в выбранную группу.';
+
+  @override
+  String get taskSaveInvalidStatus => 'Некорректный статус задачи.';
+
+  @override
+  String get taskSaveInvalidPriority => 'Некорректный приоритет задачи.';
+
+  @override
+  String get taskSaveInvalidReminders =>
+      'Некорректные интервалы напоминаний.';
+
+  @override
+  String get taskSaveGenericFailure => 'Невозможно сохранить задачу.';
+
+  @override
   String get taskAgentContinueNoAccess => 'Нет прав на продолжение агента';
 
   @override
