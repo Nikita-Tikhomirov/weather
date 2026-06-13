@@ -233,6 +233,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pauseVoiceMessage => 'Пауза';
 
   @override
+  String get voicePermissionRequired => 'Нужен доступ к микрофону';
+
+  @override
+  String get voiceMicrophoneErrorPrefix => 'Ошибка микрофона: ';
+
+  @override
+  String get voiceRecordingTooShort => 'Слишком коротко';
+
+  @override
+  String get voiceSendErrorPrefix => 'Ошибка: ';
+
+  @override
   String get today => 'Сегодня';
 
   @override

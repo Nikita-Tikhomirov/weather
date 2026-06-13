@@ -233,6 +233,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pauseVoiceMessage => 'Pause voice message';
 
   @override
+  String get voicePermissionRequired => 'Microphone permission is required';
+
+  @override
+  String get voiceMicrophoneErrorPrefix => 'Microphone error: ';
+
+  @override
+  String get voiceRecordingTooShort => 'Recording is too short';
+
+  @override
+  String get voiceSendErrorPrefix => 'Error: ';
+
+  @override
   String get today => 'Today';
 
   @override

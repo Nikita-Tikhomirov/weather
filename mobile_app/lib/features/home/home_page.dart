@@ -274,8 +274,18 @@ class _HomePageState extends State<HomePage> {
     }
     setState(() => _store = store);
 
+    final l10n = AppLocalizations.of(context);
     _voiceRecorder = VoiceRecorderService(
       store: store,
+      messages: VoiceRecorderMessages(
+        permissionRequired:
+            l10n?.voicePermissionRequired ?? 'Нужен доступ к микрофону',
+        microphoneErrorPrefix:
+            l10n?.voiceMicrophoneErrorPrefix ?? 'Ошибка микрофона: ',
+        tooShort: l10n?.voiceRecordingTooShort ?? 'Слишком коротко',
+        voiceMessage: l10n?.voiceMessage ?? 'Голосовое сообщение',
+        sendErrorPrefix: l10n?.voiceSendErrorPrefix ?? 'Ошибка: ',
+      ),
       onRecordingChanged: (_) {
         if (mounted) setState(() {});
       },

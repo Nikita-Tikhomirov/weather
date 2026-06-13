@@ -22,6 +22,25 @@ ChatAttachment buildVoiceAttachment(
   );
 }
 
+class VoiceRecorderMessages {
+  const VoiceRecorderMessages({
+    this.permissionRequired = 'Microphone permission is required',
+    this.microphoneErrorPrefix = 'Microphone error: ',
+    this.tooShort = 'Recording is too short',
+    this.voiceMessage = 'Voice message',
+    this.sendErrorPrefix = 'Error: ',
+  });
+
+  final String permissionRequired;
+  final String microphoneErrorPrefix;
+  final String tooShort;
+  final String voiceMessage;
+  final String sendErrorPrefix;
+
+  String microphoneError(Object error) => '$microphoneErrorPrefix$error';
+  String sendError(Object error) => '$sendErrorPrefix$error';
+}
+
 /// Standalone voice recording service extracted from _HomePageState.
 ///
 /// Handles microphone permission, recording start/stop, timer,
@@ -33,6 +52,7 @@ class VoiceRecorderService {
     this.onShowSnackBar,
     this.getActiveConversationKey,
     this.onVoiceMessageSent,
+    this.messages = const VoiceRecorderMessages(),
   });
 
   final TaskStore store;
@@ -40,6 +60,7 @@ class VoiceRecorderService {
   final void Function(String message)? onShowSnackBar;
   final String Function()? getActiveConversationKey;
   final FutureOr<void> Function(ChatMessage message)? onVoiceMessageSent;
+  final VoiceRecorderMessages messages;
 
   static const _channel = MethodChannel('family_todo_mobile/voice');
 
@@ -56,7 +77,7 @@ class VoiceRecorderService {
       final granted =
           await _channel.invokeMethod<bool>('requestPermission') ?? false;
       if (!granted) {
-        onShowSnackBar?.call('Нужен доступ к микрофону');
+        onShowSnackBar?.call(messages.permissionRequired);
         return;
       }
       _voicePath =
@@ -73,7 +94,7 @@ class VoiceRecorderService {
         }
       });
     } catch (e) {
-      onShowSnackBar?.call('Ошибка микрофона: $e');
+      onShowSnackBar?.call(messages.microphoneError(e));
     }
   }
 
@@ -88,7 +109,7 @@ class VoiceRecorderService {
     _isRecording = false;
     onRecordingChanged?.call(false);
     if (_voicePath == null || _voiceSec < 1) {
-      onShowSnackBar?.call('Слишком коротко');
+      onShowSnackBar?.call(messages.tooShort);
       return;
     }
     await _sendVoiceFile();
@@ -114,7 +135,7 @@ class VoiceRecorderService {
         actorProfile: actor,
         conversationKey: conversationKey,
         messageType: 'voice',
-        text: '🎤 Голосовое',
+        text: '🎤 ${messages.voiceMessage}',
         imageUrl: up.assetUrl,
         imageMeta: attachment.imageMeta,
         attachments: [attachment],
@@ -124,7 +145,7 @@ class VoiceRecorderService {
       await onVoiceMessageSent?.call(msg);
       _voicePath = null;
     } catch (e) {
-      onShowSnackBar?.call('Ошибка: $e');
+      onShowSnackBar?.call(messages.sendError(e));
     }
   }
 

@@ -539,6 +539,30 @@ abstract class AppLocalizations {
   /// **'Pause voice message'**
   String get pauseVoiceMessage;
 
+  /// No description provided for @voicePermissionRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone permission is required'**
+  String get voicePermissionRequired;
+
+  /// No description provided for @voiceMicrophoneErrorPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone error: '**
+  String get voiceMicrophoneErrorPrefix;
+
+  /// No description provided for @voiceRecordingTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording is too short'**
+  String get voiceRecordingTooShort;
+
+  /// No description provided for @voiceSendErrorPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: '**
+  String get voiceSendErrorPrefix;
+
   /// No description provided for @today.
   ///
   /// In en, this message translates to:
