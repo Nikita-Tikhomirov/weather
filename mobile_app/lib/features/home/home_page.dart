@@ -15,6 +15,7 @@ import '../../app/app_config.dart';
 import '../../app/app_labels.dart';
 import '../../app/app_theme.dart';
 import '../../l10n/app_localizations.dart';
+import 'home_attachment_labels.dart';
 import 'home_chat_action_labels.dart';
 import 'home_dashboard_labels.dart';
 import 'home_group_chat_labels.dart';
@@ -152,6 +153,8 @@ class _HomePageState extends State<HomePage> {
       HomeChatActionLabels(AppLocalizations.of(context));
   HomeGroupChatLabels get _groupChatLabels =>
       HomeGroupChatLabels(AppLocalizations.of(context));
+  HomeAttachmentLabels get _attachmentLabels =>
+      HomeAttachmentLabels(AppLocalizations.of(context));
 
   /// Conversation key -> set of profiles currently typing
   final Map<String, Set<String>> _typingUsers = <String, Set<String>>{};
@@ -2211,6 +2214,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _pickAndSendDocument(TaskStore store) async {
+    final labels = _attachmentLabels;
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.any,
@@ -2222,7 +2226,7 @@ class _HomePageState extends State<HomePage> {
       if (file.path == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Не удалось прочитать файл')),
+            SnackBar(content: Text(labels.fileReadFailed)),
           );
         }
         return;
@@ -2235,9 +2239,7 @@ class _HomePageState extends State<HomePage> {
       if (fileBytes.length > maxBytes) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Файл слишком большой. Максимум 50 МБ.'),
-            ),
+            SnackBar(content: Text(labels.fileTooLarge(maxMb: 50))),
           );
         }
         return;
@@ -2318,7 +2320,7 @@ class _HomePageState extends State<HomePage> {
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка отправки документа: $error')),
+          SnackBar(content: Text(labels.documentSendFailed(error))),
         );
         setState(() {});
       }
@@ -2330,6 +2332,7 @@ class _HomePageState extends State<HomePage> {
     required ImageSource source,
     bool allowMultiple = false,
   }) async {
+    final labels = _attachmentLabels;
     final picked = <XFile>[];
     if (allowMultiple && source == ImageSource.gallery) {
       picked.addAll(
@@ -2362,23 +2365,23 @@ class _HomePageState extends State<HomePage> {
       final result = await showDialog<String>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Подпись к фото'),
+          title: Text(labels.photoCaptionTitle),
           content: TextField(
             controller: captionCtl,
             maxLines: 3,
-            decoration: const InputDecoration(
-              hintText: 'Добавить подпись (необязательно)',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: labels.captionHint,
+              border: const OutlineInputBorder(),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, ''),
-              child: const Text('Пропустить'),
+              child: Text(labels.skipCaption),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, captionCtl.text.trim()),
-              child: const Text('Готово'),
+              child: Text(labels.done),
             ),
           ],
         ),
@@ -2471,7 +2474,7 @@ class _HomePageState extends State<HomePage> {
       _failOptimisticMessages(conversationKey, clientId, error.toString());
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка отправки: $error')),
+          SnackBar(content: Text(labels.photoSendFailed(error))),
         );
       }
     }
@@ -2531,6 +2534,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _pickAndSendVideo(TaskStore store) async {
+    final labels = _attachmentLabels;
     final video = await _imagePicker.pickVideo(
       source: ImageSource.gallery,
     );
@@ -2545,7 +2549,10 @@ class _HomePageState extends State<HomePage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Видео слишком большое (${(sizeBytes / (1024 * 1024)).round()} МБ). Максимум 500 МБ.',
+                labels.videoTooLarge(
+                  sizeMb: (sizeBytes / (1024 * 1024)).round(),
+                  maxMb: 500,
+                ),
               ),
             ),
           );
@@ -2564,23 +2571,23 @@ class _HomePageState extends State<HomePage> {
       final result = await showDialog<String>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Подпись к видео'),
+          title: Text(labels.videoCaptionTitle),
           content: TextField(
             controller: captionCtl,
             maxLines: 3,
-            decoration: const InputDecoration(
-              hintText: 'Добавить подпись (необязательно)',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: labels.captionHint,
+              border: const OutlineInputBorder(),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, ''),
-              child: const Text('Пропустить'),
+              child: Text(labels.skipCaption),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, captionCtl.text.trim()),
-              child: const Text('Готово'),
+              child: Text(labels.done),
             ),
           ],
         ),
@@ -2697,7 +2704,7 @@ class _HomePageState extends State<HomePage> {
       _failOptimisticMessages(conversationKey, clientId, error.toString());
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка отправки видео: $error')),
+          SnackBar(content: Text(labels.videoSendFailed(error))),
         );
       }
     }
@@ -2749,6 +2756,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _openAttachMenu(TaskStore store) async {
     if (!mounted) return;
+    final labels = _attachmentLabels;
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -2759,7 +2767,7 @@ class _HomePageState extends State<HomePage> {
             children: [
               ListTile(
                 leading: const Icon(Icons.image_outlined),
-                title: const Text('Галерея'),
+                title: Text(labels.gallery),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _sendPhotos(
@@ -2771,7 +2779,7 @@ class _HomePageState extends State<HomePage> {
               ),
               ListTile(
                 leading: const Icon(Icons.photo_camera_outlined),
-                title: const Text('Камера'),
+                title: Text(labels.camera),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _sendPhotos(store, source: ImageSource.camera);
@@ -2779,7 +2787,7 @@ class _HomePageState extends State<HomePage> {
               ),
               ListTile(
                 leading: const Icon(Icons.videocam_outlined),
-                title: const Text('Видео'),
+                title: Text(labels.video),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _pickAndSendVideo(store);
@@ -2787,7 +2795,7 @@ class _HomePageState extends State<HomePage> {
               ),
               ListTile(
                 leading: const Icon(Icons.description_outlined),
-                title: const Text('Документ'),
+                title: Text(labels.document),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _pickAndSendDocument(store);
@@ -2795,7 +2803,7 @@ class _HomePageState extends State<HomePage> {
               ),
               ListTile(
                 leading: const Icon(Icons.emoji_emotions_outlined),
-                title: const Text('Стикер'),
+                title: Text(labels.sticker),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _openStickerSheet(store);

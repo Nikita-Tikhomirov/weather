@@ -317,6 +317,60 @@ abstract class AppLocalizations {
   /// **'Attachment'**
   String get attachment;
 
+  /// No description provided for @gallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Gallery'**
+  String get gallery;
+
+  /// No description provided for @camera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get camera;
+
+  /// No description provided for @video.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get video;
+
+  /// No description provided for @chatFileTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'File is too large. Maximum {maxMb} MB.'**
+  String chatFileTooLarge(Object maxMb);
+
+  /// No description provided for @chatDocumentSendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send document: {error}'**
+  String chatDocumentSendFailed(Object error);
+
+  /// No description provided for @chatVideoTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Video is too large ({sizeMb} MB). Maximum {maxMb} MB.'**
+  String chatVideoTooLarge(Object sizeMb, Object maxMb);
+
+  /// No description provided for @chatVideoCaptionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Video caption'**
+  String get chatVideoCaptionTitle;
+
+  /// No description provided for @chatPhotoSendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send: {error}'**
+  String chatPhotoSendFailed(Object error);
+
+  /// No description provided for @chatVideoSendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send video: {error}'**
+  String chatVideoSendFailed(Object error);
+
   /// No description provided for @editMessage.
   ///
   /// In en, this message translates to:

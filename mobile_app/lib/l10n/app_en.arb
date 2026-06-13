@@ -37,6 +37,41 @@
   "uploadPhaseFinishing": "Finishing...",
   "send": "Send",
   "attachment": "Attachment",
+  "gallery": "Gallery",
+  "camera": "Camera",
+  "video": "Video",
+  "chatFileTooLarge": "File is too large. Maximum {maxMb} MB.",
+  "@chatFileTooLarge": {
+    "placeholders": {
+      "maxMb": {}
+    }
+  },
+  "chatDocumentSendFailed": "Could not send document: {error}",
+  "@chatDocumentSendFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "chatVideoTooLarge": "Video is too large ({sizeMb} MB). Maximum {maxMb} MB.",
+  "@chatVideoTooLarge": {
+    "placeholders": {
+      "sizeMb": {},
+      "maxMb": {}
+    }
+  },
+  "chatVideoCaptionTitle": "Video caption",
+  "chatPhotoSendFailed": "Could not send: {error}",
+  "@chatPhotoSendFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "chatVideoSendFailed": "Could not send video: {error}",
+  "@chatVideoSendFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "editMessage": "Edit message",
   "replyPreview": "Reply: {message}",
   "@replyPreview": {

@@ -120,6 +120,43 @@ class AppLocalizationsRu extends AppLocalizations {
   String get attachment => 'Вложение';
 
   @override
+  String get gallery => 'Галерея';
+
+  @override
+  String get camera => 'Камера';
+
+  @override
+  String get video => 'Видео';
+
+  @override
+  String chatFileTooLarge(Object maxMb) {
+    return 'Файл слишком большой. Максимум $maxMb МБ.';
+  }
+
+  @override
+  String chatDocumentSendFailed(Object error) {
+    return 'Ошибка отправки документа: $error';
+  }
+
+  @override
+  String chatVideoTooLarge(Object sizeMb, Object maxMb) {
+    return 'Видео слишком большое ($sizeMb МБ). Максимум $maxMb МБ.';
+  }
+
+  @override
+  String get chatVideoCaptionTitle => 'Подпись к видео';
+
+  @override
+  String chatPhotoSendFailed(Object error) {
+    return 'Ошибка отправки: $error';
+  }
+
+  @override
+  String chatVideoSendFailed(Object error) {
+    return 'Ошибка отправки видео: $error';
+  }
+
+  @override
   String get editMessage => 'Изменить сообщение';
 
   @override

@@ -120,6 +120,43 @@ class AppLocalizationsEn extends AppLocalizations {
   String get attachment => 'Attachment';
 
   @override
+  String get gallery => 'Gallery';
+
+  @override
+  String get camera => 'Camera';
+
+  @override
+  String get video => 'Video';
+
+  @override
+  String chatFileTooLarge(Object maxMb) {
+    return 'File is too large. Maximum $maxMb MB.';
+  }
+
+  @override
+  String chatDocumentSendFailed(Object error) {
+    return 'Could not send document: $error';
+  }
+
+  @override
+  String chatVideoTooLarge(Object sizeMb, Object maxMb) {
+    return 'Video is too large ($sizeMb MB). Maximum $maxMb MB.';
+  }
+
+  @override
+  String get chatVideoCaptionTitle => 'Video caption';
+
+  @override
+  String chatPhotoSendFailed(Object error) {
+    return 'Could not send: $error';
+  }
+
+  @override
+  String chatVideoSendFailed(Object error) {
+    return 'Could not send video: $error';
+  }
+
+  @override
   String get editMessage => 'Edit message';
 
   @override
