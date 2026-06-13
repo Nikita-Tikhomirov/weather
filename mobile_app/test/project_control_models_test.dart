@@ -102,5 +102,30 @@ void main() {
       expect(taskDraft.details, contains('Проект является центром управления'));
       expect(taskDraft.details, contains('msg-1'));
     });
+
+    test('uses English fallback labels for generated chat tasks', () {
+      final draft = ChatTaskDraft.fromJson(const {
+        'draft': {
+          'title': '   ',
+          'summary': 'The discussion needs a concrete follow-up.',
+          'decisions': ['Use the project chat as the source'],
+          'blockers': ['Workspace is not connected'],
+          'checklist': ['Create task', 'Assign owner'],
+          'source_message_ids': ['msg-7'],
+        },
+      });
+      final taskDraft = draft.toTaskDraft(
+        projectId: 'project-1',
+        groupId: 'group-1',
+      );
+
+      expect(draft.title, 'Task from chat');
+      expect(taskDraft.collaboration.checklists.single.title, 'Checklist');
+      expect(draft.composedDetails, contains('Summary:'));
+      expect(draft.composedDetails, contains('Decisions:'));
+      expect(draft.composedDetails, contains('Blockers:'));
+      expect(draft.composedDetails, contains('Checklist:'));
+      expect(draft.composedDetails, contains('Sources: msg-7'));
+    });
   });
 }

@@ -235,7 +235,7 @@ class ChatTaskDraft {
         : json;
     final title = (source['title'] ?? source['task_title'] ?? '').toString();
     return ChatTaskDraft(
-      title: title.trim().isEmpty ? 'Задача из чата' : title.trim(),
+      title: title.trim().isEmpty ? 'Task from chat' : title.trim(),
       details: (source['details'] ?? source['description'] ?? '').toString(),
       summary: (source['summary'] ?? '').toString(),
       decisions: _stringList(source['decisions']),
@@ -276,7 +276,7 @@ class ChatTaskDraft {
               checklists: [
                 TaskChecklist(
                   id: 'chat-checklist-${DateTime.now().microsecondsSinceEpoch}',
-                  title: 'Чеклист',
+                  title: 'Checklist',
                   createdBy: 'agent',
                   createdAt: now,
                   items: [
@@ -304,15 +304,15 @@ class ChatTaskDraft {
     final lines = <String>[];
     final rawDetails = details.trim();
     if (rawDetails.isNotEmpty) lines.add(rawDetails);
-    if (summary.trim().isNotEmpty) lines.add('Резюме: ${summary.trim()}');
-    _appendList(lines, 'Решения', decisions);
+    if (summary.trim().isNotEmpty) lines.add('Summary: ${summary.trim()}');
+    _appendList(lines, 'Decisions', decisions);
     _appendList(lines, 'Action items', actionItems);
-    _appendList(lines, 'Блокеры', blockers);
+    _appendList(lines, 'Blockers', blockers);
     if (includeChecklist) {
-      _appendList(lines, 'Чеклист', checklist);
+      _appendList(lines, 'Checklist', checklist);
     }
     if (sourceMessageIds.isNotEmpty) {
-      lines.add('Источники: ${sourceMessageIds.join(', ')}');
+      lines.add('Sources: ${sourceMessageIds.join(', ')}');
     }
     return lines.join('\n\n');
   }
