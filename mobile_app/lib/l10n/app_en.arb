@@ -501,6 +501,36 @@
   "homeProjectBridgeStartFailed": "Could not send bridge start command",
   "homeProjectNewSessionStarting": "Creating new session...",
   "homeProjectStopCommandSent": "Stop command sent",
+  "homeProjectPhotoCommentTitle": "Photo comment",
+  "homeProjectDeepSeekPromptHint": "Prompt for DeepSeek after upload (optional)",
+  "homeProjectSaveOnly": "Save only",
+  "homeProjectPhotosSavedToVision": "Photo saved to vision: {count}",
+  "@homeProjectPhotosSavedToVision": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeProjectPhotosNotSent": "Photo was not sent. Check connection or file size.",
+  "homeProjectPhotosNotSentCount": "Photos not sent: {count}",
+  "@homeProjectPhotosNotSentCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeProjectDocumentCommentTitle": "Document comment",
+  "homeProjectDocumentMessage": "Document: {filename}",
+  "@homeProjectDocumentMessage": {
+    "placeholders": {
+      "filename": {}
+    }
+  },
+  "homeProjectServerTitle": "Project server",
+  "homeProjectServerDescription": "IP address and port of the PC running project_bridge.py",
+  "homeProjectAddressLabel": "Address",
   "projectChatStartBridge": "Start bridge",
   "projectChatNewSession": "New session",
   "projectChatStopDeepSeek": "Stop DeepSeek",

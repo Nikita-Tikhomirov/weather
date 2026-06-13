@@ -246,7 +246,7 @@ void main() {
 
       expect(taskDraft.title, 'Настроить checkout и оплату');
       expect(taskDraft.collaboration.checklists, hasLength(1));
-      expect(taskDraft.collaboration.checklists.single.title, 'Чеклист');
+      expect(taskDraft.collaboration.checklists.single.title, 'Checklist');
       expect(
         taskDraft.collaboration.checklists.single.items
             .map((item) => item.text),

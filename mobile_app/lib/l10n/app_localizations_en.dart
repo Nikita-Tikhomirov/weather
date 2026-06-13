@@ -1069,6 +1069,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeProjectStopCommandSent => 'Stop command sent';
 
   @override
+  String get homeProjectPhotoCommentTitle => 'Photo comment';
+
+  @override
+  String get homeProjectDeepSeekPromptHint => 'Prompt for DeepSeek after upload (optional)';
+
+  @override
+  String get homeProjectSaveOnly => 'Save only';
+
+  @override
+  String homeProjectPhotosSavedToVision(int count) {
+    return 'Photo saved to vision: $count';
+  }
+
+  @override
+  String get homeProjectPhotosNotSent => 'Photo was not sent. Check connection or file size.';
+
+  @override
+  String homeProjectPhotosNotSentCount(int count) {
+    return 'Photos not sent: $count';
+  }
+
+  @override
+  String get homeProjectDocumentCommentTitle => 'Document comment';
+
+  @override
+  String homeProjectDocumentMessage(Object filename) {
+    return 'Document: $filename';
+  }
+
+  @override
+  String get homeProjectServerTitle => 'Project server';
+
+  @override
+  String get homeProjectServerDescription => 'IP address and port of the PC running project_bridge.py';
+
+  @override
+  String get homeProjectAddressLabel => 'Address';
+
+  @override
   String get projectChatStartBridge => 'Start bridge';
 
   @override

@@ -20,6 +20,29 @@ void main() {
     expect(labels.bridgeStartFailed, 'Could not send bridge start command');
     expect(labels.newSessionStarting, 'Creating new session...');
     expect(labels.stopCommandSent, 'Stop command sent');
+    expect(labels.photoCommentTitle, 'Photo comment');
+    expect(
+      labels.deepSeekPromptHint,
+      'Prompt for DeepSeek after upload (optional)',
+    );
+    expect(labels.saveOnly, 'Save only');
+    expect(labels.send, 'Send');
+    expect(labels.photosSavedToVision(2), 'Photo saved to vision: 2');
+    expect(
+      labels.photosNotSent,
+      'Photo was not sent. Check connection or file size.',
+    );
+    expect(labels.photosNotSentCount(3), 'Photos not sent: 3');
+    expect(labels.documentCommentTitle, 'Document comment');
+    expect(labels.documentMessage('spec.pdf'), 'Document: spec.pdf');
+    expect(labels.projectServerTitle, 'Project server');
+    expect(
+      labels.projectServerDescription,
+      'IP address and port of the PC running project_bridge.py',
+    );
+    expect(labels.addressLabel, 'Address');
+    expect(labels.cancel, 'Cancel');
+    expect(labels.save, 'Save');
   });
 
   test('uses Russian generated project data labels when localizations exist',
@@ -43,5 +66,28 @@ void main() {
     );
     expect(labels.newSessionStarting, 'Создаю новую сессию...');
     expect(labels.stopCommandSent, 'Команда остановки отправлена');
+    expect(labels.photoCommentTitle, 'Комментарий к фото');
+    expect(
+      labels.deepSeekPromptHint,
+      'Промт для DeepSeek после загрузки (необязательно)',
+    );
+    expect(labels.saveOnly, 'Только сохранить');
+    expect(labels.send, 'Отправить');
+    expect(labels.photosSavedToVision(2), 'Фото сохранено в vision: 2');
+    expect(
+      labels.photosNotSent,
+      'Фото не отправлено. Проверьте соединение или размер файла.',
+    );
+    expect(labels.photosNotSentCount(3), 'Не отправлено фото: 3');
+    expect(labels.documentCommentTitle, 'Комментарий к документу');
+    expect(labels.documentMessage('spec.pdf'), '📎 Документ: spec.pdf');
+    expect(labels.projectServerTitle, 'Сервер проектов');
+    expect(
+      labels.projectServerDescription,
+      'IP-адрес и порт ПК, на котором запущен project_bridge.py',
+    );
+    expect(labels.addressLabel, 'Адрес');
+    expect(labels.cancel, 'Отмена');
+    expect(labels.save, 'Сохранить');
   });
 }

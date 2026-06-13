@@ -2087,6 +2087,72 @@ abstract class AppLocalizations {
   /// **'Stop command sent'**
   String get homeProjectStopCommandSent;
 
+  /// No description provided for @homeProjectPhotoCommentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo comment'**
+  String get homeProjectPhotoCommentTitle;
+
+  /// No description provided for @homeProjectDeepSeekPromptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt for DeepSeek after upload (optional)'**
+  String get homeProjectDeepSeekPromptHint;
+
+  /// No description provided for @homeProjectSaveOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Save only'**
+  String get homeProjectSaveOnly;
+
+  /// No description provided for @homeProjectPhotosSavedToVision.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo saved to vision: {count}'**
+  String homeProjectPhotosSavedToVision(int count);
+
+  /// No description provided for @homeProjectPhotosNotSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo was not sent. Check connection or file size.'**
+  String get homeProjectPhotosNotSent;
+
+  /// No description provided for @homeProjectPhotosNotSentCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos not sent: {count}'**
+  String homeProjectPhotosNotSentCount(int count);
+
+  /// No description provided for @homeProjectDocumentCommentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Document comment'**
+  String get homeProjectDocumentCommentTitle;
+
+  /// No description provided for @homeProjectDocumentMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Document: {filename}'**
+  String homeProjectDocumentMessage(Object filename);
+
+  /// No description provided for @homeProjectServerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Project server'**
+  String get homeProjectServerTitle;
+
+  /// No description provided for @homeProjectServerDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'IP address and port of the PC running project_bridge.py'**
+  String get homeProjectServerDescription;
+
+  /// No description provided for @homeProjectAddressLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get homeProjectAddressLabel;
+
   /// No description provided for @projectChatStartBridge.
   ///
   /// In en, this message translates to:

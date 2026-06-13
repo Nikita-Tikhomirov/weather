@@ -28,8 +28,42 @@ class HomeProjectDataLabels {
       l10n?.homeProjectNewSessionStarting ?? 'Creating new session...';
   String get stopCommandSent =>
       l10n?.homeProjectStopCommandSent ?? 'Stop command sent';
+  String get photoCommentTitle =>
+      l10n?.homeProjectPhotoCommentTitle ?? 'Photo comment';
+  String get deepSeekPromptHint =>
+      l10n?.homeProjectDeepSeekPromptHint ??
+      'Prompt for DeepSeek after upload (optional)';
+  String get saveOnly => l10n?.homeProjectSaveOnly ?? 'Save only';
+  String get send => l10n?.send ?? 'Send';
+  String get photosNotSent =>
+      l10n?.homeProjectPhotosNotSent ??
+      'Photo was not sent. Check connection or file size.';
+  String get documentCommentTitle =>
+      l10n?.homeProjectDocumentCommentTitle ?? 'Document comment';
+  String get projectServerTitle =>
+      l10n?.homeProjectServerTitle ?? 'Project server';
+  String get projectServerDescription =>
+      l10n?.homeProjectServerDescription ??
+      'IP address and port of the PC running project_bridge.py';
+  String get addressLabel => l10n?.homeProjectAddressLabel ?? 'Address';
+  String get cancel => l10n?.cancel ?? 'Cancel';
+  String get save => l10n?.save ?? 'Save';
 
   String fileLink(String path) {
     return l10n?.homeProjectFileLink(path) ?? 'File: $path';
+  }
+
+  String photosSavedToVision(int count) {
+    return l10n?.homeProjectPhotosSavedToVision(count) ??
+        'Photo saved to vision: $count';
+  }
+
+  String photosNotSentCount(int count) {
+    return l10n?.homeProjectPhotosNotSentCount(count) ??
+        'Photos not sent: $count';
+  }
+
+  String documentMessage(String filename) {
+    return l10n?.homeProjectDocumentMessage(filename) ?? 'Document: $filename';
   }
 }

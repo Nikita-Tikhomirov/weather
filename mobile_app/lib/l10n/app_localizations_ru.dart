@@ -1069,6 +1069,45 @@ class AppLocalizationsRu extends AppLocalizations {
   String get homeProjectStopCommandSent => 'Команда остановки отправлена';
 
   @override
+  String get homeProjectPhotoCommentTitle => 'Комментарий к фото';
+
+  @override
+  String get homeProjectDeepSeekPromptHint => 'Промт для DeepSeek после загрузки (необязательно)';
+
+  @override
+  String get homeProjectSaveOnly => 'Только сохранить';
+
+  @override
+  String homeProjectPhotosSavedToVision(int count) {
+    return 'Фото сохранено в vision: $count';
+  }
+
+  @override
+  String get homeProjectPhotosNotSent => 'Фото не отправлено. Проверьте соединение или размер файла.';
+
+  @override
+  String homeProjectPhotosNotSentCount(int count) {
+    return 'Не отправлено фото: $count';
+  }
+
+  @override
+  String get homeProjectDocumentCommentTitle => 'Комментарий к документу';
+
+  @override
+  String homeProjectDocumentMessage(Object filename) {
+    return '📎 Документ: $filename';
+  }
+
+  @override
+  String get homeProjectServerTitle => 'Сервер проектов';
+
+  @override
+  String get homeProjectServerDescription => 'IP-адрес и порт ПК, на котором запущен project_bridge.py';
+
+  @override
+  String get homeProjectAddressLabel => 'Адрес';
+
+  @override
   String get projectChatStartBridge => 'Запустить bridge';
 
   @override

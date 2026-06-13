@@ -501,6 +501,36 @@
   "homeProjectBridgeStartFailed": "Не удалось отправить команду запуска bridge",
   "homeProjectNewSessionStarting": "Создаю новую сессию...",
   "homeProjectStopCommandSent": "Команда остановки отправлена",
+  "homeProjectPhotoCommentTitle": "Комментарий к фото",
+  "homeProjectDeepSeekPromptHint": "Промт для DeepSeek после загрузки (необязательно)",
+  "homeProjectSaveOnly": "Только сохранить",
+  "homeProjectPhotosSavedToVision": "Фото сохранено в vision: {count}",
+  "@homeProjectPhotosSavedToVision": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeProjectPhotosNotSent": "Фото не отправлено. Проверьте соединение или размер файла.",
+  "homeProjectPhotosNotSentCount": "Не отправлено фото: {count}",
+  "@homeProjectPhotosNotSentCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeProjectDocumentCommentTitle": "Комментарий к документу",
+  "homeProjectDocumentMessage": "📎 Документ: {filename}",
+  "@homeProjectDocumentMessage": {
+    "placeholders": {
+      "filename": {}
+    }
+  },
+  "homeProjectServerTitle": "Сервер проектов",
+  "homeProjectServerDescription": "IP-адрес и порт ПК, на котором запущен project_bridge.py",
+  "homeProjectAddressLabel": "Адрес",
   "projectChatStartBridge": "Запустить bridge",
   "projectChatNewSession": "Новая сессия",
   "projectChatStopDeepSeek": "Остановить DeepSeek",

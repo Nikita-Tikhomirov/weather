@@ -527,7 +527,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Workspace не выбран'), findsWidgets);
+      expect(find.text('Workspace not selected'), findsWidgets);
       expect(find.textContaining('Workspace: exp76-ru'), findsNothing);
 
       await tester.tap(find.byKey(const ValueKey('project-workspace-picker')));
@@ -619,7 +619,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('project-workspace-picker')));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Найдено: 5 из 5'), findsOneWidget);
+      expect(find.textContaining('Found: 5 of 5'), findsOneWidget);
       expect(find.text('Exp76.ru'), findsOneWidget);
       expect(find.text('stylish-house'), findsOneWidget);
       await tester.enterText(find.byType(TextField), 'цифра');
@@ -696,7 +696,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Workspace: Цифра: утилиты (нет доступа)'),
+        find.text('Workspace: Цифра: утилиты (no access)'),
         findsOneWidget,
       );
       expect(
@@ -787,7 +787,7 @@ void main() {
 
       expect(repository.fakeApi.ensureChatProjectIds, ['project-1']);
       expect(find.text('Цифра'), findsWidgets);
-      expect(find.text('Обновить проектный чат'), findsOneWidget);
+      expect(find.text('Refresh project chat'), findsOneWidget);
     });
   });
 }

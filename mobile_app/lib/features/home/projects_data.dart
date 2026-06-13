@@ -531,27 +531,28 @@ extension _ProjectsDataExtension on _HomePageState {
 
     String caption = '';
     if (mounted) {
+      final labels = _projectDataLabels;
       final captionCtl = TextEditingController();
       final result = await showDialog<String>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Комментарий к фото'),
+          title: Text(labels.photoCommentTitle),
           content: TextField(
             controller: captionCtl,
             maxLines: 3,
-            decoration: const InputDecoration(
-              hintText: 'Промт для DeepSeek после загрузки (необязательно)',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: labels.deepSeekPromptHint,
+              border: const OutlineInputBorder(),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, ''),
-              child: const Text('Только сохранить'),
+              child: Text(labels.saveOnly),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, captionCtl.text.trim()),
-              child: const Text('Отправить'),
+              child: Text(labels.send),
             ),
           ],
         ),
@@ -603,7 +604,7 @@ extension _ProjectsDataExtension on _HomePageState {
       statusMessages.add(
         BridgeMessage(
           type: 'send',
-          text: 'Фото сохранено в vision: $sent',
+          text: _projectDataLabels.photosSavedToVision(sent),
         ),
       );
     }
@@ -612,8 +613,8 @@ extension _ProjectsDataExtension on _HomePageState {
         BridgeMessage(
           type: 'error',
           text: sent == 0
-              ? 'Фото не отправлено. Проверьте соединение или размер файла.'
-              : 'Не отправлено фото: $failed',
+              ? _projectDataLabels.photosNotSent
+              : _projectDataLabels.photosNotSentCount(failed),
         ),
       );
     }
@@ -654,7 +655,7 @@ extension _ProjectsDataExtension on _HomePageState {
       if (file.path == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Не удалось прочитать файл')),
+            SnackBar(content: Text(_attachmentLabels.fileReadFailed)),
           );
         }
         return;
@@ -665,8 +666,8 @@ extension _ProjectsDataExtension on _HomePageState {
       if (fileBytes.length > 15 * 1024 * 1024) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Файл слишком большой. Максимум 15 МБ.'),
+            SnackBar(
+              content: Text(_attachmentLabels.fileTooLarge(maxMb: 15)),
             ),
           );
         }
@@ -676,27 +677,28 @@ extension _ProjectsDataExtension on _HomePageState {
       // Prompt for caption
       String caption = '';
       if (mounted) {
+        final labels = _projectDataLabels;
         final captionCtl = TextEditingController();
         final result = await showDialog<String>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Комментарий к документу'),
+            title: Text(labels.documentCommentTitle),
             content: TextField(
               controller: captionCtl,
               maxLines: 3,
-              decoration: const InputDecoration(
-                hintText: 'Промт для DeepSeek после загрузки (необязательно)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: labels.deepSeekPromptHint,
+                border: const OutlineInputBorder(),
               ),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, ''),
-                child: const Text('Только сохранить'),
+                child: Text(labels.saveOnly),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, captionCtl.text.trim()),
-                child: const Text('Отправить'),
+                child: Text(labels.send),
               ),
             ],
           ),
@@ -718,7 +720,7 @@ extension _ProjectsDataExtension on _HomePageState {
         _addProjectMessage(
           BridgeMessage(
             type: 'send',
-            text: '📎 Документ: ${file.name}',
+            text: _projectDataLabels.documentMessage(file.name),
             projectId:
                 _projectByConversationKey(_activeConversationKey)?.id ?? '',
             sessionId: _activeProjectSessionId ?? '',
@@ -728,7 +730,7 @@ extension _ProjectsDataExtension on _HomePageState {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка отправки документа: $error')),
+          SnackBar(content: Text(_attachmentLabels.documentSendFailed(error))),
         );
       }
     }
@@ -784,23 +786,24 @@ extension _ProjectsDataExtension on _HomePageState {
       text: await ProjectBridgeService.getServerAddress(),
     );
     if (!mounted) return;
+    final labels = _projectDataLabels;
     await showDialog<void>(
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          title: const Text('Сервер проектов'),
+          title: Text(labels.projectServerTitle),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'IP-адрес и порт ПК, на котором запущен project_bridge.py',
-                style: TextStyle(fontSize: 13),
+              Text(
+                labels.projectServerDescription,
+                style: const TextStyle(fontSize: 13),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: ctl,
-                decoration: const InputDecoration(
-                  labelText: 'Адрес',
+                decoration: InputDecoration(
+                  labelText: labels.addressLabel,
                   hintText: '192.168.1.5:9876',
                 ),
               ),
@@ -809,7 +812,7 @@ extension _ProjectsDataExtension on _HomePageState {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Отмена'),
+              child: Text(labels.cancel),
             ),
             FilledButton(
               onPressed: () async {
@@ -827,7 +830,7 @@ extension _ProjectsDataExtension on _HomePageState {
                   }
                 }
               },
-              child: const Text('Сохранить'),
+              child: Text(labels.save),
             ),
           ],
         );
