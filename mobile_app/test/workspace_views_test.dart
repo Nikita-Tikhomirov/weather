@@ -50,11 +50,11 @@ void main() {
       ),
     );
 
-    expect(find.text('Рабочие пространства'), findsOneWidget);
+    expect(find.text('Workspaces'), findsOneWidget);
     expect(find.text('Погода'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Создать рабочее пространство'));
-    await tester.tap(find.byTooltip('Подключить папку'));
+    await tester.tap(find.byTooltip('Create workspace'));
+    await tester.tap(find.byTooltip('Attach folder'));
     await tester.tap(find.text('Погода'));
 
     expect(createTapped, isTrue);
@@ -145,9 +145,9 @@ void main() {
     expect(find.text('Погода'), findsOneWidget);
     expect(find.text('Починить мост'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Создать сессию'));
+    await tester.tap(find.byTooltip('Create session'));
     await tester.tap(find.text('Починить мост'));
-    await tester.tap(find.byTooltip('Управление сессией').first);
+    await tester.tap(find.byTooltip('Manage session').first);
 
     expect(createSession, isTrue);
     expect(opened?.id, 'session-1');
@@ -204,13 +204,13 @@ void main() {
       ),
     );
 
-    expect(find.text('Выбор папки'), findsOneWidget);
+    expect(find.text('Folder selection'), findsOneWidget);
     expect(find.text('weather'), findsOneWidget);
 
     await tester.tap(find.text('weather'));
     expect(openedPath, r'C:\Users\user\Desktop\weather');
 
-    await tester.tap(find.byTooltip('Подключить эту папку'));
+    await tester.tap(find.byTooltip('Connect this folder'));
     expect(selectedName, 'weather');
     expect(selectedPath, r'C:\Users\user\Desktop\weather');
   });

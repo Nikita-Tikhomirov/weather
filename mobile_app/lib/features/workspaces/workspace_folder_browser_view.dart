@@ -8,16 +8,16 @@ class _WorkspaceFolderBrowserText {
 
   final AppLocalizations? l10n;
 
-  String get back => l10n?.back ?? 'Назад';
-  String get folderSelection => l10n?.folderSelection ?? 'Выбор папки';
-  String get refreshFolders => l10n?.refreshFolders ?? 'Обновить папки';
-  String get currentFolder => l10n?.currentFolder ?? 'Текущая папка';
-  String get loading => l10n?.loading ?? 'Загрузка...';
-  String get copyPath => l10n?.copyPath ?? 'Копировать путь';
-  String get parentFolder => l10n?.parentFolder ?? 'На уровень выше';
-  String get noFoldersHere => l10n?.noFoldersHere ?? 'Папок здесь нет';
+  String get back => l10n?.back ?? 'Back';
+  String get folderSelection => l10n?.folderSelection ?? 'Folder selection';
+  String get refreshFolders => l10n?.refreshFolders ?? 'Refresh folders';
+  String get currentFolder => l10n?.currentFolder ?? 'Current folder';
+  String get loading => l10n?.loading ?? 'Loading...';
+  String get copyPath => l10n?.copyPath ?? 'Copy path';
+  String get parentFolder => l10n?.parentFolder ?? 'Parent folder';
+  String get noFoldersHere => l10n?.noFoldersHere ?? 'No folders here';
   String get connectThisFolder =>
-      l10n?.connectThisFolder ?? 'Подключить эту папку';
+      l10n?.connectThisFolder ?? 'Connect this folder';
 }
 
 class WorkspaceFolderBrowserView extends StatelessWidget {

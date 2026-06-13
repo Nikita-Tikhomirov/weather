@@ -8,13 +8,11 @@ class _WorkspaceListText {
 
   final AppLocalizations? l10n;
 
-  String get workspaces => l10n?.workspaces ?? 'Рабочие пространства';
-  String get refresh => l10n?.refresh ?? 'Обновить';
-  String get attachFolder => l10n?.attachFolder ?? 'Подключить папку';
-  String get createWorkspace =>
-      l10n?.createWorkspace ?? 'Создать рабочее пространство';
-  String get noWorkspacesYet =>
-      l10n?.noWorkspacesYet ?? 'Рабочих пространств пока нет';
+  String get workspaces => l10n?.workspaces ?? 'Workspaces';
+  String get refresh => l10n?.refresh ?? 'Refresh';
+  String get attachFolder => l10n?.attachFolder ?? 'Attach folder';
+  String get createWorkspace => l10n?.createWorkspace ?? 'Create workspace';
+  String get noWorkspacesYet => l10n?.noWorkspacesYet ?? 'No workspaces yet';
 }
 
 class WorkspaceListView extends StatelessWidget {

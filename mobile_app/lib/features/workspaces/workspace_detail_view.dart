@@ -9,18 +9,18 @@ class _WorkspaceDetailText {
 
   final AppLocalizations? l10n;
 
-  String get back => l10n?.back ?? 'Назад';
-  String get refresh => l10n?.refresh ?? 'Обновить';
-  String get createSession => l10n?.createSession ?? 'Создать сессию';
-  String get manageSession => l10n?.manageSession ?? 'Управление сессией';
-  String get noSessionsYet => l10n?.noSessionsYet ?? 'Сессий пока нет';
-  String get running => l10n?.running ?? 'Работает';
-  String get port => l10n?.port ?? 'порт';
-  String get waitingToStart => l10n?.waitingToStart ?? 'Ожидает запуска';
-  String get stopped => l10n?.stopped ?? 'Остановлена';
-  String get killed => l10n?.killed ?? 'Убита';
-  String get error => l10n?.error ?? 'Ошибка';
-  String get unknownStatus => l10n?.unknownStatus ?? 'Неизвестный статус';
+  String get back => l10n?.back ?? 'Back';
+  String get refresh => l10n?.refresh ?? 'Refresh';
+  String get createSession => l10n?.createSession ?? 'Create session';
+  String get manageSession => l10n?.manageSession ?? 'Manage session';
+  String get noSessionsYet => l10n?.noSessionsYet ?? 'No sessions yet';
+  String get running => l10n?.running ?? 'Running';
+  String get port => l10n?.port ?? 'port';
+  String get waitingToStart => l10n?.waitingToStart ?? 'Waiting to start';
+  String get stopped => l10n?.stopped ?? 'Stopped';
+  String get killed => l10n?.killed ?? 'Killed';
+  String get error => l10n?.error ?? 'Error';
+  String get unknownStatus => l10n?.unknownStatus ?? 'Unknown status';
 }
 
 class WorkspaceDetailView extends StatelessWidget {
