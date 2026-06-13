@@ -267,7 +267,7 @@ class CodeWhaleBridgeService implements CodeWhaleBridgeClient {
             _cleanup();
             return;
           }
-          onStatusChange(false, 'Ошибка соединения CodeWhale: $error');
+          onStatusChange(false, 'CodeWhale connection error: $error');
           _cleanup();
           _scheduleReconnect();
         },
@@ -276,7 +276,7 @@ class CodeWhaleBridgeService implements CodeWhaleBridgeClient {
             _cleanup();
             return;
           }
-          onStatusChange(false, 'Соединение CodeWhale закрыто');
+          onStatusChange(false, 'CodeWhale connection closed');
           _cleanup();
           _scheduleReconnect();
         },
@@ -288,12 +288,12 @@ class CodeWhaleBridgeService implements CodeWhaleBridgeClient {
             'project_id': 'codewhale',
           })}\n');
       _flushPending();
-      onStatusChange(true, 'Подключено к CodeWhale');
+      onStatusChange(true, 'Connected to CodeWhale');
       return true;
     } catch (e) {
       _connecting = false;
       if (!_disposed) {
-        onStatusChange(false, 'Не удалось подключиться к CodeWhale: $e');
+        onStatusChange(false, 'Could not connect to CodeWhale: $e');
         _scheduleReconnect();
       }
       _cleanup();
@@ -561,7 +561,7 @@ class CodeWhaleBridgeService implements CodeWhaleBridgeClient {
       if (!_disposed) {
         onStatusChange(
           false,
-          'Не удалось отправить команду CodeWhale',
+          'Could not send CodeWhale command',
         );
       }
       _cleanup();

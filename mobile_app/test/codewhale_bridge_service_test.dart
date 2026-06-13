@@ -134,9 +134,10 @@ void main() {
       'bridge_host': '127.0.0.1:${server.port}',
     });
 
+    final statuses = <String>[];
     final service = CodeWhaleBridgeService(
       onMessage: (_) {},
-      onStatusChange: (_, __) {},
+      onStatusChange: (_, status) => statuses.add(status),
     );
 
     expect(await service.connect(), isTrue);
@@ -145,6 +146,7 @@ void main() {
 
     expect(received.single['type'], 'codewhale_connect');
     expect(received.single['project_id'], 'codewhale');
+    expect(statuses, contains('Connected to CodeWhale'));
 
     service.dispose();
     await sub.cancel();
