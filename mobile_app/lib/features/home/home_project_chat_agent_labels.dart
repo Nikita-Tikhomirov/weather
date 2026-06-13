@@ -55,6 +55,11 @@ class HomeProjectChatAgentLabels {
           'the project workspace, then try again.';
   String get codeWhaleErrorFallback =>
       l10n?.codeWhaleErrorFallback ?? 'CodeWhale error';
+  String get codeWhaleUnavailable =>
+      l10n?.homeProjectChatAgentCodeWhaleUnavailable ??
+      'CodeWhale is unavailable';
+  String get defaultAgentTitle =>
+      l10n?.homeProjectChatAgentDefaultTitle ?? 'Tudushker';
   String get imageSavedToGallery =>
       l10n?.homeImageSavedToGallery ?? 'Photo saved to gallery';
   String get imageSaveFailed =>

@@ -235,6 +235,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeProjectChatAgentAiUnavailableTaskDraftMessage => 'I could not build a proper draft: I did not receive an AI response. I will not create a card from chat fragments. Check CodeWhale and the project workspace, then try again.';
 
   @override
+  String get homeProjectChatAgentCodeWhaleUnavailable => 'CodeWhale is unavailable';
+
+  @override
+  String get homeProjectChatAgentDefaultTitle => 'Tudushker';
+
+  @override
   String homeProjectChatAgentOwnerFallbackMessage(Object message) {
     return 'Tudushker: $message';
   }

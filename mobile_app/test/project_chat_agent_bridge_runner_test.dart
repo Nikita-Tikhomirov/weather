@@ -100,6 +100,88 @@ void main() {
     ]);
     expect(bridge.usedSessionId, 'session-existing');
   });
+
+  test('uses injected fallback labels for runner errors and default title',
+      () async {
+    _FakeProjectChatBridge? bridge;
+    final runner = ProjectChatAgentBridgeRunner(
+      bridgeFactory: ({
+        required void Function(CodeWhaleBridgeMessage message) onMessage,
+        required void Function(bool connected, String status) onStatusChange,
+      }) {
+        bridge = _FakeProjectChatBridge(
+          onMessage: onMessage,
+          onStatusChange: onStatusChange,
+          sendEmptyErrorOnMessage: true,
+        );
+        return bridge!;
+      },
+      taskPollDelay: Duration.zero,
+      timeout: const Duration(seconds: 2),
+      codeWhaleErrorFallback: 'CodeWhale error',
+      defaultSessionTitle: 'Tudushker',
+    );
+
+    await expectLater(
+      runner.run(
+        workspaceId: 'workspace-1',
+        title: '',
+        taskCard: const {
+          'scope': 'project_chat',
+          'project_id': 'project-1',
+          'conversation_key': 'grp:project:project-1',
+        },
+        policyTicket: 'ticket-1',
+        prompt: 'Return JSON',
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'CodeWhale error',
+        ),
+      ),
+    );
+
+    expect(bridge?.createdSessionTitle, 'Tudushker');
+  });
+
+  test('uses injected fallback label when bridge connection fails', () async {
+    final runner = ProjectChatAgentBridgeRunner(
+      bridgeFactory: ({
+        required void Function(CodeWhaleBridgeMessage message) onMessage,
+        required void Function(bool connected, String status) onStatusChange,
+      }) {
+        return _FakeProjectChatBridge(
+          onMessage: onMessage,
+          onStatusChange: onStatusChange,
+          connects: false,
+        );
+      },
+      unavailableMessage: 'CodeWhale unavailable',
+    );
+
+    await expectLater(
+      runner.run(
+        workspaceId: 'workspace-1',
+        title: '',
+        taskCard: const {
+          'scope': 'project_chat',
+          'project_id': 'project-1',
+          'conversation_key': 'grp:project:project-1',
+        },
+        policyTicket: 'ticket-1',
+        prompt: 'Return JSON',
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'CodeWhale unavailable',
+        ),
+      ),
+    );
+  });
 }
 
 class _FakeProjectChatBridge extends CodeWhaleBridgeService {
@@ -107,16 +189,21 @@ class _FakeProjectChatBridge extends CodeWhaleBridgeService {
     required super.onMessage,
     required super.onStatusChange,
     this.sessions = const [],
+    this.connects = true,
+    this.sendEmptyErrorOnMessage = false,
   });
 
   final List<String> commands = <String>[];
   final List<Map<String, dynamic>> sessions;
+  final bool connects;
+  final bool sendEmptyErrorOnMessage;
   String usedSessionId = '';
+  String createdSessionTitle = '';
 
   @override
   Future<bool> connect() async {
     commands.add('connect');
-    return true;
+    return connects;
   }
 
   @override
@@ -143,6 +230,7 @@ class _FakeProjectChatBridge extends CodeWhaleBridgeService {
     Map<String, dynamic> taskCard = const {},
   }) {
     commands.add('create_session');
+    createdSessionTitle = title;
     onMessage(
       CodeWhaleBridgeMessage.fromJson({
         'type': 'session',
@@ -167,6 +255,17 @@ class _FakeProjectChatBridge extends CodeWhaleBridgeService {
   @override
   void sendSessionMessage(String workspaceId, String sessionId, String text) {
     commands.add('send_message');
+    if (sendEmptyErrorOnMessage) {
+      onMessage(
+        CodeWhaleBridgeMessage.fromJson({
+          'type': 'error',
+          'error': '',
+          'workspace_id': workspaceId,
+          'session_id': sessionId,
+        }),
+      );
+      return;
+    }
     onMessage(
       CodeWhaleBridgeMessage.fromJson({
         'type': 'session_task',

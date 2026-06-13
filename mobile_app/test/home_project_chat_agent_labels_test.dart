@@ -68,6 +68,8 @@ void main() {
     );
     expect(labels.ownerFallbackMessage('hello'), 'Tudushker: hello');
     expect(labels.codeWhaleErrorFallback, 'CodeWhale error');
+    expect(labels.codeWhaleUnavailable, 'CodeWhale is unavailable');
+    expect(labels.defaultAgentTitle, 'Tudushker');
     expect(labels.imageSavedToGallery, 'Photo saved to gallery');
     expect(labels.imageSaveFailed, 'Could not save photo');
   });
@@ -135,6 +137,8 @@ void main() {
     );
     expect(labels.ownerFallbackMessage('привет'), 'Тудушкер: привет');
     expect(labels.codeWhaleErrorFallback, 'Ошибка CodeWhale');
+    expect(labels.codeWhaleUnavailable, 'CodeWhale недоступен');
+    expect(labels.defaultAgentTitle, 'Тудушкер');
     expect(labels.imageSavedToGallery, 'Фото сохранено в галерею');
     expect(labels.imageSaveFailed, 'Не удалось сохранить фото');
   });

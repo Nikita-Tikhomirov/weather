@@ -374,7 +374,11 @@ extension _ChatSection on _HomePageState {
     if (existing != null) {
       return existing;
     }
+    final labels = _projectChatAgentLabels;
     final runner = ProjectChatAgentBridgeRunner(
+      unavailableMessage: labels.codeWhaleUnavailable,
+      codeWhaleErrorFallback: labels.codeWhaleErrorFallback,
+      defaultSessionTitle: labels.defaultAgentTitle,
       onSessionLinked: (sessionId) {
         _projectChatAgentSessionId = sessionId;
       },

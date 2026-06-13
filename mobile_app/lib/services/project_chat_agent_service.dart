@@ -654,6 +654,9 @@ class ProjectChatAgentBridgeRunner {
     ProjectChatAgentBridgeFactory? bridgeFactory,
     this.taskPollDelay = const Duration(seconds: 2),
     this.timeout = const Duration(seconds: 90),
+    this.unavailableMessage = 'CodeWhale недоступен',
+    this.codeWhaleErrorFallback = 'Ошибка CodeWhale',
+    this.defaultSessionTitle = 'Тудушкер',
     this.onSessionLinked,
     this.onStatusChange,
   }) : _bridgeFactory = bridgeFactory;
@@ -661,6 +664,9 @@ class ProjectChatAgentBridgeRunner {
   final ProjectChatAgentBridgeFactory? _bridgeFactory;
   final Duration taskPollDelay;
   final Duration timeout;
+  final String unavailableMessage;
+  final String codeWhaleErrorFallback;
+  final String defaultSessionTitle;
   final void Function(String sessionId)? onSessionLinked;
   final void Function(bool connected, String status)? onStatusChange;
 
@@ -704,7 +710,7 @@ class ProjectChatAgentBridgeRunner {
     final connected = await bridge.connect();
     if (!connected) {
       _clearIfActive(completer);
-      throw StateError('CodeWhale недоступен');
+      throw StateError(unavailableMessage);
     }
 
     _waitingForSessionList = true;
@@ -769,7 +775,9 @@ class ProjectChatAgentBridgeRunner {
         return;
       }
       completer.completeError(
-        StateError(message.error.isEmpty ? 'Ошибка CodeWhale' : message.error),
+        StateError(
+          message.error.isEmpty ? codeWhaleErrorFallback : message.error,
+        ),
       );
       return;
     }
@@ -904,7 +912,7 @@ class ProjectChatAgentBridgeRunner {
   void _createSession() {
     _bridge?.createSession(
       _workspaceId,
-      title: _title.isEmpty ? 'Тудушкер' : _title,
+      title: _title.isEmpty ? defaultSessionTitle : _title,
       taskCard: _taskCard,
     );
   }

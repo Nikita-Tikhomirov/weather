@@ -503,6 +503,18 @@ abstract class AppLocalizations {
   /// **'I could not build a proper draft: I did not receive an AI response. I will not create a card from chat fragments. Check CodeWhale and the project workspace, then try again.'**
   String get homeProjectChatAgentAiUnavailableTaskDraftMessage;
 
+  /// No description provided for @homeProjectChatAgentCodeWhaleUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'CodeWhale is unavailable'**
+  String get homeProjectChatAgentCodeWhaleUnavailable;
+
+  /// No description provided for @homeProjectChatAgentDefaultTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tudushker'**
+  String get homeProjectChatAgentDefaultTitle;
+
   /// No description provided for @homeProjectChatAgentOwnerFallbackMessage.
   ///
   /// In en, this message translates to:
