@@ -71,8 +71,8 @@ class HomeShareReceiver {
           return AlertDialog(
             title: Text(
               text.isNotEmpty
-                  ? l10n?.shareText ?? 'Поделиться текстом'
-                  : l10n?.sharePhoto ?? 'Поделиться фото',
+                  ? l10n?.shareText ?? 'Share text'
+                  : l10n?.sharePhoto ?? 'Share photo',
             ),
             content: SizedBox(
               width: double.maxFinite,
@@ -89,7 +89,7 @@ class HomeShareReceiver {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text(l10n?.cancel ?? 'Отмена'),
+                child: Text(l10n?.cancel ?? 'Cancel'),
               ),
             ],
           );

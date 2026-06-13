@@ -93,6 +93,64 @@ void main() {
     expect(find.text('Share photo'), findsOneWidget);
     expect(find.text('Поделиться фото'), findsNothing);
   });
+
+  testWidgets('share receiver dialog falls back to English labels',
+      (tester) async {
+    const channel = MethodChannel('family_todo_mobile/share');
+    final store = TaskStore(
+      repository: _FakeTaskRepository(),
+      domainService: TaskDomainService(),
+    );
+    store.owner.value = 'nik';
+    addTearDown(store.dispose);
+
+    late BuildContext receiverContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: Builder(
+          builder: (context) {
+            receiverContext = context;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+
+    HomeShareReceiver(store: store).initShareReceiver(
+      context: receiverContext,
+      getAllContacts: (_) => const [
+        ChatContact(
+          profileKey: 'mia',
+          displayName: 'Mia',
+          phone: '',
+          conversationKey: 'dm:mia:nik',
+        ),
+      ],
+      setActiveConversation: (_) {},
+      refreshConversation: (
+        _,
+        __, {
+        required quiet,
+        required useNetwork,
+      }) async {},
+    );
+
+    unawaited(
+      _simulateIncomingShare(
+        tester,
+        channel,
+        const <String, Object?>{'text': 'hello'},
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Share text'), findsOneWidget);
+    expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('Поделиться текстом'), findsNothing);
+    expect(find.text('Отмена'), findsNothing);
+  });
 }
 
 Future<void> _simulateIncomingShare(
