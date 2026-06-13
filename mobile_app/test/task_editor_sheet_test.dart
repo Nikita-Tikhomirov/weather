@@ -2701,6 +2701,57 @@ TASK_CARD_ACTIONS_JSON:
       expect(find.text('Пока пусто'), findsNothing);
     });
 
+    testWidgets('uses localized fallback profile labels in comments',
+        (tester) async {
+      final task = _editableTask.copyWith(
+        collaboration: const TaskCollaboration(
+          comments: [
+            TaskComment(
+              id: 'agent-comment',
+              authorProfile: 'agent',
+              text: 'Need a final check',
+              createdAt: '2026-06-01T10:00:00',
+            ),
+            TaskComment(
+              id: 'user-comment',
+              authorProfile: '',
+              text: 'Looks ready',
+              createdAt: '2026-06-01T10:05:00',
+              replyToCommentId: 'agent-comment',
+            ),
+          ],
+        ),
+      );
+      final store = _FakeTaskStore();
+      _seedProjectAccess(store);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: task,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Work'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('User'), findsOneWidget);
+      expect(find.text('Agent'), findsWidgets);
+      expect(find.text('Need a final check'), findsWidgets);
+      expect(find.text('Пользователь'), findsNothing);
+      expect(find.text('Агент'), findsNothing);
+    });
+
     testWidgets('uses localized comment composer controls', (tester) async {
       final store = _FakeTaskStore();
       store.selectedDate.value = DateTime(2026, 5, 31);

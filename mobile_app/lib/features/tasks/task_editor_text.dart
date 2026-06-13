@@ -19,6 +19,7 @@ class TaskEditorText {
   String get workTab => l10n?.taskWorkTab ?? 'Работа';
   String get agentTab => l10n?.taskAgentTab ?? 'Агент';
   String get agent => l10n?.taskAgent ?? 'Агент';
+  String get user => l10n?.taskUserFallback ?? 'Пользователь';
   String get agentAccessGranted =>
       l10n?.taskAgentAccessGranted ?? 'Доступ есть';
   String get agentNoAccess => l10n?.taskAgentNoAccess ?? 'Нет доступа';

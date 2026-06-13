@@ -89,6 +89,7 @@
   "taskWorkTab": "Work",
   "taskAgentTab": "Agent",
   "taskAgent": "Agent",
+  "taskUserFallback": "User",
   "taskAgentAccessGranted": "Access granted",
   "taskAgentNoAccess": "No access",
   "taskAgentQuestions": "Agent questions",

@@ -257,6 +257,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskAgent => 'Агент';
 
   @override
+  String get taskUserFallback => 'Пользователь';
+
+  @override
   String get taskAgentAccessGranted => 'Доступ есть';
 
   @override

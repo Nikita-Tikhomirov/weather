@@ -4332,8 +4332,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   String _profileLabel(String profile) {
+    final text = TaskEditorText.of(context);
     if (profile == 'agent') {
-      return 'Агент';
+      return text.agent;
     }
     final contact = widget.knownContacts.cast<ChatContact?>().firstWhere(
           (item) => item?.profileKey == profile,
@@ -4342,6 +4343,6 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     if (contact != null) {
       return widget.contactLabel(contact);
     }
-    return profile.isEmpty ? 'Пользователь' : profile;
+    return profile.isEmpty ? text.user : profile;
   }
 }

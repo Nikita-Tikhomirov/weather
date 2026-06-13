@@ -10,6 +10,8 @@ void main() {
     expect(text.newTask, 'Новая задача');
     expect(text.settingsTab, 'Настройки');
     expect(text.title, 'Название');
+    expect(text.agent, 'Агент');
+    expect(text.user, 'Пользователь');
     expect(text.openPhotoAttachment, 'Открыть фото');
     expect(text.openFileAttachment, 'Открыть файл');
     expect(text.removeAttachment, 'Убрать вложение');
@@ -46,6 +48,8 @@ void main() {
     expect(text.settingsTab, 'Settings');
     expect(text.title, 'Title');
     expect(text.selectProject, 'Select project');
+    expect(text.agent, 'Agent');
+    expect(text.user, 'User');
     expect(text.openPhotoAttachment, 'Open photo');
     expect(text.openFileAttachment, 'Open file');
     expect(text.removeAttachment, 'Remove attachment');

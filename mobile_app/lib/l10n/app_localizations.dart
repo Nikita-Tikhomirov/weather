@@ -587,6 +587,12 @@ abstract class AppLocalizations {
   /// **'Agent'**
   String get taskAgent;
 
+  /// No description provided for @taskUserFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get taskUserFallback;
+
   /// No description provided for @taskAgentAccessGranted.
   ///
   /// In en, this message translates to:

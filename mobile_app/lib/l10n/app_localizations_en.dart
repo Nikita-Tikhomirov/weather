@@ -257,6 +257,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskAgent => 'Agent';
 
   @override
+  String get taskUserFallback => 'User';
+
+  @override
   String get taskAgentAccessGranted => 'Access granted';
 
   @override
