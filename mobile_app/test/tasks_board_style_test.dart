@@ -36,4 +36,25 @@ void main() {
       }
     }
   });
+
+  test('theme option names use English defaults', () {
+    final names = appThemeOptions.map((option) => option.name).toList();
+
+    expect(
+      names,
+      containsAll([
+        'Ocean',
+        'Mint',
+        'Coral',
+        'Iris',
+        'Forest',
+        'Night',
+        'Graphite',
+        'Plum',
+        'Pine',
+        'Amber',
+      ]),
+    );
+    expect(names.join(' '), isNot(contains(RegExp('[А-Яа-яЁё]'))));
+  });
 }
