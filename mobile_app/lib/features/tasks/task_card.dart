@@ -239,7 +239,7 @@ class TaskCard extends StatelessWidget {
                   if (!selectionMode) ...[
                     IconButton(
                       tooltip:
-                          '${l10n?.done ?? 'Выполнить'}/${l10n?.undo ?? 'отменить'}',
+                          '${l10n?.done ?? 'Done'}/${l10n?.undo ?? 'Undo'}',
                       iconSize: 20,
                       icon: Icon(
                         item.workflowStatus == WorkflowStatus.done
@@ -250,7 +250,7 @@ class TaskCard extends StatelessWidget {
                       onPressed: onDoneToggle,
                     ),
                     IconButton(
-                      tooltip: l10n?.delete ?? 'Удалить',
+                      tooltip: l10n?.delete ?? 'Delete',
                       iconSize: 20,
                       icon: Icon(
                         Icons.delete_outline,
@@ -280,7 +280,7 @@ String _workflowLabel(AppLocalizations? l10n, WorkflowStatus status) {
     case WorkflowStatus.done:
       return l10n?.workflowDone ?? workflowLabel(status);
     case WorkflowStatus.archive:
-      return l10n?.workflowArchive ?? 'Архив';
+      return l10n?.workflowArchive ?? 'Archive';
   }
 }
 

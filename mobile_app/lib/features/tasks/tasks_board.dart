@@ -151,11 +151,11 @@ String taskWorkflowLabel(BuildContext context, WorkflowStatus status) {
 }
 
 String _dropHereLabel(BuildContext context) {
-  return AppLocalizations.of(context)?.dropHere ?? 'Отпустить сюда';
+  return AppLocalizations.of(context)?.dropHere ?? 'Drop here';
 }
 
 String _noTasksLabel(BuildContext context) {
-  return AppLocalizations.of(context)?.noTasks ?? 'Нет задач';
+  return AppLocalizations.of(context)?.noTasks ?? 'No tasks';
 }
 
 class _KanbanColumn extends StatelessWidget {

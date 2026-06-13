@@ -147,6 +147,8 @@ void main() {
 
       expect(find.text('Todo Task'), findsOneWidget);
       expect(find.text('Done Task'), findsOneWidget);
+      expect(find.byTooltip('Done/Undo'), findsWidgets);
+      expect(find.byTooltip('Delete'), findsWidgets);
     });
 
     testWidgets('shows collaboration indicators on task cards', (tester) async {
@@ -259,8 +261,8 @@ void main() {
         ),
       );
 
-      // Board renders without errors
       expect(find.byType(TasksBoard), findsOneWidget);
+      expect(find.text('No tasks'), findsWidgets);
     });
 
     testWidgets('kanban column colors meet contrast requirements',
