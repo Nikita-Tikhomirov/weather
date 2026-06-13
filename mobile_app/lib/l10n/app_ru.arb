@@ -160,6 +160,14 @@
   },
   "taskContinueWork": "Продолжить работу",
   "taskSaveTaskFirst": "Сначала сохраните задачу",
+  "taskAgentContinueNoAccess": "Нет прав на продолжение агента",
+  "taskAgentContinuesFreshCard": "Агент продолжает работу по свежей карточке",
+  "taskAgentContinueFailed": "Не удалось продолжить агента: {error}",
+  "@taskAgentContinueFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "taskAgentSkills": "Скиллы",
   "taskAgentCommands": "Команды",
   "taskAgentAvailableCount": "Доступно: {count}",

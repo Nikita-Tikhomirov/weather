@@ -1886,9 +1886,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     final text = TaskEditorText.of(context);
     if (!_canEdit || !_canContinueAgentSession(session, policy)) {
       _showSnack(
-        policy.reason.isEmpty
-            ? 'Нет прав на продолжение агента'
-            : policy.reason,
+        policy.reason.isEmpty ? text.agentContinueNoAccess : policy.reason,
       );
       return;
     }
@@ -2007,11 +2005,11 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       _uploadAgentCardFiles(workspaceId, bridgeSessionId);
       _sendNextAgentStep(workspaceId: workspaceId, sessionId: bridgeSessionId);
       if (mounted) {
-        _showSnack('Агент продолжает работу по свежей карточке');
+        _showSnack(text.agentContinuesFreshCard);
       }
     } catch (error) {
       if (!mounted) return;
-      final message = 'Не удалось продолжить агента: $error';
+      final message = text.agentContinueFailed(error);
       setState(() {
         _markAgentSession(session.id, status: 'error');
         _appendAgentActivity(
@@ -2095,8 +2093,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     }
     final pendingId = _pendingAgentSessionId;
     if (message.isError) {
-      final errorText =
-          message.error.isEmpty ? 'Ошибка CodeWhale' : message.error;
+      final errorText = message.error.isEmpty
+          ? TaskEditorText.of(context).codeWhaleError
+          : message.error;
       if (pendingId.isNotEmpty) {
         setState(() {
           _markAgentSession(pendingId, status: 'error');

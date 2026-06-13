@@ -397,6 +397,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskSaveTaskFirst => 'Сначала сохраните задачу';
 
   @override
+  String get taskAgentContinueNoAccess => 'Нет прав на продолжение агента';
+
+  @override
+  String get taskAgentContinuesFreshCard =>
+      'Агент продолжает работу по свежей карточке';
+
+  @override
+  String taskAgentContinueFailed(Object error) {
+    return 'Не удалось продолжить агента: $error';
+  }
+
+  @override
   String get taskAgentSkills => 'Скиллы';
 
   @override

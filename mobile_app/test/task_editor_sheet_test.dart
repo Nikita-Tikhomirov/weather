@@ -206,6 +206,15 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
     return connectResult;
   }
 
+  void emitError([String error = '']) {
+    onMessage(
+      CodeWhaleBridgeMessage.fromJson({
+        'type': 'error',
+        'error': error,
+      }),
+    );
+  }
+
   @override
   void requestCodeWhaleCommands() {
     commandListRequestCount += 1;
@@ -1081,6 +1090,140 @@ void main() {
       expect(find.text('Продолжить'), findsNothing);
       expect(find.text('Агентский чат'), findsNothing);
       expect(find.textContaining('в работе'), findsNothing);
+    });
+
+    testWidgets('uses localized agent continuation snackbar', (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      _FakeAgentBridge? bridge;
+      final task = _editableTask.copyWith(
+        workflowStatus: WorkflowStatus.in_progress,
+        collaboration: const TaskCollaboration(
+          agentSessions: [
+            TaskAgentSession(
+              id: 'agent-session-continue-localized',
+              workspaceId: 'weather',
+              sessionId: 'bridge-session-continue-localized',
+              title: 'Agent continuation',
+              mode: 'executor',
+              status: 'manual_waiting',
+              createdBy: 'test_user',
+              createdAt: '2026-06-01T10:00:00',
+            ),
+          ],
+        ),
+      );
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Executor',
+        plugins: [],
+        allowedCommands: ['session_send', 'session_update_task_card'],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: task,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              );
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Agent'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continue work'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(bridge!.updateTaskCardCount, 1);
+      expect(
+        find.text('Agent continues with the fresh task card'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Агент продолжает работу по свежей карточке'),
+        findsNothing,
+      );
+    });
+
+    testWidgets('uses localized CodeWhale error fallback in task editor',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      _FakeAgentBridge? bridge;
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Executor',
+        plugins: [],
+        allowedCommands: ['session_create', 'session_send'],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              );
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Agent'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('New chat'));
+      await tester.pumpAndSettle();
+      bridge!.emitError();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.text('CodeWhale error'), findsOneWidget);
+      expect(find.text('Ошибка CodeWhale'), findsNothing);
     });
 
     testWidgets('agent tab displays open agent questions', (tester) async {

@@ -839,6 +839,24 @@ abstract class AppLocalizations {
   /// **'Save the task first'**
   String get taskSaveTaskFirst;
 
+  /// No description provided for @taskAgentContinueNoAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'No permission to continue agent'**
+  String get taskAgentContinueNoAccess;
+
+  /// No description provided for @taskAgentContinuesFreshCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent continues with the fresh task card'**
+  String get taskAgentContinuesFreshCard;
+
+  /// No description provided for @taskAgentContinueFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not continue agent: {error}'**
+  String taskAgentContinueFailed(Object error);
+
   /// No description provided for @taskAgentSkills.
   ///
   /// In en, this message translates to:

@@ -395,6 +395,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskSaveTaskFirst => 'Save the task first';
 
   @override
+  String get taskAgentContinueNoAccess => 'No permission to continue agent';
+
+  @override
+  String get taskAgentContinuesFreshCard =>
+      'Agent continues with the fresh task card';
+
+  @override
+  String taskAgentContinueFailed(Object error) {
+    return 'Could not continue agent: $error';
+  }
+
+  @override
   String get taskAgentSkills => 'Skills';
 
   @override

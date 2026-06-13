@@ -45,6 +45,16 @@ void main() {
       text.agentQueueLaunchStarted(2),
       'Агент запускает очередь: 2 инструментов',
     );
+    expect(text.agentContinueNoAccess, 'Нет прав на продолжение агента');
+    expect(
+      text.agentContinuesFreshCard,
+      'Агент продолжает работу по свежей карточке',
+    );
+    expect(
+      text.agentContinueFailed('ошибка'),
+      'Не удалось продолжить агента: ошибка',
+    );
+    expect(text.codeWhaleError, 'Ошибка CodeWhale');
     expect(text.codeWhaleUnavailable, 'CodeWhale недоступен');
     expect(
       text.agentToolsLoadFailed('ошибка'),
@@ -118,6 +128,16 @@ void main() {
       text.agentQueueLaunchStarted(2),
       'Agent is starting the queue: 2 tools',
     );
+    expect(text.agentContinueNoAccess, 'No permission to continue agent');
+    expect(
+      text.agentContinuesFreshCard,
+      'Agent continues with the fresh task card',
+    );
+    expect(
+      text.agentContinueFailed('network'),
+      'Could not continue agent: network',
+    );
+    expect(text.codeWhaleError, 'CodeWhale error');
     expect(text.codeWhaleUnavailable, 'CodeWhale is unavailable');
     expect(
       text.agentToolsLoadFailed('network'),

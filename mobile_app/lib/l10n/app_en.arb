@@ -160,6 +160,14 @@
   },
   "taskContinueWork": "Continue work",
   "taskSaveTaskFirst": "Save the task first",
+  "taskAgentContinueNoAccess": "No permission to continue agent",
+  "taskAgentContinuesFreshCard": "Agent continues with the fresh task card",
+  "taskAgentContinueFailed": "Could not continue agent: {error}",
+  "@taskAgentContinueFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "taskAgentSkills": "Skills",
   "taskAgentCommands": "Commands",
   "taskAgentAvailableCount": "Available: {count}",

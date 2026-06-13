@@ -96,6 +96,16 @@ class TaskEditorText {
   String get continueWork => l10n?.taskContinueWork ?? 'Продолжить работу';
   String get saveTaskFirst =>
       l10n?.taskSaveTaskFirst ?? 'Сначала сохраните задачу';
+  String get agentContinueNoAccess =>
+      l10n?.taskAgentContinueNoAccess ?? 'Нет прав на продолжение агента';
+  String get agentContinuesFreshCard =>
+      l10n?.taskAgentContinuesFreshCard ??
+      'Агент продолжает работу по свежей карточке';
+  String agentContinueFailed(Object error) =>
+      l10n?.taskAgentContinueFailed(error) ??
+      'Не удалось продолжить агента: $error';
+  String get codeWhaleError =>
+      l10n?.codeWhaleErrorFallback ?? 'Ошибка CodeWhale';
   String get agentStatusPending => l10n?.waitingToStart ?? 'ожидает запуска';
   String get agentStatusLinked => l10n?.connected ?? 'подключен';
   String get agentStatusRunning => l10n?.running ?? 'в работе';
