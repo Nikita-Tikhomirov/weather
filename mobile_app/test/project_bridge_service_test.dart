@@ -44,7 +44,7 @@ void main() {
 
     expect(
       statuses,
-      isNot(contains('Соединение потеряно, переподключаюсь...')),
+      isNot(contains(const ProjectBridgeMessages().reconnecting)),
     );
 
     await sub.cancel();
@@ -101,6 +101,22 @@ void main() {
     service.dispose();
     await sub.cancel();
     await server.close();
+  });
+
+  test('offline text reports English queued status', () {
+    final statuses = <String>[];
+    final service = ProjectBridgeService(
+      onMessage: (_) {},
+      onStatusChange: (_, status) => statuses.add(status),
+    );
+
+    expect(service.sendText('hello while offline'), isFalse);
+    expect(
+      statuses.single,
+      'No bridge connection; message will be sent after reconnect.',
+    );
+
+    service.dispose();
   });
 
   test('image upload sends a file payload to the bridge', () async {
@@ -172,7 +188,10 @@ void main() {
       ),
       isFalse,
     );
-    expect(statuses.single, contains('15 МБ'));
+    expect(
+      statuses.single,
+      'Photo is larger than 15 MB. Reduce the photo or choose another one.',
+    );
 
     service.dispose();
   });

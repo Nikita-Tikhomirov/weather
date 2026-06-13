@@ -9,6 +9,29 @@ import '../app/app_config.dart';
 import '../models/project_contact.dart';
 import 'bridge_protocol.dart';
 
+class ProjectBridgeMessages {
+  const ProjectBridgeMessages();
+
+  String connectedTo(String address) => 'Connected to $address';
+  String connectionError(Object error) => 'Bridge connection error: $error';
+  String connectFailed(Object error) => 'Could not connect to bridge: $error';
+
+  String get reconnecting => 'Bridge connection lost, reconnecting...';
+  String get textQueued =>
+      'No bridge connection; message will be sent after reconnect.';
+  String get fileTooLarge =>
+      'File is larger than 15 MB. Reduce the file or choose another one.';
+  String get fileQueued =>
+      'No bridge connection; file can be sent after reconnect.';
+  String get photoTooLarge =>
+      'Photo is larger than 15 MB. Reduce the photo or choose another one.';
+  String get photoQueued =>
+      'No bridge connection; photo can be sent after reconnect.';
+  String get sendFailed => 'Could not send data, reconnecting...';
+  String get commandQueued =>
+      'No bridge connection; command will be sent after reconnect.';
+}
+
 /// Manages TCP connection to the remote Project Bridge Server running on PC.
 ///
 /// Server address is stored in SharedPreferences under key 'bridge_host'.
@@ -17,10 +40,12 @@ class ProjectBridgeService {
   ProjectBridgeService({
     required this.onMessage,
     required this.onStatusChange,
+    this.messages = const ProjectBridgeMessages(),
   });
 
   final void Function(BridgeMessage message) onMessage;
   final void Function(bool connected, String status) onStatusChange;
+  final ProjectBridgeMessages messages;
   static const int maxProjectUploadBytes = 15 * 1024 * 1024;
 
   Socket? _socket;
@@ -152,7 +177,7 @@ class ProjectBridgeService {
       _running = true;
       _connecting = false;
       _reconnectAttempt = 0;
-      onStatusChange(true, 'Connected to $address');
+      onStatusChange(true, messages.connectedTo(address));
 
       // Listen for messages
       _socket!.listen(
@@ -162,7 +187,7 @@ class ProjectBridgeService {
             _cleanup();
             return;
           }
-          onStatusChange(false, 'Ошибка соединения: $error');
+          onStatusChange(false, messages.connectionError(error));
           _cleanup();
           _scheduleReconnect();
         },
@@ -171,7 +196,7 @@ class ProjectBridgeService {
             _cleanup();
             return;
           }
-          onStatusChange(false, 'Соединение потеряно, переподключаюсь...');
+          onStatusChange(false, messages.reconnecting);
           _cleanup();
           _scheduleReconnect();
         },
@@ -186,7 +211,7 @@ class ProjectBridgeService {
     } catch (e) {
       _connecting = false;
       if (!_disposed) {
-        onStatusChange(false, 'Не удалось подключиться: $e');
+        onStatusChange(false, messages.connectFailed(e));
         _scheduleReconnect();
       }
       _cleanup();
@@ -260,7 +285,7 @@ class ProjectBridgeService {
       _pendingSends.add(trimmed);
       onStatusChange(
         false,
-        'Нет соединения, сообщение будет отправлено после переподключения.',
+        messages.textQueued,
       );
       _scheduleReconnect();
       return false;
@@ -286,14 +311,14 @@ class ProjectBridgeService {
     if (bytes.length > maxProjectUploadBytes) {
       onStatusChange(
         false,
-        'Файл больше 15 МБ. Уменьшите файл или отправьте другой.',
+        messages.fileTooLarge,
       );
       return false;
     }
     if (!isConnected) {
       onStatusChange(
         false,
-        'Нет соединения, файл можно отправить после переподключения.',
+        messages.fileQueued,
       );
       _scheduleReconnect();
       return false;
@@ -324,14 +349,14 @@ class ProjectBridgeService {
     if (bytes.length > maxProjectUploadBytes) {
       onStatusChange(
         false,
-        'Фото больше 15 МБ. Уменьшите фото или отправьте другое.',
+        messages.photoTooLarge,
       );
       return false;
     }
     if (!isConnected) {
       onStatusChange(
         false,
-        'Нет соединения, фото можно отправить после переподключения.',
+        messages.photoQueued,
       );
       _scheduleReconnect();
       return false;
@@ -413,7 +438,7 @@ class ProjectBridgeService {
       if (!_disposed) {
         onStatusChange(
           false,
-          'Не удалось отправить данные, переподключаюсь...',
+          messages.sendFailed,
         );
       }
       _cleanup();
@@ -485,7 +510,7 @@ class ProjectBridgeService {
     _pendingControlMessages.add(payload);
     onStatusChange(
       false,
-      'Нет соединения, команда будет отправлена после переподключения.',
+      messages.commandQueued,
     );
   }
 }
