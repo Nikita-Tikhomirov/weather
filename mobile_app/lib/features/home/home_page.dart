@@ -15,6 +15,7 @@ import '../../app/app_config.dart';
 import '../../app/app_labels.dart';
 import '../../app/app_theme.dart';
 import '../../l10n/app_localizations.dart';
+import 'home_dashboard_labels.dart';
 import 'home_navigation_widget.dart';
 import 'home_project_status_sheet.dart';
 import '../../shared/utils/avatar_url_resolver.dart';

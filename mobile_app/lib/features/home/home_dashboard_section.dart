@@ -57,7 +57,8 @@ extension _DashboardSection on _HomePageState {
                   (p) => p?.id == currentId,
                   orElse: () => null,
                 );
-            final projectName = currentProject?.name ?? 'Все задачи';
+            const labels = HomeDashboardLabels();
+            final projectName = currentProject?.name ?? labels.allTasks;
             return Padding(
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
               child: Row(
@@ -92,7 +93,7 @@ extension _DashboardSection on _HomePageState {
                   ),
                   IconButton(
                     icon: const Icon(Icons.settings, size: 20),
-                    tooltip: 'Управление проектами и группами',
+                    tooltip: labels.manageProjectsAndGroups,
                     onPressed: () {
                       Navigator.of(context)
                           .push(
