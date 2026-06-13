@@ -1733,11 +1733,41 @@ abstract class AppLocalizations {
   /// **'Edit group'**
   String get editGroup;
 
+  /// No description provided for @groupDefaultName.
+  ///
+  /// In en, this message translates to:
+  /// **'Group'**
+  String get groupDefaultName;
+
+  /// No description provided for @groupRenameAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get groupRenameAction;
+
+  /// No description provided for @groupAddMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Add member'**
+  String get groupAddMember;
+
+  /// No description provided for @groupAvatarUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Avatar updated'**
+  String get groupAvatarUpdated;
+
   /// No description provided for @groupNameLabel.
   ///
   /// In en, this message translates to:
   /// **'Group name'**
   String get groupNameLabel;
+
+  /// No description provided for @groupNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For example: Work'**
+  String get groupNameHint;
 
   /// No description provided for @contacts.
   ///
@@ -1786,6 +1816,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Error: {error}'**
   String groupSaveFailed(Object error);
+
+  /// No description provided for @groupChatDeleteMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Group \"{title}\" will disappear for all participants with its chat history.'**
+  String groupChatDeleteMessage(Object title);
+
+  /// No description provided for @groupNoAvailableContacts.
+  ///
+  /// In en, this message translates to:
+  /// **'No available contacts'**
+  String get groupNoAvailableContacts;
+
+  /// No description provided for @groupSelectMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Select member'**
+  String get groupSelectMember;
+
+  /// No description provided for @groupMemberAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'{profile} added'**
+  String groupMemberAdded(Object profile);
+
+  /// No description provided for @groupAvatarUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not upload avatar: {error}'**
+  String groupAvatarUploadFailed(Object error);
+
+  /// No description provided for @groupDeletedLocally.
+  ///
+  /// In en, this message translates to:
+  /// **'Group removed from local list'**
+  String get groupDeletedLocally;
 
   /// No description provided for @projectsSection.
   ///

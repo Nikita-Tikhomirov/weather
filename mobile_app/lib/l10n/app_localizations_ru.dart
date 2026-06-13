@@ -864,7 +864,22 @@ class AppLocalizationsRu extends AppLocalizations {
   String get editGroup => 'Редактировать группу';
 
   @override
+  String get groupDefaultName => 'Группа';
+
+  @override
+  String get groupRenameAction => 'Назвать';
+
+  @override
+  String get groupAddMember => 'Добавить участника';
+
+  @override
+  String get groupAvatarUpdated => 'Аватар обновлён';
+
+  @override
   String get groupNameLabel => 'Название группы';
+
+  @override
+  String get groupNameHint => 'Например: Работа';
 
   @override
   String get contacts => 'Контакты';
@@ -891,6 +906,30 @@ class AppLocalizationsRu extends AppLocalizations {
   String groupSaveFailed(Object error) {
     return 'Ошибка: $error';
   }
+
+  @override
+  String groupChatDeleteMessage(Object title) {
+    return 'Группа \"$title\" исчезнет у всех участников вместе с перепиской.';
+  }
+
+  @override
+  String get groupNoAvailableContacts => 'Нет доступных контактов';
+
+  @override
+  String get groupSelectMember => 'Выбрать участника';
+
+  @override
+  String groupMemberAdded(Object profile) {
+    return '$profile добавлен';
+  }
+
+  @override
+  String groupAvatarUploadFailed(Object error) {
+    return 'Ошибка загрузки аватара: $error';
+  }
+
+  @override
+  String get groupDeletedLocally => 'Группа удалена из локального списка';
 
   @override
   String get projectsSection => 'Проекты';

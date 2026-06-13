@@ -371,7 +371,12 @@
   },
   "newGroup": "New group",
   "editGroup": "Edit group",
+  "groupDefaultName": "Group",
+  "groupRenameAction": "Rename",
+  "groupAddMember": "Add member",
+  "groupAvatarUpdated": "Avatar updated",
   "groupNameLabel": "Group name",
+  "groupNameHint": "For example: Work",
   "contacts": "Contacts",
   "refreshContacts": "Refresh contacts",
   "noContacts": "No contacts. Add contacts in Messenger.",
@@ -385,6 +390,27 @@
       "error": {}
     }
   },
+  "groupChatDeleteMessage": "Group \"{title}\" will disappear for all participants with its chat history.",
+  "@groupChatDeleteMessage": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "groupNoAvailableContacts": "No available contacts",
+  "groupSelectMember": "Select member",
+  "groupMemberAdded": "{profile} added",
+  "@groupMemberAdded": {
+    "placeholders": {
+      "profile": {}
+    }
+  },
+  "groupAvatarUploadFailed": "Could not upload avatar: {error}",
+  "@groupAvatarUploadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "groupDeletedLocally": "Group removed from local list",
   "projectsSection": "Projects",
   "createProjectAction": "Create project",
   "createGroupAction": "Create group",

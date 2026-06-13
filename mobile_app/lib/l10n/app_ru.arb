@@ -371,7 +371,12 @@
   },
   "newGroup": "Новая группа",
   "editGroup": "Редактировать группу",
+  "groupDefaultName": "Группа",
+  "groupRenameAction": "Назвать",
+  "groupAddMember": "Добавить участника",
+  "groupAvatarUpdated": "Аватар обновлён",
   "groupNameLabel": "Название группы",
+  "groupNameHint": "Например: Работа",
   "contacts": "Контакты",
   "refreshContacts": "Обновить контакты",
   "noContacts": "Нет контактов. Добавьте контакты в мессенджере.",
@@ -385,6 +390,27 @@
       "error": {}
     }
   },
+  "groupChatDeleteMessage": "Группа \"{title}\" исчезнет у всех участников вместе с перепиской.",
+  "@groupChatDeleteMessage": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "groupNoAvailableContacts": "Нет доступных контактов",
+  "groupSelectMember": "Выбрать участника",
+  "groupMemberAdded": "{profile} добавлен",
+  "@groupMemberAdded": {
+    "placeholders": {
+      "profile": {}
+    }
+  },
+  "groupAvatarUploadFailed": "Ошибка загрузки аватара: {error}",
+  "@groupAvatarUploadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "groupDeletedLocally": "Группа удалена из локального списка",
   "projectsSection": "Проекты",
   "createProjectAction": "Создать проект",
   "createGroupAction": "Создать группу",

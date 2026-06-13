@@ -17,6 +17,7 @@ import '../../app/app_theme.dart';
 import '../../l10n/app_localizations.dart';
 import 'home_chat_action_labels.dart';
 import 'home_dashboard_labels.dart';
+import 'home_group_chat_labels.dart';
 import 'home_navigation_widget.dart';
 import 'home_project_status_sheet.dart';
 import 'home_voice_recorder_messages.dart';
@@ -149,6 +150,8 @@ class _HomePageState extends State<HomePage> {
 
   HomeChatActionLabels get _chatActionLabels =>
       HomeChatActionLabels(AppLocalizations.of(context));
+  HomeGroupChatLabels get _groupChatLabels =>
+      HomeGroupChatLabels(AppLocalizations.of(context));
 
   /// Conversation key -> set of profiles currently typing
   final Map<String, Set<String>> _typingUsers = <String, Set<String>>{};
@@ -1808,6 +1811,7 @@ class _HomePageState extends State<HomePage> {
     TaskStore store,
     ChatConversation conv,
   ) async {
+    final labels = _groupChatLabels;
     final members = List<String>.from(conv.members);
     final initialAvatarUrl = conv.avatarUrl;
     final canManage = conv.kind == 'group' ||
@@ -1872,7 +1876,9 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      conv.title.isNotEmpty ? conv.title : 'Группа',
+                      conv.title.isNotEmpty
+                          ? conv.title
+                          : labels.defaultGroupName,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -1886,7 +1892,9 @@ class _HomePageState extends State<HomePage> {
                             child: OutlinedButton.icon(
                               onPressed: () async {
                                 final title = await _promptGroupTitle(
-                                  conv.title.isNotEmpty ? conv.title : 'Группа',
+                                  conv.title.isNotEmpty
+                                      ? conv.title
+                                      : labels.defaultGroupName,
                                 );
                                 if (title == null || title.trim().isEmpty) {
                                   return;
@@ -1904,13 +1912,17 @@ class _HomePageState extends State<HomePage> {
                                 } catch (error) {
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Ошибка: $error')),
+                                      SnackBar(
+                                        content: Text(
+                                          labels.genericError(error),
+                                        ),
+                                      ),
                                     );
                                   }
                                 }
                               },
                               icon: const Icon(Icons.edit_outlined),
-                              label: const Text('Назвать'),
+                              label: Text(labels.renameAction),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -1945,9 +1957,9 @@ class _HomePageState extends State<HomePage> {
                                       return;
                                     }
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
+                                      SnackBar(
                                         content: Text(
-                                          'Группа удалена из локального списка',
+                                          labels.groupDeletedLocally,
                                         ),
                                       ),
                                     );
@@ -1955,7 +1967,7 @@ class _HomePageState extends State<HomePage> {
                                 }
                               },
                               icon: const Icon(Icons.delete_outline),
-                              label: const Text('Удалить'),
+                              label: Text(labels.delete),
                             ),
                           ),
                         ],
@@ -2004,7 +2016,7 @@ class _HomePageState extends State<HomePage> {
                     if (canManage)
                       ListTile(
                         leading: const Icon(Icons.person_add),
-                        title: const Text('Добавить участника'),
+                        title: Text(labels.addMember),
                         onTap: () async {
                           Navigator.of(sheetContext).pop();
                           await _addMemberToGroup(store, conv);
@@ -2024,6 +2036,7 @@ class _HomePageState extends State<HomePage> {
     TaskStore store,
     ChatConversation conv,
   ) async {
+    final labels = _groupChatLabels;
     final picked = await _imagePicker.pickImage(
       source: ImageSource.gallery,
       imageQuality: 85,
@@ -2057,14 +2070,14 @@ class _HomePageState extends State<HomePage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Аватар обновлён')),
+          SnackBar(content: Text(labels.avatarUpdated)),
         );
       }
       return avatarUrl;
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка загрузки аватара: $error')),
+          SnackBar(content: Text(labels.avatarUploadFailed(error))),
         );
       }
       return null;
@@ -2073,6 +2086,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<String?> _promptGroupTitle(String initial) async {
     if (!mounted) return null;
+    final labels = _groupChatLabels;
     final controller = TextEditingController(text: initial);
     return showModalBottomSheet<String>(
       context: context,
@@ -2089,18 +2103,18 @@ class _HomePageState extends State<HomePage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Название группы',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            Text(
+              labels.groupNameTitle,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: controller,
               autofocus: true,
               maxLength: 60,
-              decoration: const InputDecoration(
-                hintText: 'Например: Работа',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: labels.groupNameHint,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
@@ -2109,12 +2123,12 @@ class _HomePageState extends State<HomePage> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Отмена'),
+                  child: Text(labels.cancel),
                 ),
                 const SizedBox(width: 8),
                 FilledButton(
                   onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-                  child: const Text('Сохранить'),
+                  child: Text(labels.save),
                 ),
               ],
             ),
@@ -2126,21 +2140,21 @@ class _HomePageState extends State<HomePage> {
 
   Future<bool?> _confirmDeleteGroup(ChatConversation conv) async {
     if (!mounted) return false;
+    final labels = _groupChatLabels;
+    final title = conv.title.isNotEmpty ? conv.title : labels.defaultGroupName;
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Удалить группу?'),
-        content: Text(
-          'Группа "${conv.title.isNotEmpty ? conv.title : 'Группа'}" исчезнет у всех участников вместе с перепиской.',
-        ),
+        title: Text(labels.deleteGroupTitle),
+        content: Text(labels.deleteGroupMessage(title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Отмена'),
+            child: Text(labels.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Удалить'),
+            child: Text(labels.delete),
           ),
         ],
       ),
@@ -2148,13 +2162,14 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _addMemberToGroup(TaskStore store, ChatConversation conv) async {
+    final labels = _groupChatLabels;
     final available = _chatContacts
         .where((c) => !conv.members.contains(c.profileKey))
         .toList();
     if (available.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Нет доступных контактов')),
+          SnackBar(content: Text(labels.noAvailableContacts)),
         );
       }
       return;
@@ -2162,7 +2177,7 @@ class _HomePageState extends State<HomePage> {
     final selected = await showDialog<String>(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('Выбрать участника'),
+        title: Text(labels.selectMember),
         children: available
             .map(
               (c) => SimpleDialogOption(
@@ -2182,14 +2197,14 @@ class _HomePageState extends State<HomePage> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${_profileLabel(selected)} добавлен')),
+          SnackBar(content: Text(labels.memberAdded(_profileLabel(selected)))),
         );
       }
       await _refreshChatBootstrap(store);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка: $error')),
+          SnackBar(content: Text(labels.genericError(error))),
         );
       }
     }

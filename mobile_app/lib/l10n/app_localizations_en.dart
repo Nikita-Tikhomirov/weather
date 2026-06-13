@@ -864,7 +864,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editGroup => 'Edit group';
 
   @override
+  String get groupDefaultName => 'Group';
+
+  @override
+  String get groupRenameAction => 'Rename';
+
+  @override
+  String get groupAddMember => 'Add member';
+
+  @override
+  String get groupAvatarUpdated => 'Avatar updated';
+
+  @override
   String get groupNameLabel => 'Group name';
+
+  @override
+  String get groupNameHint => 'For example: Work';
 
   @override
   String get contacts => 'Contacts';
@@ -891,6 +906,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String groupSaveFailed(Object error) {
     return 'Error: $error';
   }
+
+  @override
+  String groupChatDeleteMessage(Object title) {
+    return 'Group \"$title\" will disappear for all participants with its chat history.';
+  }
+
+  @override
+  String get groupNoAvailableContacts => 'No available contacts';
+
+  @override
+  String get groupSelectMember => 'Select member';
+
+  @override
+  String groupMemberAdded(Object profile) {
+    return '$profile added';
+  }
+
+  @override
+  String groupAvatarUploadFailed(Object error) {
+    return 'Could not upload avatar: $error';
+  }
+
+  @override
+  String get groupDeletedLocally => 'Group removed from local list';
 
   @override
   String get projectsSection => 'Projects';
