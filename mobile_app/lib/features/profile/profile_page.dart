@@ -14,20 +14,20 @@ class _ProfileText {
 
   final AppLocalizations? l10n;
 
-  String get profile => l10n?.profile ?? 'Профиль';
-  String get changePhoto => l10n?.changePhoto ?? 'Изменить фото';
-  String get name => l10n?.name ?? 'Имя';
-  String get saveName => l10n?.saveName ?? 'Сохранить имя';
-  String get phone => l10n?.phone ?? 'Телефон';
-  String get administration => l10n?.administration ?? 'Администрирование';
+  String get profile => l10n?.profile ?? 'Profile';
+  String get changePhoto => l10n?.changePhoto ?? 'Change photo';
+  String get name => l10n?.name ?? 'Name';
+  String get saveName => l10n?.saveName ?? 'Save name';
+  String get phone => l10n?.phone ?? 'Phone';
+  String get administration => l10n?.administration ?? 'Administration';
   String get adminSubtitle =>
       l10n?.profileAdminSubtitle ??
-      'Пользователи, проекты, воркспейсы и роли агентов';
-  String get nameSaved => l10n?.nameSaved ?? 'Имя сохранено';
+      'Users, projects, workspaces, and agent roles';
+  String get nameSaved => l10n?.nameSaved ?? 'Name saved';
 
   String avatarUploadFailed(Object error) {
     return l10n?.avatarUploadFailed(error.toString()) ??
-        'Не удалось загрузить аватарку: $error';
+        'Could not upload avatar: $error';
   }
 }
 
