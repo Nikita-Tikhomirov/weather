@@ -62,5 +62,15 @@ void main() {
     expect(entries.first.meta.group, 'rats');
     expect(entries.first.meta.style, 'plush_3d');
     expect(entries.first.meta.category, 'emotions');
+    expect(entries.first.meta.title, 'Rats · Emotions');
+  });
+
+  test('sticker catalog exposes English labels', () {
+    expect(stickerGroupLabel('rats'), 'Rats');
+    expect(stickerStyleLabel('meme_wobbly'), 'Meme');
+    expect(stickerCategoryLabel('food_sleep'), 'Food and sleep');
+    expect(stickerCategoryLabel('weather_seasons'), 'Weather');
+    expect(stickerCategoryLabel('unknown_topic'), 'Unknown topic');
+    expect(stickerGroupLabel(''), 'Stickers');
   });
 }

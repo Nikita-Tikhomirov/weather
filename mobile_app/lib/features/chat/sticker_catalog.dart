@@ -61,58 +61,58 @@ const List<String> stickerStyleOrder = [
 ];
 
 const Map<String, String> _groupLabels = {
-  'rats': 'Крысы',
-  'hedgehogs': 'Ежи',
-  'duos': 'Дуэты',
-  'mixed': 'Разные',
-  'custom': 'Свои',
+  'rats': 'Rats',
+  'hedgehogs': 'Hedgehogs',
+  'duos': 'Duos',
+  'mixed': 'Mixed',
+  'custom': 'Custom',
 };
 
 const Map<String, String> _styleLabels = {
   'plush_3d': '3D',
-  'meme_wobbly': 'Мемные',
-  'custom': 'Свои',
+  'meme_wobbly': 'Meme',
+  'custom': 'Custom',
 };
 
 const Map<String, String> _categoryLabels = {
-  'emotions': 'Эмоции',
-  'daily': 'Быт',
-  'food_sleep': 'Еда и сон',
-  'work_study': 'Работа и учеба',
-  'weather_seasons': 'Погода',
-  'cozy_love': 'Уют и любовь',
-  'adventures': 'Приключения',
-  'reactions': 'Реакции',
-  'chaos': 'Хаос',
-  'daily_fail': 'Бытовые фейлы',
-  'office_study_fail': 'Рабочие фейлы',
-  'food_sleep_absurd': 'Еда и абсурд',
-  'weird_original': 'Странные',
-  'cozy': 'Уют',
-  'tiny_heroics': 'Маленькие герои',
-  'grumpy_reactions': 'Ворчливые',
-  'everyday_fails': 'Фейлы',
-  'social_moods': 'Общение',
-  'friendship': 'Дружба',
-  'family': 'Семья',
-  'helping': 'Помощь',
-  'tiny_adventures': 'Мини-приключения',
-  'arguments': 'Споры',
-  'chaos_team': 'Командный хаос',
-  'roommate_life': 'Соседи',
-  'mutual_panic': 'Общая паника',
-  'weird_duo': 'Странные дуэты',
-  'app_core_reactions': 'Базовые',
-  'daily_moods': 'Настроения',
-  'celebrations': 'Праздники',
-  'love_family': 'Любовь и семья',
-  'excuses': 'Отмазки',
-  'panic': 'Паника',
-  'internet_brain': 'Интернет',
-  'household_chaos': 'Домашний хаос',
-  'monday_energy': 'Понедельник',
-  'suspicious': 'Подозрительные',
-  'surreal': 'Сюр',
+  'emotions': 'Emotions',
+  'daily': 'Daily',
+  'food_sleep': 'Food and sleep',
+  'work_study': 'Work and study',
+  'weather_seasons': 'Weather',
+  'cozy_love': 'Cozy love',
+  'adventures': 'Adventures',
+  'reactions': 'Reactions',
+  'chaos': 'Chaos',
+  'daily_fail': 'Daily fails',
+  'office_study_fail': 'Office/study fails',
+  'food_sleep_absurd': 'Food and absurdity',
+  'weird_original': 'Weird originals',
+  'cozy': 'Cozy',
+  'tiny_heroics': 'Tiny heroics',
+  'grumpy_reactions': 'Grumpy reactions',
+  'everyday_fails': 'Everyday fails',
+  'social_moods': 'Social moods',
+  'friendship': 'Friendship',
+  'family': 'Family',
+  'helping': 'Helping',
+  'tiny_adventures': 'Tiny adventures',
+  'arguments': 'Arguments',
+  'chaos_team': 'Team chaos',
+  'roommate_life': 'Roommate life',
+  'mutual_panic': 'Mutual panic',
+  'weird_duo': 'Weird duos',
+  'app_core_reactions': 'Core reactions',
+  'daily_moods': 'Daily moods',
+  'celebrations': 'Celebrations',
+  'love_family': 'Love and family',
+  'excuses': 'Excuses',
+  'panic': 'Panic',
+  'internet_brain': 'Internet brain',
+  'household_chaos': 'Household chaos',
+  'monday_energy': 'Monday energy',
+  'suspicious': 'Suspicious',
+  'surreal': 'Surreal',
 };
 
 String stickerGroupLabel(String group) {
@@ -239,7 +239,7 @@ int _rankCompare(List<String> order, String left, String right) {
 String _humanizeKey(String key) {
   final value = key.trim().replaceAll('_', ' ');
   if (value.isEmpty) {
-    return 'Стикеры';
+    return 'Stickers';
   }
   return value[0].toUpperCase() + value.substring(1);
 }
