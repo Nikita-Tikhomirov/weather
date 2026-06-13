@@ -2009,6 +2009,84 @@ abstract class AppLocalizations {
   /// **'Project chats'**
   String get projectChats;
 
+  /// No description provided for @homeProjectChatsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Project chats are unavailable'**
+  String get homeProjectChatsUnavailable;
+
+  /// No description provided for @homeProjectNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Project not found'**
+  String get homeProjectNotFound;
+
+  /// No description provided for @homeProjectRequestingFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Requesting project files...'**
+  String get homeProjectRequestingFiles;
+
+  /// No description provided for @homeProjectFileLink.
+  ///
+  /// In en, this message translates to:
+  /// **'File: {path}'**
+  String homeProjectFileLink(Object path);
+
+  /// No description provided for @homeProjectFileContentLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading content...'**
+  String get homeProjectFileContentLoading;
+
+  /// No description provided for @homeProjectFileFallbackName.
+  ///
+  /// In en, this message translates to:
+  /// **'File'**
+  String get homeProjectFileFallbackName;
+
+  /// No description provided for @homeProjectCopyAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy all'**
+  String get homeProjectCopyAll;
+
+  /// No description provided for @homeProjectCopiedToClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to clipboard'**
+  String get homeProjectCopiedToClipboard;
+
+  /// No description provided for @homeProjectFileEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'File is empty'**
+  String get homeProjectFileEmpty;
+
+  /// No description provided for @homeProjectBridgeStartSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge start command sent'**
+  String get homeProjectBridgeStartSent;
+
+  /// No description provided for @homeProjectBridgeStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send bridge start command'**
+  String get homeProjectBridgeStartFailed;
+
+  /// No description provided for @homeProjectNewSessionStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating new session...'**
+  String get homeProjectNewSessionStarting;
+
+  /// No description provided for @homeProjectStopCommandSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop command sent'**
+  String get homeProjectStopCommandSent;
+
   /// No description provided for @projectChatStartBridge.
   ///
   /// In en, this message translates to:

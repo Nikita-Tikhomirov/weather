@@ -483,6 +483,24 @@
   "createProjectAction": "Создать проект",
   "createGroupAction": "Создать группу",
   "projectChats": "Проектные чаты",
+  "homeProjectChatsUnavailable": "Проектные чаты недоступны",
+  "homeProjectNotFound": "Проект не найден",
+  "homeProjectRequestingFiles": "Запрашиваю файлы проекта...",
+  "homeProjectFileLink": "Файл: {path}",
+  "@homeProjectFileLink": {
+    "placeholders": {
+      "path": {}
+    }
+  },
+  "homeProjectFileContentLoading": "Загрузка содержимого...",
+  "homeProjectFileFallbackName": "Файл",
+  "homeProjectCopyAll": "Копировать всё",
+  "homeProjectCopiedToClipboard": "Скопировано в буфер",
+  "homeProjectFileEmpty": "Файл пуст",
+  "homeProjectBridgeStartSent": "Команда запуска bridge отправлена",
+  "homeProjectBridgeStartFailed": "Не удалось отправить команду запуска bridge",
+  "homeProjectNewSessionStarting": "Создаю новую сессию...",
+  "homeProjectStopCommandSent": "Команда остановки отправлена",
   "projectChatStartBridge": "Запустить bridge",
   "projectChatNewSession": "Новая сессия",
   "projectChatStopDeepSeek": "Остановить DeepSeek",

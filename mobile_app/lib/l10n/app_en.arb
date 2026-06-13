@@ -483,6 +483,24 @@
   "createProjectAction": "Create project",
   "createGroupAction": "Create group",
   "projectChats": "Project chats",
+  "homeProjectChatsUnavailable": "Project chats are unavailable",
+  "homeProjectNotFound": "Project not found",
+  "homeProjectRequestingFiles": "Requesting project files...",
+  "homeProjectFileLink": "File: {path}",
+  "@homeProjectFileLink": {
+    "placeholders": {
+      "path": {}
+    }
+  },
+  "homeProjectFileContentLoading": "Loading content...",
+  "homeProjectFileFallbackName": "File",
+  "homeProjectCopyAll": "Copy all",
+  "homeProjectCopiedToClipboard": "Copied to clipboard",
+  "homeProjectFileEmpty": "File is empty",
+  "homeProjectBridgeStartSent": "Bridge start command sent",
+  "homeProjectBridgeStartFailed": "Could not send bridge start command",
+  "homeProjectNewSessionStarting": "Creating new session...",
+  "homeProjectStopCommandSent": "Stop command sent",
   "projectChatStartBridge": "Start bridge",
   "projectChatNewSession": "New session",
   "projectChatStopDeepSeek": "Stop DeepSeek",

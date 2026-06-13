@@ -1028,6 +1028,47 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectChats => 'Project chats';
 
   @override
+  String get homeProjectChatsUnavailable => 'Project chats are unavailable';
+
+  @override
+  String get homeProjectNotFound => 'Project not found';
+
+  @override
+  String get homeProjectRequestingFiles => 'Requesting project files...';
+
+  @override
+  String homeProjectFileLink(Object path) {
+    return 'File: $path';
+  }
+
+  @override
+  String get homeProjectFileContentLoading => 'Loading content...';
+
+  @override
+  String get homeProjectFileFallbackName => 'File';
+
+  @override
+  String get homeProjectCopyAll => 'Copy all';
+
+  @override
+  String get homeProjectCopiedToClipboard => 'Copied to clipboard';
+
+  @override
+  String get homeProjectFileEmpty => 'File is empty';
+
+  @override
+  String get homeProjectBridgeStartSent => 'Bridge start command sent';
+
+  @override
+  String get homeProjectBridgeStartFailed => 'Could not send bridge start command';
+
+  @override
+  String get homeProjectNewSessionStarting => 'Creating new session...';
+
+  @override
+  String get homeProjectStopCommandSent => 'Stop command sent';
+
+  @override
   String get projectChatStartBridge => 'Start bridge';
 
   @override

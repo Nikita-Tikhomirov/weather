@@ -12,7 +12,7 @@ extension _ProjectsDataExtension on _HomePageState {
     if (!canUseProjectChats(_currentProfilePhone)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Проектные чаты недоступны')),
+          SnackBar(content: Text(_projectDataLabels.projectChatsUnavailable)),
         );
       }
       return;
@@ -188,7 +188,7 @@ extension _ProjectsDataExtension on _HomePageState {
   Widget _buildProjectChatView(TaskStore store, {required bool compact}) {
     final project = _projectByConversationKey(_activeConversationKey);
     if (project == null) {
-      return const Center(child: Text('Проект не найден'));
+      return Center(child: Text(_projectDataLabels.projectNotFound));
     }
 
     return ProjectChatView(
@@ -247,7 +247,7 @@ extension _ProjectsDataExtension on _HomePageState {
       path: '',
       statusMessage: BridgeMessage(
         type: 'status',
-        text: 'Запрашиваю файлы проекта...',
+        text: _projectDataLabels.requestingProjectFiles,
       ),
     );
     _projectBridge?.requestFileTree();
@@ -281,7 +281,7 @@ extension _ProjectsDataExtension on _HomePageState {
               },
               onLinkToChat: (filePath) {
                 final fullPath = '${project.path}/$filePath';
-                final link = 'Файл: $fullPath';
+                final link = _projectDataLabels.fileLink(fullPath);
                 final current = _chatInputCtl.text;
                 _chatInputCtl.text = current.isEmpty ? link : '$current $link';
                 // Close sheet so user can continue editing before sending
@@ -307,7 +307,7 @@ extension _ProjectsDataExtension on _HomePageState {
   }
 
   void _showFileContentOverlay(String path) {
-    final ctl = ValueNotifier<String>('Загрузка содержимого...');
+    final ctl = ValueNotifier<String>(_projectDataLabels.fileContentLoading);
     showDialog<void>(
       context: context,
       useRootNavigator: true,
@@ -330,7 +330,7 @@ extension _ProjectsDataExtension on _HomePageState {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Закрыть'),
+            child: Text(_projectDataLabels.close),
           ),
         ],
       ),
@@ -373,7 +373,9 @@ extension _ProjectsDataExtension on _HomePageState {
                       children: [
                         Expanded(
                           child: Text(
-                            path.isNotEmpty ? path.split('/').last : 'Файл',
+                            path.isNotEmpty
+                                ? path.split('/').last
+                                : _projectDataLabels.fileFallbackName,
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
@@ -382,20 +384,22 @@ extension _ProjectsDataExtension on _HomePageState {
                         ),
                         if (!hasError)
                           IconButton(
-                            tooltip: 'Копировать всё',
+                            tooltip: _projectDataLabels.copyAll,
                             icon: const Icon(Icons.copy),
                             onPressed: () {
                               Clipboard.setData(ClipboardData(text: content));
                               ScaffoldMessenger.of(sheetContext).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Скопировано в буфер'),
-                                  duration: Duration(seconds: 1),
+                                SnackBar(
+                                  content: Text(
+                                    _projectDataLabels.copiedToClipboard,
+                                  ),
+                                  duration: const Duration(seconds: 1),
                                 ),
                               );
                             },
                           ),
                         IconButton(
-                          tooltip: 'Закрыть',
+                          tooltip: _projectDataLabels.close,
                           icon: const Icon(Icons.close),
                           onPressed: () => Navigator.of(sheetContext).pop(),
                         ),
@@ -424,7 +428,7 @@ extension _ProjectsDataExtension on _HomePageState {
                               padding: const EdgeInsets.all(24),
                               child: Text(
                                 content.isEmpty
-                                    ? 'Файл пуст'
+                                    ? _projectDataLabels.fileEmpty
                                     : content.replaceFirst('Error: ', ''),
                               ),
                             ),
@@ -460,8 +464,8 @@ extension _ProjectsDataExtension on _HomePageState {
       BridgeMessage(
         type: ok ? 'status' : 'error',
         text: ok
-            ? 'Команда запуска bridge отправлена'
-            : 'Не удалось отправить команду запуска bridge',
+            ? _projectDataLabels.bridgeStartSent
+            : _projectDataLabels.bridgeStartFailed,
       ),
     );
     if (ok) {
@@ -494,7 +498,7 @@ extension _ProjectsDataExtension on _HomePageState {
     _resetProjectMessages(
       BridgeMessage(
         type: 'status',
-        text: 'Создаю новую сессию...',
+        text: _projectDataLabels.newSessionStarting,
       ),
     );
   }
@@ -507,7 +511,7 @@ extension _ProjectsDataExtension on _HomePageState {
     _addProjectMessage(
       BridgeMessage(
         type: 'status',
-        text: 'Команда остановки отправлена',
+        text: _projectDataLabels.stopCommandSent,
       ),
     );
   }

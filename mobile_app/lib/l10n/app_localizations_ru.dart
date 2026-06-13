@@ -1028,6 +1028,47 @@ class AppLocalizationsRu extends AppLocalizations {
   String get projectChats => 'Проектные чаты';
 
   @override
+  String get homeProjectChatsUnavailable => 'Проектные чаты недоступны';
+
+  @override
+  String get homeProjectNotFound => 'Проект не найден';
+
+  @override
+  String get homeProjectRequestingFiles => 'Запрашиваю файлы проекта...';
+
+  @override
+  String homeProjectFileLink(Object path) {
+    return 'Файл: $path';
+  }
+
+  @override
+  String get homeProjectFileContentLoading => 'Загрузка содержимого...';
+
+  @override
+  String get homeProjectFileFallbackName => 'Файл';
+
+  @override
+  String get homeProjectCopyAll => 'Копировать всё';
+
+  @override
+  String get homeProjectCopiedToClipboard => 'Скопировано в буфер';
+
+  @override
+  String get homeProjectFileEmpty => 'Файл пуст';
+
+  @override
+  String get homeProjectBridgeStartSent => 'Команда запуска bridge отправлена';
+
+  @override
+  String get homeProjectBridgeStartFailed => 'Не удалось отправить команду запуска bridge';
+
+  @override
+  String get homeProjectNewSessionStarting => 'Создаю новую сессию...';
+
+  @override
+  String get homeProjectStopCommandSent => 'Команда остановки отправлена';
+
+  @override
   String get projectChatStartBridge => 'Запустить bridge';
 
   @override

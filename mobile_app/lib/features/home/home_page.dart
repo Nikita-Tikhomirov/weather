@@ -21,6 +21,7 @@ import 'home_dashboard_labels.dart';
 import 'home_group_chat_labels.dart';
 import 'home_misc_labels.dart';
 import 'home_navigation_widget.dart';
+import 'home_project_data_labels.dart';
 import 'home_project_status_sheet.dart';
 import 'home_voice_recorder_messages.dart';
 import '../../shared/utils/avatar_url_resolver.dart';
@@ -158,6 +159,8 @@ class _HomePageState extends State<HomePage> {
       HomeAttachmentLabels(AppLocalizations.of(context));
   HomeMiscLabels get _miscLabels =>
       HomeMiscLabels(AppLocalizations.of(context));
+  HomeProjectDataLabels get _projectDataLabels =>
+      HomeProjectDataLabels(AppLocalizations.of(context));
 
   /// Conversation key -> set of profiles currently typing
   final Map<String, Set<String>> _typingUsers = <String, Set<String>>{};
