@@ -72,6 +72,39 @@
       "error": {}
     }
   },
+  "homeChatRefreshFailed": "Could not refresh chat: {error}",
+  "@homeChatRefreshFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "homeContactAddedToFamily": "{contact} added to family",
+  "@homeContactAddedToFamily": {
+    "placeholders": {
+      "contact": {}
+    }
+  },
+  "homeAddToFamilyFailed": "Could not add to family: {error}",
+  "@homeAddToFamilyFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "homeChatUnavailable": "Chat unavailable: {error}",
+  "@homeChatUnavailable": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "homeNoWorkspaceAccess": "No workspace access",
+  "homeSelectWorkspaceProjectReason": "Select a project linked to a workspace.",
+  "colorSchemeTooltip": "Color scheme",
+  "undoLastAction": "Undo last action",
+  "lastActionUndone": "Last action undone",
+  "fcmDiagnostics": "FCM diagnostics",
+  "fcmRefreshInProgress": "FCM: refreshing diagnostics...",
+  "fcmResetInProgress": "FCM: resetting token...",
+  "fcmResetToken": "Reset token",
   "editMessage": "Edit message",
   "replyPreview": "Reply: {message}",
   "@replyPreview": {

@@ -157,6 +157,53 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String homeChatRefreshFailed(Object error) {
+    return 'Ошибка обновления чата: $error';
+  }
+
+  @override
+  String homeContactAddedToFamily(Object contact) {
+    return '$contact добавлен в семью';
+  }
+
+  @override
+  String homeAddToFamilyFailed(Object error) {
+    return 'Не удалось добавить в семью: $error';
+  }
+
+  @override
+  String homeChatUnavailable(Object error) {
+    return 'Чат недоступен: $error';
+  }
+
+  @override
+  String get homeNoWorkspaceAccess => 'Нет доступа к воркспейсам';
+
+  @override
+  String get homeSelectWorkspaceProjectReason => 'Выберите проект, связанный с воркспейсом.';
+
+  @override
+  String get colorSchemeTooltip => 'Цветовая схема';
+
+  @override
+  String get undoLastAction => 'Откатить последнее действие';
+
+  @override
+  String get lastActionUndone => 'Последнее действие отменено';
+
+  @override
+  String get fcmDiagnostics => 'FCM диагностика';
+
+  @override
+  String get fcmRefreshInProgress => 'FCM: обновляю диагностику...';
+
+  @override
+  String get fcmResetInProgress => 'FCM: сбрасываю токен...';
+
+  @override
+  String get fcmResetToken => 'Сбросить токен';
+
+  @override
   String get editMessage => 'Изменить сообщение';
 
   @override

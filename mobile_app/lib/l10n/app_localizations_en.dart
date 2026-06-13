@@ -157,6 +157,53 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String homeChatRefreshFailed(Object error) {
+    return 'Could not refresh chat: $error';
+  }
+
+  @override
+  String homeContactAddedToFamily(Object contact) {
+    return '$contact added to family';
+  }
+
+  @override
+  String homeAddToFamilyFailed(Object error) {
+    return 'Could not add to family: $error';
+  }
+
+  @override
+  String homeChatUnavailable(Object error) {
+    return 'Chat unavailable: $error';
+  }
+
+  @override
+  String get homeNoWorkspaceAccess => 'No workspace access';
+
+  @override
+  String get homeSelectWorkspaceProjectReason => 'Select a project linked to a workspace.';
+
+  @override
+  String get colorSchemeTooltip => 'Color scheme';
+
+  @override
+  String get undoLastAction => 'Undo last action';
+
+  @override
+  String get lastActionUndone => 'Last action undone';
+
+  @override
+  String get fcmDiagnostics => 'FCM diagnostics';
+
+  @override
+  String get fcmRefreshInProgress => 'FCM: refreshing diagnostics...';
+
+  @override
+  String get fcmResetInProgress => 'FCM: resetting token...';
+
+  @override
+  String get fcmResetToken => 'Reset token';
+
+  @override
   String get editMessage => 'Edit message';
 
   @override

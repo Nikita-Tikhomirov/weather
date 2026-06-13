@@ -371,6 +371,84 @@ abstract class AppLocalizations {
   /// **'Could not send video: {error}'**
   String chatVideoSendFailed(Object error);
 
+  /// No description provided for @homeChatRefreshFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not refresh chat: {error}'**
+  String homeChatRefreshFailed(Object error);
+
+  /// No description provided for @homeContactAddedToFamily.
+  ///
+  /// In en, this message translates to:
+  /// **'{contact} added to family'**
+  String homeContactAddedToFamily(Object contact);
+
+  /// No description provided for @homeAddToFamilyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not add to family: {error}'**
+  String homeAddToFamilyFailed(Object error);
+
+  /// No description provided for @homeChatUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat unavailable: {error}'**
+  String homeChatUnavailable(Object error);
+
+  /// No description provided for @homeNoWorkspaceAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'No workspace access'**
+  String get homeNoWorkspaceAccess;
+
+  /// No description provided for @homeSelectWorkspaceProjectReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a project linked to a workspace.'**
+  String get homeSelectWorkspaceProjectReason;
+
+  /// No description provided for @colorSchemeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Color scheme'**
+  String get colorSchemeTooltip;
+
+  /// No description provided for @undoLastAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo last action'**
+  String get undoLastAction;
+
+  /// No description provided for @lastActionUndone.
+  ///
+  /// In en, this message translates to:
+  /// **'Last action undone'**
+  String get lastActionUndone;
+
+  /// No description provided for @fcmDiagnostics.
+  ///
+  /// In en, this message translates to:
+  /// **'FCM diagnostics'**
+  String get fcmDiagnostics;
+
+  /// No description provided for @fcmRefreshInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'FCM: refreshing diagnostics...'**
+  String get fcmRefreshInProgress;
+
+  /// No description provided for @fcmResetInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'FCM: resetting token...'**
+  String get fcmResetInProgress;
+
+  /// No description provided for @fcmResetToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset token'**
+  String get fcmResetToken;
+
   /// No description provided for @editMessage.
   ///
   /// In en, this message translates to:

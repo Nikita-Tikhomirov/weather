@@ -72,6 +72,39 @@
       "error": {}
     }
   },
+  "homeChatRefreshFailed": "Ошибка обновления чата: {error}",
+  "@homeChatRefreshFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "homeContactAddedToFamily": "{contact} добавлен в семью",
+  "@homeContactAddedToFamily": {
+    "placeholders": {
+      "contact": {}
+    }
+  },
+  "homeAddToFamilyFailed": "Не удалось добавить в семью: {error}",
+  "@homeAddToFamilyFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "homeChatUnavailable": "Чат недоступен: {error}",
+  "@homeChatUnavailable": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "homeNoWorkspaceAccess": "Нет доступа к воркспейсам",
+  "homeSelectWorkspaceProjectReason": "Выберите проект, связанный с воркспейсом.",
+  "colorSchemeTooltip": "Цветовая схема",
+  "undoLastAction": "Откатить последнее действие",
+  "lastActionUndone": "Последнее действие отменено",
+  "fcmDiagnostics": "FCM диагностика",
+  "fcmRefreshInProgress": "FCM: обновляю диагностику...",
+  "fcmResetInProgress": "FCM: сбрасываю токен...",
+  "fcmResetToken": "Сбросить токен",
   "editMessage": "Изменить сообщение",
   "replyPreview": "Ответ: {message}",
   "@replyPreview": {

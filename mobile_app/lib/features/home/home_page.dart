@@ -19,6 +19,7 @@ import 'home_attachment_labels.dart';
 import 'home_chat_action_labels.dart';
 import 'home_dashboard_labels.dart';
 import 'home_group_chat_labels.dart';
+import 'home_misc_labels.dart';
 import 'home_navigation_widget.dart';
 import 'home_project_status_sheet.dart';
 import 'home_voice_recorder_messages.dart';
@@ -155,6 +156,8 @@ class _HomePageState extends State<HomePage> {
       HomeGroupChatLabels(AppLocalizations.of(context));
   HomeAttachmentLabels get _attachmentLabels =>
       HomeAttachmentLabels(AppLocalizations.of(context));
+  HomeMiscLabels get _miscLabels =>
+      HomeMiscLabels(AppLocalizations.of(context));
 
   /// Conversation key -> set of profiles currently typing
   final Map<String, Set<String>> _typingUsers = <String, Set<String>>{};
@@ -675,7 +678,7 @@ class _HomePageState extends State<HomePage> {
     } catch (error) {
       if (!quiet && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка обновления чата: $error')),
+          SnackBar(content: Text(_miscLabels.chatRefreshFailed(error))),
         );
       }
     }
@@ -885,7 +888,8 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _openCreateGroupSheet(TaskStore store) async {
     final selected = <String>{};
-    final titleCtl = TextEditingController(text: 'Новая группа');
+    final labels = _miscLabels;
+    final titleCtl = TextEditingController(text: labels.newGroup);
     final contacts = _phoneContacts.isEmpty ? _chatContacts : _phoneContacts;
     final created = await showModalBottomSheet<bool>(
       context: context,
@@ -901,7 +905,8 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     TextField(
                       controller: titleCtl,
-                      decoration: const InputDecoration(labelText: 'Название'),
+                      decoration:
+                          InputDecoration(labelText: labels.groupNameLabel),
                     ),
                     const SizedBox(height: 8),
                     Flexible(
@@ -931,7 +936,7 @@ class _HomePageState extends State<HomePage> {
                           ? null
                           : () => Navigator.of(sheetContext).pop(true),
                       icon: const Icon(Icons.check),
-                      label: const Text('Создать'),
+                      label: Text(labels.create),
                     ),
                   ],
                 ),
@@ -965,13 +970,17 @@ class _HomePageState extends State<HomePage> {
       if (mounted) {
         setState(() => _familyMembers = members);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${contactLabel(contact)} добавлен в семью')),
+          SnackBar(
+            content: Text(
+              _miscLabels.contactAddedToFamily(contactLabel(contact)),
+            ),
+          ),
         );
       }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Не удалось добавить в семью: $error')),
+          SnackBar(content: Text(_miscLabels.addToFamilyFailed(error))),
         );
       }
     }
@@ -1148,7 +1157,7 @@ class _HomePageState extends State<HomePage> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Чат недоступен: $error')),
+          SnackBar(content: Text(_miscLabels.chatUnavailable(error))),
         );
       }
     } finally {
@@ -2991,7 +3000,7 @@ class _HomePageState extends State<HomePage> {
     }
     if (!_accessPolicy.canUseWorkspaces) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Нет доступа к воркспейсам')),
+        SnackBar(content: Text(_miscLabels.noWorkspaceAccess)),
       );
       return;
     }
@@ -3150,13 +3159,13 @@ class _HomePageState extends State<HomePage> {
     }
     final workspaceId = _workspaceIdForTaskEditor(store, existing);
     if (workspaceId.isEmpty) {
-      return const AgentRunPolicy(
+      return AgentRunPolicy(
         allowed: false,
         mode: '',
         modeLabel: '',
-        plugins: [],
-        allowedCommands: [],
-        reason: 'Выберите проект, связанный с воркспейсом.',
+        plugins: const [],
+        allowedCommands: const [],
+        reason: _miscLabels.selectWorkspaceProjectReason,
       );
     }
     try {
@@ -3284,7 +3293,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _themeMenuButton() {
     return PopupMenuButton<String>(
-      tooltip: 'Цветовая схема',
+      tooltip: _miscLabels.colorSchemeTooltip,
       icon: const Icon(Icons.palette_outlined),
       initialValue: widget.selectedThemeKey,
       onSelected: widget.onThemeChanged,
@@ -3335,6 +3344,7 @@ class _HomePageState extends State<HomePage> {
               valueListenable: store.selectedDate,
               builder: (context, selectedDate, ___) {
                 final selectedDateKey = dateKey(selectedDate);
+                final labels = _miscLabels;
                 if (_isDesktopWindows) {
                   return _buildDesktopShell(
                     store: store,
@@ -3347,14 +3357,14 @@ class _HomePageState extends State<HomePage> {
                 return Scaffold(
                   appBar: AppBar(
                     leading: IconButton(
-                      tooltip: 'Профиль',
+                      tooltip: labels.profile,
                       icon: const Icon(Icons.person_outline),
                       onPressed: _openProfile,
                     ),
                     actions: [
                       if (_accessPolicy.canManageWorkspaceAccess)
                         IconButton(
-                          tooltip: 'Администрирование',
+                          tooltip: labels.administration,
                           icon: const Icon(
                             Icons.admin_panel_settings_outlined,
                           ),
@@ -3365,7 +3375,7 @@ class _HomePageState extends State<HomePage> {
                         valueListenable: store.canUndo,
                         builder: (context, canUndo, _) {
                           return IconButton(
-                            tooltip: 'Откатить последнее действие',
+                            tooltip: labels.undoLastAction,
                             onPressed: canUndo
                                 ? () async {
                                     final messenger =
@@ -3376,9 +3386,9 @@ class _HomePageState extends State<HomePage> {
                                     }
                                     if (ok) {
                                       messenger.showSnackBar(
-                                        const SnackBar(
+                                        SnackBar(
                                           content: Text(
-                                            'Последнее действие отменено',
+                                            labels.lastActionUndone,
                                           ),
                                         ),
                                       );
@@ -3394,12 +3404,12 @@ class _HomePageState extends State<HomePage> {
                         },
                       ),
                       IconButton(
-                        tooltip: 'FCM диагностика',
+                        tooltip: labels.fcmDiagnostics,
                         icon: const Icon(Icons.bug_report_outlined),
                         onPressed: _showFcmDiagnosticsDialog,
                       ),
                       IconButton(
-                        tooltip: 'Календарь',
+                        tooltip: labels.calendar,
                         icon: const Icon(Icons.calendar_month),
                         onPressed: () async {
                           final picked = await showDatePicker(
@@ -3414,7 +3424,7 @@ class _HomePageState extends State<HomePage> {
                         },
                       ),
                       IconButton(
-                        tooltip: 'Синхронизировать',
+                        tooltip: labels.sync,
                         icon: const Icon(Icons.sync),
                         onPressed: () async =>
                             _safeSyncFull(store, showErrors: true),
@@ -3495,6 +3505,7 @@ class _HomePageState extends State<HomePage> {
   void _showFcmDiagnosticsDialog() {
     final diagnostics = _pushHandler?.diagnostics;
     if (diagnostics == null) return;
+    final labels = _miscLabels;
     showDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -3502,30 +3513,30 @@ class _HomePageState extends State<HomePage> {
           valueListenable: diagnostics,
           builder: (context, text, _) {
             return AlertDialog(
-              title: const Text('FCM диагностика'),
+              title: Text(labels.fcmDiagnostics),
               content: SingleChildScrollView(
                 child: SelectableText(text),
               ),
               actions: [
                 TextButton(
                   onPressed: () async {
-                    diagnostics.value = 'FCM: обновляю диагностику...';
+                    diagnostics.value = labels.fcmRefreshInProgress;
                     await _pushHandler?.refreshDiagnostics();
                   },
-                  child: const Text('Обновить'),
+                  child: Text(labels.refresh),
                 ),
                 TextButton(
                   onPressed: () async {
-                    diagnostics.value = 'FCM: сбрасываю токен...';
+                    diagnostics.value = labels.fcmResetInProgress;
                     await _pushHandler?.refreshDiagnostics(
                       forceResetToken: true,
                     );
                   },
-                  child: const Text('Сбросить токен'),
+                  child: Text(labels.resetToken),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Закрыть'),
+                  child: Text(labels.close),
                 ),
               ],
             );
