@@ -262,6 +262,43 @@ void main() {
       );
     });
 
+    testWidgets(
+        'projects and groups sections fall back to English empty states',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = TaskStore(
+        repository: repository,
+        domainService: TaskDomainService(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: ProjectsAndGroupsScreen(
+            store: store,
+            actorProfile: 'nik',
+            loadWorkspacesFromBridge: false,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Projects'), findsOneWidget);
+      expect(find.byTooltip('Create project'), findsOneWidget);
+      expect(
+        find.text('No projects yet. Press + to create one.'),
+        findsOneWidget,
+      );
+      expect(find.text('Groups'), findsOneWidget);
+      expect(find.byTooltip('Create group'), findsOneWidget);
+      expect(
+        find.text('No groups yet. Press + to create one.'),
+        findsOneWidget,
+      );
+      expect(find.text('Проекты'), findsNothing);
+      expect(find.byTooltip('Создать проект'), findsNothing);
+    });
+
     testWidgets('workspace picker and status use localized labels',
         (tester) async {
       final repository = _FakeTaskRepository();

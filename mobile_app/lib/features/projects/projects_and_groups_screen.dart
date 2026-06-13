@@ -22,125 +22,124 @@ class _ProjectsAndGroupsText {
 
   final AppLocalizations? l10n;
 
-  String get projects => l10n?.projectsSection ?? 'Проекты';
-  String get groups => l10n?.groups ?? 'Группы';
-  String get createProject => l10n?.createProjectAction ?? 'Создать проект';
-  String get createGroup => l10n?.createGroupAction ?? 'Создать группу';
+  String get projects => l10n?.projectsSection ?? 'Projects';
+  String get groups => l10n?.groups ?? 'Groups';
+  String get createProject => l10n?.createProjectAction ?? 'Create project';
+  String get createGroup => l10n?.createGroupAction ?? 'Create group';
   String get noProjectsYet =>
-      l10n?.noProjectsYetAction ??
-      'Проектов пока нет. Нажмите + чтобы создать.';
+      l10n?.noProjectsYetAction ?? 'No projects yet. Press + to create one.';
   String get noGroupsYet =>
-      l10n?.noGroupsYetAction ?? 'Групп пока нет. Нажмите + чтобы создать.';
+      l10n?.noGroupsYetAction ?? 'No groups yet. Press + to create one.';
   String get projectControlCreateProjectHint =>
       l10n?.projectControlCreateProjectHint ??
-      'Создайте проект, чтобы подключить чат и агента.';
+      'Create a project to connect a chat and agent.';
   String get projectControlChatsNotLinked =>
-      l10n?.projectControlChatsNotLinked ?? 'Чаты не связаны';
+      l10n?.projectControlChatsNotLinked ?? 'Chats are not linked';
   String projectControlChatsCount(int count) =>
-      l10n?.projectControlChatsCount(count) ?? 'Чатов: $count';
+      l10n?.projectControlChatsCount(count) ?? 'Chats: $count';
   String get projectControlWorkspaceNotSelected =>
-      l10n?.projectControlWorkspaceNotSelected ?? 'Workspace не выбран';
+      l10n?.projectControlWorkspaceNotSelected ?? 'Workspace not selected';
   String projectControlWorkspaceChip(String label) =>
       l10n?.projectControlWorkspaceChip(label) ?? 'Workspace: $label';
   String projectControlWorkspaceUnavailable(String label) =>
       l10n?.projectControlWorkspaceUnavailable(label) ??
-      'Workspace: $label (нет доступа)';
+      'Workspace: $label (no access)';
   String get projectControlNoAgentAccess =>
-      l10n?.projectControlNoAgentAccess ?? 'Нет прав на агента';
+      l10n?.projectControlNoAgentAccess ?? 'No agent access';
   String get projectControlWorkspaceLoading =>
-      l10n?.projectControlWorkspaceLoading ?? 'Workspace загружается';
+      l10n?.projectControlWorkspaceLoading ?? 'Workspace is loading';
   String get projectControlAgentAvailable =>
-      l10n?.projectControlAgentAvailable ?? 'Агент доступен';
+      l10n?.projectControlAgentAvailable ?? 'Agent available';
   String get projectControlLinkedChats =>
-      l10n?.projectControlLinkedChats ?? 'Связанные чаты';
+      l10n?.projectControlLinkedChats ?? 'Linked chats';
   String get projectControlAssignGroupForChat =>
       l10n?.projectControlAssignGroupForChat ??
-      'Назначьте группу проекту, чтобы появился проектный чат.';
+      'Assign a group to the project to create a project chat.';
   String get projectControlCreateChat =>
-      l10n?.projectControlCreateChat ?? 'Создать проектный чат';
+      l10n?.projectControlCreateChat ?? 'Create project chat';
   String get projectControlRefreshChat =>
-      l10n?.projectControlRefreshChat ?? 'Обновить проектный чат';
+      l10n?.projectControlRefreshChat ?? 'Refresh project chat';
   String get projectControlAnalyzeChat =>
-      l10n?.projectControlAnalyzeChat ?? 'Анализ чата';
+      l10n?.projectControlAnalyzeChat ?? 'Chat analysis';
   String get projectControlDraftTask =>
-      l10n?.projectControlDraftTask ?? 'Черновик задачи';
+      l10n?.projectControlDraftTask ?? 'Task draft';
   String get projectControlStartAgent =>
-      l10n?.projectControlStartAgent ?? 'Запустить агента';
+      l10n?.projectControlStartAgent ?? 'Start agent';
   String get workspaceBridgeNotLoaded =>
-      l10n?.workspaceBridgeNotLoaded ?? 'Список workspace ещё не загружен.';
+      l10n?.workspaceBridgeNotLoaded ?? 'Workspace list is not loaded yet.';
   String get workspaceBridgeEmpty =>
-      l10n?.workspaceBridgeEmpty ?? 'CodeWhale не вернул workspace.';
+      l10n?.workspaceBridgeEmpty ?? 'CodeWhale returned no workspaces.';
   String workspaceBridgeLoaded(int count) =>
-      l10n?.workspaceBridgeLoaded(count) ?? 'Загружено workspace: $count';
-  String get primaryWorkspace => l10n?.primaryWorkspace ?? 'Основной workspace';
+      l10n?.workspaceBridgeLoaded(count) ?? 'Loaded workspaces: $count';
+  String get primaryWorkspace => l10n?.primaryWorkspace ?? 'Primary workspace';
   String get refreshWorkspaceList =>
-      l10n?.refreshWorkspaceList ?? 'Обновить список';
+      l10n?.refreshWorkspaceList ?? 'Refresh list';
   String get workspaceSearchHint =>
-      l10n?.workspaceSearchHint ?? 'Поиск по имени, id или пути';
+      l10n?.workspaceSearchHint ?? 'Search by name, id, or path';
   String workspaceFoundSummary({
     required int found,
     required int total,
     required String source,
   }) =>
       l10n?.workspaceFoundSummary(found, total, source) ??
-      'Найдено: $found из $total. Источник: $source';
+      'Found: $found of $total. Source: $source';
   String get workspaceSourceBackendAccess =>
-      l10n?.workspaceSourceBackendAccess ?? 'права backend';
+      l10n?.workspaceSourceBackendAccess ?? 'backend access';
   String get workspaceSourceCodeWhale =>
       l10n?.workspaceSourceCodeWhale ?? 'CodeWhale';
   String get clearWorkspaceBinding =>
-      l10n?.clearWorkspaceBinding ?? 'Снять привязку';
+      l10n?.clearWorkspaceBinding ?? 'Clear binding';
   String get projectAgentDisabledAfterClearing =>
       l10n?.projectAgentDisabledAfterClearing ??
-      'Агент проекта будет отключён.';
+      'Project agent will be disabled.';
   String get noWorkspacesFound =>
-      l10n?.noWorkspacesFound ?? 'Workspace не найдены.';
+      l10n?.noWorkspacesFound ?? 'No workspaces found.';
   String get projectWorkspaceCleared =>
-      l10n?.projectWorkspaceCleared ?? 'Workspace проекта очищен.';
+      l10n?.projectWorkspaceCleared ?? 'Project workspace cleared.';
   String get projectWorkspaceSaved =>
-      l10n?.projectWorkspaceSaved ?? 'Workspace проекта сохранён.';
+      l10n?.projectWorkspaceSaved ?? 'Project workspace saved.';
   String get projectWorkspaceSaveFailed =>
-      l10n?.projectWorkspaceSaveFailed ??
-      'Не удалось сохранить workspace проекта.';
+      l10n?.projectWorkspaceSaveFailed ?? 'Could not save project workspace.';
   String projectChatReady(String title) =>
-      l10n?.projectChatReady(title) ?? 'Проектный чат «$title» готов.';
+      l10n?.projectChatReady(title) ?? 'Project chat "$title" is ready.';
   String projectChatCreateFailed(Object error) =>
       l10n?.projectChatCreateFailed(error) ??
-      'Не удалось создать проектный чат: $error';
+      'Could not create project chat: $error';
   String get openProjectChatHint =>
-      l10n?.openProjectChatHint ?? 'Откройте проектный чат.';
-  String get selectWorkspace => l10n?.selectWorkspace ?? 'Выбрать workspace';
-  String get changeWorkspace => l10n?.changeWorkspace ?? 'Сменить workspace';
+      l10n?.openProjectChatHint ?? 'Open the project chat.';
+  String get selectWorkspace => l10n?.selectWorkspace ?? 'Select workspace';
+  String get changeWorkspace => l10n?.changeWorkspace ?? 'Change workspace';
   String get workspaceNotSelectedSentence =>
-      l10n?.workspaceNotSelectedSentence ?? 'Workspace не выбран.';
+      l10n?.workspaceNotSelectedSentence ?? 'Workspace is not selected.';
   String workspaceSelected(String label) =>
-      l10n?.workspaceSelected(label) ?? 'Выбран: $label.';
+      l10n?.workspaceSelected(label) ?? 'Selected: $label.';
   String workspaceControlAvailable(String selectedText, int count) =>
       l10n?.workspaceControlAvailable(selectedText, count) ??
-      '$selectedText Доступно: $count.';
+      '$selectedText Available: $count.';
   String get noAvailableWorkspacesToSelect =>
       l10n?.noAvailableWorkspacesToSelect ??
-      'Нет доступных workspace для выбора.';
+      'No available workspaces to select.';
   String get workspaceSettingLoading =>
-      l10n?.workspaceSettingLoading ?? 'Загружаю настройку workspace...';
+      l10n?.workspaceSettingLoading ?? 'Loading workspace setting...';
   String get refreshWorkspaces =>
-      l10n?.refreshWorkspaces ?? 'Обновить workspace';
-  String get selectAction => l10n?.selectAction ?? 'Выбрать';
-  String get editAction => l10n?.edit ?? 'Редактировать';
-  String get deleteAction => l10n?.delete ?? 'Удалить';
-  String get cancelAction => l10n?.cancel ?? 'Отмена';
+      l10n?.refreshWorkspaces ?? 'Refresh workspaces';
+  String get selectAction => l10n?.selectAction ?? 'Select';
+  String get editAction => l10n?.edit ?? 'Edit';
+  String get deleteAction => l10n?.delete ?? 'Delete';
+  String get cancelAction => l10n?.cancel ?? 'Cancel';
   String projectGroupsSummary(String groups) =>
-      l10n?.projectGroupsSummary(groups) ?? 'Группы: $groups';
+      l10n?.projectGroupsSummary(groups) ?? 'Groups: $groups';
   String groupParticipantsSummary(String participants) =>
       l10n?.groupParticipantsSummary(participants) ??
-      'Участники: $participants';
+      'Participants: $participants';
   String get deleteProjectTitle =>
-      l10n?.deleteProjectTitle ?? 'Удалить проект?';
+      l10n?.deleteProjectTitle ?? 'Delete project?';
   String get deleteProjectMessage =>
-      l10n?.deleteProjectMessage ?? 'Проект и привязки групп будут удалены.';
-  String get deleteGroupTitle => l10n?.deleteGroupTitle ?? 'Удалить группу?';
+      l10n?.deleteProjectMessage ??
+      'Project and group bindings will be deleted.';
+  String get deleteGroupTitle => l10n?.deleteGroupTitle ?? 'Delete group?';
   String get deleteGroupMessage =>
-      l10n?.deleteGroupMessage ?? 'Группа будет удалена из всех проектов.';
+      l10n?.deleteGroupMessage ?? 'Group will be removed from all projects.';
 }
 
 class ProjectsAndGroupsScreen extends StatefulWidget {
