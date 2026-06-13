@@ -82,7 +82,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           Icon(Icons.error_outline, color: Colors.white, size: 48),
           SizedBox(height: 12),
           Text(
-            'Не удалось загрузить видео',
+            'Could not load video',
             style: TextStyle(color: Colors.white, fontSize: 16),
           ),
         ],
