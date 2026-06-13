@@ -30,6 +30,23 @@ class ProjectChatAgentDirective {
   final String rawText;
 }
 
+class ProjectChatAgentFallbackMessages {
+  const ProjectChatAgentFallbackMessages({
+    required this.replyText,
+    required this.taskDraftReplyText,
+  });
+
+  static const defaults = ProjectChatAgentFallbackMessages(
+    replyText:
+        'Сейчас не получил ответ AI, поэтому не буду придумывать ответ из кусков чата. Проверьте CodeWhale и workspace проекта, затем повторите запрос.',
+    taskDraftReplyText:
+        'Я не смог собрать нормальный черновик: не получил ответ AI. Не буду создавать карточку из кусков чата. Проверьте CodeWhale и workspace проекта, затем повторите запрос.',
+  );
+
+  final String replyText;
+  final String taskDraftReplyText;
+}
+
 class ProjectChatAgentService {
   const ProjectChatAgentService._();
 
@@ -106,6 +123,8 @@ class ProjectChatAgentService {
     required String userMessage,
     required Future<String> Function(String prompt) runPrompt,
     ProjectChatAgentAction? forcedAction,
+    ProjectChatAgentFallbackMessages fallbackMessages =
+        ProjectChatAgentFallbackMessages.defaults,
   }) async {
     final primaryPrompt = buildIntentPrompt(
       context: context,
@@ -119,12 +138,14 @@ class ProjectChatAgentService {
       return buildUnavailableDirective(
         userMessage: userMessage,
         forcedAction: forcedAction,
+        fallbackMessages: fallbackMessages,
       );
     }
     if (primaryOutput.trim().isEmpty) {
       return buildUnavailableDirective(
         userMessage: userMessage,
         forcedAction: forcedAction,
+        fallbackMessages: fallbackMessages,
       );
     }
     final primaryDirective = parseStrictModelDirective(primaryOutput);
@@ -154,6 +175,7 @@ class ProjectChatAgentService {
       return buildUnavailableDirective(
         userMessage: userMessage,
         forcedAction: forcedAction,
+        fallbackMessages: fallbackMessages,
       );
     }
     final repairedDirective = parseStrictModelDirective(repairOutput);
@@ -172,27 +194,28 @@ class ProjectChatAgentService {
     return buildUnavailableDirective(
       userMessage: userMessage,
       forcedAction: forcedAction,
+      fallbackMessages: fallbackMessages,
     );
   }
 
   static ProjectChatAgentDirective buildUnavailableDirective({
     required String userMessage,
     ProjectChatAgentAction? forcedAction,
+    ProjectChatAgentFallbackMessages fallbackMessages =
+        ProjectChatAgentFallbackMessages.defaults,
   }) {
     if (forcedAction == ProjectChatAgentAction.taskDraft ||
         _looksLikeTaskRequest(userMessage)) {
-      return const ProjectChatAgentDirective(
+      return ProjectChatAgentDirective(
         action: ProjectChatAgentAction.reply,
-        replyText:
-            'Я не смог собрать нормальный черновик: не получил ответ AI. Не буду создавать карточку из кусков чата. Проверьте CodeWhale и workspace проекта, затем повторите запрос.',
+        replyText: fallbackMessages.taskDraftReplyText,
         rawText: 'ai_unavailable',
       );
     }
 
-    return const ProjectChatAgentDirective(
+    return ProjectChatAgentDirective(
       action: ProjectChatAgentAction.reply,
-      replyText:
-          'Сейчас не получил ответ AI, поэтому не буду придумывать ответ из кусков чата. Проверьте CodeWhale и workspace проекта, затем повторите запрос.',
+      replyText: fallbackMessages.replyText,
       rawText: 'ai_unavailable',
     );
   }

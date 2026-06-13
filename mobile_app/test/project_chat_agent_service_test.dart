@@ -154,6 +154,30 @@ void main() {
       expect(directive.replyText, isNot(contains('анимации')));
     });
 
+    test('resolver uses supplied unavailable fallback messages', () async {
+      const fallbackMessages = ProjectChatAgentFallbackMessages(
+        replyText: 'AI is unavailable.',
+        taskDraftReplyText: 'Task draft AI is unavailable.',
+      );
+
+      final replyDirective = await ProjectChatAgentService.resolveDirective(
+        context: _contextPackForWebsiteIdeas(),
+        userMessage: 'Tudushker?',
+        fallbackMessages: fallbackMessages,
+        runPrompt: (_) async => throw StateError('bridge unavailable'),
+      );
+      final draftDirective = await ProjectChatAgentService.resolveDirective(
+        context: _contextPackForWebsiteIdeas(),
+        userMessage: 'Create a task draft',
+        forcedAction: ProjectChatAgentAction.taskDraft,
+        fallbackMessages: fallbackMessages,
+        runPrompt: (_) async => '',
+      );
+
+      expect(replyDirective.replyText, 'AI is unavailable.');
+      expect(draftDirective.replyText, 'Task draft AI is unavailable.');
+    });
+
     test('resolver accepts connected plain model reply without repair',
         () async {
       var calls = 0;

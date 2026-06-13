@@ -54,6 +54,18 @@ void main() {
       labels.emptyReplyMessage,
       'I checked the context, but could not formulate a useful response.',
     );
+    expect(
+      labels.aiUnavailableReplyMessage,
+      'I did not receive an AI response, so I will not invent an answer from '
+      'chat fragments. Check CodeWhale and the project workspace, then try '
+      'again.',
+    );
+    expect(
+      labels.aiUnavailableTaskDraftMessage,
+      'I could not build a proper draft: I did not receive an AI response. I '
+      'will not create a card from chat fragments. Check CodeWhale and the '
+      'project workspace, then try again.',
+    );
     expect(labels.ownerFallbackMessage('hello'), 'Tudushker: hello');
     expect(labels.codeWhaleErrorFallback, 'CodeWhale error');
     expect(labels.imageSavedToGallery, 'Photo saved to gallery');
@@ -108,6 +120,18 @@ void main() {
     expect(
       labels.emptyReplyMessage,
       'Я посмотрел контекст, но не смог сформулировать полезный ответ.',
+    );
+    expect(
+      labels.aiUnavailableReplyMessage,
+      'Сейчас не получил ответ AI, поэтому не буду придумывать ответ из '
+      'кусков чата. Проверьте CodeWhale и workspace проекта, затем повторите '
+      'запрос.',
+    );
+    expect(
+      labels.aiUnavailableTaskDraftMessage,
+      'Я не смог собрать нормальный черновик: не получил ответ AI. Не буду '
+      'создавать карточку из кусков чата. Проверьте CodeWhale и workspace '
+      'проекта, затем повторите запрос.',
     );
     expect(labels.ownerFallbackMessage('привет'), 'Тудушкер: привет');
     expect(labels.codeWhaleErrorFallback, 'Ошибка CodeWhale');

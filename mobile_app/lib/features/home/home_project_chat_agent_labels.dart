@@ -43,6 +43,16 @@ class HomeProjectChatAgentLabels {
   String get emptyReplyMessage =>
       l10n?.homeProjectChatAgentEmptyReplyMessage ??
       'I checked the context, but could not formulate a useful response.';
+  String get aiUnavailableReplyMessage =>
+      l10n?.homeProjectChatAgentAiUnavailableReplyMessage ??
+      'I did not receive an AI response, so I will not invent an answer from '
+          'chat fragments. Check CodeWhale and the project workspace, then '
+          'try again.';
+  String get aiUnavailableTaskDraftMessage =>
+      l10n?.homeProjectChatAgentAiUnavailableTaskDraftMessage ??
+      'I could not build a proper draft: I did not receive an AI response. I '
+          'will not create a card from chat fragments. Check CodeWhale and '
+          'the project workspace, then try again.';
   String get codeWhaleErrorFallback =>
       l10n?.codeWhaleErrorFallback ?? 'CodeWhale error';
   String get imageSavedToGallery =>

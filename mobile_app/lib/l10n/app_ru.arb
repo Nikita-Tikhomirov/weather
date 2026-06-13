@@ -122,6 +122,8 @@
   "homeProjectChatAgentTaskDraftMissingMessage": "Я понял, что нужна карточка, но не смог собрать структурированный черновик.",
   "homeProjectChatAgentSessionStartedMessage": "Запустил рабочую сессию в workspace проекта.",
   "homeProjectChatAgentEmptyReplyMessage": "Я посмотрел контекст, но не смог сформулировать полезный ответ.",
+  "homeProjectChatAgentAiUnavailableReplyMessage": "Сейчас не получил ответ AI, поэтому не буду придумывать ответ из кусков чата. Проверьте CodeWhale и workspace проекта, затем повторите запрос.",
+  "homeProjectChatAgentAiUnavailableTaskDraftMessage": "Я не смог собрать нормальный черновик: не получил ответ AI. Не буду создавать карточку из кусков чата. Проверьте CodeWhale и workspace проекта, затем повторите запрос.",
   "homeProjectChatAgentOwnerFallbackMessage": "Тудушкер: {message}",
   "@homeProjectChatAgentOwnerFallbackMessage": {
     "placeholders": {

@@ -229,6 +229,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeProjectChatAgentEmptyReplyMessage => 'I checked the context, but could not formulate a useful response.';
 
   @override
+  String get homeProjectChatAgentAiUnavailableReplyMessage => 'I did not receive an AI response, so I will not invent an answer from chat fragments. Check CodeWhale and the project workspace, then try again.';
+
+  @override
+  String get homeProjectChatAgentAiUnavailableTaskDraftMessage => 'I could not build a proper draft: I did not receive an AI response. I will not create a card from chat fragments. Check CodeWhale and the project workspace, then try again.';
+
+  @override
   String homeProjectChatAgentOwnerFallbackMessage(Object message) {
     return 'Tudushker: $message';
   }

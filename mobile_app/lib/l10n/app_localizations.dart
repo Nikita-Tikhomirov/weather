@@ -491,6 +491,18 @@ abstract class AppLocalizations {
   /// **'I checked the context, but could not formulate a useful response.'**
   String get homeProjectChatAgentEmptyReplyMessage;
 
+  /// No description provided for @homeProjectChatAgentAiUnavailableReplyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'I did not receive an AI response, so I will not invent an answer from chat fragments. Check CodeWhale and the project workspace, then try again.'**
+  String get homeProjectChatAgentAiUnavailableReplyMessage;
+
+  /// No description provided for @homeProjectChatAgentAiUnavailableTaskDraftMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'I could not build a proper draft: I did not receive an AI response. I will not create a card from chat fragments. Check CodeWhale and the project workspace, then try again.'**
+  String get homeProjectChatAgentAiUnavailableTaskDraftMessage;
+
   /// No description provided for @homeProjectChatAgentOwnerFallbackMessage.
   ///
   /// In en, this message translates to:

@@ -229,6 +229,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get homeProjectChatAgentEmptyReplyMessage => 'Я посмотрел контекст, но не смог сформулировать полезный ответ.';
 
   @override
+  String get homeProjectChatAgentAiUnavailableReplyMessage => 'Сейчас не получил ответ AI, поэтому не буду придумывать ответ из кусков чата. Проверьте CodeWhale и workspace проекта, затем повторите запрос.';
+
+  @override
+  String get homeProjectChatAgentAiUnavailableTaskDraftMessage => 'Я не смог собрать нормальный черновик: не получил ответ AI. Не буду создавать карточку из кусков чата. Проверьте CodeWhale и workspace проекта, затем повторите запрос.';
+
+  @override
   String homeProjectChatAgentOwnerFallbackMessage(Object message) {
     return 'Тудушкер: $message';
   }

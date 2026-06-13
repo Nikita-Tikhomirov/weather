@@ -193,6 +193,10 @@ extension _ChatSection on _HomePageState {
         context: request.contextPack,
         userMessage: request.userMessage,
         forcedAction: ProjectChatAgentAction.taskDraft,
+        fallbackMessages: ProjectChatAgentFallbackMessages(
+          replyText: labels.aiUnavailableReplyMessage,
+          taskDraftReplyText: labels.aiUnavailableTaskDraftMessage,
+        ),
         runPrompt: (prompt) {
           return _runProjectChatAgentPrompt(
             workspaceId: request.workspaceId,
@@ -531,6 +535,10 @@ extension _ChatSection on _HomePageState {
       final directive = await ProjectChatAgentService.resolveDirective(
         context: request.contextPack,
         userMessage: userMessage,
+        fallbackMessages: ProjectChatAgentFallbackMessages(
+          replyText: labels.aiUnavailableReplyMessage,
+          taskDraftReplyText: labels.aiUnavailableTaskDraftMessage,
+        ),
         runPrompt: (prompt) {
           return _runProjectChatAgentPrompt(
             workspaceId: request.workspaceId,
