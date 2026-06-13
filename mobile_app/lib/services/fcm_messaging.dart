@@ -94,10 +94,11 @@ extension FcmServiceMessaging on FcmService {
         return;
       }
 
-      final title =
-          msg.notification?.title ?? (msg.data['title'] ?? 'Задачи').toString();
+      final title = msg.notification?.title ??
+          (msg.data['title'] ?? FcmNotificationMessages.tasksTitle).toString();
       final body = msg.notification?.body ??
-          (msg.data['body'] ?? 'Появились новые изменения').toString();
+          (msg.data['body'] ?? FcmNotificationMessages.taskUpdateBody)
+              .toString();
       await _showForegroundNotification(
         title: title,
         body: body,

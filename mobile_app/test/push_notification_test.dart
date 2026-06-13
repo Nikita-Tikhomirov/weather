@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:family_todo_mobile/features/home/home_helpers.dart';
+import 'package:family_todo_mobile/services/fcm_service.dart';
 
 /// Tests for push notification classification and routing logic.
 ///
@@ -78,6 +79,25 @@ String _canonicalDmKey(String key) {
 }
 
 void main() {
+  group('FcmNotificationMessages', () {
+    test('uses English defaults for system notification chrome', () {
+      expect(FcmNotificationMessages.channelName, 'Notifications');
+      expect(
+        FcmNotificationMessages.channelDescription,
+        'Push notifications for tasks and reminders',
+      );
+      expect(FcmNotificationMessages.openAction, 'Open');
+      expect(FcmNotificationMessages.markReadAction, 'Mark as read');
+      expect(FcmNotificationMessages.messageTitle, 'Message');
+      expect(FcmNotificationMessages.newMessageBody, 'New message');
+      expect(FcmNotificationMessages.tasksTitle, 'Tasks');
+      expect(
+        FcmNotificationMessages.taskUpdateBody,
+        'New updates are available',
+      );
+    });
+  });
+
   // ── Push classification tests ──────────────────────────────────
 
   group('classifyPush', () {

@@ -20,10 +20,24 @@ part 'fcm_diagnostics.dart';
 
 // ── Constants ──────────────────────────────────────────────────
 
+class FcmNotificationMessages {
+  const FcmNotificationMessages._();
+
+  static const channelName = 'Notifications';
+  static const channelDescription =
+      'Push notifications for tasks and reminders';
+  static const openAction = 'Open';
+  static const markReadAction = 'Mark as read';
+  static const messageTitle = 'Message';
+  static const newMessageBody = 'New message';
+  static const tasksTitle = 'Tasks';
+  static const taskUpdateBody = 'New updates are available';
+}
+
 const _notificationChannelId = 'family_updates';
-const _notificationChannelName = 'Уведомления';
+const _notificationChannelName = FcmNotificationMessages.channelName;
 const _notificationChannelDescription =
-    'Пуш-уведомления о задачах и напоминаниях';
+    FcmNotificationMessages.channelDescription;
 const _appVersion =
     String.fromEnvironment('APP_VERSION', defaultValue: '0.1.6');
 const _markReadActionId = 'chat_mark_read';

@@ -21,13 +21,13 @@ Future<void> _showForegroundNotification({
           ? const [
               AndroidNotificationAction(
                 _openChatActionId,
-                'Перейти',
+                FcmNotificationMessages.openAction,
                 cancelNotification: true,
                 showsUserInterface: true,
               ),
               AndroidNotificationAction(
                 _markReadActionId,
-                'Пометить прочитанным',
+                FcmNotificationMessages.markReadAction,
                 cancelNotification: true,
                 showsUserInterface: false,
               ),
@@ -74,9 +74,12 @@ Future<void> _showChatNotificationFromData(
   String? title,
   String? body,
 }) async {
-  final notificationTitle = (title ?? data['title'] ?? 'Сообщение').toString();
+  final notificationTitle =
+      (title ?? data['title'] ?? FcmNotificationMessages.messageTitle)
+          .toString();
   final notificationBody =
-      (body ?? data['body'] ?? 'Новое сообщение').toString();
+      (body ?? data['body'] ?? FcmNotificationMessages.newMessageBody)
+          .toString();
   const details = NotificationDetails(
     android: AndroidNotificationDetails(
       _notificationChannelId,
@@ -89,13 +92,13 @@ Future<void> _showChatNotificationFromData(
       actions: [
         AndroidNotificationAction(
           _openChatActionId,
-          'Перейти',
+          FcmNotificationMessages.openAction,
           cancelNotification: true,
           showsUserInterface: true,
         ),
         AndroidNotificationAction(
           _markReadActionId,
-          'Пометить прочитанным',
+          FcmNotificationMessages.markReadAction,
           cancelNotification: true,
           showsUserInterface: false,
         ),
