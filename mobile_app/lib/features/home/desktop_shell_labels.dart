@@ -5,17 +5,17 @@ class DesktopShellLabels {
 
   final AppLocalizations? l10n;
 
-  String get tasks => l10n?.tasksTab ?? 'Задачи';
-  String get calendar => l10n?.calendarTab ?? 'Календарь';
-  String get messenger => l10n?.messengerTab ?? 'Мессенджер';
-  String get light => l10n?.light ?? 'Свет';
-  String get dark => l10n?.dark ?? 'Тьма';
-  String get theme => l10n?.theme ?? 'Тема';
-  String get voice => l10n?.voice ?? 'Голос';
-  String get addTask => l10n?.addTask ?? 'Добавить';
-  String get sync => l10n?.syncAction ?? 'Синхронизация';
-  String get undo => l10n?.undo ?? 'Отменить';
-  String get administration => l10n?.administration ?? 'Администрирование';
+  String get tasks => l10n?.tasksTab ?? 'Tasks';
+  String get calendar => l10n?.calendarTab ?? 'Calendar';
+  String get messenger => l10n?.messengerTab ?? 'Messenger';
+  String get light => l10n?.light ?? 'Light';
+  String get dark => l10n?.dark ?? 'Dark';
+  String get theme => l10n?.theme ?? 'Theme';
+  String get voice => l10n?.voice ?? 'Voice';
+  String get addTask => l10n?.addTask ?? 'Add';
+  String get sync => l10n?.syncAction ?? 'Sync';
+  String get undo => l10n?.undo ?? 'Undo';
+  String get administration => l10n?.administration ?? 'Administration';
 
   String taskTitle(String selectedDateKey) => '$tasks - $selectedDateKey';
 }
