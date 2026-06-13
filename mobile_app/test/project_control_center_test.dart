@@ -172,6 +172,63 @@ void main() {
       expect(find.text('Enter group name'), findsOneWidget);
     });
 
+    testWidgets('family group edit sheet falls back to English labels',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = TaskStore(
+        repository: repository,
+        domainService: TaskDomainService(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Builder(
+            builder: (context) {
+              return Scaffold(
+                body: Center(
+                  child: FilledButton(
+                    onPressed: () => showFamilyGroupEditSheet(
+                      context: context,
+                      store: store,
+                      isCreate: true,
+                      contacts: const [
+                        ChatContact(
+                          profileKey: 'nik',
+                          displayName: 'Nick',
+                          phone: '',
+                          conversationKey: 'chat:nik',
+                        ),
+                      ],
+                      contactLabel: (contact) => contact.displayName,
+                      actorProfile: 'nik',
+                    ),
+                    child: const Text('Open group sheet'),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open group sheet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('New group'), findsOneWidget);
+      expect(find.text('Group name'), findsOneWidget);
+      expect(find.text('Participants'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('Create'), findsOneWidget);
+      expect(find.text('Новая группа'), findsNothing);
+      expect(find.text('Отмена'), findsNothing);
+
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Enter group name'), findsOneWidget);
+    });
+
     testWidgets('projects and groups sections use localized empty states',
         (tester) async {
       final repository = _FakeTaskRepository();

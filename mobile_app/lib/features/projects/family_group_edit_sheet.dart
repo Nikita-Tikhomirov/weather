@@ -10,22 +10,21 @@ class _FamilyGroupEditSheetText {
 
   final AppLocalizations? l10n;
 
-  String get newGroup => l10n?.newGroup ?? 'Новая группа';
-  String get editGroup => l10n?.editGroup ?? 'Редактировать группу';
-  String get groupNameLabel => l10n?.groupNameLabel ?? 'Название группы';
-  String get participants => l10n?.participants ?? 'Участники';
+  String get newGroup => l10n?.newGroup ?? 'New group';
+  String get editGroup => l10n?.editGroup ?? 'Edit group';
+  String get groupNameLabel => l10n?.groupNameLabel ?? 'Group name';
+  String get participants => l10n?.participants ?? 'Participants';
   String get noContacts =>
-      l10n?.noContacts ?? 'Нет контактов. Добавьте контакты в мессенджере.';
-  String get cancel => l10n?.cancel ?? 'Отмена';
-  String get create => l10n?.create ?? 'Создать';
-  String get save => l10n?.save ?? 'Сохранить';
-  String get groupNameRequired =>
-      l10n?.groupNameRequired ?? 'Введите название группы';
+      l10n?.noContacts ?? 'No contacts. Add contacts in Messenger.';
+  String get cancel => l10n?.cancel ?? 'Cancel';
+  String get create => l10n?.create ?? 'Create';
+  String get save => l10n?.save ?? 'Save';
+  String get groupNameRequired => l10n?.groupNameRequired ?? 'Enter group name';
   String get groupMemberRequired =>
-      l10n?.groupMemberRequired ?? 'Выберите хотя бы одного участника';
+      l10n?.groupMemberRequired ?? 'Select at least one participant';
 
   String groupSaveFailed(Object error) {
-    return l10n?.groupSaveFailed(error.toString()) ?? 'Ошибка: $error';
+    return l10n?.groupSaveFailed(error.toString()) ?? 'Error: $error';
   }
 }
 
