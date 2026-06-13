@@ -140,6 +140,43 @@ void main() {
     });
   });
 
+  group('conversationLabel and chatMessageText', () {
+    test('uses English generic conversation fallback', () {
+      const conversation = ChatConversation(
+        conversationKey: 'group:team',
+        title: '',
+        kind: 'group',
+        members: ['nik', 'misha'],
+      );
+
+      expect(conversationLabel(conversation, 'nik'), 'Group');
+    });
+
+    test('uses English generic message fallbacks', () {
+      ChatMessage message(String type, {String text = ''}) => ChatMessage(
+            id: type,
+            conversationKey: 'dm:nik:misha',
+            senderProfile: 'nik',
+            messageType: type,
+            text: text,
+            createdAt: '2026-06-01T12:00:00',
+          );
+
+      expect(
+        chatMessageText(message('text', text: 'hello')),
+        'hello',
+      );
+      expect(
+        chatMessageText(message('text').copyWith(deletedAt: '2026-06-01')),
+        'Message deleted',
+      );
+      expect(chatMessageText(message('sticker')), 'Sticker');
+      expect(chatMessageText(message('image')), 'Photo');
+      expect(chatMessageText(message('voice')), 'Voice message');
+      expect(chatMessageText(message('document')), 'Document');
+    });
+  });
+
   group('canonicalConversationKey', () {
     test('keeps both direct chat members and normalizes their order', () {
       expect(canonicalConversationKey('dm:u_042:u_001'), 'dm:u_001:u_042');

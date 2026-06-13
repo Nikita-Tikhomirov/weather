@@ -66,7 +66,7 @@ String conversationLabel(ChatConversation conversation, String actor) {
     if (conversation.title.trim().isNotEmpty) {
       return conversation.title.trim();
     }
-    return 'Группа';
+    return 'Group';
   }
   // Direct chat — show the other participant's name.
   final others = conversation.members.where((m) => m != actor).toList();
@@ -79,19 +79,19 @@ String conversationLabel(ChatConversation conversation, String actor) {
 /// Returns the display text for a chat message.
 String chatMessageText(ChatMessage message) {
   if (message.isDeleted) {
-    return 'Сообщение удалено';
+    return 'Message deleted';
   }
   if (message.messageType == 'sticker') {
-    return 'Стикер';
+    return 'Sticker';
   }
   if (message.messageType == 'image') {
-    return 'Фото';
+    return 'Photo';
   }
   if (message.messageType == 'voice') {
-    return 'Голосовое сообщение';
+    return 'Voice message';
   }
   if (message.messageType == 'document') {
-    return 'Документ';
+    return 'Document';
   }
   return message.text;
 }
