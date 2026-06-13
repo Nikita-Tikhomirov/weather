@@ -68,6 +68,20 @@ void main() {
     );
     expect(text.activityCommentReplied, 'ответил на комментарий');
     expect(text.activityCommentDeleted, 'удалил комментарий');
+    expect(text.activityChecklistAdded('Запуск'), 'создал чеклист "Запуск"');
+    expect(text.activityChecklistItemAdded('Сборка'), 'добавил пункт "Сборка"');
+    expect(text.activityChecklistItemDone, 'закрыл пункт чеклиста');
+    expect(text.activityChecklistItemReopened, 'вернул пункт чеклиста');
+    expect(
+      text.activityChecklistRenamed('Релиз'),
+      'переименовал чеклист "Релиз"',
+    );
+    expect(
+      text.activityChecklistDeleted('Релиз'),
+      'удалил чеклист "Релиз"',
+    );
+    expect(text.activityChecklistItemRenamed, 'отредактировал пункт чеклиста');
+    expect(text.activityChecklistItemDeleted, 'удалил пункт чеклиста');
     expect(
       text.saveError('Укажите название задачи.'),
       'Укажите название задачи.',
@@ -173,6 +187,20 @@ void main() {
     );
     expect(text.activityCommentReplied, 'replied to a comment');
     expect(text.activityCommentDeleted, 'deleted a comment');
+    expect(text.activityChecklistAdded('Launch'), 'created checklist "Launch"');
+    expect(text.activityChecklistItemAdded('Build'), 'added item "Build"');
+    expect(text.activityChecklistItemDone, 'completed checklist item');
+    expect(text.activityChecklistItemReopened, 'reopened checklist item');
+    expect(
+      text.activityChecklistRenamed('Release'),
+      'renamed checklist to "Release"',
+    );
+    expect(
+      text.activityChecklistDeleted('Release'),
+      'deleted checklist "Release"',
+    );
+    expect(text.activityChecklistItemRenamed, 'edited checklist item');
+    expect(text.activityChecklistItemDeleted, 'deleted checklist item');
     expect(text.saveError('Укажите название задачи.'), 'Enter a task title');
     expect(text.saveError('Выберите проект.'), 'Select project');
     expect(

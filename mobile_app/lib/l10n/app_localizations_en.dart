@@ -520,6 +520,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskActivityCommentDeleted => 'deleted a comment';
 
   @override
+  String taskActivityChecklistAdded(Object title) {
+    return 'created checklist "$title"';
+  }
+
+  @override
+  String taskActivityChecklistItemAdded(Object item) {
+    return 'added item "$item"';
+  }
+
+  @override
+  String get taskActivityChecklistItemDone => 'completed checklist item';
+
+  @override
+  String get taskActivityChecklistItemReopened => 'reopened checklist item';
+
+  @override
+  String taskActivityChecklistRenamed(Object title) {
+    return 'renamed checklist to "$title"';
+  }
+
+  @override
+  String taskActivityChecklistDeleted(Object title) {
+    return 'deleted checklist "$title"';
+  }
+
+  @override
+  String get taskActivityChecklistItemRenamed => 'edited checklist item';
+
+  @override
+  String get taskActivityChecklistItemDeleted => 'deleted checklist item';
+
+  @override
   String get taskCancelCommentAction => 'Cancel';
 
   @override

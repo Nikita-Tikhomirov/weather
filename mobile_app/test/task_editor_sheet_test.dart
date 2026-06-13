@@ -3180,6 +3180,70 @@ TASK_CARD_ACTIONS_JSON:
       expect(activity.text, isNot('добавил комментарий'));
     });
 
+    testWidgets('saves localized checklist activity text', (tester) async {
+      final repository = _FakeTaskRepository();
+      repository.tasks.add(_editableTask);
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Work'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'New checklist'),
+        'Launch',
+      );
+      await tester.tap(find.byTooltip('Add checklist'));
+      await tester.pumpAndSettle();
+
+      expect(
+        repository.upserts.last.collaboration.activity.last.text,
+        'created checklist "Launch"',
+      );
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Item'),
+        'Check build',
+      );
+      final addItemButton = find.byTooltip('Add item');
+      await tester.ensureVisible(addItemButton);
+      await tester.pumpAndSettle();
+      await tester.tap(addItemButton);
+      await tester.pumpAndSettle();
+
+      expect(
+        repository.upserts.last.collaboration.activity.last.text,
+        'added item "Check build"',
+      );
+
+      final checklistTile = find.byType(CheckboxListTile).first;
+      await tester.ensureVisible(checklistTile);
+      await tester.pumpAndSettle();
+      await tester.tap(checklistTile);
+      await tester.pumpAndSettle();
+
+      expect(
+        repository.upserts.last.collaboration.activity.last.text,
+        'completed checklist item',
+      );
+    });
+
     testWidgets('uses localized fallback profile labels in comments',
         (tester) async {
       final task = _editableTask.copyWith(

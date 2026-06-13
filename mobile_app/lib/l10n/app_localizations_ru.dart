@@ -523,6 +523,39 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskActivityCommentDeleted => 'удалил комментарий';
 
   @override
+  String taskActivityChecklistAdded(Object title) {
+    return 'создал чеклист "$title"';
+  }
+
+  @override
+  String taskActivityChecklistItemAdded(Object item) {
+    return 'добавил пункт "$item"';
+  }
+
+  @override
+  String get taskActivityChecklistItemDone => 'закрыл пункт чеклиста';
+
+  @override
+  String get taskActivityChecklistItemReopened => 'вернул пункт чеклиста';
+
+  @override
+  String taskActivityChecklistRenamed(Object title) {
+    return 'переименовал чеклист "$title"';
+  }
+
+  @override
+  String taskActivityChecklistDeleted(Object title) {
+    return 'удалил чеклист "$title"';
+  }
+
+  @override
+  String get taskActivityChecklistItemRenamed =>
+      'отредактировал пункт чеклиста';
+
+  @override
+  String get taskActivityChecklistItemDeleted => 'удалил пункт чеклиста';
+
+  @override
   String get taskCancelCommentAction => 'Отменить';
 
   @override

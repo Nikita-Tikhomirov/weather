@@ -240,6 +240,25 @@ class TaskEditorText {
       l10n?.taskActivityCommentReplied ?? 'ответил на комментарий';
   String get activityCommentDeleted =>
       l10n?.taskActivityCommentDeleted ?? 'удалил комментарий';
+  String activityChecklistAdded(Object title) =>
+      l10n?.taskActivityChecklistAdded(title) ?? 'создал чеклист "$title"';
+  String activityChecklistItemAdded(Object item) =>
+      l10n?.taskActivityChecklistItemAdded(item) ?? 'добавил пункт "$item"';
+  String get activityChecklistItemDone =>
+      l10n?.taskActivityChecklistItemDone ?? 'закрыл пункт чеклиста';
+  String get activityChecklistItemReopened =>
+      l10n?.taskActivityChecklistItemReopened ?? 'вернул пункт чеклиста';
+  String activityChecklistRenamed(Object title) =>
+      l10n?.taskActivityChecklistRenamed(title) ??
+      'переименовал чеклист "$title"';
+  String activityChecklistDeleted(Object title) =>
+      l10n?.taskActivityChecklistDeleted(title) ??
+      'удалил чеклист "$title"';
+  String get activityChecklistItemRenamed =>
+      l10n?.taskActivityChecklistItemRenamed ??
+      'отредактировал пункт чеклиста';
+  String get activityChecklistItemDeleted =>
+      l10n?.taskActivityChecklistItemDeleted ?? 'удалил пункт чеклиста';
   String get deleteCommentTitle =>
       l10n?.taskDeleteCommentTitle ?? 'Удалить комментарий?';
   String get deleteCommentMessage =>

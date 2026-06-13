@@ -931,6 +931,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     if (!_canEdit) return;
     final title = _checklistTitleCtl.text.trim();
     if (title.isEmpty) return;
+    final strings = TaskEditorText.of(context);
     final checklist = TaskChecklist(
       id: _newId('checklist'),
       title: title,
@@ -944,7 +945,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           ..._collaboration.activity,
           _activity(
             type: 'checklist_added',
-            text: 'создал чеклист "$title"',
+            text: strings.activityChecklistAdded(title),
             targetId: checklist.id,
           ),
         ],
@@ -966,6 +967,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     final controller = _itemControllerFor(checklistId);
     final text = controller.text.trim();
     if (text.isEmpty) return;
+    final strings = TaskEditorText.of(context);
     final nextChecklists = _collaboration.checklists.map((checklist) {
       if (checklist.id != checklistId) return checklist;
       return checklist.copyWith(
@@ -987,7 +989,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           ..._collaboration.activity,
           _activity(
             type: 'checklist_item_added',
-            text: 'добавил пункт "$text"',
+            text: strings.activityChecklistItemAdded(text),
             targetId: checklistId,
           ),
         ],
@@ -999,6 +1001,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   void _toggleChecklistItem(String checklistId, String itemId, bool done) {
     if (!_canEdit) return;
+    final strings = TaskEditorText.of(context);
     final now = DateTime.now().toIso8601String();
     final nextChecklists = _collaboration.checklists.map((checklist) {
       if (checklist.id != checklistId) return checklist;
@@ -1020,7 +1023,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           ..._collaboration.activity,
           _activity(
             type: done ? 'checklist_item_done' : 'checklist_item_reopened',
-            text: done ? 'закрыл пункт чеклиста' : 'вернул пункт чеклиста',
+            text: done
+                ? strings.activityChecklistItemDone
+                : strings.activityChecklistItemReopened,
             targetId: itemId,
           ),
         ],
@@ -1051,7 +1056,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           ..._collaboration.activity,
           _activity(
             type: 'checklist_renamed',
-            text: 'переименовал чеклист "$nextTitle"',
+            text: strings.activityChecklistRenamed(nextTitle),
             targetId: checklist.id,
           ),
         ],
@@ -1078,7 +1083,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           ..._collaboration.activity,
           _activity(
             type: 'checklist_deleted',
-            text: 'удалил чеклист "${checklist.title}"',
+            text: strings.activityChecklistDeleted(checklist.title),
             targetId: checklist.id,
           ),
         ],
@@ -1118,7 +1123,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           ..._collaboration.activity,
           _activity(
             type: 'checklist_item_renamed',
-            text: 'отредактировал пункт чеклиста',
+            text: strings.activityChecklistItemRenamed,
             targetId: item.id,
           ),
         ],
@@ -1154,7 +1159,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           ..._collaboration.activity,
           _activity(
             type: 'checklist_item_deleted',
-            text: 'удалил пункт чеклиста',
+            text: strings.activityChecklistItemDeleted,
             targetId: item.id,
           ),
         ],

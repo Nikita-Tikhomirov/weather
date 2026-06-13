@@ -215,6 +215,34 @@
   "taskActivityCommentAddedWithAttachment": "добавил комментарий с вложением",
   "taskActivityCommentReplied": "ответил на комментарий",
   "taskActivityCommentDeleted": "удалил комментарий",
+  "taskActivityChecklistAdded": "создал чеклист \"{title}\"",
+  "@taskActivityChecklistAdded": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "taskActivityChecklistItemAdded": "добавил пункт \"{item}\"",
+  "@taskActivityChecklistItemAdded": {
+    "placeholders": {
+      "item": {}
+    }
+  },
+  "taskActivityChecklistItemDone": "закрыл пункт чеклиста",
+  "taskActivityChecklistItemReopened": "вернул пункт чеклиста",
+  "taskActivityChecklistRenamed": "переименовал чеклист \"{title}\"",
+  "@taskActivityChecklistRenamed": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "taskActivityChecklistDeleted": "удалил чеклист \"{title}\"",
+  "@taskActivityChecklistDeleted": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "taskActivityChecklistItemRenamed": "отредактировал пункт чеклиста",
+  "taskActivityChecklistItemDeleted": "удалил пункт чеклиста",
   "taskCancelCommentAction": "Отменить",
   "taskDeleteCommentTitle": "Удалить комментарий?",
   "taskDeleteCommentMessage": "Комментарий будет удалён из карточки задачи.",

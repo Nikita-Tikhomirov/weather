@@ -215,6 +215,34 @@
   "taskActivityCommentAddedWithAttachment": "added a comment with an attachment",
   "taskActivityCommentReplied": "replied to a comment",
   "taskActivityCommentDeleted": "deleted a comment",
+  "taskActivityChecklistAdded": "created checklist \"{title}\"",
+  "@taskActivityChecklistAdded": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "taskActivityChecklistItemAdded": "added item \"{item}\"",
+  "@taskActivityChecklistItemAdded": {
+    "placeholders": {
+      "item": {}
+    }
+  },
+  "taskActivityChecklistItemDone": "completed checklist item",
+  "taskActivityChecklistItemReopened": "reopened checklist item",
+  "taskActivityChecklistRenamed": "renamed checklist to \"{title}\"",
+  "@taskActivityChecklistRenamed": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "taskActivityChecklistDeleted": "deleted checklist \"{title}\"",
+  "@taskActivityChecklistDeleted": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "taskActivityChecklistItemRenamed": "edited checklist item",
+  "taskActivityChecklistItemDeleted": "deleted checklist item",
   "taskCancelCommentAction": "Cancel",
   "taskDeleteCommentTitle": "Delete comment?",
   "taskDeleteCommentMessage": "The comment will be removed from the task card.",

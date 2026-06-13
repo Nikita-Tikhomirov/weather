@@ -1067,6 +1067,54 @@ abstract class AppLocalizations {
   /// **'deleted a comment'**
   String get taskActivityCommentDeleted;
 
+  /// No description provided for @taskActivityChecklistAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'created checklist "{title}"'**
+  String taskActivityChecklistAdded(Object title);
+
+  /// No description provided for @taskActivityChecklistItemAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'added item "{item}"'**
+  String taskActivityChecklistItemAdded(Object item);
+
+  /// No description provided for @taskActivityChecklistItemDone.
+  ///
+  /// In en, this message translates to:
+  /// **'completed checklist item'**
+  String get taskActivityChecklistItemDone;
+
+  /// No description provided for @taskActivityChecklistItemReopened.
+  ///
+  /// In en, this message translates to:
+  /// **'reopened checklist item'**
+  String get taskActivityChecklistItemReopened;
+
+  /// No description provided for @taskActivityChecklistRenamed.
+  ///
+  /// In en, this message translates to:
+  /// **'renamed checklist to "{title}"'**
+  String taskActivityChecklistRenamed(Object title);
+
+  /// No description provided for @taskActivityChecklistDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'deleted checklist "{title}"'**
+  String taskActivityChecklistDeleted(Object title);
+
+  /// No description provided for @taskActivityChecklistItemRenamed.
+  ///
+  /// In en, this message translates to:
+  /// **'edited checklist item'**
+  String get taskActivityChecklistItemRenamed;
+
+  /// No description provided for @taskActivityChecklistItemDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'deleted checklist item'**
+  String get taskActivityChecklistItemDeleted;
+
   /// No description provided for @taskCancelCommentAction.
   ///
   /// In en, this message translates to:
