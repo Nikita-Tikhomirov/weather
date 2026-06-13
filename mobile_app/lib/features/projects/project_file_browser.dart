@@ -10,17 +10,17 @@ class _ProjectFileBrowserText {
   final AppLocalizations? l10n;
 
   String projectFilesTitle(String projectName) {
-    return l10n?.projectFilesTitle(projectName) ?? 'Файлы - $projectName';
+    return l10n?.projectFilesTitle(projectName) ?? 'Files - $projectName';
   }
 
-  String get projectRoot => l10n?.projectRoot ?? 'Корень';
-  String get upOneLevel => l10n?.upOneLevel ?? 'Наверх';
-  String get refresh => l10n?.refresh ?? 'Обновить';
-  String get close => l10n?.close ?? 'Закрыть';
-  String get loadingFiles => l10n?.loadingFiles ?? 'Загрузка файлов...';
-  String get folderEmpty => l10n?.folderEmpty ?? 'Папка пуста';
-  String get preview => l10n?.previewAction ?? 'Просмотр';
-  String get linkToChat => l10n?.linkToChat ?? 'Ссылка в чат';
+  String get projectRoot => l10n?.projectRoot ?? 'Project root';
+  String get upOneLevel => l10n?.upOneLevel ?? 'Up one level';
+  String get refresh => l10n?.refresh ?? 'Refresh';
+  String get close => l10n?.close ?? 'Close';
+  String get loadingFiles => l10n?.loadingFiles ?? 'Loading files...';
+  String get folderEmpty => l10n?.folderEmpty ?? 'Folder is empty';
+  String get preview => l10n?.previewAction ?? 'Preview';
+  String get linkToChat => l10n?.linkToChat ?? 'Link to chat';
 }
 
 class ProjectFileBrowser extends StatelessWidget {
