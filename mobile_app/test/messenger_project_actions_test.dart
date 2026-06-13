@@ -35,11 +35,11 @@ void main() {
           .tap(find.byKey(const ValueKey('messenger-project-agent-menu')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Анализ чата'), findsOne);
-      expect(find.text('Черновик задачи'), findsOne);
-      expect(find.text('Запустить агента'), findsOne);
+      expect(find.text('Chat analysis'), findsOne);
+      expect(find.text('Task draft'), findsOne);
+      expect(find.text('Start agent'), findsOne);
 
-      await tester.tap(find.text('Анализ чата'));
+      await tester.tap(find.text('Chat analysis'));
       await tester.pumpAndSettle();
       expect(analyzed, isTrue);
     });
@@ -97,14 +97,45 @@ void main() {
         ),
       );
 
-      expect(find.text('Проектные чаты'), findsOneWidget);
-      expect(find.text('Обычные группы'), findsOneWidget);
+      expect(find.text('Project chats'), findsOneWidget);
+      expect(find.text('Regular groups'), findsOneWidget);
       expect(find.text('Цифра'), findsOneWidget);
       expect(find.text('Команда'), findsOneWidget);
 
       await tester.tap(find.text('Цифра'));
       await tester.pumpAndSettle();
       expect(openedKey, 'grp:project:project-1');
+    });
+
+    testWidgets('uses English fallback labels for contact list',
+        (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: _page(
+              controller: controller,
+              activeConversationKey: '',
+              conversations: const [],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Contacts'), findsOneWidget);
+      expect(find.byTooltip('Workspaces'), findsOneWidget);
+      expect(find.byTooltip('Refresh contacts'), findsOneWidget);
+      expect(find.byTooltip('Create group'), findsOneWidget);
+      expect(find.text('No registered phone contacts'), findsOneWidget);
+      expect(find.text('Контакты'), findsNothing);
+      expect(find.byTooltip('Обновить контакты'), findsNothing);
+      expect(
+        find.text('Нет зарегистрированных контактов из телефона'),
+        findsNothing,
+      );
     });
 
     testWidgets('uses localized conversation section labels', (tester) async {

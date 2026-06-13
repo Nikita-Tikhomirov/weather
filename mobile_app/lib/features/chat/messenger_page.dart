@@ -312,7 +312,7 @@ class _ContactList extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  l10n?.contacts ?? 'Контакты',
+                  l10n?.contacts ?? 'Contacts',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
@@ -320,17 +320,17 @@ class _ContactList extends StatelessWidget {
                 ),
               ),
               IconButton(
-                tooltip: l10n?.workspaces ?? 'Рабочие пространства',
+                tooltip: l10n?.workspaces ?? 'Workspaces',
                 icon: const Icon(Icons.workspaces_outline),
                 onPressed: onOpenWorkspaces,
               ),
               IconButton(
-                tooltip: l10n?.refreshContacts ?? 'Обновить контакты',
+                tooltip: l10n?.refreshContacts ?? 'Refresh contacts',
                 icon: const Icon(Icons.refresh),
                 onPressed: onRefreshContacts,
               ),
               IconButton.filled(
-                tooltip: l10n?.createGroupAction ?? 'Создать группу',
+                tooltip: l10n?.createGroupAction ?? 'Create group',
                 icon: const Icon(Icons.group_add_outlined),
                 onPressed: onCreateGroup,
               ),
@@ -344,7 +344,7 @@ class _ContactList extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
                   child: Text(
-                    l10n?.projectChats ?? 'Проектные чаты',
+                    l10n?.projectChats ?? 'Project chats',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -359,7 +359,7 @@ class _ContactList extends StatelessWidget {
                     title: Text(groupLabel(conv, owner)),
                     subtitle: Text(
                       l10n?.chatParticipantsCount(conv.members.length) ??
-                          'Участники: ${conv.members.length}',
+                          'Participants: ${conv.members.length}',
                     ),
                     onTap: () => onOpenConversation(conv.conversationKey),
                   );
@@ -371,8 +371,8 @@ class _ContactList extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
                   child: Text(
                     projectChats.isEmpty
-                        ? l10n?.groups ?? 'Группы'
-                        : l10n?.regularGroups ?? 'Обычные группы',
+                        ? l10n?.groups ?? 'Groups'
+                        : l10n?.regularGroups ?? 'Regular groups',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -394,7 +394,7 @@ class _ContactList extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   child: Text(
                     l10n?.noRegisteredPhoneContacts ??
-                        'Нет зарегистрированных контактов из телефона',
+                        'No registered phone contacts',
                   ),
                 )
               else
@@ -408,7 +408,7 @@ class _ContactList extends StatelessWidget {
                     leading: _buildContactAvatar(contact),
                     title: Text(contactLabel(contact)),
                     subtitle: Text(
-                      typing ? (l10n?.typing ?? 'печатает...') : contact.phone,
+                      typing ? (l10n?.typing ?? 'typing...') : contact.phone,
                       style: typing
                           ? TextStyle(
                               color: Theme.of(context).colorScheme.primary,
@@ -417,7 +417,7 @@ class _ContactList extends StatelessWidget {
                           : null,
                     ),
                     trailing: IconButton(
-                      tooltip: l10n?.addToFamily ?? 'Добавить в семью',
+                      tooltip: l10n?.addToFamily ?? 'Add to family',
                       icon: const Icon(Icons.family_restroom_outlined),
                       onPressed: () => onAddContactToFamily(contact),
                     ),
@@ -503,7 +503,7 @@ class _ChatHeader extends StatelessWidget {
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back),
-                tooltip: l10n?.contacts ?? 'Контакты',
+                tooltip: l10n?.contacts ?? 'Contacts',
                 onPressed: onBackToContacts,
               ),
               if (isGroup && avatarUrl != null && avatarUrl.isNotEmpty)
@@ -531,7 +531,7 @@ class _ChatHeader extends StatelessWidget {
               if (hasProjectActions)
                 PopupMenuButton<String>(
                   key: const ValueKey('messenger-project-agent-menu'),
-                  tooltip: l10n?.projectAgentMenu ?? 'Агент проекта',
+                  tooltip: l10n?.projectAgentMenu ?? 'Project agent',
                   icon: const Icon(Icons.smart_toy_outlined),
                   onSelected: (value) {
                     if (value == 'analyze') {
@@ -548,25 +548,25 @@ class _ChatHeader extends StatelessWidget {
                     PopupMenuItem(
                       value: 'analyze',
                       child: Text(
-                        l10n?.projectControlAnalyzeChat ?? 'Анализ чата',
+                        l10n?.projectControlAnalyzeChat ?? 'Chat analysis',
                       ),
                     ),
                     PopupMenuItem(
                       value: 'draft',
                       child: Text(
-                        l10n?.projectControlDraftTask ?? 'Черновик задачи',
+                        l10n?.projectControlDraftTask ?? 'Task draft',
                       ),
                     ),
                     PopupMenuItem(
                       value: 'start',
                       child: Text(
-                        l10n?.projectControlStartAgent ?? 'Запустить агента',
+                        l10n?.projectControlStartAgent ?? 'Start agent',
                       ),
                     ),
                     PopupMenuItem(
                       value: 'status',
                       child: Text(
-                        l10n?.projectControlProjectStatus ?? 'Статус проекта',
+                        l10n?.projectControlProjectStatus ?? 'Project status',
                       ),
                     ),
                   ],
@@ -574,13 +574,13 @@ class _ChatHeader extends StatelessWidget {
               if (onCallTap != null)
                 IconButton(
                   icon: const Icon(Icons.call),
-                  tooltip: l10n?.audioCall ?? 'Аудиозвонок',
+                  tooltip: l10n?.audioCall ?? 'Audio call',
                   onPressed: onCallTap,
                 ),
               if (onVideoCallTap != null)
                 IconButton(
                   icon: const Icon(Icons.videocam),
-                  tooltip: l10n?.videoCall ?? 'Видеозвонок',
+                  tooltip: l10n?.videoCall ?? 'Video call',
                   onPressed: onVideoCallTap,
                 ),
             ],
@@ -627,9 +627,9 @@ class _TypingIndicator extends StatelessWidget {
     if (others.isEmpty) return const SizedBox.shrink();
     final label = others.length == 1
         ? l10n?.profileTyping(profileLabel(others.first)) ??
-            '${profileLabel(others.first)} печатает...'
+            '${profileLabel(others.first)} is typing...'
         : l10n?.peopleTyping(others.length) ??
-            '${others.length} человека печатают...';
+            '${others.length} people are typing...';
     return Padding(
       padding: const EdgeInsets.only(left: 16, bottom: 4),
       child: Text(
@@ -692,14 +692,14 @@ class _ChatComposer extends StatelessWidget {
                   Expanded(
                     child: Text(
                       l10n?.replyPreview(replyPreview!) ??
-                          'Ответ: $replyPreview',
+                          'Reply: $replyPreview',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   TextButton(
                     onPressed: onClearReply,
-                    child: Text(l10n?.cancel ?? 'Отмена'),
+                    child: Text(l10n?.cancel ?? 'Cancel'),
                   ),
                 ],
               ),
@@ -713,12 +713,12 @@ class _ChatComposer extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      l10n?.editingMessage ?? 'Редактирование сообщения',
+                      l10n?.editingMessage ?? 'Editing message',
                     ),
                   ),
                   TextButton(
                     onPressed: onCancelEdit,
-                    child: Text(l10n?.cancel ?? 'Отмена'),
+                    child: Text(l10n?.cancel ?? 'Cancel'),
                   ),
                 ],
               ),
@@ -726,7 +726,7 @@ class _ChatComposer extends StatelessWidget {
           Row(
             children: [
               IconButton(
-                tooltip: l10n?.attachment ?? 'Вложение',
+                tooltip: l10n?.attachment ?? 'Attachment',
                 icon: const Icon(Icons.attach_file),
                 onPressed: onOpenAttachMenu,
               ),
@@ -740,8 +740,8 @@ class _ChatComposer extends StatelessWidget {
                       editingMessageId != null ? (_) => onSendText() : null,
                   decoration: InputDecoration(
                     hintText: editingMessageId == null
-                        ? l10n?.message ?? 'Сообщение'
-                        : l10n?.editMessage ?? 'Изменить сообщение',
+                        ? l10n?.message ?? 'Message'
+                        : l10n?.editMessage ?? 'Edit message',
                     border: const OutlineInputBorder(
                       borderRadius: BorderRadius.all(Radius.circular(24)),
                     ),
@@ -766,7 +766,7 @@ class _ChatComposer extends StatelessWidget {
                 ),
               ),
               IconButton.filled(
-                tooltip: l10n?.send ?? 'Отправить',
+                tooltip: l10n?.send ?? 'Send',
                 onPressed: onSendText,
                 icon: const Icon(Icons.send),
               ),
