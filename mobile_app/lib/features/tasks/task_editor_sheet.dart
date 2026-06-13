@@ -2370,17 +2370,16 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     if (workspaceId.trim().isEmpty || sessionId.trim().isEmpty) {
       return;
     }
+    final text = TaskEditorText.of(context);
     _agentTaskPoller?.cancel();
     if (taskStatus == 'failed' || taskStatus == 'canceled') {
-      _failAgentQueue('Один из шагов агента не выполнен: $taskStatus');
+      _failAgentQueue(text.agentQueueStepFailed(taskStatus));
       return;
     }
     final step = _activeAgentStep;
     final resultText = _agentResultBuffer?.toString() ?? '';
     if (_mandatoryAgentStepFailed(step, resultText)) {
-      _failAgentQueue(
-        'family-task-card недоступен. Очередь агента остановлена.',
-      );
+      _failAgentQueue(text.agentQueueTaskCardUnavailable);
       return;
     }
     _activeAgentStep = null;

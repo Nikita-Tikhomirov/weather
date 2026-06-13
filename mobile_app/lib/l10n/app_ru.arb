@@ -207,6 +207,13 @@
   },
   "taskActivityAgentCardUpdated": "обновил карточку задачи",
   "taskAgentPlanTitle": "План агента",
+  "taskAgentQueueStepFailed": "Один из шагов агента не выполнен: {status}",
+  "@taskAgentQueueStepFailed": {
+    "placeholders": {
+      "status": {}
+    }
+  },
+  "taskAgentQueueTaskCardUnavailable": "family-task-card недоступен. Очередь агента остановлена.",
   "taskAgentSkills": "Скиллы",
   "taskAgentCommands": "Команды",
   "taskAgentAvailableCount": "Доступно: {count}",

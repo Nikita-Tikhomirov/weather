@@ -498,6 +498,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskAgentPlanTitle => 'План агента';
 
   @override
+  String taskAgentQueueStepFailed(Object status) {
+    return 'Один из шагов агента не выполнен: $status';
+  }
+
+  @override
+  String get taskAgentQueueTaskCardUnavailable =>
+      'family-task-card недоступен. Очередь агента остановлена.';
+
+  @override
   String get taskAgentSkills => 'Скиллы';
 
   @override

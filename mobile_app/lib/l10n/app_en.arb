@@ -207,6 +207,13 @@
   },
   "taskActivityAgentCardUpdated": "updated task card",
   "taskAgentPlanTitle": "Agent plan",
+  "taskAgentQueueStepFailed": "One of the agent steps did not complete: {status}",
+  "@taskAgentQueueStepFailed": {
+    "placeholders": {
+      "status": {}
+    }
+  },
+  "taskAgentQueueTaskCardUnavailable": "family-task-card is unavailable. Agent queue stopped.",
   "taskAgentSkills": "Skills",
   "taskAgentCommands": "Commands",
   "taskAgentAvailableCount": "Available: {count}",

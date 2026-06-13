@@ -1001,6 +1001,18 @@ abstract class AppLocalizations {
   /// **'Agent plan'**
   String get taskAgentPlanTitle;
 
+  /// No description provided for @taskAgentQueueStepFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'One of the agent steps did not complete: {status}'**
+  String taskAgentQueueStepFailed(Object status);
+
+  /// No description provided for @taskAgentQueueTaskCardUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'family-task-card is unavailable. Agent queue stopped.'**
+  String get taskAgentQueueTaskCardUnavailable;
+
   /// No description provided for @taskAgentSkills.
   ///
   /// In en, this message translates to:

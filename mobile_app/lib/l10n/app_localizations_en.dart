@@ -495,6 +495,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskAgentPlanTitle => 'Agent plan';
 
   @override
+  String taskAgentQueueStepFailed(Object status) {
+    return 'One of the agent steps did not complete: $status';
+  }
+
+  @override
+  String get taskAgentQueueTaskCardUnavailable =>
+      'family-task-card is unavailable. Agent queue stopped.';
+
+  @override
   String get taskAgentSkills => 'Skills';
 
   @override

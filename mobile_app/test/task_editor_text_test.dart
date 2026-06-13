@@ -88,6 +88,14 @@ void main() {
     );
     expect(text.activityAgentCardUpdated, 'обновил карточку задачи');
     expect(text.agentPlanTitle, 'План агента');
+    expect(
+      text.agentQueueStepFailed('failed'),
+      'Один из шагов агента не выполнен: failed',
+    );
+    expect(
+      text.agentQueueTaskCardUnavailable,
+      'family-task-card недоступен. Очередь агента остановлена.',
+    );
     expect(text.codeWhaleError, 'Ошибка CodeWhale');
     expect(text.activityCommentEdited, 'отредактировал комментарий');
     expect(text.activityCommentAdded, 'добавил комментарий');
@@ -239,6 +247,14 @@ void main() {
     );
     expect(text.activityAgentCardUpdated, 'updated task card');
     expect(text.agentPlanTitle, 'Agent plan');
+    expect(
+      text.agentQueueStepFailed('failed'),
+      'One of the agent steps did not complete: failed',
+    );
+    expect(
+      text.agentQueueTaskCardUnavailable,
+      'family-task-card is unavailable. Agent queue stopped.',
+    );
     expect(text.codeWhaleError, 'CodeWhale error');
     expect(text.activityCommentEdited, 'edited a comment');
     expect(text.activityCommentAdded, 'added a comment');

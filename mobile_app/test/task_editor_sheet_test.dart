@@ -1925,6 +1925,9 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           theme: ThemeData(splashFactory: NoSplash.splashFactory),
           home: TaskEditorScreen(
             store: store,
@@ -1948,9 +1951,9 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('Агент'));
+      await tester.tap(find.text('Agent'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Новый чат'));
+      await tester.tap(find.text('New chat'));
       await tester.pumpAndSettle();
 
       expect(bridge!.sentMessages, ['/skill family-task-card']);
@@ -1958,7 +1961,19 @@ void main() {
         bridge!.sentMessages.any((text) => text.contains('Выполни задачу')),
         isFalse,
       );
-      expect(find.textContaining('family-task-card'), findsWidgets);
+      expect(
+        find.descendant(
+          of: find.byType(SnackBar),
+          matching: find.text(
+            'family-task-card is unavailable. Agent queue stopped.',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('family-task-card недоступен. Очередь агента остановлена.'),
+        findsNothing,
+      );
     });
 
     testWidgets('agent launch matches project name to bridge workspace',

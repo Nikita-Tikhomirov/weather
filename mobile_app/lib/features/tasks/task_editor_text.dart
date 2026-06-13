@@ -174,6 +174,12 @@ class TaskEditorText {
   String get activityAgentCardUpdated =>
       l10n?.taskActivityAgentCardUpdated ?? 'обновил карточку задачи';
   String get agentPlanTitle => l10n?.taskAgentPlanTitle ?? 'План агента';
+  String agentQueueStepFailed(Object status) =>
+      l10n?.taskAgentQueueStepFailed(status) ??
+      'Один из шагов агента не выполнен: $status';
+  String get agentQueueTaskCardUnavailable =>
+      l10n?.taskAgentQueueTaskCardUnavailable ??
+      'family-task-card недоступен. Очередь агента остановлена.';
   String get codeWhaleError =>
       l10n?.codeWhaleErrorFallback ?? 'Ошибка CodeWhale';
   String get agentStatusPending => l10n?.waitingToStart ?? 'ожидает запуска';
