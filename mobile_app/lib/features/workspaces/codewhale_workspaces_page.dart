@@ -29,29 +29,29 @@ class CodeWhaleWorkspacesText {
   final AppLocalizations? l10n;
 
   String get connecting =>
-      l10n?.codeWhaleConnecting ?? 'Подключение к CodeWhale...';
-  String get error => l10n?.codeWhaleErrorFallback ?? 'Ошибка CodeWhale';
-  String get thinking => l10n?.codeWhaleThinking ?? 'CodeWhale думает...';
-  String get starting => l10n?.codeWhaleStartingEvent ?? 'Запуск CodeWhale';
+      l10n?.codeWhaleConnecting ?? 'Connecting to CodeWhale...';
+  String get error => l10n?.codeWhaleErrorFallback ?? 'CodeWhale error';
+  String get thinking => l10n?.codeWhaleThinking ?? 'CodeWhale is thinking...';
+  String get starting => l10n?.codeWhaleStartingEvent ?? 'Starting CodeWhale';
   String fileAttached(String path) {
-    return l10n?.codeWhaleFileAttachedEvent(path) ?? 'Файл прикреплен: $path';
+    return l10n?.codeWhaleFileAttachedEvent(path) ?? 'File attached: $path';
   }
 
   String get fileAttachedStatus =>
-      l10n?.codeWhaleFileAttachedStatus ?? 'Файл прикреплен';
-  String get ready => l10n?.codeWhaleReadyStatus ?? 'CodeWhale готов';
-  String get done => l10n?.done ?? 'Готово';
+      l10n?.codeWhaleFileAttachedStatus ?? 'File attached';
+  String get ready => l10n?.codeWhaleReadyStatus ?? 'CodeWhale ready';
+  String get done => l10n?.done ?? 'Done';
   String get newWorkspace =>
-      l10n?.codeWhaleNewWorkspaceTitle ?? 'Новое рабочее пространство';
-  String get newSession => l10n?.newSession ?? 'Новая сессия';
-  String get workspaceName => l10n?.workspaceNameLabel ?? 'Название';
-  String get cancel => l10n?.cancel ?? 'Отмена';
+      l10n?.codeWhaleNewWorkspaceTitle ?? 'New workspace';
+  String get newSession => l10n?.newSession ?? 'New session';
+  String get workspaceName => l10n?.workspaceNameLabel ?? 'Name';
+  String get cancel => l10n?.cancel ?? 'Cancel';
   String get photoComment =>
-      l10n?.codeWhalePhotoCommentTitle ?? 'Комментарий к фото';
+      l10n?.codeWhalePhotoCommentTitle ?? 'Photo comment';
   String get documentComment =>
-      l10n?.codeWhaleDocumentCommentTitle ?? 'Комментарий к документу';
+      l10n?.codeWhaleDocumentCommentTitle ?? 'Document comment';
   String get uploadPromptHint =>
-      l10n?.codeWhaleUploadPromptHint ?? 'Пусто = только сохранить';
+      l10n?.codeWhaleUploadPromptHint ?? 'Empty = save only';
 }
 
 class CodeWhaleWorkspacesPage extends StatefulWidget {

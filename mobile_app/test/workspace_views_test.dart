@@ -30,6 +30,26 @@ void main() {
     workerPort: 43101,
   );
 
+  test('CodeWhale text uses English fallbacks without l10n', () {
+    const text = CodeWhaleWorkspacesText(null);
+
+    expect(text.connecting, 'Connecting to CodeWhale...');
+    expect(text.error, 'CodeWhale error');
+    expect(text.thinking, 'CodeWhale is thinking...');
+    expect(text.starting, 'Starting CodeWhale');
+    expect(text.fileAttached('README.md'), 'File attached: README.md');
+    expect(text.fileAttachedStatus, 'File attached');
+    expect(text.ready, 'CodeWhale ready');
+    expect(text.done, 'Done');
+    expect(text.newWorkspace, 'New workspace');
+    expect(text.newSession, 'New session');
+    expect(text.workspaceName, 'Name');
+    expect(text.cancel, 'Cancel');
+    expect(text.photoComment, 'Photo comment');
+    expect(text.documentComment, 'Document comment');
+    expect(text.uploadPromptHint, 'Empty = save only');
+  });
+
   testWidgets('workspace list shows workspaces and create actions',
       (tester) async {
     var createTapped = false;
