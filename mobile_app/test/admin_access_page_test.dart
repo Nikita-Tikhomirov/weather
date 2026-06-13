@@ -133,6 +133,50 @@ void main() {
     expect(find.textContaining(RegExp(r'[А-Яа-яЁё]')), findsNothing);
   });
 
+  testWidgets(
+      'admin page uses actor profile for synthetic current user without localizations',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1000, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      _plainApp(
+        home: AdminAccessPage(
+          api: _EmptyAdminApiClient(),
+          actorProfile: 'nik',
+          actorPhone: '+7 967 981-24-38',
+          accessPolicy: const UserAccessPolicy(
+            phone: '79679812438',
+            profileKey: 'nik',
+            roles: ['messenger_user', 'superadmin'],
+            capabilities: ['workspaces.grant_access'],
+            workspaces: [],
+            isSuperadmin: true,
+          ),
+          contacts: const [],
+          projects: const [
+            TaskProject(id: 'project-system', name: 'System'),
+          ],
+          initialWorkspaces: const [
+            WorkspaceItem(
+              id: 'workspace-weather',
+              name: 'Weather',
+              path: r'C:\weather',
+              status: WorkspaceStatus.available,
+            ),
+          ],
+          connectToBridge: false,
+        ),
+      ),
+    );
+
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('Users: 1'), findsOneWidget);
+    expect(find.text('nik'), findsWidgets);
+    expect(find.textContaining(RegExp(r'[А-Яа-яЁё]')), findsNothing);
+  });
+
   testWidgets('admin page grants workspace access only to real workspaces',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1000, 1200));

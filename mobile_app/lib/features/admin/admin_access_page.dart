@@ -204,7 +204,7 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
       result.add(
         ChatContact(
           profileKey: widget.actorProfile,
-          displayName: widget.accessPolicy.isSuperadmin ? 'Никита' : 'Я',
+          displayName: widget.actorProfile,
           phone: widget.actorPhone,
           conversationKey: '',
         ),
