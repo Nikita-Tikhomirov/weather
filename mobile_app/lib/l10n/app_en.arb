@@ -689,6 +689,42 @@
   "reply": "Reply",
   "forward": "Forward",
   "copy": "Copy",
+  "share": "Share",
+  "chatNoForwardTargets": "No contacts to share with",
+  "chatShareWithTitle": "Share with...",
+  "chatForwardedTo": "Forwarded to {contact}",
+  "@chatForwardedTo": {
+    "placeholders": {
+      "contact": {}
+    }
+  },
+  "chatForwardFailed": "Could not forward: {error}",
+  "@chatForwardFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "chatDeleteMessageTitle": "Delete message?",
+  "chatDeleteMessageBody": "The message will be deleted for all participants.",
+  "chatDeleteFailed": "Could not delete: {error}",
+  "@chatDeleteFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "chatRemoveReaction": "Remove reaction",
+  "chatReactionFailed": "Could not update reaction: {error}",
+  "@chatReactionFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "chatStickerSendFailed": "Could not send sticker: {error}",
+  "@chatStickerSendFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "newSession": "New session",
   "workspaces": "Workspaces",
   "attachFolder": "Attach folder",

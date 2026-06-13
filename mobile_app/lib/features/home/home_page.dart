@@ -15,6 +15,7 @@ import '../../app/app_config.dart';
 import '../../app/app_labels.dart';
 import '../../app/app_theme.dart';
 import '../../l10n/app_localizations.dart';
+import 'home_chat_action_labels.dart';
 import 'home_dashboard_labels.dart';
 import 'home_navigation_widget.dart';
 import 'home_project_status_sheet.dart';
@@ -145,6 +146,9 @@ class _HomePageState extends State<HomePage> {
   final Map<String, String> _profileAvatarUrls = <String, String>{};
   ChatMessage? _replyToMessage;
   bool _pushAlreadyRouted = false;
+
+  HomeChatActionLabels get _chatActionLabels =>
+      HomeChatActionLabels(AppLocalizations.of(context));
 
   /// Conversation key -> set of profiles currently typing
   final Map<String, Set<String>> _typingUsers = <String, Set<String>>{};
@@ -1478,6 +1482,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _shareMessage(TaskStore store, ChatMessage message) async {
     if (message.isDeleted) return;
+    final labels = _chatActionLabels;
     final allContacts = _allKnownContacts(store);
     // Build list of unique contacts excluding self
     final targets =
@@ -1485,7 +1490,7 @@ class _HomePageState extends State<HomePage> {
     if (targets.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Нет контактов для пересылки')),
+          SnackBar(content: Text(labels.noForwardTargets)),
         );
       }
       return;
@@ -1493,7 +1498,7 @@ class _HomePageState extends State<HomePage> {
     final selected = await showDialog<ChatContact>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Поделиться с...'),
+        title: Text(labels.shareWithTitle),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView.builder(
@@ -1513,7 +1518,7 @@ class _HomePageState extends State<HomePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Отмена'),
+            child: Text(labels.cancel),
           ),
         ],
       ),
@@ -1538,7 +1543,7 @@ class _HomePageState extends State<HomePage> {
           conversationKey: conversationKey,
           messageType: 'sticker',
           stickerId: message.stickerId ?? '',
-          text: '↪ $senderLabel: Стикер',
+          text: labels.forwardedSticker(senderLabel),
         );
       } else if (message.messageType == 'image' ||
           message.messageType == 'image_group') {
@@ -1562,7 +1567,7 @@ class _HomePageState extends State<HomePage> {
             attachments: atts,
             text: message.text.isNotEmpty
                 ? '↪ $senderLabel: ${message.text}'
-                : '↪ $senderLabel: Фото',
+                : labels.forwardedPhoto(senderLabel),
           );
         }
       }
@@ -1591,13 +1596,13 @@ class _HomePageState extends State<HomePage> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Переслано → ${contactLabel(selected)}')),
+          SnackBar(content: Text(labels.forwardedTo(contactLabel(selected)))),
         );
       }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка пересылки: $error')),
+          SnackBar(content: Text(labels.forwardFailed(error))),
         );
       }
     }
@@ -1614,20 +1619,21 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _deleteChatMessage(TaskStore store, ChatMessage message) async {
+    final labels = _chatActionLabels;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Удалить сообщение?'),
-          content: const Text('Сообщение будет удалено у всех участников.'),
+          title: Text(labels.deleteMessageTitle),
+          content: Text(labels.deleteMessageBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Отмена'),
+              child: Text(labels.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Удалить'),
+              child: Text(labels.delete),
             ),
           ],
         );
@@ -1654,7 +1660,7 @@ class _HomePageState extends State<HomePage> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка удаления: $error')),
+        SnackBar(content: Text(labels.deleteFailed(error))),
       );
     }
   }
@@ -1666,6 +1672,7 @@ class _HomePageState extends State<HomePage> {
     if (message.isDeleted) {
       return;
     }
+    final labels = _chatActionLabels;
     final action = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -1687,29 +1694,29 @@ class _HomePageState extends State<HomePage> {
               if (message.myReaction != null)
                 ListTile(
                   leading: const Icon(Icons.close),
-                  title: const Text('Убрать реакцию'),
+                  title: Text(labels.removeReaction),
                   onTap: () => Navigator.of(sheetContext).pop('react:'),
                 ),
               if (message.messageType == 'text' &&
                   message.senderProfile == store.owner.value)
                 ListTile(
                   leading: const Icon(Icons.edit_outlined),
-                  title: const Text('Редактировать'),
+                  title: Text(labels.edit),
                   onTap: () => Navigator.of(sheetContext).pop('edit'),
                 ),
               ListTile(
                 leading: const Icon(Icons.reply_outlined),
-                title: const Text('Ответить'),
+                title: Text(labels.reply),
                 onTap: () => Navigator.of(sheetContext).pop('reply'),
               ),
               ListTile(
                 leading: const Icon(Icons.share_outlined),
-                title: const Text('Поделиться'),
+                title: Text(labels.share),
                 onTap: () => Navigator.of(sheetContext).pop('share'),
               ),
               ListTile(
                 leading: const Icon(Icons.delete_outline),
-                title: const Text('Удалить'),
+                title: Text(labels.delete),
                 onTap: () => Navigator.of(sheetContext).pop('delete'),
               ),
             ],
@@ -1756,8 +1763,9 @@ class _HomePageState extends State<HomePage> {
       );
     } catch (error) {
       if (mounted) {
+        final labels = _chatActionLabels;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка реакции: $error')),
+          SnackBar(content: Text(labels.reactionFailed(error))),
         );
       }
     }
@@ -1791,7 +1799,7 @@ class _HomePageState extends State<HomePage> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка отправки стикера: $error')),
+        SnackBar(content: Text(_chatActionLabels.stickerSendFailed(error))),
       );
     }
   }

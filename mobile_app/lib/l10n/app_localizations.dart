@@ -1190,13 +1190,13 @@ abstract class AppLocalizations {
   /// No description provided for @taskActivityChecklistAdded.
   ///
   /// In en, this message translates to:
-  /// **'created checklist "{title}"'**
+  /// **'created checklist \"{title}\"'**
   String taskActivityChecklistAdded(Object title);
 
   /// No description provided for @taskActivityChecklistItemAdded.
   ///
   /// In en, this message translates to:
-  /// **'added item "{item}"'**
+  /// **'added item \"{item}\"'**
   String taskActivityChecklistItemAdded(Object item);
 
   /// No description provided for @taskActivityChecklistItemDone.
@@ -1214,13 +1214,13 @@ abstract class AppLocalizations {
   /// No description provided for @taskActivityChecklistRenamed.
   ///
   /// In en, this message translates to:
-  /// **'renamed checklist to "{title}"'**
+  /// **'renamed checklist to \"{title}\"'**
   String taskActivityChecklistRenamed(Object title);
 
   /// No description provided for @taskActivityChecklistDeleted.
   ///
   /// In en, this message translates to:
-  /// **'deleted checklist "{title}"'**
+  /// **'deleted checklist \"{title}\"'**
   String taskActivityChecklistDeleted(Object title);
 
   /// No description provided for @taskActivityChecklistItemRenamed.
@@ -2710,6 +2710,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copy'**
   String get copy;
+
+  /// No description provided for @share.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get share;
+
+  /// No description provided for @chatNoForwardTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'No contacts to share with'**
+  String get chatNoForwardTargets;
+
+  /// No description provided for @chatShareWithTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share with...'**
+  String get chatShareWithTitle;
+
+  /// No description provided for @chatForwardedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Forwarded to {contact}'**
+  String chatForwardedTo(Object contact);
+
+  /// No description provided for @chatForwardFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not forward: {error}'**
+  String chatForwardFailed(Object error);
+
+  /// No description provided for @chatDeleteMessageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete message?'**
+  String get chatDeleteMessageTitle;
+
+  /// No description provided for @chatDeleteMessageBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The message will be deleted for all participants.'**
+  String get chatDeleteMessageBody;
+
+  /// No description provided for @chatDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not delete: {error}'**
+  String chatDeleteFailed(Object error);
+
+  /// No description provided for @chatRemoveReaction.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove reaction'**
+  String get chatRemoveReaction;
+
+  /// No description provided for @chatReactionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update reaction: {error}'**
+  String chatReactionFailed(Object error);
+
+  /// No description provided for @chatStickerSendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send sticker: {error}'**
+  String chatStickerSendFailed(Object error);
 
   /// No description provided for @newSession.
   ///

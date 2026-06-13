@@ -290,8 +290,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskSelectAgentChat => 'Выберите агентский чат';
 
   @override
-  String get taskSelectAgentWorkspace =>
-      'Выберите воркспейс для агентского чата';
+  String get taskSelectAgentWorkspace => 'Выберите воркспейс для агентского чата';
 
   @override
   String get taskAgentNewChat => 'Новый чат';
@@ -311,12 +310,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskAgentNoChats => 'Агентские чаты не подключены';
 
   @override
-  String get taskNoAgentChatsInWorkspace =>
-      'В этом воркспейсе нет агентских чатов';
+  String get taskNoAgentChatsInWorkspace => 'В этом воркспейсе нет агентских чатов';
 
   @override
-  String get taskAgentChatNotLinkedToWorkspace =>
-      'Агентский чат не связан с воркспейсом';
+  String get taskAgentChatNotLinkedToWorkspace => 'Агентский чат не связан с воркспейсом';
 
   @override
   String get taskAgentConnectNoAccess => 'Нет прав на подключение чата';
@@ -325,8 +322,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskConnectedAgentChatTitle => 'Подключенный агентский чат';
 
   @override
-  String get taskAgentChatConnectedToCard =>
-      'Агентский чат подключен к карточке';
+  String get taskAgentChatConnectedToCard => 'Агентский чат подключен к карточке';
 
   @override
   String taskAgentChatConnectFailed(Object error) {
@@ -420,16 +416,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskSaveTitleRequired => 'Укажите название задачи.';
 
   @override
-  String get taskSaveGroupNotInProject =>
-      'Выбранная группа не входит в проект.';
+  String get taskSaveGroupNotInProject => 'Выбранная группа не входит в проект.';
 
   @override
-  String get taskSaveGroupCreateNoAccess =>
-      'Нет прав на создание задачи в этой группе.';
+  String get taskSaveGroupCreateNoAccess => 'Нет прав на создание задачи в этой группе.';
 
   @override
-  String get taskSaveAssigneesOutsideGroup =>
-      'Ответственные должны входить в выбранную группу.';
+  String get taskSaveAssigneesOutsideGroup => 'Ответственные должны входить в выбранную группу.';
 
   @override
   String get taskSaveInvalidStatus => 'Некорректный статус задачи.';
@@ -438,8 +431,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskSaveInvalidPriority => 'Некорректный приоритет задачи.';
 
   @override
-  String get taskSaveInvalidReminders =>
-      'Некорректные интервалы напоминаний.';
+  String get taskSaveInvalidReminders => 'Некорректные интервалы напоминаний.';
 
   @override
   String get taskSaveGenericFailure => 'Невозможно сохранить задачу.';
@@ -448,8 +440,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskAgentContinueNoAccess => 'Нет прав на продолжение агента';
 
   @override
-  String get taskAgentContinuesFreshCard =>
-      'Агент продолжает работу по свежей карточке';
+  String get taskAgentContinuesFreshCard => 'Агент продолжает работу по свежей карточке';
 
   @override
   String taskAgentContinueFailed(Object error) {
@@ -457,30 +448,25 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get taskActivityAgentSessionRequested =>
-      'запросил новый агентский чат';
+  String get taskActivityAgentSessionRequested => 'запросил новый агентский чат';
 
   @override
-  String get taskActivityAgentSessionStartFailed =>
-      'не смог запустить агентский чат';
+  String get taskActivityAgentSessionStartFailed => 'не смог запустить агентский чат';
 
   @override
   String get taskActivityAgentSessionResumed => 'продолжил агентский чат';
 
   @override
-  String get taskActivityAgentSessionResumeFailed =>
-      'не смог продолжить агентский чат';
+  String get taskActivityAgentSessionResumeFailed => 'не смог продолжить агентский чат';
 
   @override
-  String get taskActivityAgentSessionError =>
-      'получил ошибку агентского чата';
+  String get taskActivityAgentSessionError => 'получил ошибку агентского чата';
 
   @override
   String get taskActivityAgentSessionLinked => 'подключил агентский чат';
 
   @override
-  String get taskActivityAgentExistingSessionLinked =>
-      'подключил существующий агентский чат';
+  String get taskActivityAgentExistingSessionLinked => 'подключил существующий агентский чат';
 
   @override
   String taskActivityAgentAutoMovedToStatus(Object status) {
@@ -488,15 +474,13 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get taskActivityAgentQueueWaitingReview =>
-      'ждет проверки карточки';
+  String get taskActivityAgentQueueWaitingReview => 'ждет проверки карточки';
 
   @override
   String get taskActivityAgentQueueCompleted => 'завершил очередь агента';
 
   @override
-  String get taskActivityAgentQueueNeedsMoreWork =>
-      'ждет дальнейших правок';
+  String get taskActivityAgentQueueNeedsMoreWork => 'ждет дальнейших правок';
 
   @override
   String taskActivityAgentStatusChanged(Object status) {
@@ -515,8 +499,7 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get taskAgentQueueTaskCardUnavailable =>
-      'family-task-card недоступен. Очередь агента остановлена.';
+  String get taskAgentQueueTaskCardUnavailable => 'family-task-card недоступен. Очередь агента остановлена.';
 
   @override
   String get taskAgentSkills => 'Скиллы';
@@ -587,8 +570,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskActivityCommentAdded => 'добавил комментарий';
 
   @override
-  String get taskActivityCommentAddedWithAttachment =>
-      'добавил комментарий с вложением';
+  String get taskActivityCommentAddedWithAttachment => 'добавил комментарий с вложением';
 
   @override
   String get taskActivityCommentReplied => 'ответил на комментарий';
@@ -598,12 +580,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String taskActivityChecklistAdded(Object title) {
-    return 'создал чеклист "$title"';
+    return 'создал чеклист \"$title\"';
   }
 
   @override
   String taskActivityChecklistItemAdded(Object item) {
-    return 'добавил пункт "$item"';
+    return 'добавил пункт \"$item\"';
   }
 
   @override
@@ -614,17 +596,16 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String taskActivityChecklistRenamed(Object title) {
-    return 'переименовал чеклист "$title"';
+    return 'переименовал чеклист \"$title\"';
   }
 
   @override
   String taskActivityChecklistDeleted(Object title) {
-    return 'удалил чеклист "$title"';
+    return 'удалил чеклист \"$title\"';
   }
 
   @override
-  String get taskActivityChecklistItemRenamed =>
-      'отредактировал пункт чеклиста';
+  String get taskActivityChecklistItemRenamed => 'отредактировал пункт чеклиста';
 
   @override
   String get taskActivityChecklistItemDeleted => 'удалил пункт чеклиста';
@@ -668,8 +649,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskAttachmentEmptyOrCorrupt => 'Файл пустой или повреждён.';
 
   @override
-  String get taskAttachmentUploadMissingUrl =>
-      'Сервер не вернул ссылку на файл.';
+  String get taskAttachmentUploadMissingUrl => 'Сервер не вернул ссылку на файл.';
 
   @override
   String get taskFileReadFailed => 'Не удалось прочитать файл';
@@ -708,8 +688,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskDeleteChecklistTitle => 'Удалить чеклист?';
 
   @override
-  String get taskDeleteChecklistMessage =>
-      'Чеклист и все его пункты будут удалены из задачи.';
+  String get taskDeleteChecklistMessage => 'Чеклист и все его пункты будут удалены из задачи.';
 
   @override
   String get taskEditChecklistItem => 'Редактировать пункт';
@@ -724,8 +703,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskDeleteChecklistItemTitle => 'Удалить пункт?';
 
   @override
-  String get taskDeleteChecklistItemMessage =>
-      'Пункт будет удалён из чеклиста.';
+  String get taskDeleteChecklistItemMessage => 'Пункт будет удалён из чеклиста.';
 
   @override
   String get taskChecklistItem => 'Пункт';
@@ -955,8 +933,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get projectChatTerminalTitle => 'Терминал проекта';
 
   @override
-  String get projectChatTerminalHint =>
-      'Напишите сообщение для взаимодействия с AI-ассистентом в проекте';
+  String get projectChatTerminalHint => 'Напишите сообщение для взаимодействия с AI-ассистентом в проекте';
 
   @override
   String get projectChatReconnect => 'Переподключиться';
@@ -1426,6 +1403,49 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get copy => 'Копировать';
+
+  @override
+  String get share => 'Поделиться';
+
+  @override
+  String get chatNoForwardTargets => 'Нет контактов для пересылки';
+
+  @override
+  String get chatShareWithTitle => 'Поделиться с...';
+
+  @override
+  String chatForwardedTo(Object contact) {
+    return 'Переслано → $contact';
+  }
+
+  @override
+  String chatForwardFailed(Object error) {
+    return 'Ошибка пересылки: $error';
+  }
+
+  @override
+  String get chatDeleteMessageTitle => 'Удалить сообщение?';
+
+  @override
+  String get chatDeleteMessageBody => 'Сообщение будет удалено у всех участников.';
+
+  @override
+  String chatDeleteFailed(Object error) {
+    return 'Ошибка удаления: $error';
+  }
+
+  @override
+  String get chatRemoveReaction => 'Убрать реакцию';
+
+  @override
+  String chatReactionFailed(Object error) {
+    return 'Ошибка реакции: $error';
+  }
+
+  @override
+  String chatStickerSendFailed(Object error) {
+    return 'Ошибка отправки стикера: $error';
+  }
 
   @override
   String get newSession => 'Новая сессия';

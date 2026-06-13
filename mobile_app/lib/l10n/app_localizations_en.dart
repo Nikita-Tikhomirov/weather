@@ -313,8 +313,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskNoAgentChatsInWorkspace => 'No agent chats in this workspace';
 
   @override
-  String get taskAgentChatNotLinkedToWorkspace =>
-      'Agent chat is not linked to a workspace';
+  String get taskAgentChatNotLinkedToWorkspace => 'Agent chat is not linked to a workspace';
 
   @override
   String get taskAgentConnectNoAccess => 'No permission to connect chat';
@@ -323,8 +322,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskConnectedAgentChatTitle => 'Connected agent chat';
 
   @override
-  String get taskAgentChatConnectedToCard =>
-      'Agent chat connected to the task card';
+  String get taskAgentChatConnectedToCard => 'Agent chat connected to the task card';
 
   @override
   String taskAgentChatConnectFailed(Object error) {
@@ -418,16 +416,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskSaveTitleRequired => 'Enter a task title';
 
   @override
-  String get taskSaveGroupNotInProject =>
-      'Selected group is not in the project.';
+  String get taskSaveGroupNotInProject => 'Selected group is not in the project.';
 
   @override
-  String get taskSaveGroupCreateNoAccess =>
-      'No permission to create a task in this group.';
+  String get taskSaveGroupCreateNoAccess => 'No permission to create a task in this group.';
 
   @override
-  String get taskSaveAssigneesOutsideGroup =>
-      'Assignees must belong to the selected group.';
+  String get taskSaveAssigneesOutsideGroup => 'Assignees must belong to the selected group.';
 
   @override
   String get taskSaveInvalidStatus => 'Invalid task status.';
@@ -445,8 +440,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskAgentContinueNoAccess => 'No permission to continue agent';
 
   @override
-  String get taskAgentContinuesFreshCard =>
-      'Agent continues with the fresh task card';
+  String get taskAgentContinuesFreshCard => 'Agent continues with the fresh task card';
 
   @override
   String taskAgentContinueFailed(Object error) {
@@ -454,30 +448,25 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get taskActivityAgentSessionRequested =>
-      'requested a new agent chat';
+  String get taskActivityAgentSessionRequested => 'requested a new agent chat';
 
   @override
-  String get taskActivityAgentSessionStartFailed =>
-      'could not start agent chat';
+  String get taskActivityAgentSessionStartFailed => 'could not start agent chat';
 
   @override
   String get taskActivityAgentSessionResumed => 'continued agent chat';
 
   @override
-  String get taskActivityAgentSessionResumeFailed =>
-      'could not continue agent chat';
+  String get taskActivityAgentSessionResumeFailed => 'could not continue agent chat';
 
   @override
-  String get taskActivityAgentSessionError =>
-      'received an agent chat error';
+  String get taskActivityAgentSessionError => 'received an agent chat error';
 
   @override
   String get taskActivityAgentSessionLinked => 'linked agent chat';
 
   @override
-  String get taskActivityAgentExistingSessionLinked =>
-      'linked existing agent chat';
+  String get taskActivityAgentExistingSessionLinked => 'linked existing agent chat';
 
   @override
   String taskActivityAgentAutoMovedToStatus(Object status) {
@@ -485,15 +474,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get taskActivityAgentQueueWaitingReview =>
-      'waiting for card review';
+  String get taskActivityAgentQueueWaitingReview => 'waiting for card review';
 
   @override
   String get taskActivityAgentQueueCompleted => 'completed agent queue';
 
   @override
-  String get taskActivityAgentQueueNeedsMoreWork =>
-      'waiting for more changes';
+  String get taskActivityAgentQueueNeedsMoreWork => 'waiting for more changes';
 
   @override
   String taskActivityAgentStatusChanged(Object status) {
@@ -512,8 +499,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get taskAgentQueueTaskCardUnavailable =>
-      'family-task-card is unavailable. Agent queue stopped.';
+  String get taskAgentQueueTaskCardUnavailable => 'family-task-card is unavailable. Agent queue stopped.';
 
   @override
   String get taskAgentSkills => 'Skills';
@@ -584,8 +570,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskActivityCommentAdded => 'added a comment';
 
   @override
-  String get taskActivityCommentAddedWithAttachment =>
-      'added a comment with an attachment';
+  String get taskActivityCommentAddedWithAttachment => 'added a comment with an attachment';
 
   @override
   String get taskActivityCommentReplied => 'replied to a comment';
@@ -595,12 +580,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String taskActivityChecklistAdded(Object title) {
-    return 'created checklist "$title"';
+    return 'created checklist \"$title\"';
   }
 
   @override
   String taskActivityChecklistItemAdded(Object item) {
-    return 'added item "$item"';
+    return 'added item \"$item\"';
   }
 
   @override
@@ -611,12 +596,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String taskActivityChecklistRenamed(Object title) {
-    return 'renamed checklist to "$title"';
+    return 'renamed checklist to \"$title\"';
   }
 
   @override
   String taskActivityChecklistDeleted(Object title) {
-    return 'deleted checklist "$title"';
+    return 'deleted checklist \"$title\"';
   }
 
   @override
@@ -664,8 +649,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskAttachmentEmptyOrCorrupt => 'The file is empty or corrupted.';
 
   @override
-  String get taskAttachmentUploadMissingUrl =>
-      'The server did not return a file URL.';
+  String get taskAttachmentUploadMissingUrl => 'The server did not return a file URL.';
 
   @override
   String get taskFileReadFailed => 'Could not read file';
@@ -704,8 +688,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskDeleteChecklistTitle => 'Delete checklist?';
 
   @override
-  String get taskDeleteChecklistMessage =>
-      'The checklist and its items will be removed from the task.';
+  String get taskDeleteChecklistMessage => 'The checklist and its items will be removed from the task.';
 
   @override
   String get taskEditChecklistItem => 'Edit item';
@@ -720,8 +703,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskDeleteChecklistItemTitle => 'Delete item?';
 
   @override
-  String get taskDeleteChecklistItemMessage =>
-      'The item will be removed from the checklist.';
+  String get taskDeleteChecklistItemMessage => 'The item will be removed from the checklist.';
 
   @override
   String get taskChecklistItem => 'Item';
@@ -951,8 +933,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectChatTerminalTitle => 'Project terminal';
 
   @override
-  String get projectChatTerminalHint =>
-      'Send a message to work with the AI assistant in this project';
+  String get projectChatTerminalHint => 'Send a message to work with the AI assistant in this project';
 
   @override
   String get projectChatReconnect => 'Reconnect';
@@ -1422,6 +1403,49 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get copy => 'Copy';
+
+  @override
+  String get share => 'Share';
+
+  @override
+  String get chatNoForwardTargets => 'No contacts to share with';
+
+  @override
+  String get chatShareWithTitle => 'Share with...';
+
+  @override
+  String chatForwardedTo(Object contact) {
+    return 'Forwarded to $contact';
+  }
+
+  @override
+  String chatForwardFailed(Object error) {
+    return 'Could not forward: $error';
+  }
+
+  @override
+  String get chatDeleteMessageTitle => 'Delete message?';
+
+  @override
+  String get chatDeleteMessageBody => 'The message will be deleted for all participants.';
+
+  @override
+  String chatDeleteFailed(Object error) {
+    return 'Could not delete: $error';
+  }
+
+  @override
+  String get chatRemoveReaction => 'Remove reaction';
+
+  @override
+  String chatReactionFailed(Object error) {
+    return 'Could not update reaction: $error';
+  }
+
+  @override
+  String chatStickerSendFailed(Object error) {
+    return 'Could not send sticker: $error';
+  }
 
   @override
   String get newSession => 'New session';

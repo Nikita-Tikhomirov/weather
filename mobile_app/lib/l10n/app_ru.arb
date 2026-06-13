@@ -689,6 +689,42 @@
   "reply": "Ответить",
   "forward": "Переслать",
   "copy": "Копировать",
+  "share": "Поделиться",
+  "chatNoForwardTargets": "Нет контактов для пересылки",
+  "chatShareWithTitle": "Поделиться с...",
+  "chatForwardedTo": "Переслано → {contact}",
+  "@chatForwardedTo": {
+    "placeholders": {
+      "contact": {}
+    }
+  },
+  "chatForwardFailed": "Ошибка пересылки: {error}",
+  "@chatForwardFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "chatDeleteMessageTitle": "Удалить сообщение?",
+  "chatDeleteMessageBody": "Сообщение будет удалено у всех участников.",
+  "chatDeleteFailed": "Ошибка удаления: {error}",
+  "@chatDeleteFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "chatRemoveReaction": "Убрать реакцию",
+  "chatReactionFailed": "Ошибка реакции: {error}",
+  "@chatReactionFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "chatStickerSendFailed": "Ошибка отправки стикера: {error}",
+  "@chatStickerSendFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "newSession": "Новая сессия",
   "workspaces": "Рабочие пространства",
   "attachFolder": "Подключить папку",
