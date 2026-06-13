@@ -21,25 +21,25 @@ class _CallScreenText {
   String status(CallState state) {
     switch (state) {
       case CallState.calling:
-        return l10n?.calling ?? 'Вызов...';
+        return l10n?.calling ?? 'Calling...';
       case CallState.ringing:
-        return l10n?.incomingCall ?? 'Входящий звонок...';
+        return l10n?.incomingCall ?? 'Incoming call...';
       case CallState.connected:
-        return l10n?.inCall ?? 'Разговор';
+        return l10n?.inCall ?? 'In call';
       case CallState.ended:
-        return l10n?.callEnded ?? 'Звонок завершён';
+        return l10n?.callEnded ?? 'Call ended';
       case CallState.idle:
         return '';
     }
   }
 
-  String get accept => l10n?.accept ?? 'Принять';
-  String get decline => l10n?.decline ?? 'Отклонить';
-  String get endCall => l10n?.endCall ?? 'Завершить';
-  String get headset => l10n?.headset ?? 'Гарнитура';
-  String get microphone => l10n?.microphone ?? 'Микрофон';
-  String get speaker => l10n?.speaker ?? 'Динамик';
-  String get unmute => l10n?.unmute ?? 'Вкл. микро';
+  String get accept => l10n?.accept ?? 'Accept';
+  String get decline => l10n?.decline ?? 'Decline';
+  String get endCall => l10n?.endCall ?? 'End';
+  String get headset => l10n?.headset ?? 'Headset';
+  String get microphone => l10n?.microphone ?? 'Microphone';
+  String get speaker => l10n?.speaker ?? 'Speaker';
+  String get unmute => l10n?.unmute ?? 'Unmute';
 }
 
 class CallScreen extends StatefulWidget {

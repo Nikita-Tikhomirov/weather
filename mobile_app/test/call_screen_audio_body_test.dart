@@ -136,4 +136,42 @@ void main() {
     expect(find.text('Принять'), findsNothing);
     service.dispose();
   });
+
+  testWidgets('incoming audio call screen falls back to English labels',
+      (tester) async {
+    final service = CallService(
+      api: _NoopApi(),
+      actorProfile: 'nik',
+      audioDevice: _NoopCallAudioDevice(),
+    );
+    const session = CallSession(
+      sessionId: 'call-3',
+      callerProfile: 'misha',
+      calleeProfile: 'nik',
+      conversationKey: 'dm:misha:nik',
+      callType: 'audio',
+      status: 'ringing',
+      createdAt: '2026-06-01T12:00:00',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CallScreen(
+          callService: service,
+          session: session,
+          isIncoming: true,
+          peerLabel: 'misha',
+          onCallFinished: () {},
+        ),
+      ),
+    );
+
+    expect(find.text('Incoming call...'), findsOneWidget);
+    expect(find.text('Accept'), findsOneWidget);
+    expect(find.text('Decline'), findsOneWidget);
+    expect(find.text('Входящий звонок...'), findsNothing);
+    expect(find.text('Принять'), findsNothing);
+    expect(find.text('Отклонить'), findsNothing);
+    service.dispose();
+  });
 }
