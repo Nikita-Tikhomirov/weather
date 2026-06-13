@@ -43,7 +43,7 @@ class _StickerUnavailable extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final label = text.trim().isEmpty
-        ? l10n?.stickerUnavailable ?? 'Стикер недоступен'
+        ? l10n?.stickerUnavailable ?? 'Sticker unavailable'
         : text.trim();
     return SizedBox(
       width: size,

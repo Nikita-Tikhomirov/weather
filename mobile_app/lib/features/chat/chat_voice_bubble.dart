@@ -99,8 +99,8 @@ class _VoiceBubbleState extends State<VoiceBubble>
           IconButton.filled(
             visualDensity: VisualDensity.compact,
             tooltip: _playing
-                ? l10n?.pauseVoiceMessage ?? 'Пауза'
-                : l10n?.playVoiceMessage ?? 'Воспроизвести',
+                ? l10n?.pauseVoiceMessage ?? 'Pause voice message'
+                : l10n?.playVoiceMessage ?? 'Play voice message',
             onPressed: _togglePlay,
             icon: Icon(_playing ? Icons.pause : Icons.play_arrow),
           ),

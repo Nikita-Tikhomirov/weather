@@ -9,13 +9,13 @@ class _StickerPickerText {
 
   final AppLocalizations? l10n;
 
-  String get stickers => l10n?.stickers ?? 'Стикеры';
-  String get search => l10n?.search ?? 'Поиск';
+  String get stickers => l10n?.stickers ?? 'Stickers';
+  String get search => l10n?.search ?? 'Search';
   String get noStickersLoaded =>
-      l10n?.noStickersLoaded ?? 'Стикеры еще не загружены';
-  String get noSearchResults => l10n?.noSearchResults ?? 'Ничего не найдено';
-  String get allStyles => l10n?.allStyles ?? 'Все стили';
-  String get allTopics => l10n?.allTopics ?? 'Все темы';
+      l10n?.noStickersLoaded ?? 'No stickers loaded yet';
+  String get noSearchResults => l10n?.noSearchResults ?? 'No results';
+  String get allStyles => l10n?.allStyles ?? 'All styles';
+  String get allTopics => l10n?.allTopics ?? 'All topics';
 }
 
 class StickerPickerSheet extends StatefulWidget {

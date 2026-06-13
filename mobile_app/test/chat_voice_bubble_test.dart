@@ -24,4 +24,22 @@ void main() {
     expect(find.byTooltip('Play voice message'), findsOneWidget);
     expect(find.byTooltip('Воспроизвести'), findsNothing);
   });
+
+  testWidgets('falls back to English voice playback tooltip', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: const Scaffold(
+          body: VoiceBubble(
+            url: '/chat/media/voice-1',
+            durationMs: 2400,
+            mine: false,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byTooltip('Play voice message'), findsOneWidget);
+    expect(find.byTooltip('Воспроизвести'), findsNothing);
+  });
 }

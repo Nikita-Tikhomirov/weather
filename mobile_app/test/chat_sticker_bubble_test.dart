@@ -23,4 +23,23 @@ void main() {
     expect(find.text('Sticker unavailable'), findsOneWidget);
     expect(find.text('Стикер недоступен'), findsNothing);
   });
+
+  testWidgets('falls back to English unavailable sticker label', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ChatStickerBubble(
+            stickerAssetUrl: '',
+            text: '',
+            compact: true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Sticker unavailable'), findsOneWidget);
+    expect(find.text('Стикер недоступен'), findsNothing);
+  });
 }

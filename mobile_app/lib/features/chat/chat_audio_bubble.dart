@@ -43,7 +43,7 @@ class ChatAudioBubble extends StatelessWidget {
               child: Text(
                 text.isNotEmpty
                     ? text
-                    : AppLocalizations.of(context)?.audioMessage ?? 'Аудио',
+                    : AppLocalizations.of(context)?.audioMessage ?? 'Audio',
                 style: TextStyle(
                   fontSize: 14,
                   color: mine ? cs.onPrimaryContainer : cs.onSurface,

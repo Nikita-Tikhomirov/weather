@@ -29,4 +29,30 @@ void main() {
     expect(find.text('Search'), findsOneWidget);
     expect(find.text('No stickers loaded yet'), findsOneWidget);
   });
+
+  testWidgets('falls back to English labels for an empty sticker picker',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: Scaffold(
+          body: SizedBox(
+            height: 500,
+            child: StickerPickerSheet(
+              packs: const [],
+              assetUrlResolver: (value) => value,
+              onStickerSelected: (_) async {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Stickers'), findsOneWidget);
+    expect(find.text('Search'), findsOneWidget);
+    expect(find.text('No stickers loaded yet'), findsOneWidget);
+    expect(find.text('Стикеры'), findsNothing);
+    expect(find.text('Поиск'), findsNothing);
+    expect(find.text('Стикеры еще не загружены'), findsNothing);
+  });
 }
