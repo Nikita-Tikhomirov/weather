@@ -41,4 +41,33 @@ void main() {
     expect(find.text('Описание не задано'), findsNothing);
     expect(find.text('Workspace не выбран'), findsNothing);
   });
+
+  testWidgets('uses English fallback labels without localization delegates',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ProjectChatStatusSheet(
+            project: TaskProject(id: 'project-1', name: 'Weather'),
+            conversationTitle: 'Family',
+            members: ['nik', 'misha'],
+            workspaceId: '',
+            canUseAi: false,
+            agentSessionId: 'session-1',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Project status'), findsOneWidget);
+    expect(find.text('No description'), findsOneWidget);
+    expect(find.text('Participants: nik, misha'), findsOneWidget);
+    expect(find.text('Workspace is not selected'), findsOneWidget);
+    expect(
+      find.text('Select workspace in Project Control Center'),
+      findsOneWidget,
+    );
+    expect(find.text('Active agent session'), findsOneWidget);
+    expect(find.text('Статус проекта'), findsNothing);
+  });
 }

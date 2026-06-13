@@ -33,7 +33,7 @@ class ProjectChatStatusSheet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            l10n?.projectControlProjectStatus ?? 'Статус проекта',
+            l10n?.projectControlProjectStatus ?? 'Project status',
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 12),
@@ -43,7 +43,7 @@ class ProjectChatStatusSheet extends StatelessWidget {
             title: Text(project.name),
             subtitle: Text(
               projectDescription.isEmpty
-                  ? l10n?.homeProjectDescriptionMissing ?? 'Описание не задано'
+                  ? l10n?.homeProjectDescriptionMissing ?? 'No description'
                   : projectDescription,
             ),
           ),
@@ -53,7 +53,7 @@ class ProjectChatStatusSheet extends StatelessWidget {
             title: Text(conversationTitle),
             subtitle: Text(
               l10n?.homeProjectParticipants(members.join(', ')) ??
-                  'Участники: ${members.join(', ')}',
+                  'Participants: ${members.join(', ')}',
             ),
           ),
           ListTile(
@@ -62,18 +62,18 @@ class ProjectChatStatusSheet extends StatelessWidget {
             title: Text(
               cleanWorkspaceId.isEmpty
                   ? l10n?.homeProjectWorkspaceNotSelected ??
-                      'Workspace не выбран'
+                      'Workspace is not selected'
                   : cleanWorkspaceId,
             ),
             subtitle: Text(
               cleanWorkspaceId.isEmpty
                   ? l10n?.homeProjectWorkspaceHint ??
-                      'Выберите workspace в Project Control Center'
+                      'Select workspace in Project Control Center'
                   : canUseAi
                       ? l10n?.homeProjectAgentAvailableByButton ??
-                          'Агент доступен по кнопке'
+                          'Agent is available from the button'
                       : l10n?.homeProjectAgentNoAccess ??
-                          'Нет прав на AI-агента',
+                          'No access to AI agent',
             ),
           ),
           if (agentSessionId.isNotEmpty)
@@ -81,7 +81,7 @@ class ProjectChatStatusSheet extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.smart_toy_outlined),
               title: Text(
-                l10n?.homeProjectActiveAgentSession ?? 'Активная сессия агента',
+                l10n?.homeProjectActiveAgentSession ?? 'Active agent session',
               ),
               subtitle: Text(agentSessionId),
             ),
