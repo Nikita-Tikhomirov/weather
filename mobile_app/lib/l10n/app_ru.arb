@@ -98,6 +98,38 @@
   },
   "homeNoWorkspaceAccess": "Нет доступа к воркспейсам",
   "homeSelectWorkspaceProjectReason": "Выберите проект, связанный с воркспейсом.",
+  "homeProjectChatAgentDraftButtonUserMessage": "Пользователь нажал кнопку создания черновика задачи.",
+  "homeProjectChatAgentTitle": "Тудушкер: {projectName}",
+  "@homeProjectChatAgentTitle": {
+    "placeholders": {
+      "projectName": {}
+    }
+  },
+  "homeProjectChatAgentAnalyzing": "Тудушкер анализирует чат.",
+  "homeProjectChatAgentUnstructuredResponse": "Тудушкер вернул неструктурированный ответ.",
+  "homeProjectChatAgentAnalyzeFailed": "Не удалось проанализировать чат проекта.",
+  "homeProjectChatAgentSelectWorkspace": "Выберите workspace проекта в Project Control Center.",
+  "homeProjectChatAgentStarting": "Агент проекта запускается в CodeWhale.",
+  "homeProjectChatAgentStartFailed": "Не удалось запустить агента проекта.",
+  "homeProjectChatAgentTaskCreated": "Задача создана в проекте {projectName}.",
+  "@homeProjectChatAgentTaskCreated": {
+    "placeholders": {
+      "projectName": {}
+    }
+  },
+  "homeProjectChatAgentUnstructuredResponseMessage": "Я получил неструктурированный ответ модели и не стал отправлять его в чат. Повторите запрос чуть точнее.",
+  "homeProjectChatAgentRequestFailedMessage": "Не смог обработать запрос. Проверьте workspace проекта и доступность CodeWhale.",
+  "homeProjectChatAgentTaskDraftMissingMessage": "Я понял, что нужна карточка, но не смог собрать структурированный черновик.",
+  "homeProjectChatAgentSessionStartedMessage": "Запустил рабочую сессию в workspace проекта.",
+  "homeProjectChatAgentEmptyReplyMessage": "Я посмотрел контекст, но не смог сформулировать полезный ответ.",
+  "homeProjectChatAgentOwnerFallbackMessage": "Тудушкер: {message}",
+  "@homeProjectChatAgentOwnerFallbackMessage": {
+    "placeholders": {
+      "message": {}
+    }
+  },
+  "homeImageSavedToGallery": "Фото сохранено в галерею",
+  "homeImageSaveFailed": "Не удалось сохранить фото",
   "colorSchemeTooltip": "Цветовая схема",
   "undoLastAction": "Откатить последнее действие",
   "lastActionUndone": "Последнее действие отменено",

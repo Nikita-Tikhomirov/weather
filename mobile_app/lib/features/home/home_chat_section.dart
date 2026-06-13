@@ -178,16 +178,17 @@ extension _ChatSection on _HomePageState {
     TaskStore store,
     TaskProject project,
   ) async {
+    final labels = _projectChatAgentLabels;
     try {
       final request = await _prepareProjectChatAgentRequest(
         store: store,
         project: project,
-        userMessage: 'Пользователь нажал кнопку создания черновика задачи.',
+        userMessage: labels.draftButtonUserMessage,
       );
       if (request == null) {
         return;
       }
-      _showSnack('Тудушкер анализирует чат.');
+      _showSnack(labels.analyzingChat);
       final directive = await ProjectChatAgentService.resolveDirective(
         context: request.contextPack,
         userMessage: request.userMessage,
@@ -199,7 +200,7 @@ extension _ChatSection on _HomePageState {
             contextPack: request.contextPack,
             policyTicket: request.policyTicket,
             prompt: prompt,
-            title: 'Тудушкер: ${project.name}',
+            title: labels.agentTitle(project.name),
           );
         },
       );
@@ -219,11 +220,11 @@ extension _ChatSection on _HomePageState {
         return;
       }
       if (e is ProjectChatAgentInvalidResponse) {
-        _showSnack('Тудушкер вернул неструктурированный ответ.');
+        _showSnack(labels.unstructuredResponseSnack);
         return;
       }
       debugPrint('[project-chat-agent] analyze error: $e\n$st');
-      _showSnack('Не удалось проанализировать чат проекта.');
+      _showSnack(labels.analyzeFailed);
     }
   }
 
@@ -231,9 +232,10 @@ extension _ChatSection on _HomePageState {
     TaskStore store,
     TaskProject project,
   ) async {
+    final labels = _projectChatAgentLabels;
     final workspaceId = await _workspaceIdForProjectChat(store, project);
     if (workspaceId.isEmpty) {
-      _showSnack('Выберите workspace проекта в Project Control Center.');
+      _showSnack(labels.selectProjectWorkspace);
       return;
     }
     try {
@@ -258,12 +260,12 @@ extension _ChatSection on _HomePageState {
         contextPack: contextPack,
         policyTicket: ticket.policyTicket,
         prompt: contextPack.toPrompt(),
-        title: 'Тудушкер: ${project.name}',
+        title: labels.agentTitle(project.name),
       );
-      _showSnack('Агент проекта запускается в CodeWhale.');
+      _showSnack(labels.agentStarting);
     } catch (e, st) {
       debugPrint('[project-chat-agent] start error: $e\n$st');
-      _showSnack('Не удалось запустить агента проекта.');
+      _showSnack(labels.agentStartFailed);
     }
   }
 
@@ -272,9 +274,10 @@ extension _ChatSection on _HomePageState {
     required TaskProject project,
     required String userMessage,
   }) async {
+    final labels = _projectChatAgentLabels;
     final workspaceId = await _workspaceIdForProjectChat(store, project);
     if (workspaceId.isEmpty) {
-      _showSnack('Выберите workspace проекта в Project Control Center.');
+      _showSnack(labels.selectProjectWorkspace);
       return null;
     }
     final group = _familyGroupForConversation(store, _activeConversationKey);
@@ -312,11 +315,13 @@ extension _ChatSection on _HomePageState {
   }) async {
     final bridge = _ensureProjectChatAgentBridge();
     bridge.updatePolicyTicket(policyTicket);
+    final labels = _projectChatAgentLabels;
     _pendingProjectChatAgentWorkspaceId = workspaceId;
     _pendingProjectChatAgentPrompt = prompt;
     bridge.createSession(
       workspaceId,
-      title: title.trim().isEmpty ? 'Тудушкер: ${project.name}' : title.trim(),
+      title:
+          title.trim().isEmpty ? labels.agentTitle(project.name) : title.trim(),
       taskCard: {
         'scope': 'project_chat',
         'project_id': project.id,
@@ -340,9 +345,11 @@ extension _ChatSection on _HomePageState {
     String title = '',
   }) async {
     final runner = _ensureProjectChatAgentRunner();
+    final labels = _projectChatAgentLabels;
     return runner.run(
       workspaceId: workspaceId,
-      title: title.trim().isEmpty ? 'Тудушкер: ${project.name}' : title.trim(),
+      title:
+          title.trim().isEmpty ? labels.agentTitle(project.name) : title.trim(),
       policyTicket: policyTicket,
       prompt: prompt,
       taskCard: {
@@ -382,10 +389,13 @@ extension _ChatSection on _HomePageState {
     }
     final bridge = CodeWhaleBridgeService(
       onMessage: (message) {
+        final labels = _projectChatAgentLabels;
         if (message.isError) {
           _completeProjectChatAgentResponse(
             error: StateError(
-              message.error.isEmpty ? 'Ошибка CodeWhale' : message.error,
+              message.error.isEmpty
+                  ? labels.codeWhaleErrorFallback
+                  : message.error,
             ),
           );
           return;
@@ -500,7 +510,7 @@ extension _ChatSection on _HomePageState {
       return;
     }
     await _safeSyncDelta(store, showErrors: true);
-    _showSnack('Задача создана в проекте ${project.name}.');
+    _showSnack(_projectChatAgentLabels.taskCreatedInProject(project.name));
   }
 
   Future<void> _handleProjectChatAgentMention(
@@ -508,6 +518,7 @@ extension _ChatSection on _HomePageState {
     TaskProject project,
     String userMessage,
   ) async {
+    final labels = _projectChatAgentLabels;
     try {
       final request = await _prepareProjectChatAgentRequest(
         store: store,
@@ -527,7 +538,7 @@ extension _ChatSection on _HomePageState {
             contextPack: request.contextPack,
             policyTicket: request.policyTicket,
             prompt: prompt,
-            title: 'Тудушкер: ${project.name}',
+            title: labels.agentTitle(project.name),
           );
         },
       );
@@ -549,14 +560,14 @@ extension _ChatSection on _HomePageState {
       if (e is ProjectChatAgentInvalidResponse) {
         await _sendProjectChatAgentMessage(
           store,
-          'Я получил неструктурированный ответ модели и не стал отправлять его в чат. Повторите запрос чуть точнее.',
+          labels.unstructuredResponseMessage,
         );
         return;
       }
       debugPrint('[project-chat-agent] mention error: $e\n$st');
       await _sendProjectChatAgentMessage(
         store,
-        'Не смог обработать запрос. Проверьте workspace проекта и доступность CodeWhale.',
+        labels.requestFailedMessage,
       );
     }
   }
@@ -569,13 +580,14 @@ extension _ChatSection on _HomePageState {
     required String groupId,
     String policyTicket = '',
   }) async {
+    final labels = _projectChatAgentLabels;
     switch (directive.action) {
       case ProjectChatAgentAction.taskDraft:
         final draft = directive.draft;
         if (draft == null) {
           await _sendProjectChatAgentMessage(
             store,
-            'Я понял, что нужна карточка, но не смог собрать структурированный черновик.',
+            labels.taskDraftMissingMessage,
           );
           return;
         }
@@ -598,11 +610,11 @@ extension _ChatSection on _HomePageState {
           contextPack: contextPack,
           policyTicket: policyTicket,
           prompt: launchPrompt,
-          title: 'Тудушкер: ${project.name}',
+          title: labels.agentTitle(project.name),
         );
         await _sendProjectChatAgentMessage(
           store,
-          'Запустил рабочую сессию в workspace проекта.',
+          labels.agentSessionStartedMessage,
         );
         return;
       case ProjectChatAgentAction.status:
@@ -610,7 +622,7 @@ extension _ChatSection on _HomePageState {
       case ProjectChatAgentAction.reply:
         final text = directive.replyText.trim().isNotEmpty
             ? directive.replyText.trim()
-            : 'Я посмотрел контекст, но не смог сформулировать полезный ответ.';
+            : labels.emptyReplyMessage;
         await _sendProjectChatAgentMessage(store, text);
         return;
     }
@@ -648,7 +660,7 @@ extension _ChatSection on _HomePageState {
           actorProfile: store.owner.value,
           conversationKey: conversationKey,
           messageType: 'text',
-          text: 'Тудушкер: $clean',
+          text: _projectChatAgentLabels.ownerFallbackMessage(clean),
           clientMessageId:
               'tudushker-fallback-${DateTime.now().microsecondsSinceEpoch}',
         );
@@ -967,14 +979,14 @@ extension _ChatSection on _HomePageState {
       await channel.invokeMethod<bool>('saveImage', {'url': url});
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Фото сохранено в галерею')),
+          SnackBar(content: Text(_projectChatAgentLabels.imageSavedToGallery)),
         );
       }
     } catch (e, st) {
       debugPrint('[gallery] save photo error: $e\n$st');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Не удалось сохранить фото')),
+          SnackBar(content: Text(_projectChatAgentLabels.imageSaveFailed)),
         );
       }
     }

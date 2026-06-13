@@ -98,6 +98,38 @@
   },
   "homeNoWorkspaceAccess": "No workspace access",
   "homeSelectWorkspaceProjectReason": "Select a project linked to a workspace.",
+  "homeProjectChatAgentDraftButtonUserMessage": "User pressed the task draft button.",
+  "homeProjectChatAgentTitle": "Tudushker: {projectName}",
+  "@homeProjectChatAgentTitle": {
+    "placeholders": {
+      "projectName": {}
+    }
+  },
+  "homeProjectChatAgentAnalyzing": "Tudushker is analyzing the chat.",
+  "homeProjectChatAgentUnstructuredResponse": "Tudushker returned an unstructured response.",
+  "homeProjectChatAgentAnalyzeFailed": "Could not analyze the project chat.",
+  "homeProjectChatAgentSelectWorkspace": "Select the project workspace in Project Control Center.",
+  "homeProjectChatAgentStarting": "Project agent is starting in CodeWhale.",
+  "homeProjectChatAgentStartFailed": "Could not start the project agent.",
+  "homeProjectChatAgentTaskCreated": "Task created in project {projectName}.",
+  "@homeProjectChatAgentTaskCreated": {
+    "placeholders": {
+      "projectName": {}
+    }
+  },
+  "homeProjectChatAgentUnstructuredResponseMessage": "I received an unstructured model response and did not send it to the chat. Try making the request a little more specific.",
+  "homeProjectChatAgentRequestFailedMessage": "I could not process the request. Check the project workspace and CodeWhale availability.",
+  "homeProjectChatAgentTaskDraftMissingMessage": "I understood that a task card is needed, but could not build a structured draft.",
+  "homeProjectChatAgentSessionStartedMessage": "Started a work session in the project workspace.",
+  "homeProjectChatAgentEmptyReplyMessage": "I checked the context, but could not formulate a useful response.",
+  "homeProjectChatAgentOwnerFallbackMessage": "Tudushker: {message}",
+  "@homeProjectChatAgentOwnerFallbackMessage": {
+    "placeholders": {
+      "message": {}
+    }
+  },
+  "homeImageSavedToGallery": "Photo saved to gallery",
+  "homeImageSaveFailed": "Could not save photo",
   "colorSchemeTooltip": "Color scheme",
   "undoLastAction": "Undo last action",
   "lastActionUndone": "Last action undone",

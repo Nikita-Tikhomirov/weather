@@ -183,6 +183,63 @@ class AppLocalizationsRu extends AppLocalizations {
   String get homeSelectWorkspaceProjectReason => 'Выберите проект, связанный с воркспейсом.';
 
   @override
+  String get homeProjectChatAgentDraftButtonUserMessage => 'Пользователь нажал кнопку создания черновика задачи.';
+
+  @override
+  String homeProjectChatAgentTitle(Object projectName) {
+    return 'Тудушкер: $projectName';
+  }
+
+  @override
+  String get homeProjectChatAgentAnalyzing => 'Тудушкер анализирует чат.';
+
+  @override
+  String get homeProjectChatAgentUnstructuredResponse => 'Тудушкер вернул неструктурированный ответ.';
+
+  @override
+  String get homeProjectChatAgentAnalyzeFailed => 'Не удалось проанализировать чат проекта.';
+
+  @override
+  String get homeProjectChatAgentSelectWorkspace => 'Выберите workspace проекта в Project Control Center.';
+
+  @override
+  String get homeProjectChatAgentStarting => 'Агент проекта запускается в CodeWhale.';
+
+  @override
+  String get homeProjectChatAgentStartFailed => 'Не удалось запустить агента проекта.';
+
+  @override
+  String homeProjectChatAgentTaskCreated(Object projectName) {
+    return 'Задача создана в проекте $projectName.';
+  }
+
+  @override
+  String get homeProjectChatAgentUnstructuredResponseMessage => 'Я получил неструктурированный ответ модели и не стал отправлять его в чат. Повторите запрос чуть точнее.';
+
+  @override
+  String get homeProjectChatAgentRequestFailedMessage => 'Не смог обработать запрос. Проверьте workspace проекта и доступность CodeWhale.';
+
+  @override
+  String get homeProjectChatAgentTaskDraftMissingMessage => 'Я понял, что нужна карточка, но не смог собрать структурированный черновик.';
+
+  @override
+  String get homeProjectChatAgentSessionStartedMessage => 'Запустил рабочую сессию в workspace проекта.';
+
+  @override
+  String get homeProjectChatAgentEmptyReplyMessage => 'Я посмотрел контекст, но не смог сформулировать полезный ответ.';
+
+  @override
+  String homeProjectChatAgentOwnerFallbackMessage(Object message) {
+    return 'Тудушкер: $message';
+  }
+
+  @override
+  String get homeImageSavedToGallery => 'Фото сохранено в галерею';
+
+  @override
+  String get homeImageSaveFailed => 'Не удалось сохранить фото';
+
+  @override
   String get colorSchemeTooltip => 'Цветовая схема';
 
   @override

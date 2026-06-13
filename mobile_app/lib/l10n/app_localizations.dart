@@ -407,6 +407,108 @@ abstract class AppLocalizations {
   /// **'Select a project linked to a workspace.'**
   String get homeSelectWorkspaceProjectReason;
 
+  /// No description provided for @homeProjectChatAgentDraftButtonUserMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'User pressed the task draft button.'**
+  String get homeProjectChatAgentDraftButtonUserMessage;
+
+  /// No description provided for @homeProjectChatAgentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tudushker: {projectName}'**
+  String homeProjectChatAgentTitle(Object projectName);
+
+  /// No description provided for @homeProjectChatAgentAnalyzing.
+  ///
+  /// In en, this message translates to:
+  /// **'Tudushker is analyzing the chat.'**
+  String get homeProjectChatAgentAnalyzing;
+
+  /// No description provided for @homeProjectChatAgentUnstructuredResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Tudushker returned an unstructured response.'**
+  String get homeProjectChatAgentUnstructuredResponse;
+
+  /// No description provided for @homeProjectChatAgentAnalyzeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not analyze the project chat.'**
+  String get homeProjectChatAgentAnalyzeFailed;
+
+  /// No description provided for @homeProjectChatAgentSelectWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the project workspace in Project Control Center.'**
+  String get homeProjectChatAgentSelectWorkspace;
+
+  /// No description provided for @homeProjectChatAgentStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Project agent is starting in CodeWhale.'**
+  String get homeProjectChatAgentStarting;
+
+  /// No description provided for @homeProjectChatAgentStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the project agent.'**
+  String get homeProjectChatAgentStartFailed;
+
+  /// No description provided for @homeProjectChatAgentTaskCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Task created in project {projectName}.'**
+  String homeProjectChatAgentTaskCreated(Object projectName);
+
+  /// No description provided for @homeProjectChatAgentUnstructuredResponseMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'I received an unstructured model response and did not send it to the chat. Try making the request a little more specific.'**
+  String get homeProjectChatAgentUnstructuredResponseMessage;
+
+  /// No description provided for @homeProjectChatAgentRequestFailedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'I could not process the request. Check the project workspace and CodeWhale availability.'**
+  String get homeProjectChatAgentRequestFailedMessage;
+
+  /// No description provided for @homeProjectChatAgentTaskDraftMissingMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'I understood that a task card is needed, but could not build a structured draft.'**
+  String get homeProjectChatAgentTaskDraftMissingMessage;
+
+  /// No description provided for @homeProjectChatAgentSessionStartedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Started a work session in the project workspace.'**
+  String get homeProjectChatAgentSessionStartedMessage;
+
+  /// No description provided for @homeProjectChatAgentEmptyReplyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'I checked the context, but could not formulate a useful response.'**
+  String get homeProjectChatAgentEmptyReplyMessage;
+
+  /// No description provided for @homeProjectChatAgentOwnerFallbackMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Tudushker: {message}'**
+  String homeProjectChatAgentOwnerFallbackMessage(Object message);
+
+  /// No description provided for @homeImageSavedToGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo saved to gallery'**
+  String get homeImageSavedToGallery;
+
+  /// No description provided for @homeImageSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save photo'**
+  String get homeImageSaveFailed;
+
   /// No description provided for @colorSchemeTooltip.
   ///
   /// In en, this message translates to:

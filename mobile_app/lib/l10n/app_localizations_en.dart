@@ -183,6 +183,63 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeSelectWorkspaceProjectReason => 'Select a project linked to a workspace.';
 
   @override
+  String get homeProjectChatAgentDraftButtonUserMessage => 'User pressed the task draft button.';
+
+  @override
+  String homeProjectChatAgentTitle(Object projectName) {
+    return 'Tudushker: $projectName';
+  }
+
+  @override
+  String get homeProjectChatAgentAnalyzing => 'Tudushker is analyzing the chat.';
+
+  @override
+  String get homeProjectChatAgentUnstructuredResponse => 'Tudushker returned an unstructured response.';
+
+  @override
+  String get homeProjectChatAgentAnalyzeFailed => 'Could not analyze the project chat.';
+
+  @override
+  String get homeProjectChatAgentSelectWorkspace => 'Select the project workspace in Project Control Center.';
+
+  @override
+  String get homeProjectChatAgentStarting => 'Project agent is starting in CodeWhale.';
+
+  @override
+  String get homeProjectChatAgentStartFailed => 'Could not start the project agent.';
+
+  @override
+  String homeProjectChatAgentTaskCreated(Object projectName) {
+    return 'Task created in project $projectName.';
+  }
+
+  @override
+  String get homeProjectChatAgentUnstructuredResponseMessage => 'I received an unstructured model response and did not send it to the chat. Try making the request a little more specific.';
+
+  @override
+  String get homeProjectChatAgentRequestFailedMessage => 'I could not process the request. Check the project workspace and CodeWhale availability.';
+
+  @override
+  String get homeProjectChatAgentTaskDraftMissingMessage => 'I understood that a task card is needed, but could not build a structured draft.';
+
+  @override
+  String get homeProjectChatAgentSessionStartedMessage => 'Started a work session in the project workspace.';
+
+  @override
+  String get homeProjectChatAgentEmptyReplyMessage => 'I checked the context, but could not formulate a useful response.';
+
+  @override
+  String homeProjectChatAgentOwnerFallbackMessage(Object message) {
+    return 'Tudushker: $message';
+  }
+
+  @override
+  String get homeImageSavedToGallery => 'Photo saved to gallery';
+
+  @override
+  String get homeImageSaveFailed => 'Could not save photo';
+
+  @override
   String get colorSchemeTooltip => 'Color scheme';
 
   @override
