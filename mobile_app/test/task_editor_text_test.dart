@@ -15,6 +15,14 @@ void main() {
     expect(text.removeAttachment, 'Убрать вложение');
     expect(text.fileReadFailed, 'Не удалось прочитать файл');
     expect(text.fileOpenFailed, 'Не удалось открыть файл');
+    expect(
+      text.selectAgentWorkspace,
+      'Выберите воркспейс для агентского чата',
+    );
+    expect(
+      text.noAgentChatsInWorkspace,
+      'В этом воркспейсе нет агентских чатов',
+    );
   });
 
   testWidgets('reads English labels from AppLocalizations', (tester) async {
@@ -52,5 +60,10 @@ void main() {
     );
     expect(text.fileReadFailed, 'Could not read file');
     expect(text.fileOpenFailed, 'Could not open file');
+    expect(text.selectAgentWorkspace, 'Select workspace for agent chat');
+    expect(
+      text.noAgentChatsInWorkspace,
+      'No agent chats in this workspace',
+    );
   });
 }

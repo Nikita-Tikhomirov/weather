@@ -623,6 +623,12 @@ abstract class AppLocalizations {
   /// **'Select agent chat'**
   String get taskSelectAgentChat;
 
+  /// No description provided for @taskSelectAgentWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Select workspace for agent chat'**
+  String get taskSelectAgentWorkspace;
+
   /// No description provided for @taskAgentNewChat.
   ///
   /// In en, this message translates to:
@@ -646,6 +652,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No agent chats connected'**
   String get taskAgentNoChats;
+
+  /// No description provided for @taskNoAgentChatsInWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'No agent chats in this workspace'**
+  String get taskNoAgentChatsInWorkspace;
 
   /// No description provided for @taskAgentQueueRunning.
   ///

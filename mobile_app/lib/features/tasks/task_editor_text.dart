@@ -28,11 +28,17 @@ class TaskEditorText {
   String get agentConnectChat => l10n?.taskAgentConnectChat ?? 'Подключить чат';
   String get selectAgentChat =>
       l10n?.taskSelectAgentChat ?? 'Выберите агентский чат';
+  String get selectAgentWorkspace =>
+      l10n?.taskSelectAgentWorkspace ??
+      'Выберите воркспейс для агентского чата';
   String get agentNewChat => l10n?.taskAgentNewChat ?? 'Новый чат';
   String get agentChat => l10n?.taskAgentChat ?? 'Агентский чат';
   String get agentTaskChats => l10n?.taskAgentTaskChats ?? 'Чаты задачи';
   String get agentNoChats =>
       l10n?.taskAgentNoChats ?? 'Агентские чаты не подключены';
+  String get noAgentChatsInWorkspace =>
+      l10n?.taskNoAgentChatsInWorkspace ??
+      'В этом воркспейсе нет агентских чатов';
   String get agentQueueRunning => l10n?.taskAgentQueueRunning ?? 'Очередь идет';
   String get workspace => l10n?.taskWorkspace ?? 'Воркспейс';
   String get workspaceField =>

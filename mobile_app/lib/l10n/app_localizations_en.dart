@@ -275,6 +275,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskSelectAgentChat => 'Select agent chat';
 
   @override
+  String get taskSelectAgentWorkspace => 'Select workspace for agent chat';
+
+  @override
   String get taskAgentNewChat => 'New chat';
 
   @override
@@ -285,6 +288,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get taskAgentNoChats => 'No agent chats connected';
+
+  @override
+  String get taskNoAgentChatsInWorkspace => 'No agent chats in this workspace';
 
   @override
   String get taskAgentQueueRunning => 'Queue running';

@@ -275,6 +275,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskSelectAgentChat => 'Выберите агентский чат';
 
   @override
+  String get taskSelectAgentWorkspace =>
+      'Выберите воркспейс для агентского чата';
+
+  @override
   String get taskAgentNewChat => 'Новый чат';
 
   @override
@@ -285,6 +289,10 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get taskAgentNoChats => 'Агентские чаты не подключены';
+
+  @override
+  String get taskNoAgentChatsInWorkspace =>
+      'В этом воркспейсе нет агентских чатов';
 
   @override
   String get taskAgentQueueRunning => 'Очередь идет';

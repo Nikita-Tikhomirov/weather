@@ -1211,6 +1211,63 @@ void main() {
       expect(find.textContaining('Ожидает'), findsNothing);
     });
 
+    testWidgets('uses localized empty agent session snackbar', (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      _FakeAgentBridge? bridge;
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Executor',
+        plugins: [],
+        allowedCommands: [
+          'session_open',
+          'session_send',
+          'session_update_task_card',
+        ],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              );
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Agent'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Connect chat'));
+      await tester.pumpAndSettle();
+
+      expect(bridge!.sessionListRequestCount, 1);
+      expect(find.text('No agent chats in this workspace'), findsOneWidget);
+      expect(find.text('В этом воркспейсе нет агентских чатов'), findsNothing);
+    });
+
     testWidgets('uses localized agent save-first snackbar', (tester) async {
       final store = _FakeTaskStore();
       store.selectedDate.value = DateTime(2026, 5, 31);
@@ -1548,13 +1605,16 @@ void main() {
         mode: 'executor',
         modeLabel: 'Исполнитель',
         plugins: [],
-        allowedCommands: ['session_create', 'session_send'],
+        allowedCommands: ['session_open', 'session_create', 'session_send'],
         reason: '',
         workspaceId: 'project-1',
       );
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           theme: ThemeData(splashFactory: NoSplash.splashFactory),
           home: TaskEditorScreen(
             store: store,
@@ -1591,15 +1651,16 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('Агент'));
+      await tester.tap(find.text('Agent'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Новый чат'));
+      await tester.tap(find.text('New chat'));
       await tester.pumpAndSettle();
 
       expect(repository.fakeApi.agentTicketCount, 0);
       expect(repository.fakeApi.agentContextCount, 0);
       expect(bridge!.createSessionCount, 0);
-      expect(find.textContaining('Выберите воркспейс'), findsWidgets);
+      expect(find.textContaining('Select workspace'), findsWidgets);
+      expect(find.textContaining('Выберите воркспейс'), findsNothing);
     });
 
     testWidgets('agent task actions update card status and attach report',

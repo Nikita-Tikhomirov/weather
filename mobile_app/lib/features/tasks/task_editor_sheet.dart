@@ -1538,6 +1538,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   Future<void> _startNewAgentChat() async {
     final policy = widget.agentPolicy;
+    final text = TaskEditorText.of(context);
     if (!_canEdit || _agentLaunching) return;
     if (!policy.canStartAgentChat) {
       _showSnack(
@@ -1555,7 +1556,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     if (saved == null || saved.id.trim().isEmpty) {
       if (mounted) {
         setState(() => _agentLaunching = false);
-        _showSnack(TaskEditorText.of(context).saveTaskFirst);
+        _showSnack(text.saveTaskFirst);
       }
       return;
     }
@@ -1581,7 +1582,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     final workspaceId = _effectiveAgentWorkspaceId(policy);
     if (workspaceId.trim().isEmpty) {
       if (mounted) {
-        const message = 'Выберите воркспейс для агентского чата';
+        final message = text.selectAgentWorkspace;
         setState(() {
           _agentLaunching = false;
           _agentLaunchError = message;
@@ -3208,7 +3209,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     }
     final workspaceId = _effectiveAgentWorkspaceId(policy);
     if (workspaceId.trim().isEmpty) {
-      const message = 'Выберите воркспейс для агентского чата';
+      final message = text.selectAgentWorkspace;
       setState(() => _agentLaunchError = message);
       _showSnack(message);
       return;
@@ -3218,7 +3219,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       return;
     }
     if (sessions.isEmpty) {
-      _showSnack('В этом воркспейсе нет агентских чатов');
+      _showSnack(text.noAgentChatsInWorkspace);
       return;
     }
     final selected = await _showAgentSessionPicker(sessions);
