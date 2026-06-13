@@ -742,22 +742,29 @@ extension _ChatSection on _HomePageState {
   // ── Chat message helpers ────────────────────────────────────
 
   String chatMessageText(ChatMessage message) {
+    final l10n = AppLocalizations.of(context);
     if (message.isDeleted) {
-      return 'Сообщение удалено';
+      return l10n?.messageDeleted ?? 'Message deleted';
     }
     if (message.messageType == 'image' ||
         message.messageType == 'image_group') {
-      return message.text.isNotEmpty ? message.text : 'Фото';
+      return message.text.isNotEmpty
+          ? message.text
+          : (l10n?.imageMessage ?? 'Image');
     }
     if (message.messageType == 'video' ||
         message.messageType == 'video_group') {
-      return message.text.isNotEmpty ? message.text : 'Видео';
+      return message.text.isNotEmpty ? message.text : 'Video';
     }
     if (message.messageType == 'audio') {
-      return message.text.isNotEmpty ? message.text : 'Аудио';
+      return message.text.isNotEmpty
+          ? message.text
+          : (l10n?.audioMessage ?? 'Audio');
     }
     if (message.messageType == 'voice') {
-      return message.text.isNotEmpty ? message.text : 'Голосовое сообщение';
+      return message.text.isNotEmpty
+          ? message.text
+          : (l10n?.voiceMessage ?? 'Voice message');
     }
     if (message.messageType == 'sticker') {
       final explicitText = message.text.trim();
@@ -768,7 +775,7 @@ extension _ChatSection on _HomePageState {
       if (item != null && item.title.trim().isNotEmpty) {
         return item.title.trim();
       }
-      return 'Стикер недоступен';
+      return l10n?.stickerUnavailable ?? 'Sticker unavailable';
     }
     return message.text;
   }
@@ -844,7 +851,7 @@ extension _ChatSection on _HomePageState {
     if (conversation.kind == 'group' ||
         conversation.conversationKey == 'group:common') {
       final title = conversation.title.trim();
-      return title.isNotEmpty ? title : 'Общий';
+      return title.isNotEmpty ? title : 'Group';
     }
     final peer = conversation.members.firstWhere(
       (item) => item != actor,
