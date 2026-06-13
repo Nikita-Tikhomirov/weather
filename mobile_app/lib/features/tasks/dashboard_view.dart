@@ -9,15 +9,15 @@ class _DashboardText {
 
   final AppLocalizations? l10n;
 
-  String get onDate => l10n?.dashboardOnDate ?? 'На дату';
-  String get done => l10n?.dashboardDone ?? 'Сделано';
-  String get doneHint => l10n?.workflowDone ?? 'Выполнено';
-  String get family => l10n?.dashboardFamily ?? 'Семейных';
-  String get familyHint => l10n?.dashboardFamilyHint ?? 'Семейные';
-  String get overdue => l10n?.dashboardOverdue ?? 'Просрочено';
-  String get overdueHint => l10n?.dashboardOverdueHint ?? 'Просрочка';
-  String get selectDate => l10n?.selectDate ?? 'Выбрать дату';
-  String get upcomingTasks => l10n?.upcomingTasks ?? 'Ближайшие задачи';
+  String get onDate => l10n?.dashboardOnDate ?? 'On date';
+  String get done => l10n?.dashboardDone ?? 'Done';
+  String get doneHint => l10n?.workflowDone ?? 'Done';
+  String get family => l10n?.dashboardFamily ?? 'Family';
+  String get familyHint => l10n?.dashboardFamilyHint ?? 'Family';
+  String get overdue => l10n?.dashboardOverdue ?? 'Overdue';
+  String get overdueHint => l10n?.dashboardOverdueHint ?? 'Overdue';
+  String get selectDate => l10n?.selectDate ?? 'Select date';
+  String get upcomingTasks => l10n?.upcomingTasks ?? 'Upcoming tasks';
 }
 
 class DashboardView extends StatelessWidget {

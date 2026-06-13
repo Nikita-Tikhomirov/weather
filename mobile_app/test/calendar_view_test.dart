@@ -31,7 +31,33 @@ void main() {
       // Month header contains year
       expect(find.textContaining('2026'), findsOneWidget);
       // Today button
-      expect(find.text('Сегодня'), findsOneWidget);
+      expect(find.text('Today'), findsOneWidget);
+    });
+
+    testWidgets('day tasks page uses English fallback labels', (tester) async {
+      var addCalled = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: DayTasksPage(
+            day: DateTime(2026, 5, 31),
+            tasks: const [],
+            labelFor: (String p) => p,
+            onEdit: (TaskItem t) async {},
+            onDelete: (TaskItem t) async {},
+            onAddForDate: (DateTime d) async {
+              addCalled = true;
+            },
+          ),
+        ),
+      );
+
+      expect(find.text('No tasks for this date'), findsOneWidget);
+      expect(find.byTooltip('Add Task'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Add Task'));
+      expect(addCalled, isTrue);
     });
 
     testWidgets('uses localized today action when delegates are available',

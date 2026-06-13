@@ -6,24 +6,24 @@ import 'task_card.dart';
 import 'tasks_board.dart';
 
 String _todayLabel(BuildContext context) {
-  return AppLocalizations.of(context)?.today ?? 'Сегодня';
+  return AppLocalizations.of(context)?.today ?? 'Today';
 }
 
 String _addTaskLabel(BuildContext context) {
-  return AppLocalizations.of(context)?.addTask ?? 'Добавить задачу';
+  return AppLocalizations.of(context)?.addTask ?? 'Add Task';
 }
 
 String _noTasksForDateLabel(BuildContext context) {
   return AppLocalizations.of(context)?.noTasksForDate ??
-      'На эту дату задач нет';
+      'No tasks for this date';
 }
 
 String _closeLabel(BuildContext context) {
-  return AppLocalizations.of(context)?.close ?? 'Закрыть';
+  return AppLocalizations.of(context)?.close ?? 'Close';
 }
 
 String _moreLabel(BuildContext context) {
-  return AppLocalizations.of(context)?.more ?? 'еще';
+  return AppLocalizations.of(context)?.more ?? 'more';
 }
 
 /// Full month grid calendar (4 columns). Tap a day → navigate to DayTasksPage.
