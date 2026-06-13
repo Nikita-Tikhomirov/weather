@@ -25,6 +25,20 @@ void main() {
       text.noAgentChatsInWorkspace,
       'В этом воркспейсе нет агентских чатов',
     );
+    expect(
+      text.agentChatNotLinkedToWorkspace,
+      'Агентский чат не связан с воркспейсом',
+    );
+    expect(text.agentConnectNoAccess, 'Нет прав на подключение чата');
+    expect(text.connectedAgentChatTitle, 'Подключенный агентский чат');
+    expect(
+      text.agentChatConnectedToCard,
+      'Агентский чат подключен к карточке',
+    );
+    expect(
+      text.agentChatConnectFailed('ошибка'),
+      'Не удалось подключить чат: ошибка',
+    );
     expect(text.codeWhaleUnavailable, 'CodeWhale недоступен');
     expect(
       text.agentToolsLoadFailed('ошибка'),
@@ -77,6 +91,20 @@ void main() {
     expect(
       text.noAgentChatsInWorkspace,
       'No agent chats in this workspace',
+    );
+    expect(
+      text.agentChatNotLinkedToWorkspace,
+      'Agent chat is not linked to a workspace',
+    );
+    expect(text.agentConnectNoAccess, 'No permission to connect chat');
+    expect(text.connectedAgentChatTitle, 'Connected agent chat');
+    expect(
+      text.agentChatConnectedToCard,
+      'Agent chat connected to the task card',
+    );
+    expect(
+      text.agentChatConnectFailed('network'),
+      'Could not connect chat: network',
     );
     expect(text.codeWhaleUnavailable, 'CodeWhale is unavailable');
     expect(

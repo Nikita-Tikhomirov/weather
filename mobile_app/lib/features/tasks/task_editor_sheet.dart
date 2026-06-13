@@ -1900,7 +1900,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         : _effectiveAgentWorkspaceId(policy);
     final bridgeSessionId = session.sessionId.trim();
     if (workspaceId.isEmpty || bridgeSessionId.isEmpty) {
-      _showSnack('Агентский чат не связан с воркспейсом');
+      _showSnack(text.agentChatNotLinkedToWorkspace);
       return;
     }
     setState(() {
@@ -3186,7 +3186,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     if (!_canEdit) return;
     if (!policy.canLinkExistingChat) {
       _showSnack(
-        policy.reason.isEmpty ? 'Нет прав на подключение чата' : policy.reason,
+        policy.reason.isEmpty ? text.agentConnectNoAccess : policy.reason,
       );
       return;
     }
@@ -3282,11 +3282,12 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     CodeWhaleBridgeService bridge,
     WorkspaceSession bridgeSession,
   ) async {
+    final text = TaskEditorText.of(context);
     final workspaceId = bridgeSession.workspaceId.trim().isNotEmpty
         ? bridgeSession.workspaceId.trim()
         : _effectiveAgentWorkspaceId(policy);
     if (workspaceId.isEmpty || bridgeSession.id.trim().isEmpty) {
-      _showSnack('Агентский чат не связан с воркспейсом');
+      _showSnack(text.agentChatNotLinkedToWorkspace);
       return;
     }
     final now = DateTime.now().toIso8601String();
@@ -3303,7 +3304,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
               workspaceId: workspaceId,
               sessionId: bridgeSession.id,
               title: bridgeSession.title.trim().isEmpty
-                  ? 'Подключенный агентский чат'
+                  ? text.connectedAgentChatTitle
                   : bridgeSession.title.trim(),
               mode: policy.mode,
               status: 'linked',
@@ -3316,7 +3317,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       title: bridgeSession.title.trim().isEmpty
           ? (existing?.title.isNotEmpty == true
               ? existing!.title
-              : 'Подключенный агентский чат')
+              : text.connectedAgentChatTitle)
           : bridgeSession.title.trim(),
       mode: policy.mode.trim().isNotEmpty ? policy.mode : existing?.mode,
       status: 'linked',
@@ -3408,9 +3409,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       );
       bridge.openSession(workspaceId, bridgeSession.id);
       _autosaveNow();
-      _showSnack('Агентский чат подключен к карточке');
+      _showSnack(text.agentChatConnectedToCard);
     } catch (error) {
-      _showSnack('Не удалось подключить чат: $error');
+      _showSnack(text.agentChatConnectFailed(error));
     }
   }
 

@@ -296,6 +296,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskNoAgentChatsInWorkspace => 'No agent chats in this workspace';
 
   @override
+  String get taskAgentChatNotLinkedToWorkspace =>
+      'Agent chat is not linked to a workspace';
+
+  @override
+  String get taskAgentConnectNoAccess => 'No permission to connect chat';
+
+  @override
+  String get taskConnectedAgentChatTitle => 'Connected agent chat';
+
+  @override
+  String get taskAgentChatConnectedToCard =>
+      'Agent chat connected to the task card';
+
+  @override
+  String taskAgentChatConnectFailed(Object error) {
+    return 'Could not connect chat: $error';
+  }
+
+  @override
   String get taskAgentQueueRunning => 'Queue running';
 
   @override

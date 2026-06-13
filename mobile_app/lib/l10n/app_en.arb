@@ -102,6 +102,16 @@
   "taskAgentTaskChats": "Task chats",
   "taskAgentNoChats": "No agent chats connected",
   "taskNoAgentChatsInWorkspace": "No agent chats in this workspace",
+  "taskAgentChatNotLinkedToWorkspace": "Agent chat is not linked to a workspace",
+  "taskAgentConnectNoAccess": "No permission to connect chat",
+  "taskConnectedAgentChatTitle": "Connected agent chat",
+  "taskAgentChatConnectedToCard": "Agent chat connected to the task card",
+  "taskAgentChatConnectFailed": "Could not connect chat: {error}",
+  "@taskAgentChatConnectFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "taskAgentQueueRunning": "Queue running",
   "taskAgentQuestionBlocksWork": "Blocks work",
   "taskWorkspace": "Workspace",

@@ -102,6 +102,16 @@
   "taskAgentTaskChats": "Чаты задачи",
   "taskAgentNoChats": "Агентские чаты не подключены",
   "taskNoAgentChatsInWorkspace": "В этом воркспейсе нет агентских чатов",
+  "taskAgentChatNotLinkedToWorkspace": "Агентский чат не связан с воркспейсом",
+  "taskAgentConnectNoAccess": "Нет прав на подключение чата",
+  "taskConnectedAgentChatTitle": "Подключенный агентский чат",
+  "taskAgentChatConnectedToCard": "Агентский чат подключен к карточке",
+  "taskAgentChatConnectFailed": "Не удалось подключить чат: {error}",
+  "@taskAgentChatConnectFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "taskAgentQueueRunning": "Очередь идет",
   "taskAgentQuestionBlocksWork": "Блокирует работу",
   "taskWorkspace": "Воркспейс",

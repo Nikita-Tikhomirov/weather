@@ -40,6 +40,19 @@ class TaskEditorText {
   String get noAgentChatsInWorkspace =>
       l10n?.taskNoAgentChatsInWorkspace ??
       'В этом воркспейсе нет агентских чатов';
+  String get agentChatNotLinkedToWorkspace =>
+      l10n?.taskAgentChatNotLinkedToWorkspace ??
+      'Агентский чат не связан с воркспейсом';
+  String get agentConnectNoAccess =>
+      l10n?.taskAgentConnectNoAccess ?? 'Нет прав на подключение чата';
+  String get connectedAgentChatTitle =>
+      l10n?.taskConnectedAgentChatTitle ?? 'Подключенный агентский чат';
+  String get agentChatConnectedToCard =>
+      l10n?.taskAgentChatConnectedToCard ??
+      'Агентский чат подключен к карточке';
+  String agentChatConnectFailed(Object error) =>
+      l10n?.taskAgentChatConnectFailed(error) ??
+      'Не удалось подключить чат: $error';
   String get agentQueueRunning => l10n?.taskAgentQueueRunning ?? 'Очередь идет';
   String get workspace => l10n?.taskWorkspace ?? 'Воркспейс';
   String get workspaceField =>

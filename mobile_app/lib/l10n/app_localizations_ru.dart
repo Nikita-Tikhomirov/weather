@@ -298,6 +298,25 @@ class AppLocalizationsRu extends AppLocalizations {
       'В этом воркспейсе нет агентских чатов';
 
   @override
+  String get taskAgentChatNotLinkedToWorkspace =>
+      'Агентский чат не связан с воркспейсом';
+
+  @override
+  String get taskAgentConnectNoAccess => 'Нет прав на подключение чата';
+
+  @override
+  String get taskConnectedAgentChatTitle => 'Подключенный агентский чат';
+
+  @override
+  String get taskAgentChatConnectedToCard =>
+      'Агентский чат подключен к карточке';
+
+  @override
+  String taskAgentChatConnectFailed(Object error) {
+    return 'Не удалось подключить чат: $error';
+  }
+
+  @override
   String get taskAgentQueueRunning => 'Очередь идет';
 
   @override

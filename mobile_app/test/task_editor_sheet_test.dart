@@ -1267,6 +1267,81 @@ void main() {
       expect(find.textContaining('Ожидает'), findsNothing);
     });
 
+    testWidgets('uses localized connected agent chat fallback and snackbar',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      _FakeAgentBridge? bridge;
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Executor',
+        plugins: [],
+        allowedCommands: [
+          'session_open',
+          'session_send',
+          'session_update_task_card',
+        ],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              )..sessions = const [
+                  WorkspaceSession(
+                    id: 'bridge-session-untitled',
+                    workspaceId: 'weather',
+                    title: '',
+                    status: WorkspaceSessionStatus.idle,
+                  ),
+                ];
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Agent'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Connect chat'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Agent chat').last);
+      await tester.pumpAndSettle();
+
+      expect(bridge!.openSessionCount, 1);
+      expect(
+        repository.upserts.last.collaboration.agentSessions.single.title,
+        'Connected agent chat',
+      );
+      expect(
+        find.text('Agent chat connected to the task card'),
+        findsOneWidget,
+      );
+      expect(find.text('Подключенный агентский чат'), findsNothing);
+      expect(find.text('Агентский чат подключен к карточке'), findsNothing);
+    });
+
     testWidgets('uses localized empty agent session snackbar', (tester) async {
       final repository = _FakeTaskRepository();
       final store = _FakeTaskStore(repository);

@@ -665,6 +665,36 @@ abstract class AppLocalizations {
   /// **'No agent chats in this workspace'**
   String get taskNoAgentChatsInWorkspace;
 
+  /// No description provided for @taskAgentChatNotLinkedToWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent chat is not linked to a workspace'**
+  String get taskAgentChatNotLinkedToWorkspace;
+
+  /// No description provided for @taskAgentConnectNoAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'No permission to connect chat'**
+  String get taskAgentConnectNoAccess;
+
+  /// No description provided for @taskConnectedAgentChatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected agent chat'**
+  String get taskConnectedAgentChatTitle;
+
+  /// No description provided for @taskAgentChatConnectedToCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent chat connected to the task card'**
+  String get taskAgentChatConnectedToCard;
+
+  /// No description provided for @taskAgentChatConnectFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect chat: {error}'**
+  String taskAgentChatConnectFailed(Object error);
+
   /// No description provided for @taskAgentQueueRunning.
   ///
   /// In en, this message translates to:
