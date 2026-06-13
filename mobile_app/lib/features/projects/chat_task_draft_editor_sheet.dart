@@ -9,23 +9,23 @@ class _ChatTaskDraftEditorText {
 
   final AppLocalizations? l10n;
 
-  String get draft => l10n?.chatTaskDraft ?? 'Черновик задачи';
-  String get title => l10n?.taskTitle ?? 'Заголовок';
-  String get details => l10n?.taskDetails ?? 'Описание';
-  String get summary => l10n?.taskSummary ?? 'Резюме';
-  String get checklist => l10n?.checklist ?? 'Чеклист';
+  String get draft => l10n?.chatTaskDraft ?? 'Task draft';
+  String get title => l10n?.taskTitle ?? 'Title';
+  String get details => l10n?.taskDetails ?? 'Details';
+  String get summary => l10n?.taskSummary ?? 'Summary';
+  String get checklist => l10n?.checklist ?? 'Checklist';
   String get actionItems => l10n?.actionItems ?? 'Action items';
-  String get decisions => l10n?.decisions ?? 'Решения';
-  String get blockers => l10n?.blockers ?? 'Блокеры';
-  String get assignees => l10n?.taskAssignees ?? 'Ответственные';
-  String get sources => l10n?.sources ?? 'Источники';
-  String get priority => l10n?.priority ?? 'Приоритет';
-  String get low => l10n?.low ?? 'Низкий';
-  String get medium => l10n?.medium ?? 'Средний';
-  String get high => l10n?.high ?? 'Высокий';
-  String get cancel => l10n?.cancel ?? 'Отмена';
-  String get createTask => l10n?.createTask ?? 'Создать задачу';
-  String get taskFromChat => l10n?.taskFromChat ?? 'Задача из чата';
+  String get decisions => l10n?.decisions ?? 'Decisions';
+  String get blockers => l10n?.blockers ?? 'Blockers';
+  String get assignees => l10n?.taskAssignees ?? 'Assignees';
+  String get sources => l10n?.sources ?? 'Sources';
+  String get priority => l10n?.priority ?? 'Priority';
+  String get low => l10n?.low ?? 'Low';
+  String get medium => l10n?.medium ?? 'Medium';
+  String get high => l10n?.high ?? 'High';
+  String get cancel => l10n?.cancel ?? 'Cancel';
+  String get createTask => l10n?.createTask ?? 'Create task';
+  String get taskFromChat => l10n?.taskFromChat ?? 'Task from chat';
 }
 
 class ChatTaskDraftEditorSheet extends StatefulWidget {
