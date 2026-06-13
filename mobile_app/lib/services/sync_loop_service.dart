@@ -3,6 +3,8 @@ import 'dart:async';
 import '../state/task_store.dart';
 import 'call_service.dart';
 
+String syncErrorMessage(Object error) => 'Sync error: $error';
+
 /// Standalone sync-loop manager extracted from _HomePageState.
 ///
 /// Owns periodic timers for delta sync (8s), full sync (10min),
@@ -82,7 +84,7 @@ class SyncLoopService {
       await store.syncDelta();
     } catch (error) {
       if (showErrors) {
-        onShowSnackBar?.call('Ошибка синхронизации: $error');
+        onShowSnackBar?.call(syncErrorMessage(error));
       }
     }
   }
@@ -92,7 +94,7 @@ class SyncLoopService {
       await store.syncFull();
     } catch (error) {
       if (showErrors) {
-        onShowSnackBar?.call('Ошибка синхронизации: $error');
+        onShowSnackBar?.call(syncErrorMessage(error));
       }
     }
   }

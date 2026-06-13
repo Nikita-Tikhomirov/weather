@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../services/sync_loop_service.dart';
 import '../../state/task_store.dart';
 
 /// Manages periodic sync timers previously embedded in _HomePageState.
@@ -63,7 +64,7 @@ class HomeSyncLoops {
     } catch (e, st) {
       debugPrint('[sync] delta error: $e\n$st');
       if (showErrors) {
-        onError?.call('Ошибка синхронизации: $e');
+        onError?.call(syncErrorMessage(e));
       }
     }
   }
@@ -74,7 +75,7 @@ class HomeSyncLoops {
     } catch (e, st) {
       debugPrint('[sync] full error: $e\n$st');
       if (showErrors) {
-        onError?.call('Ошибка синхронизации: $e');
+        onError?.call(syncErrorMessage(e));
       }
     }
   }

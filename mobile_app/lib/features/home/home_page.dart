@@ -1240,7 +1240,7 @@ class _HomePageState extends State<HomePage> {
     } catch (error) {
       if (showErrors && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка синхронизации: $error')),
+          SnackBar(content: Text(syncErrorMessage(error))),
         );
       }
     }
@@ -1255,7 +1255,7 @@ class _HomePageState extends State<HomePage> {
     } catch (error) {
       if (showErrors && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка синхронизации: $error')),
+          SnackBar(content: Text(syncErrorMessage(error))),
         );
       }
     }
