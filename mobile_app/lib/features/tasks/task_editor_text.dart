@@ -64,6 +64,14 @@ class TaskEditorText {
       l10n?.taskAgentToolsLoading ?? 'Список инструментов загружается';
   String get agentToolsNotLoaded =>
       l10n?.taskAgentToolsNotLoaded ?? 'Инструменты CodeWhale не загружены';
+  String get codeWhaleUnavailable =>
+      l10n?.taskCodeWhaleUnavailable ?? 'CodeWhale недоступен';
+  String agentToolsLoadFailed(Object error) =>
+      l10n?.taskAgentToolsLoadFailed(error) ??
+      'Не удалось загрузить инструменты агента: $error';
+  String agentWorkspacesLoadFailed(Object error) =>
+      l10n?.taskAgentWorkspacesLoadFailed(error) ??
+      'Не удалось загрузить воркспейсы: $error';
   String get continueAction => l10n?.continueAction ?? 'Продолжить';
   String get continueWork => l10n?.taskContinueWork ?? 'Продолжить работу';
   String get saveTaskFirst =>

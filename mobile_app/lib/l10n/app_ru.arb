@@ -118,6 +118,19 @@
   "taskAgentTools": "Инструменты",
   "taskAgentToolsLoading": "Список инструментов загружается",
   "taskAgentToolsNotLoaded": "Инструменты CodeWhale не загружены",
+  "taskCodeWhaleUnavailable": "CodeWhale недоступен",
+  "taskAgentToolsLoadFailed": "Не удалось загрузить инструменты агента: {error}",
+  "@taskAgentToolsLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "taskAgentWorkspacesLoadFailed": "Не удалось загрузить воркспейсы: {error}",
+  "@taskAgentWorkspacesLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "taskContinueWork": "Продолжить работу",
   "taskSaveTaskFirst": "Сначала сохраните задачу",
   "taskAgentSkills": "Скиллы",

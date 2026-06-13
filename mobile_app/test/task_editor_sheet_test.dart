@@ -189,6 +189,7 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
   String taskPromptReply = '';
   String familyTaskCardSkillReply = '';
   List<Map<String, dynamic>> commands = const [];
+  bool connectResult = true;
   int connectCount = 0;
   int commandListRequestCount = 0;
   int workspaceListRequestCount = 0;
@@ -202,7 +203,7 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
   @override
   Future<bool> connect() async {
     connectCount += 1;
-    return true;
+    return connectResult;
   }
 
   @override
@@ -942,6 +943,61 @@ void main() {
       );
       expect(find.text('Инструменты'), findsNothing);
       expect(find.text('Очередь выполнения'), findsNothing);
+    });
+
+    testWidgets('uses localized agent workspace load error snackbar',
+        (tester) async {
+      final store = _FakeTaskStore();
+      _seedProjectAccess(store);
+      _FakeAgentBridge? bridge;
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Executor',
+        plugins: [],
+        allowedCommands: ['session_open', 'session_create', 'session_send'],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              )..connectResult = false;
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Agent'));
+      await tester.pumpAndSettle();
+
+      expect(bridge!.connectCount, greaterThanOrEqualTo(1));
+      expect(find.textContaining('Could not load workspaces'), findsOneWidget);
+      expect(
+        find.textContaining('Не удалось загрузить воркспейсы'),
+        findsNothing,
+      );
+      expect(find.textContaining('CodeWhale недоступен'), findsNothing);
     });
 
     testWidgets('uses localized agent continuation actions', (tester) async {

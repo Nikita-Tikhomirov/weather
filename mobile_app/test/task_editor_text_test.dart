@@ -25,6 +25,15 @@ void main() {
       text.noAgentChatsInWorkspace,
       'В этом воркспейсе нет агентских чатов',
     );
+    expect(text.codeWhaleUnavailable, 'CodeWhale недоступен');
+    expect(
+      text.agentToolsLoadFailed('ошибка'),
+      'Не удалось загрузить инструменты агента: ошибка',
+    );
+    expect(
+      text.agentWorkspacesLoadFailed('ошибка'),
+      'Не удалось загрузить воркспейсы: ошибка',
+    );
   });
 
   testWidgets('reads English labels from AppLocalizations', (tester) async {
@@ -68,6 +77,15 @@ void main() {
     expect(
       text.noAgentChatsInWorkspace,
       'No agent chats in this workspace',
+    );
+    expect(text.codeWhaleUnavailable, 'CodeWhale is unavailable');
+    expect(
+      text.agentToolsLoadFailed('network'),
+      'Could not load agent tools: network',
+    );
+    expect(
+      text.agentWorkspacesLoadFailed('network'),
+      'Could not load workspaces: network',
     );
   });
 }

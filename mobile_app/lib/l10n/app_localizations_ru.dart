@@ -346,6 +346,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskAgentToolsNotLoaded => 'Инструменты CodeWhale не загружены';
 
   @override
+  String get taskCodeWhaleUnavailable => 'CodeWhale недоступен';
+
+  @override
+  String taskAgentToolsLoadFailed(Object error) {
+    return 'Не удалось загрузить инструменты агента: $error';
+  }
+
+  @override
+  String taskAgentWorkspacesLoadFailed(Object error) {
+    return 'Не удалось загрузить воркспейсы: $error';
+  }
+
+  @override
   String get taskContinueWork => 'Продолжить работу';
 
   @override

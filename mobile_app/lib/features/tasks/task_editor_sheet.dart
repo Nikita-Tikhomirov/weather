@@ -1272,12 +1272,13 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     if (_agentCommandsLoading || !widget.agentPolicy.allowed) {
       return;
     }
+    final text = TaskEditorText.of(context);
     setState(() => _agentCommandsLoading = true);
     final bridge = _ensureAgentBridge();
     try {
       final connected = await bridge.connect();
       if (!connected) {
-        throw StateError('CodeWhale недоступен');
+        throw StateError(text.codeWhaleUnavailable);
       }
       await _requestAgentWorkspaces(bridge);
       bridge.requestCodeWhaleCommands();
@@ -1290,23 +1291,24 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         _agentBridge = null;
       }
       setState(() => _agentCommandsLoading = false);
-      _showSnack('Не удалось загрузить инструменты агента: $error');
+      _showSnack(text.agentToolsLoadFailed(error));
     }
   }
 
   Future<void> _refreshAgentWorkspaces() async {
+    final text = TaskEditorText.of(context);
     final bridge = _ensureAgentBridge();
     try {
       final connected = await bridge.connect();
       if (!connected) {
-        throw StateError('CodeWhale недоступен');
+        throw StateError(text.codeWhaleUnavailable);
       }
       await _requestAgentWorkspaces(bridge);
     } catch (error) {
       if (!mounted) {
         return;
       }
-      _showSnack('Не удалось загрузить воркспейсы: $error');
+      _showSnack(text.agentWorkspacesLoadFailed(error));
     }
   }
 
@@ -1570,13 +1572,13 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     try {
       final connected = await bridge.connect();
       if (!connected) {
-        throw StateError('CodeWhale недоступен');
+        throw StateError(text.codeWhaleUnavailable);
       }
       await _requestAgentWorkspaces(bridge);
     } catch (error) {
       if (!mounted) return;
       setState(() => _agentLaunching = false);
-      _showSnack('Не удалось получить воркспейсы: $error');
+      _showSnack(text.agentWorkspacesLoadFailed(error));
       return;
     }
     final workspaceId = _effectiveAgentWorkspaceId(policy);
@@ -1881,6 +1883,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   Future<void> _continueAgentSession(TaskAgentSession session) async {
     final policy = widget.agentPolicy;
+    final text = TaskEditorText.of(context);
     if (!_canEdit || !_canContinueAgentSession(session, policy)) {
       _showSnack(
         policy.reason.isEmpty
@@ -1909,7 +1912,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     if (saved == null || saved.id.trim().isEmpty) {
       if (mounted) {
         setState(() => _agentLaunching = false);
-        _showSnack(TaskEditorText.of(context).saveTaskFirst);
+        _showSnack(text.saveTaskFirst);
       }
       return;
     }
@@ -1918,7 +1921,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     try {
       final connected = await bridge.connect();
       if (!connected) {
-        throw StateError('CodeWhale недоступен');
+        throw StateError(text.codeWhaleUnavailable);
       }
       final api = widget.store.repository.api;
       final taskType = _taskTypeForAgent(saved);
@@ -3197,14 +3200,14 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     try {
       final connected = await bridge.connect();
       if (!connected) {
-        throw StateError('CodeWhale недоступен');
+        throw StateError(text.codeWhaleUnavailable);
       }
       await _requestAgentWorkspaces(bridge);
     } catch (error) {
       if (!mounted) {
         return;
       }
-      _showSnack('Не удалось получить воркспейсы: $error');
+      _showSnack(text.agentWorkspacesLoadFailed(error));
       return;
     }
     final workspaceId = _effectiveAgentWorkspaceId(policy);

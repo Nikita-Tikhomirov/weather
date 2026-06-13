@@ -118,6 +118,19 @@
   "taskAgentTools": "Tools",
   "taskAgentToolsLoading": "Tool list is loading",
   "taskAgentToolsNotLoaded": "CodeWhale tools are not loaded",
+  "taskCodeWhaleUnavailable": "CodeWhale is unavailable",
+  "taskAgentToolsLoadFailed": "Could not load agent tools: {error}",
+  "@taskAgentToolsLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "taskAgentWorkspacesLoadFailed": "Could not load workspaces: {error}",
+  "@taskAgentWorkspacesLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "taskContinueWork": "Continue work",
   "taskSaveTaskFirst": "Save the task first",
   "taskAgentSkills": "Skills",

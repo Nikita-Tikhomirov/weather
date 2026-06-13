@@ -344,6 +344,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskAgentToolsNotLoaded => 'CodeWhale tools are not loaded';
 
   @override
+  String get taskCodeWhaleUnavailable => 'CodeWhale is unavailable';
+
+  @override
+  String taskAgentToolsLoadFailed(Object error) {
+    return 'Could not load agent tools: $error';
+  }
+
+  @override
+  String taskAgentWorkspacesLoadFailed(Object error) {
+    return 'Could not load workspaces: $error';
+  }
+
+  @override
   String get taskContinueWork => 'Continue work';
 
   @override

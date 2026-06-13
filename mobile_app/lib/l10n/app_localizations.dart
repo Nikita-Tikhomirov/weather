@@ -761,6 +761,24 @@ abstract class AppLocalizations {
   /// **'CodeWhale tools are not loaded'**
   String get taskAgentToolsNotLoaded;
 
+  /// No description provided for @taskCodeWhaleUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'CodeWhale is unavailable'**
+  String get taskCodeWhaleUnavailable;
+
+  /// No description provided for @taskAgentToolsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load agent tools: {error}'**
+  String taskAgentToolsLoadFailed(Object error);
+
+  /// No description provided for @taskAgentWorkspacesLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load workspaces: {error}'**
+  String taskAgentWorkspacesLoadFailed(Object error);
+
   /// No description provided for @taskContinueWork.
   ///
   /// In en, this message translates to:
