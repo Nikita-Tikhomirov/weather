@@ -1266,6 +1266,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminAgentRoles => 'Agent roles';
 
   @override
+  String get adminWorkspaceKind => 'Workspace';
+
+  @override
+  String get adminSelectUserAndWorkspace => 'Select a user and workspace';
+
+  @override
+  String get adminAccessGranted => 'Access granted';
+
+  @override
+  String get adminAccessRevoked => 'Access revoked';
+
+  @override
+  String adminRefreshProjectsFailed(Object error) {
+    return 'Could not refresh projects: $error';
+  }
+
+  @override
+  String adminLoadAccessFailed(Object error) {
+    return 'Could not load access grants: $error';
+  }
+
+  @override
+  String adminGrantAccessFailed(Object error) {
+    return 'Could not grant access: $error';
+  }
+
+  @override
+  String adminRevokeAccessFailed(Object error) {
+    return 'Could not revoke access: $error';
+  }
+
+  @override
   String adminUsersCount(int count) {
     return 'Users: $count';
   }

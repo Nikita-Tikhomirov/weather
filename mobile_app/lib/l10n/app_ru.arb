@@ -583,6 +583,34 @@
   "adminNoActiveAccess": "Активных доступов пока нет",
   "adminRevokeAccess": "Отозвать доступ",
   "adminAgentRoles": "Агенты и роли",
+  "adminWorkspaceKind": "Воркспейс",
+  "adminSelectUserAndWorkspace": "Выберите пользователя и воркспейс",
+  "adminAccessGranted": "Доступ выдан",
+  "adminAccessRevoked": "Доступ отозван",
+  "adminRefreshProjectsFailed": "Не удалось обновить проекты: {error}",
+  "@adminRefreshProjectsFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "adminLoadAccessFailed": "Не удалось загрузить доступы: {error}",
+  "@adminLoadAccessFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "adminGrantAccessFailed": "Не удалось выдать доступ: {error}",
+  "@adminGrantAccessFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "adminRevokeAccessFailed": "Не удалось отозвать доступ: {error}",
+  "@adminRevokeAccessFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "adminUsersCount": "Пользователи: {count}",
   "@adminUsersCount": {
     "placeholders": {

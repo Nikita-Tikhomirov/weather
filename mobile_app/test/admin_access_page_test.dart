@@ -78,8 +78,7 @@ void main() {
     final client = _FakeAdminApiClient();
 
     await tester.pumpWidget(
-      MaterialApp(
-        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+      _localizedApp(
         home: AdminAccessPage(
           api: client,
           actorProfile: 'nik',
@@ -118,17 +117,20 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('Администрирование'), findsOneWidget);
+    expect(find.text('Administration'), findsOneWidget);
     expect(find.text('Разработчик'), findsWidgets);
     expect(find.text('System'), findsNothing);
     expect(find.text('Weather'), findsWidgets);
-    expect(find.text('Оператор агентов'), findsWidgets);
+    expect(find.text('Agent operator'), findsWidgets);
     expect(find.text('Плагины'), findsNothing);
 
-    final grantButton = find.widgetWithText(FilledButton, 'Выдать доступ');
+    final grantButton = find.widgetWithText(FilledButton, 'Grant access');
     await tester.ensureVisible(grantButton);
     await tester.tap(grantButton);
     await tester.pump(const Duration(seconds: 2));
+
+    expect(find.text('Access granted'), findsOneWidget);
+    expect(find.text('Доступ выдан'), findsNothing);
 
     expect(
       client.requests.map((item) => item['path']),

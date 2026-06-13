@@ -2435,6 +2435,54 @@ abstract class AppLocalizations {
   /// **'Agent roles'**
   String get adminAgentRoles;
 
+  /// No description provided for @adminWorkspaceKind.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace'**
+  String get adminWorkspaceKind;
+
+  /// No description provided for @adminSelectUserAndWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a user and workspace'**
+  String get adminSelectUserAndWorkspace;
+
+  /// No description provided for @adminAccessGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Access granted'**
+  String get adminAccessGranted;
+
+  /// No description provided for @adminAccessRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'Access revoked'**
+  String get adminAccessRevoked;
+
+  /// No description provided for @adminRefreshProjectsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not refresh projects: {error}'**
+  String adminRefreshProjectsFailed(Object error);
+
+  /// No description provided for @adminLoadAccessFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load access grants: {error}'**
+  String adminLoadAccessFailed(Object error);
+
+  /// No description provided for @adminGrantAccessFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not grant access: {error}'**
+  String adminGrantAccessFailed(Object error);
+
+  /// No description provided for @adminRevokeAccessFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not revoke access: {error}'**
+  String adminRevokeAccessFailed(Object error);
+
   /// No description provided for @adminUsersCount.
   ///
   /// In en, this message translates to:

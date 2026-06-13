@@ -1270,6 +1270,38 @@ class AppLocalizationsRu extends AppLocalizations {
   String get adminAgentRoles => 'Агенты и роли';
 
   @override
+  String get adminWorkspaceKind => 'Воркспейс';
+
+  @override
+  String get adminSelectUserAndWorkspace => 'Выберите пользователя и воркспейс';
+
+  @override
+  String get adminAccessGranted => 'Доступ выдан';
+
+  @override
+  String get adminAccessRevoked => 'Доступ отозван';
+
+  @override
+  String adminRefreshProjectsFailed(Object error) {
+    return 'Не удалось обновить проекты: $error';
+  }
+
+  @override
+  String adminLoadAccessFailed(Object error) {
+    return 'Не удалось загрузить доступы: $error';
+  }
+
+  @override
+  String adminGrantAccessFailed(Object error) {
+    return 'Не удалось выдать доступ: $error';
+  }
+
+  @override
+  String adminRevokeAccessFailed(Object error) {
+    return 'Не удалось отозвать доступ: $error';
+  }
+
+  @override
   String adminUsersCount(int count) {
     return 'Пользователи: $count';
   }

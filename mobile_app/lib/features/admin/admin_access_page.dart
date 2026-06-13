@@ -36,6 +36,31 @@ class _AdminAccessText {
       l10n?.adminNoActiveAccess ?? 'Активных доступов пока нет';
   String get revokeAccess => l10n?.adminRevokeAccess ?? 'Отозвать доступ';
   String get agentRoles => l10n?.adminAgentRoles ?? 'Агенты и роли';
+  String get workspaceKind => l10n?.adminWorkspaceKind ?? 'Воркспейс';
+  String get selectUserAndWorkspace =>
+      l10n?.adminSelectUserAndWorkspace ?? 'Выберите пользователя и воркспейс';
+  String get accessGranted => l10n?.adminAccessGranted ?? 'Доступ выдан';
+  String get accessRevoked => l10n?.adminAccessRevoked ?? 'Доступ отозван';
+
+  String refreshProjectsFailed(Object error) {
+    return l10n?.adminRefreshProjectsFailed(error) ??
+        'Не удалось обновить проекты: $error';
+  }
+
+  String loadAccessFailed(Object error) {
+    return l10n?.adminLoadAccessFailed(error) ??
+        'Не удалось загрузить доступы: $error';
+  }
+
+  String grantAccessFailed(Object error) {
+    return l10n?.adminGrantAccessFailed(error) ??
+        'Не удалось выдать доступ: $error';
+  }
+
+  String revokeAccessFailed(Object error) {
+    return l10n?.adminRevokeAccessFailed(error) ??
+        'Не удалось отозвать доступ: $error';
+  }
 
   String usersCount(int count) {
     return l10n?.adminUsersCount(count) ?? 'Пользователи: $count';
@@ -125,6 +150,8 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
   bool _loading = false;
   bool _saving = false;
 
+  _AdminAccessText get _text => _AdminAccessText(AppLocalizations.of(context));
+
   static const List<_RoleOption> _roles = [
     _RoleOption(
       id: 'workspace_user',
@@ -199,7 +226,6 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
         _AccessTarget(
           id: id,
           name: workspace.name.trim().isEmpty ? id : workspace.name.trim(),
-          kind: 'Воркспейс',
           subtitle: workspace.path,
         ),
       );
@@ -236,7 +262,9 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
         _fixTargetSelection();
       });
     } catch (error) {
-      _showError('Не удалось обновить проекты: $error');
+      if (mounted) {
+        _showError(_text.refreshProjectsFailed(error));
+      }
     }
   }
 
@@ -258,10 +286,11 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
         _loading = false;
       });
     } catch (error) {
-      if (mounted) {
-        setState(() => _loading = false);
+      if (!mounted) {
+        return;
       }
-      _showError('Не удалось загрузить доступы: $error');
+      setState(() => _loading = false);
+      _showError(_text.loadAccessFailed(error));
     }
   }
 
@@ -305,7 +334,7 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
   Future<void> _grantAccess() async {
     final targetId = _effectiveTargetId;
     if (_selectedProfileKey.trim().isEmpty || targetId.trim().isEmpty) {
-      _showError('Выберите пользователя и воркспейс');
+      _showError(_text.selectUserAndWorkspace);
       return;
     }
     setState(() => _saving = true);
@@ -318,12 +347,12 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
         role: _selectedRole,
       );
       await _reloadAfterMutation();
-      _showInfo('Доступ выдан');
+      _showInfo(_text.accessGranted);
     } catch (error) {
       if (mounted) {
         setState(() => _saving = false);
+        _showError(_text.grantAccessFailed(error));
       }
-      _showError('Не удалось выдать доступ: $error');
     }
   }
 
@@ -337,12 +366,12 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
         workspaceId: grant.workspaceId,
       );
       await _reloadAfterMutation();
-      _showInfo('Доступ отозван');
+      _showInfo(_text.accessRevoked);
     } catch (error) {
       if (mounted) {
         setState(() => _saving = false);
+        _showError(_text.revokeAccessFailed(error));
       }
-      _showError('Не удалось отозвать доступ: $error');
     }
   }
 
@@ -417,7 +446,7 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
   }
 
   String _roleLabel(String role) {
-    return _AdminAccessText(AppLocalizations.of(context)).roleLabel(role);
+    return _text.roleLabel(role);
   }
 
   void _showError(String message) {
@@ -565,6 +594,7 @@ class _AdminAccessPageState extends State<AdminAccessPage> {
             const SizedBox(height: 8),
             _TargetHint(
               target: targets.firstWhere((item) => item.id == targetId),
+              kind: text.workspaceKind,
             ),
           ],
           if (targets.isNotEmpty) ...[
@@ -723,13 +753,11 @@ class _AccessTarget {
   const _AccessTarget({
     required this.id,
     required this.name,
-    required this.kind,
     required this.subtitle,
   });
 
   final String id;
   final String name;
-  final String kind;
   final String subtitle;
 }
 
@@ -803,9 +831,10 @@ class _InfoChip extends StatelessWidget {
 }
 
 class _TargetHint extends StatelessWidget {
-  const _TargetHint({required this.target});
+  const _TargetHint({required this.target, required this.kind});
 
   final _AccessTarget target;
+  final String kind;
 
   @override
   Widget build(BuildContext context) {
@@ -820,7 +849,7 @@ class _TargetHint extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            subtitle.isEmpty ? target.kind : '${target.kind} · $subtitle',
+            subtitle.isEmpty ? kind : '$kind · $subtitle',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(color: Theme.of(context).colorScheme.outline),

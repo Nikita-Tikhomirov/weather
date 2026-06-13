@@ -583,6 +583,34 @@
   "adminNoActiveAccess": "No active access yet",
   "adminRevokeAccess": "Revoke access",
   "adminAgentRoles": "Agent roles",
+  "adminWorkspaceKind": "Workspace",
+  "adminSelectUserAndWorkspace": "Select a user and workspace",
+  "adminAccessGranted": "Access granted",
+  "adminAccessRevoked": "Access revoked",
+  "adminRefreshProjectsFailed": "Could not refresh projects: {error}",
+  "@adminRefreshProjectsFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "adminLoadAccessFailed": "Could not load access grants: {error}",
+  "@adminLoadAccessFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "adminGrantAccessFailed": "Could not grant access: {error}",
+  "@adminGrantAccessFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "adminRevokeAccessFailed": "Could not revoke access: {error}",
+  "@adminRevokeAccessFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
   "adminUsersCount": "Users: {count}",
   "@adminUsersCount": {
     "placeholders": {
