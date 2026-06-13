@@ -650,12 +650,12 @@ void main() {
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
 
-      // Sheet rendered successfully (has "Новая задача" header)
-      expect(find.text('Новая задача'), findsOneWidget);
+      // Sheet rendered successfully (has "New task" header)
+      expect(find.text('New task'), findsOneWidget);
       expect(find.byType(TabBar), findsOneWidget);
-      expect(find.text('Настройки'), findsOneWidget);
-      expect(find.text('Работа'), findsOneWidget);
-      expect(find.text('Агент'), findsOneWidget);
+      expect(find.text('Settings'), findsOneWidget);
+      expect(find.text('Work'), findsOneWidget);
+      expect(find.text('Agent'), findsOneWidget);
     });
 
     testWidgets('uses localizations for task editor shell and settings labels',
@@ -845,11 +845,11 @@ void main() {
 
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Агент'));
+      await tester.tap(find.text('Agent'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Подключить чат'), findsOneWidget);
-      expect(find.text('Новый чат'), findsOneWidget);
+      expect(find.text('Connect chat'), findsOneWidget);
+      expect(find.text('New chat'), findsOneWidget);
       expect(find.text('Исполнитель'), findsWidgets);
       expect(find.text('Возможности агента'), findsNothing);
       expect(find.text('Читает контекст задачи'), findsNothing);
@@ -1304,10 +1304,10 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('Агент'));
+      await tester.tap(find.text('Agent'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Вопросы агента'), findsOneWidget);
+      expect(find.text('Agent questions'), findsOneWidget);
       expect(find.text('Нужен макет формы?'), findsOneWidget);
     });
 
@@ -1369,9 +1369,9 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('Агент'));
+      await tester.tap(find.text('Agent'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Подключить чат'));
+      await tester.tap(find.text('Connect chat'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Агент: Формы').last);
       await tester.pumpAndSettle();
@@ -1388,7 +1388,7 @@ void main() {
       );
       expect(saved.collaboration.agentSessions.single.provider, 'deepseek');
       expect(saved.collaboration.agentSessions.single.model, 'deepseek-v4-pro');
-      expect(find.text('Продолжить работу'), findsOneWidget);
+      expect(find.text('Continue work'), findsOneWidget);
     });
 
     testWidgets('uses localized agent session picker labels', (tester) async {
@@ -1740,9 +1740,9 @@ void main() {
           ),
         );
 
-        await tester.tap(find.text('Агент'));
+        await tester.tap(find.text('Agent'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Новый чат'));
+        await tester.tap(find.text('New chat'));
         await tester.pumpAndSettle();
 
         expect(repository.fakeApi.agentTicketCount, 1);
@@ -2037,9 +2037,9 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('Агент'));
+      await tester.tap(find.text('Agent'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Новый чат'));
+      await tester.tap(find.text('New chat'));
       await tester.pumpAndSettle();
 
       expect(repository.fakeApi.agentTicketWorkspaceIds.single, 'exp76-ru');
@@ -2185,9 +2185,9 @@ TASK_CARD_ACTIONS_JSON:
         ),
       );
 
-      await tester.tap(find.text('Агент'));
+      await tester.tap(find.text('Agent'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Новый чат'));
+      await tester.tap(find.text('New chat'));
       await tester.pumpAndSettle();
 
       expect(repository.upserts, isNotEmpty);
@@ -2292,10 +2292,10 @@ TASK_CARD_ACTIONS_JSON:
         ),
       );
 
-      await tester.tap(find.text('Агент'));
+      await tester.tap(find.text('Agent'));
       await tester.pumpAndSettle();
-      expect(find.text('Продолжить работу'), findsOneWidget);
-      await tester.tap(find.text('Продолжить работу'));
+      expect(find.text('Continue work'), findsOneWidget);
+      await tester.tap(find.text('Continue work'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
@@ -2584,7 +2584,7 @@ TASK_CARD_ACTIONS_JSON:
         ),
       );
 
-      await tester.tap(find.text('Агент'));
+      await tester.tap(find.text('Agent'));
       await tester.pumpAndSettle();
 
       expect(find.text('deepseek'), findsOneWidget);
@@ -2666,9 +2666,9 @@ TASK_CARD_ACTIONS_JSON:
         ),
       );
 
-      await tester.tap(find.text('На проверке').first);
+      await tester.tap(find.text('In review').first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('В работе').last);
+      await tester.tap(find.text('In progress').last);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
@@ -2756,9 +2756,9 @@ TASK_CARD_ACTIONS_JSON:
         ),
       );
 
-      await tester.tap(find.text('Агент'));
+      await tester.tap(find.text('Agent'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Новый чат'));
+      await tester.tap(find.text('New chat'));
       await tester.pumpAndSettle();
 
       final saved = repository.upserts.last;
@@ -2770,7 +2770,7 @@ TASK_CARD_ACTIONS_JSON:
       expect(saved.collaboration.agentSessions.last.status, 'waiting_review');
       expect(
         saved.collaboration.activity.map((item) => item.text),
-        contains('автоматически перевел карточку в статус На проверке'),
+        contains('automatically moved card to In review'),
       );
       expect(bridge!.sentMessages.last, contains('Выполни задачу по карточке'));
     });
@@ -2898,9 +2898,9 @@ TASK_CARD_ACTIONS_JSON:
         ),
       );
 
-      await tester.tap(find.text('Агент'));
+      await tester.tap(find.text('Agent'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Новый чат'));
+      await tester.tap(find.text('New chat'));
       await tester.pumpAndSettle();
 
       final saved = repository.upserts.last;
@@ -3015,9 +3015,9 @@ TASK_CARD_ACTIONS_JSON:
         ),
       );
 
-      await tester.tap(find.text('Агент'));
+      await tester.tap(find.text('Agent'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Новый чат'));
+      await tester.tap(find.text('New chat'));
       await tester.pumpAndSettle();
 
       final saved = repository.upserts.last;
@@ -3059,23 +3059,23 @@ TASK_CARD_ACTIONS_JSON:
 
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Работа'));
+      await tester.tap(find.text('Work'));
       await tester.pumpAndSettle();
 
       await tester.enterText(
-        find.widgetWithText(TextField, 'Комментарий или подпись'),
+        find.widgetWithText(TextField, 'Comment or caption'),
         'Готово к проверке',
       );
-      await tester.tap(find.byTooltip('Отправить'));
+      await tester.tap(find.byTooltip('Send'));
       await tester.pumpAndSettle();
 
       expect(find.text('Готово к проверке'), findsOneWidget);
 
       await tester.enterText(
-        find.widgetWithText(TextField, 'Новый чеклист'),
+        find.widgetWithText(TextField, 'New checklist'),
         'Релиз',
       );
-      final addChecklistButton = find.byTooltip('Добавить чеклист');
+      final addChecklistButton = find.byTooltip('Add checklist');
       await tester.ensureVisible(addChecklistButton);
       await tester.pumpAndSettle();
       await tester.tap(addChecklistButton);
@@ -3084,10 +3084,10 @@ TASK_CARD_ACTIONS_JSON:
       expect(find.text('Релиз'), findsOneWidget);
 
       await tester.enterText(
-        find.widgetWithText(TextField, 'Пункт'),
+        find.widgetWithText(TextField, 'Item'),
         'Проверить сборку',
       );
-      final addItemButton = find.byTooltip('Добавить пункт');
+      final addItemButton = find.byTooltip('Add item');
       await tester.ensureVisible(addItemButton);
       await tester.pumpAndSettle();
       await tester.tap(addItemButton);
@@ -3624,14 +3624,14 @@ TASK_CARD_ACTIONS_JSON:
 
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Работа'));
+      await tester.tap(find.text('Work'));
       await tester.pumpAndSettle();
 
       await tester.enterText(
-        find.widgetWithText(TextField, 'Комментарий или подпись'),
+        find.widgetWithText(TextField, 'Comment or caption'),
         'Сохранилось сразу',
       );
-      await tester.tap(find.byTooltip('Отправить'));
+      await tester.tap(find.byTooltip('Send'));
       await tester.pumpAndSettle();
 
       expect(repository.upserts, isNotEmpty);
@@ -3676,17 +3676,17 @@ TASK_CARD_ACTIONS_JSON:
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
       await tester.enterText(
-        find.widgetWithText(TextField, 'Название'),
+        find.widgetWithText(TextField, 'Title'),
         'Новая автозадача',
       );
-      await tester.tap(find.text('Работа'));
+      await tester.tap(find.text('Work'));
       await tester.pumpAndSettle();
 
       await tester.enterText(
-        find.widgetWithText(TextField, 'Комментарий или подпись'),
+        find.widgetWithText(TextField, 'Comment or caption'),
         'Первый комментарий',
       );
-      await tester.tap(find.byTooltip('Отправить'));
+      await tester.tap(find.byTooltip('Send'));
       await tester.pumpAndSettle();
 
       expect(repository.upserts, isNotEmpty);
@@ -3748,14 +3748,14 @@ TASK_CARD_ACTIONS_JSON:
 
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Работа'));
+      await tester.tap(find.text('Work'));
       await tester.pumpAndSettle();
 
       await tester.enterText(
-        find.widgetWithText(TextField, 'Комментарий или подпись'),
+        find.widgetWithText(TextField, 'Comment or caption'),
         'Комментарий в старой задаче',
       );
-      await tester.tap(find.byTooltip('Отправить'));
+      await tester.tap(find.byTooltip('Send'));
       await tester.pumpAndSettle();
 
       expect(repository.upserts, isNotEmpty);
@@ -3799,14 +3799,14 @@ TASK_CARD_ACTIONS_JSON:
 
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Работа'));
+      await tester.tap(find.text('Work'));
       await tester.pumpAndSettle();
 
       await tester.enterText(
-        find.widgetWithText(TextField, 'Новый чеклист'),
+        find.widgetWithText(TextField, 'New checklist'),
         'Запуск',
       );
-      await tester.tap(find.byTooltip('Добавить чеклист'));
+      await tester.tap(find.byTooltip('Add checklist'));
       await tester.pumpAndSettle();
 
       expect(repository.upserts, isNotEmpty);
@@ -3816,7 +3816,7 @@ TASK_CARD_ACTIONS_JSON:
       );
 
       await tester.enterText(
-        find.widgetWithText(TextField, 'Пункт'),
+        find.widgetWithText(TextField, 'Item'),
         'Проверить экран',
       );
       final addItemButton = find.widgetWithIcon(IconButton, Icons.add_task);
@@ -3883,9 +3883,9 @@ TASK_CARD_ACTIONS_JSON:
         ),
       );
 
-      await tester.tap(find.text('Работа'));
+      await tester.tap(find.text('Work'));
       await tester.pumpAndSettle();
-      final editChecklistButton = find.byTooltip('Редактировать чеклист');
+      final editChecklistButton = find.byTooltip('Edit checklist');
       final workList = find.byType(Scrollable).first;
       await tester.scrollUntilVisible(
         editChecklistButton,
@@ -3896,10 +3896,10 @@ TASK_CARD_ACTIONS_JSON:
       await tester.tap(editChecklistButton);
       await tester.pumpAndSettle();
       await tester.enterText(
-        find.widgetWithText(TextField, 'Название чеклиста'),
+        find.widgetWithText(TextField, 'Checklist name'),
         'Новый чеклист',
       );
-      await tester.tap(find.widgetWithText(FilledButton, 'Сохранить'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       await tester.pumpAndSettle();
 
       expect(
@@ -3907,7 +3907,7 @@ TASK_CARD_ACTIONS_JSON:
         'Новый чеклист',
       );
 
-      final deleteChecklistButton = find.byTooltip('Удалить чеклист');
+      final deleteChecklistButton = find.byTooltip('Delete checklist');
       await tester.scrollUntilVisible(
         deleteChecklistButton,
         240,
@@ -3916,7 +3916,7 @@ TASK_CARD_ACTIONS_JSON:
       await tester.pumpAndSettle();
       await tester.tap(deleteChecklistButton);
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Удалить'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
       await tester.pumpAndSettle();
 
       expect(repository.upserts.last.collaboration.checklists, isEmpty);
@@ -3964,9 +3964,9 @@ TASK_CARD_ACTIONS_JSON:
         ),
       );
 
-      await tester.tap(find.text('Работа'));
+      await tester.tap(find.text('Work'));
       await tester.pumpAndSettle();
-      final editItemButton = find.byTooltip('Редактировать пункт');
+      final editItemButton = find.byTooltip('Edit item');
       final workList = find.byType(Scrollable).first;
       await tester.scrollUntilVisible(
         editItemButton,
@@ -3977,10 +3977,10 @@ TASK_CARD_ACTIONS_JSON:
       await tester.tap(editItemButton);
       await tester.pumpAndSettle();
       await tester.enterText(
-        find.widgetWithText(TextField, 'Текст пункта'),
+        find.widgetWithText(TextField, 'Item text'),
         'Новый пункт',
       );
-      await tester.tap(find.widgetWithText(FilledButton, 'Сохранить'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       await tester.pumpAndSettle();
 
       expect(
@@ -3989,7 +3989,7 @@ TASK_CARD_ACTIONS_JSON:
         'Новый пункт',
       );
 
-      final deleteItemButton = find.byTooltip('Удалить пункт');
+      final deleteItemButton = find.byTooltip('Delete item');
       await tester.scrollUntilVisible(
         deleteItemButton,
         240,
@@ -3998,7 +3998,7 @@ TASK_CARD_ACTIONS_JSON:
       await tester.pumpAndSettle();
       await tester.tap(deleteItemButton);
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Удалить'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
       await tester.pumpAndSettle();
 
       expect(
@@ -4080,11 +4080,11 @@ TASK_CARD_ACTIONS_JSON:
 
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Работа'));
+      await tester.tap(find.text('Work'));
       await tester.pumpAndSettle();
 
       expect(find.byType(Image), findsOneWidget);
-      await tester.tap(find.byTooltip('Открыть фото'));
+      await tester.tap(find.byTooltip('Open photo'));
       await tester.pumpAndSettle();
 
       expect(find.text('screen.png'), findsOneWidget);
@@ -4148,11 +4148,11 @@ TASK_CARD_ACTIONS_JSON:
 
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Работа'));
+      await tester.tap(find.text('Work'));
       await tester.pumpAndSettle();
 
       expect(find.byType(Image), findsOneWidget);
-      await tester.tap(find.byTooltip('Открыть фото'));
+      await tester.tap(find.byTooltip('Open photo'));
       await tester.pumpAndSettle();
 
       expect(find.text('remote.png'), findsOneWidget);
@@ -4190,13 +4190,13 @@ TASK_CARD_ACTIONS_JSON:
         ),
       );
 
-      await tester.tap(find.text('Работа'));
+      await tester.tap(find.text('Work'));
       await tester.pumpAndSettle();
 
       expect(find.byType(Image), findsOneWidget);
       expect(find.text('pending.png'), findsOneWidget);
 
-      await tester.tap(find.byTooltip('Открыть фото'));
+      await tester.tap(find.byTooltip('Open photo'));
       await tester.pumpAndSettle();
 
       expect(find.text('pending.png'), findsOneWidget);
@@ -4236,15 +4236,15 @@ TASK_CARD_ACTIONS_JSON:
         ),
       );
 
-      await tester.tap(find.text('Работа'));
+      await tester.tap(find.text('Work'));
       await tester.pumpAndSettle();
       final commentField = find.byWidgetPredicate(
         (widget) =>
             widget is TextField &&
-            widget.decoration?.hintText == 'Комментарий или подпись',
+            widget.decoration?.hintText == 'Comment or caption',
       );
       await tester.enterText(commentField, 'Подпись к фото');
-      await tester.tap(find.byTooltip('Отправить'));
+      await tester.tap(find.byTooltip('Send'));
       await tester.pumpAndSettle();
 
       expect(repository.fakeApi.mediaUploadCount, 1);
@@ -4287,9 +4287,9 @@ TASK_CARD_ACTIONS_JSON:
         ),
       );
 
-      await tester.tap(find.text('Работа'));
+      await tester.tap(find.text('Work'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Отправить'));
+      await tester.tap(find.byTooltip('Send'));
       await tester.pumpAndSettle();
 
       expect(repository.fakeApi.documentUploadCount, 1);
@@ -4338,9 +4338,9 @@ TASK_CARD_ACTIONS_JSON:
         ),
       );
 
-      await tester.tap(find.text('Работа'));
+      await tester.tap(find.text('Work'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Отправить'));
+      await tester.tap(find.byTooltip('Send'));
       await tester.pump();
 
       expect(find.text('35%'), findsOneWidget);
@@ -4489,19 +4489,19 @@ TASK_CARD_ACTIONS_JSON:
         ),
       );
 
-      await tester.tap(find.text('Работа'));
+      await tester.tap(find.text('Work'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Действия комментария'));
+      await tester.tap(find.byTooltip('Comment actions'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Ответить'));
+      await tester.tap(find.text('Reply'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Ответ на комментарий'), findsOneWidget);
+      expect(find.text('Reply to comment'), findsOneWidget);
       await tester.enterText(
-        find.widgetWithText(TextField, 'Комментарий или подпись'),
+        find.widgetWithText(TextField, 'Comment or caption'),
         'Проверю сегодня',
       );
-      await tester.tap(find.byTooltip('Отправить'));
+      await tester.tap(find.byTooltip('Send'));
       await tester.pumpAndSettle();
 
       final comments = repository.upserts.last.collaboration.comments;
@@ -4542,19 +4542,19 @@ TASK_CARD_ACTIONS_JSON:
         ),
       );
 
-      await tester.tap(find.text('Работа'));
+      await tester.tap(find.text('Work'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Действия комментария'));
+      await tester.tap(find.byTooltip('Comment actions'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Редактировать'));
+      await tester.tap(find.text('Edit'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Редактирование комментария'), findsOneWidget);
+      expect(find.text('Editing comment'), findsOneWidget);
       await tester.enterText(
-        find.widgetWithText(TextField, 'Комментарий или подпись'),
+        find.widgetWithText(TextField, 'Comment or caption'),
         'Новый текст',
       );
-      await tester.tap(find.byTooltip('Отправить'));
+      await tester.tap(find.byTooltip('Send'));
       await tester.pumpAndSettle();
 
       final comment = repository.upserts.last.collaboration.comments.single;
@@ -4605,13 +4605,13 @@ TASK_CARD_ACTIONS_JSON:
         ),
       );
 
-      await tester.tap(find.text('Работа'));
+      await tester.tap(find.text('Work'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Действия комментария'));
+      await tester.tap(find.byTooltip('Comment actions'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Удалить'));
+      await tester.tap(find.text('Delete'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Удалить'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
       await tester.pumpAndSettle();
 
       final collaboration = repository.upserts.last.collaboration;
@@ -4619,7 +4619,7 @@ TASK_CARD_ACTIONS_JSON:
       expect(collaboration.comments.single.text, '');
       expect(collaboration.comments.single.attachmentIds, isEmpty);
       expect(collaboration.attachments, isEmpty);
-      expect(find.text('Комментарий удалён'), findsOneWidget);
+      expect(find.text('Comment deleted'), findsOneWidget);
     });
 
     testWidgets('edit mode pre-fills existing task data', (tester) async {
@@ -4672,7 +4672,7 @@ TASK_CARD_ACTIONS_JSON:
       await tester.pumpAndSettle();
 
       // Edit mode header and pre-filled title
-      expect(find.text('Редактирование задачи'), findsOneWidget);
+      expect(find.text('Edit task'), findsOneWidget);
       expect(find.text('Existing Task'), findsOneWidget);
     });
   });

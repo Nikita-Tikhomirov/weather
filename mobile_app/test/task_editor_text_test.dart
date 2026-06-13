@@ -5,142 +5,188 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('fallback keeps Russian labels for legacy test harnesses', () {
+  testWidgets('fallback matches English labels for harnesses without l10n',
+      (tester) async {
     const text = TaskEditorText.fallback();
+    late TaskEditorText localized;
 
-    expect(text.newTask, 'Новая задача');
-    expect(text.settingsTab, 'Настройки');
-    expect(text.title, 'Название');
-    expect(text.agent, 'Агент');
-    expect(text.user, 'Пользователь');
-    expect(text.openPhotoAttachment, 'Открыть фото');
-    expect(text.openFileAttachment, 'Открыть файл');
-    expect(text.removeAttachment, 'Убрать вложение');
-    expect(text.fileReadFailed, 'Не удалось прочитать файл');
-    expect(text.fileOpenFailed, 'Не удалось открыть файл');
-    expect(
-      text.selectAgentWorkspace,
-      'Выберите воркспейс для агентского чата',
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) {
+            localized = TaskEditorText.of(context);
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
     );
+
+    expect(text.newTask, localized.newTask);
+    expect(text.settingsTab, localized.settingsTab);
+    expect(text.title, localized.title);
+    expect(text.agent, localized.agent);
+    expect(text.user, localized.user);
+    expect(text.openPhotoAttachment, localized.openPhotoAttachment);
+    expect(text.openFileAttachment, localized.openFileAttachment);
+    expect(text.removeAttachment, localized.removeAttachment);
+    expect(text.fileReadFailed, localized.fileReadFailed);
+    expect(text.fileOpenFailed, localized.fileOpenFailed);
+    expect(text.selectAgentWorkspace, localized.selectAgentWorkspace);
+    expect(text.noAgentChatsInWorkspace, localized.noAgentChatsInWorkspace);
     expect(
-      text.noAgentChatsInWorkspace,
-      'В этом воркспейсе нет агентских чатов',
+      text.agentSessionTitle('Forms'),
+      localized.agentSessionTitle('Forms'),
     );
-    expect(text.agentSessionTitle('Формы'), 'Агент: Формы');
     expect(
       text.agentChatNotLinkedToWorkspace,
-      'Агентский чат не связан с воркспейсом',
+      localized.agentChatNotLinkedToWorkspace,
     );
-    expect(text.agentConnectNoAccess, 'Нет прав на подключение чата');
-    expect(text.connectedAgentChatTitle, 'Подключенный агентский чат');
+    expect(text.agentConnectNoAccess, localized.agentConnectNoAccess);
+    expect(text.connectedAgentChatTitle, localized.connectedAgentChatTitle);
+    expect(text.agentChatConnectedToCard, localized.agentChatConnectedToCard);
     expect(
-      text.agentChatConnectedToCard,
-      'Агентский чат подключен к карточке',
+      text.agentChatConnectFailed('network'),
+      localized.agentChatConnectFailed('network'),
     );
-    expect(
-      text.agentChatConnectFailed('ошибка'),
-      'Не удалось подключить чат: ошибка',
-    );
-    expect(text.agentLaunchStarted, 'Новый агентский чат запускается');
+    expect(text.agentLaunchStarted, localized.agentLaunchStarted);
     expect(
       text.agentQueueLaunchStarted(2),
-      'Агент запускает очередь: 2 инструментов',
+      localized.agentQueueLaunchStarted(2),
     );
-    expect(text.agentStartNoAccess, 'Нет прав на запуск агента');
+    expect(text.agentStartNoAccess, localized.agentStartNoAccess);
     expect(
-      text.agentStartFailed('ошибка'),
-      'Не удалось запустить агента: ошибка',
+      text.agentStartFailed('network'),
+      localized.agentStartFailed('network'),
     );
-    expect(text.agentContinueNoAccess, 'Нет прав на продолжение агента');
+    expect(text.agentContinueNoAccess, localized.agentContinueNoAccess);
+    expect(text.agentContinuesFreshCard, localized.agentContinuesFreshCard);
     expect(
-      text.agentContinuesFreshCard,
-      'Агент продолжает работу по свежей карточке',
+      text.agentContinueFailed('network'),
+      localized.agentContinueFailed('network'),
     );
     expect(
-      text.agentContinueFailed('ошибка'),
-      'Не удалось продолжить агента: ошибка',
+      text.activityAgentSessionRequested,
+      localized.activityAgentSessionRequested,
     );
-    expect(text.activityAgentSessionRequested, 'запросил новый агентский чат');
     expect(
       text.activityAgentSessionStartFailed,
-      'не смог запустить агентский чат',
+      localized.activityAgentSessionStartFailed,
     );
-    expect(text.activityAgentSessionResumed, 'продолжил агентский чат');
+    expect(
+      text.activityAgentSessionResumed,
+      localized.activityAgentSessionResumed,
+    );
     expect(
       text.activityAgentSessionResumeFailed,
-      'не смог продолжить агентский чат',
+      localized.activityAgentSessionResumeFailed,
     );
-    expect(text.activityAgentSessionError, 'получил ошибку агентского чата');
-    expect(text.activityAgentSessionLinked, 'подключил агентский чат');
+    expect(text.activityAgentSessionError, localized.activityAgentSessionError);
+    expect(
+      text.activityAgentSessionLinked,
+      localized.activityAgentSessionLinked,
+    );
     expect(
       text.activityAgentExistingSessionLinked,
-      'подключил существующий агентский чат',
+      localized.activityAgentExistingSessionLinked,
     );
     expect(
-      text.activityAgentAutoMovedToStatus('На проверке'),
-      'автоматически перевел карточку в статус На проверке',
+      text.activityAgentAutoMovedToStatus('In review'),
+      localized.activityAgentAutoMovedToStatus('In review'),
     );
-    expect(text.activityAgentQueueWaitingReview, 'ждет проверки карточки');
-    expect(text.activityAgentQueueCompleted, 'завершил очередь агента');
-    expect(text.activityAgentQueueNeedsMoreWork, 'ждет дальнейших правок');
     expect(
-      text.activityAgentStatusChanged('Выполнено'),
-      'перевел карточку в статус Выполнено',
+      text.activityAgentQueueWaitingReview,
+      localized.activityAgentQueueWaitingReview,
     );
-    expect(text.activityAgentCardUpdated, 'обновил карточку задачи');
-    expect(text.agentPlanTitle, 'План агента');
+    expect(
+      text.activityAgentQueueCompleted,
+      localized.activityAgentQueueCompleted,
+    );
+    expect(
+      text.activityAgentQueueNeedsMoreWork,
+      localized.activityAgentQueueNeedsMoreWork,
+    );
+    expect(
+      text.activityAgentStatusChanged('Done'),
+      localized.activityAgentStatusChanged('Done'),
+    );
+    expect(text.activityAgentCardUpdated, localized.activityAgentCardUpdated);
+    expect(text.agentPlanTitle, localized.agentPlanTitle);
     expect(
       text.agentQueueStepFailed('failed'),
-      'Один из шагов агента не выполнен: failed',
+      localized.agentQueueStepFailed('failed'),
     );
     expect(
       text.agentQueueTaskCardUnavailable,
-      'family-task-card недоступен. Очередь агента остановлена.',
+      localized.agentQueueTaskCardUnavailable,
     );
-    expect(text.codeWhaleError, 'Ошибка CodeWhale');
-    expect(text.activityCommentEdited, 'отредактировал комментарий');
-    expect(text.activityCommentAdded, 'добавил комментарий');
+    expect(text.codeWhaleError, localized.codeWhaleError);
+    expect(text.activityCommentEdited, localized.activityCommentEdited);
+    expect(text.activityCommentAdded, localized.activityCommentAdded);
     expect(
       text.activityCommentAddedWithAttachment,
-      'добавил комментарий с вложением',
+      localized.activityCommentAddedWithAttachment,
     );
-    expect(text.activityCommentReplied, 'ответил на комментарий');
-    expect(text.activityCommentDeleted, 'удалил комментарий');
-    expect(text.activityChecklistAdded('Запуск'), 'создал чеклист "Запуск"');
-    expect(text.activityChecklistItemAdded('Сборка'), 'добавил пункт "Сборка"');
-    expect(text.activityChecklistItemDone, 'закрыл пункт чеклиста');
-    expect(text.activityChecklistItemReopened, 'вернул пункт чеклиста');
+    expect(text.activityCommentReplied, localized.activityCommentReplied);
+    expect(text.activityCommentDeleted, localized.activityCommentDeleted);
     expect(
-      text.activityChecklistRenamed('Релиз'),
-      'переименовал чеклист "Релиз"',
+      text.activityChecklistAdded('Launch'),
+      localized.activityChecklistAdded('Launch'),
     );
     expect(
-      text.activityChecklistDeleted('Релиз'),
-      'удалил чеклист "Релиз"',
+      text.activityChecklistItemAdded('Build'),
+      localized.activityChecklistItemAdded('Build'),
     );
-    expect(text.activityChecklistItemRenamed, 'отредактировал пункт чеклиста');
-    expect(text.activityChecklistItemDeleted, 'удалил пункт чеклиста');
+    expect(
+      text.activityChecklistItemDone,
+      localized.activityChecklistItemDone,
+    );
+    expect(
+      text.activityChecklistItemReopened,
+      localized.activityChecklistItemReopened,
+    );
+    expect(
+      text.activityChecklistRenamed('Release'),
+      localized.activityChecklistRenamed('Release'),
+    );
+    expect(
+      text.activityChecklistDeleted('Release'),
+      localized.activityChecklistDeleted('Release'),
+    );
+    expect(
+      text.activityChecklistItemRenamed,
+      localized.activityChecklistItemRenamed,
+    );
+    expect(
+      text.activityChecklistItemDeleted,
+      localized.activityChecklistItemDeleted,
+    );
     expect(
       text.saveError('Укажите название задачи.'),
-      'Укажите название задачи.',
+      localized.saveError('Укажите название задачи.'),
     );
     expect(
       text.saveError(TaskValidationError.titleRequired),
-      'Укажите название задачи.',
-    );
-    expect(text.saveError('Выберите проект.'), 'Выберите проект');
-    expect(
-      text.saveError('Неизвестная ошибка'),
-      'Неизвестная ошибка',
-    );
-    expect(text.codeWhaleUnavailable, 'CodeWhale недоступен');
-    expect(
-      text.agentToolsLoadFailed('ошибка'),
-      'Не удалось загрузить инструменты агента: ошибка',
+      localized.saveError(TaskValidationError.titleRequired),
     );
     expect(
-      text.agentWorkspacesLoadFailed('ошибка'),
-      'Не удалось загрузить воркспейсы: ошибка',
+      text.saveError('Выберите проект.'),
+      localized.saveError('Выберите проект.'),
+    );
+    expect(
+      text.saveError('Unknown failure'),
+      localized.saveError('Unknown failure'),
+    );
+    expect(text.codeWhaleUnavailable, localized.codeWhaleUnavailable);
+    expect(
+      text.agentToolsLoadFailed('network'),
+      localized.agentToolsLoadFailed('network'),
+    );
+    expect(
+      text.agentWorkspacesLoadFailed('network'),
+      localized.agentWorkspacesLoadFailed('network'),
     );
   });
 
