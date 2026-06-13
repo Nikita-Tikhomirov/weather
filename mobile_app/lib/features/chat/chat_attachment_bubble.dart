@@ -21,7 +21,7 @@ class ChatAttachmentBubble extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final ext = fileName.contains('.') ? fileName.split('.').last : '';
     final icon = _iconForExtension(ext);
-    final displayName = fileName.isNotEmpty ? fileName : 'Документ';
+    final displayName = fileName.isNotEmpty ? fileName : 'Document';
     final sizeText = _formatFileSize(sizeBytes);
     return GestureDetector(
       onTap: () async {
@@ -123,10 +123,10 @@ class ChatAttachmentBubble extends StatelessWidget {
 
   static String _formatFileSize(int bytes) {
     if (bytes <= 0) return '';
-    if (bytes < 1024) return '$bytes Б';
+    if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)} КБ';
+      return '${(bytes / 1024).toStringAsFixed(1)} KB';
     }
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} МБ';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 }
