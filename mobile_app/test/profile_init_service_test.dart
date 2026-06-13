@@ -45,6 +45,46 @@ void main() {
 
     expect(await future, 'profile-1');
   });
+
+  testWidgets('initial profile prompt falls back to English labels',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final api = _FakeApiClient();
+    late BuildContext promptContext;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: Builder(
+          builder: (context) {
+            promptContext = context;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+
+    final future = ProfileInitService.promptForInitialProfile(
+      promptContext,
+      api,
+      (_, __) {},
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sign in with phone number'), findsOneWidget);
+    expect(find.text('Phone number'), findsOneWidget);
+    expect(find.text('Name'), findsOneWidget);
+    expect(find.text('Continue'), findsOneWidget);
+    expect(find.text('Вход по номеру телефона'), findsNothing);
+    expect(find.text('Номер телефона'), findsNothing);
+    expect(find.text('Продолжить'), findsNothing);
+
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    expect(await future, 'profile-1');
+  });
 }
 
 class _FakeApiClient extends ApiClient {

@@ -76,8 +76,9 @@ class HomeProfileInitializer {
           builder: (ctx, setDialogState) {
             final l10n = AppLocalizations.of(ctx);
             return AlertDialog(
-              title:
-                  Text(l10n?.initialProfileTitle ?? 'Вход по номеру телефона'),
+              title: Text(
+                l10n?.initialProfileTitle ?? 'Sign in with phone number',
+              ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -85,7 +86,7 @@ class HomeProfileInitializer {
                     controller: phoneCtl,
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
-                      labelText: l10n?.phoneNumberLabel ?? 'Номер телефона',
+                      labelText: l10n?.phoneNumberLabel ?? 'Phone number',
                       hintText: '+7 999 111 22 33',
                     ),
                   ),
@@ -93,7 +94,8 @@ class HomeProfileInitializer {
                   TextField(
                     controller: nameCtl,
                     textCapitalization: TextCapitalization.words,
-                    decoration: InputDecoration(labelText: l10n?.name ?? 'Имя'),
+                    decoration:
+                        InputDecoration(labelText: l10n?.name ?? 'Name'),
                   ),
                   if (errorText.isNotEmpty) ...[
                     const SizedBox(height: 8),
@@ -128,7 +130,7 @@ class HomeProfileInitializer {
                       setDialogState(() => errorText = error.toString());
                     }
                   },
-                  child: Text(l10n?.continueAction ?? 'Продолжить'),
+                  child: Text(l10n?.continueAction ?? 'Continue'),
                 ),
               ],
             );
