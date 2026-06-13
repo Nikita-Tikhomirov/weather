@@ -25,6 +25,7 @@ void main() {
       text.noAgentChatsInWorkspace,
       'В этом воркспейсе нет агентских чатов',
     );
+    expect(text.agentSessionTitle('Формы'), 'Агент: Формы');
     expect(
       text.agentChatNotLinkedToWorkspace,
       'Агентский чат не связан с воркспейсом',
@@ -38,6 +39,11 @@ void main() {
     expect(
       text.agentChatConnectFailed('ошибка'),
       'Не удалось подключить чат: ошибка',
+    );
+    expect(text.agentLaunchStarted, 'Новый агентский чат запускается');
+    expect(
+      text.agentQueueLaunchStarted(2),
+      'Агент запускает очередь: 2 инструментов',
     );
     expect(text.codeWhaleUnavailable, 'CodeWhale недоступен');
     expect(
@@ -92,6 +98,7 @@ void main() {
       text.noAgentChatsInWorkspace,
       'No agent chats in this workspace',
     );
+    expect(text.agentSessionTitle('Forms'), 'Agent: Forms');
     expect(
       text.agentChatNotLinkedToWorkspace,
       'Agent chat is not linked to a workspace',
@@ -105,6 +112,11 @@ void main() {
     expect(
       text.agentChatConnectFailed('network'),
       'Could not connect chat: network',
+    );
+    expect(text.agentLaunchStarted, 'New agent chat is starting');
+    expect(
+      text.agentQueueLaunchStarted(2),
+      'Agent is starting the queue: 2 tools',
     );
     expect(text.codeWhaleUnavailable, 'CodeWhale is unavailable');
     expect(

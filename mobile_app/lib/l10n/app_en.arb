@@ -99,6 +99,14 @@
   "taskSelectAgentWorkspace": "Select workspace for agent chat",
   "taskAgentNewChat": "New chat",
   "taskAgentChat": "Agent chat",
+  "taskAgentSessionTitle": "Agent: {title}",
+  "@taskAgentSessionTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "taskAgentTaskChats": "Task chats",
   "taskAgentNoChats": "No agent chats connected",
   "taskNoAgentChatsInWorkspace": "No agent chats in this workspace",
@@ -110,6 +118,15 @@
   "@taskAgentChatConnectFailed": {
     "placeholders": {
       "error": {}
+    }
+  },
+  "taskAgentLaunchStarted": "New agent chat is starting",
+  "taskAgentQueueLaunchStarted": "Agent is starting the queue: {count} tools",
+  "@taskAgentQueueLaunchStarted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
     }
   },
   "taskAgentQueueRunning": "Queue running",

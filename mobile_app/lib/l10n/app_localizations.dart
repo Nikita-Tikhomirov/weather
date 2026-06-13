@@ -647,6 +647,12 @@ abstract class AppLocalizations {
   /// **'Agent chat'**
   String get taskAgentChat;
 
+  /// No description provided for @taskAgentSessionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent: {title}'**
+  String taskAgentSessionTitle(String title);
+
   /// No description provided for @taskAgentTaskChats.
   ///
   /// In en, this message translates to:
@@ -694,6 +700,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not connect chat: {error}'**
   String taskAgentChatConnectFailed(Object error);
+
+  /// No description provided for @taskAgentLaunchStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'New agent chat is starting'**
+  String get taskAgentLaunchStarted;
+
+  /// No description provided for @taskAgentQueueLaunchStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent is starting the queue: {count} tools'**
+  String taskAgentQueueLaunchStarted(int count);
 
   /// No description provided for @taskAgentQueueRunning.
   ///

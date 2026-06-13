@@ -1565,9 +1565,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     await _syncAgentDraftBestEffort();
 
     final now = DateTime.now().toIso8601String();
-    final title = _titleCtl.text.trim().isEmpty
-        ? 'Агентский чат'
-        : 'Агент: ${_titleCtl.text.trim()}';
+    final taskTitle = _titleCtl.text.trim();
+    final title =
+        taskTitle.isEmpty ? text.agentChat : text.agentSessionTitle(taskTitle);
     final bridge = _ensureAgentBridge();
     try {
       final connected = await bridge.connect();
@@ -1683,8 +1683,8 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       if (mounted) {
         _showSnack(
           selectedCommands.isEmpty
-              ? 'Новый агентский чат запускается'
-              : 'Агент запускает очередь: ${selectedCommands.length} инструментов',
+              ? text.agentLaunchStarted
+              : text.agentQueueLaunchStarted(selectedCommands.length),
         );
       }
     } catch (error) {

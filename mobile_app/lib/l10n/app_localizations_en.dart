@@ -287,6 +287,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskAgentChat => 'Agent chat';
 
   @override
+  String taskAgentSessionTitle(String title) {
+    return 'Agent: $title';
+  }
+
+  @override
   String get taskAgentTaskChats => 'Task chats';
 
   @override
@@ -312,6 +317,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String taskAgentChatConnectFailed(Object error) {
     return 'Could not connect chat: $error';
+  }
+
+  @override
+  String get taskAgentLaunchStarted => 'New agent chat is starting';
+
+  @override
+  String taskAgentQueueLaunchStarted(int count) {
+    return 'Agent is starting the queue: $count tools';
   }
 
   @override

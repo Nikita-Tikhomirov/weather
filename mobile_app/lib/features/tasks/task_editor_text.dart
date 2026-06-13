@@ -34,6 +34,8 @@ class TaskEditorText {
       'Выберите воркспейс для агентского чата';
   String get agentNewChat => l10n?.taskAgentNewChat ?? 'Новый чат';
   String get agentChat => l10n?.taskAgentChat ?? 'Агентский чат';
+  String agentSessionTitle(String title) =>
+      l10n?.taskAgentSessionTitle(title) ?? 'Агент: $title';
   String get agentTaskChats => l10n?.taskAgentTaskChats ?? 'Чаты задачи';
   String get agentNoChats =>
       l10n?.taskAgentNoChats ?? 'Агентские чаты не подключены';
@@ -53,6 +55,11 @@ class TaskEditorText {
   String agentChatConnectFailed(Object error) =>
       l10n?.taskAgentChatConnectFailed(error) ??
       'Не удалось подключить чат: $error';
+  String get agentLaunchStarted =>
+      l10n?.taskAgentLaunchStarted ?? 'Новый агентский чат запускается';
+  String agentQueueLaunchStarted(int count) =>
+      l10n?.taskAgentQueueLaunchStarted(count) ??
+      'Агент запускает очередь: $count инструментов';
   String get agentQueueRunning => l10n?.taskAgentQueueRunning ?? 'Очередь идет';
   String get workspace => l10n?.taskWorkspace ?? 'Воркспейс';
   String get workspaceField =>

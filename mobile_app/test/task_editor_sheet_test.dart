@@ -1592,6 +1592,65 @@ void main() {
       },
     );
 
+    testWidgets('uses localized agent launch title and snackbar',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = _FakeTaskStore(repository);
+      _seedProjectAccess(store);
+      _FakeAgentBridge? bridge;
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Executor',
+        plugins: [],
+        allowedCommands: ['session_create', 'session_send'],
+        reason: '',
+        workspaceId: 'weather',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            existing: _editableTask,
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              );
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Agent'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('New chat'));
+      await tester.pumpAndSettle();
+
+      expect(bridge!.createSessionCount, 1);
+      expect(
+        repository.upserts.last.collaboration.agentSessions.first.title,
+        'Agent: Editable Task',
+      );
+      expect(find.text('New agent chat is starting'), findsOneWidget);
+      expect(find.text('Новый агентский чат запускается'), findsNothing);
+      expect(find.text('Агент: Editable Task'), findsNothing);
+    });
+
     testWidgets('agent launch stops when task card skill is missing',
         (tester) async {
       final repository = _FakeTaskRepository();
