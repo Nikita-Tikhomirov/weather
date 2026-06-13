@@ -21,6 +21,13 @@ class _PendingAcceptApi extends ApiClient {
 }
 
 void main() {
+  test('callSignalingErrorMessage uses English diagnostic text', () {
+    expect(
+      callSignalingErrorMessage('bad sdp'),
+      'Call signaling error: bad sdp',
+    );
+  });
+
   test('acceptCall does not report connected before signaling is ready',
       () async {
     final completer = Completer<CallSession>();

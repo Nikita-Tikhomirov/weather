@@ -14,6 +14,9 @@ enum CallState {
   ended,
 }
 
+String callSignalingErrorMessage(Object error) =>
+    'Call signaling error: $error';
+
 AndroidAudioConfiguration buildCallAndroidAudioConfiguration() {
   return AndroidAudioConfiguration.communication;
 }
@@ -504,7 +507,7 @@ class CallService {
           break;
       }
     } catch (e) {
-      _errorController.add('Ошибка сигналинга звонка: $e');
+      _errorController.add(callSignalingErrorMessage(e));
     }
   }
 
