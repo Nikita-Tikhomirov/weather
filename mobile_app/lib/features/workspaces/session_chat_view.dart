@@ -11,18 +11,17 @@ class _SessionChatText {
 
   final AppLocalizations? l10n;
 
-  String get back => l10n?.back ?? 'Назад';
-  String get manageSession => l10n?.manageSession ?? 'Управление сессией';
+  String get back => l10n?.back ?? 'Back';
+  String get manageSession => l10n?.manageSession ?? 'Manage session';
   String get sessionHistoryEmpty =>
-      l10n?.sessionHistoryEmpty ?? 'История сессии пуста';
-  String get attachPhoto => l10n?.attachPhoto ?? 'Прикрепить фото';
-  String get attachDocument =>
-      l10n?.attachDocument ?? 'Прикрепить документ';
-  String get message => l10n?.message ?? 'Сообщение';
-  String get send => l10n?.send ?? 'Отправить';
-  String get copyText => l10n?.copyText ?? 'Копировать текст';
-  String get copied => l10n?.copied ?? 'Скопировано';
-  String get workProgress => l10n?.workProgress ?? 'Ход работы';
+      l10n?.sessionHistoryEmpty ?? 'Session history is empty';
+  String get attachPhoto => l10n?.attachPhoto ?? 'Attach photo';
+  String get attachDocument => l10n?.attachDocument ?? 'Attach document';
+  String get message => l10n?.message ?? 'Message';
+  String get send => l10n?.send ?? 'Send';
+  String get copyText => l10n?.copyText ?? 'Copy text';
+  String get copied => l10n?.copied ?? 'Copied';
+  String get workProgress => l10n?.workProgress ?? 'Work progress';
 }
 
 class SessionChatView extends StatefulWidget {

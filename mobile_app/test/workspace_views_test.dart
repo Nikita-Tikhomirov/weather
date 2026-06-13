@@ -548,11 +548,11 @@ void main() {
     expect(find.text('Привет'), findsOneWidget);
     expect(find.text('Готов'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Управление сессией'));
+    await tester.tap(find.byTooltip('Manage session'));
     expect(managementOpened, isTrue);
 
     await tester.enterText(find.byType(TextField), 'новый запрос');
-    await tester.tap(find.byTooltip('Отправить'));
+    await tester.tap(find.byTooltip('Send'));
     expect(sent, 'новый запрос');
 
     controller.dispose();
@@ -680,8 +680,8 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byTooltip('Прикрепить фото'));
-    await tester.tap(find.byTooltip('Прикрепить документ'));
+    await tester.tap(find.byTooltip('Attach photo'));
+    await tester.tap(find.byTooltip('Attach document'));
 
     expect(photoRequested, isTrue);
     expect(documentRequested, isTrue);
@@ -739,7 +739,7 @@ void main() {
       ),
     );
 
-    expect(find.byTooltip('Копировать текст'), findsOneWidget);
+    expect(find.byTooltip('Copy text'), findsOneWidget);
 
     controller.dispose();
   });
@@ -764,7 +764,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Ход работы: git status'), findsOneWidget);
+    expect(find.text('Work progress: git status'), findsOneWidget);
     expect(find.text('Готово'), findsOneWidget);
 
     controller.dispose();
