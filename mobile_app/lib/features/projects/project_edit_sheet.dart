@@ -10,19 +10,19 @@ class _ProjectEditSheetText {
 
   final AppLocalizations? l10n;
 
-  String get newProject => l10n?.newProject ?? 'Новый проект';
-  String get editProject => l10n?.editProject ?? 'Редактировать проект';
-  String get projectNameLabel => l10n?.projectNameLabel ?? 'Название';
-  String get description => l10n?.description ?? 'Описание';
-  String get groups => l10n?.groups ?? 'Группы';
-  String get cancel => l10n?.cancel ?? 'Отмена';
-  String get create => l10n?.create ?? 'Создать';
-  String get save => l10n?.save ?? 'Сохранить';
+  String get newProject => l10n?.newProject ?? 'New project';
+  String get editProject => l10n?.editProject ?? 'Edit project';
+  String get projectNameLabel => l10n?.projectNameLabel ?? 'Project name';
+  String get description => l10n?.description ?? 'Description';
+  String get groups => l10n?.groups ?? 'Groups';
+  String get cancel => l10n?.cancel ?? 'Cancel';
+  String get create => l10n?.create ?? 'Create';
+  String get save => l10n?.save ?? 'Save';
   String get projectNameRequired =>
-      l10n?.projectNameRequired ?? 'Введите название проекта';
+      l10n?.projectNameRequired ?? 'Enter project name';
 
   String projectSaveFailed(Object error) {
-    return l10n?.projectSaveFailed(error.toString()) ?? 'Ошибка: $error';
+    return l10n?.projectSaveFailed(error.toString()) ?? 'Error: $error';
   }
 }
 

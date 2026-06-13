@@ -66,6 +66,57 @@ void main() {
       expect(find.text('Enter project name'), findsOneWidget);
     });
 
+    testWidgets('project edit sheet falls back to English labels',
+        (tester) async {
+      final repository = _FakeTaskRepository();
+      final store = TaskStore(
+        repository: repository,
+        domainService: TaskDomainService(),
+      );
+      store.familyGroups.value = const [
+        FamilyGroup(id: 'team', name: 'Team', members: ['nik']),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Builder(
+            builder: (context) {
+              return Scaffold(
+                body: Center(
+                  child: FilledButton(
+                    onPressed: () => showProjectEditSheet(
+                      context: context,
+                      store: store,
+                      isCreate: true,
+                    ),
+                    child: const Text('Open sheet'),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open sheet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('New project'), findsOneWidget);
+      expect(find.text('Project name'), findsOneWidget);
+      expect(find.text('Description'), findsOneWidget);
+      expect(find.text('Groups'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('Create'), findsOneWidget);
+      expect(find.text('Новый проект'), findsNothing);
+      expect(find.text('Отмена'), findsNothing);
+
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Enter project name'), findsOneWidget);
+    });
+
     testWidgets('family group edit sheet uses localized labels',
         (tester) async {
       final repository = _FakeTaskRepository();
