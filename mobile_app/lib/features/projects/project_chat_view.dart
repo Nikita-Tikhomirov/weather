@@ -16,32 +16,28 @@ class _ProjectChatText {
 
   final AppLocalizations? l10n;
 
-  String get startBridge =>
-      l10n?.projectChatStartBridge ?? 'Запустить bridge';
-  String get newSession => l10n?.projectChatNewSession ?? 'Новая сессия';
-  String get stopDeepSeek =>
-      l10n?.projectChatStopDeepSeek ?? 'Остановить DeepSeek';
+  String get startBridge => l10n?.projectChatStartBridge ?? 'Start bridge';
+  String get newSession => l10n?.projectChatNewSession ?? 'New session';
+  String get stopDeepSeek => l10n?.projectChatStopDeepSeek ?? 'Stop DeepSeek';
   String get serverSettings =>
-      l10n?.projectChatServerSettings ?? 'Настроить сервер';
-  String get projectFiles =>
-      l10n?.projectChatProjectFiles ?? 'Файлы проекта';
+      l10n?.projectChatServerSettings ?? 'Server settings';
+  String get projectFiles => l10n?.projectChatProjectFiles ?? 'Project files';
   String connectedTo(Object address) =>
-      l10n?.projectChatConnectedTo(address) ?? 'Подключено • $address';
+      l10n?.projectChatConnectedTo(address) ?? 'Connected • $address';
   String connectingTo(Object address) =>
-      l10n?.projectChatConnectingTo(address) ?? 'Подключение к $address...';
+      l10n?.projectChatConnectingTo(address) ?? 'Connecting to $address...';
   String get terminalTitle =>
-      l10n?.projectChatTerminalTitle ?? 'Терминал проекта';
+      l10n?.projectChatTerminalTitle ?? 'Project terminal';
   String get terminalHint =>
       l10n?.projectChatTerminalHint ??
-      'Напишите сообщение для взаимодействия с AI-ассистентом в проекте';
-  String get reconnect =>
-      l10n?.projectChatReconnect ?? 'Переподключиться';
+      'Send a message to work with the AI assistant in this project';
+  String get reconnect => l10n?.projectChatReconnect ?? 'Reconnect';
   String get photoToVision =>
-      l10n?.projectChatPhotoToVision ?? 'Фото в vision';
+      l10n?.projectChatPhotoToVision ?? 'Photo to vision';
   String get documentToVision =>
-      l10n?.projectChatDocumentToVision ?? 'Документ в vision';
-  String get message => l10n?.message ?? 'Сообщение';
-  String get send => l10n?.send ?? 'Отправить';
+      l10n?.projectChatDocumentToVision ?? 'Document to vision';
+  String get message => l10n?.message ?? 'Message';
+  String get send => l10n?.send ?? 'Send';
 }
 
 class ProjectChatView extends StatelessWidget {
