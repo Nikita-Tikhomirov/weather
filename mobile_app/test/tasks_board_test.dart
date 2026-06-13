@@ -26,11 +26,11 @@ void main() {
         ),
       );
 
-      // Should have 4 columns (Russian labels)
-      expect(find.text('К выполнению'), findsOneWidget);
-      expect(find.text('В работе'), findsOneWidget);
-      expect(find.text('На проверке'), findsOneWidget);
-      expect(find.text('Выполнено'), findsOneWidget);
+      // Should have 4 columns with English fallback labels.
+      expect(find.text('To do'), findsOneWidget);
+      expect(find.text('In progress'), findsOneWidget);
+      expect(find.text('In review'), findsOneWidget);
+      expect(find.text('Done'), findsOneWidget);
     });
 
     testWidgets('uses localized workflow labels when delegates are available',

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/app_labels.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/task_item.dart';
 import 'task_card.dart';
@@ -137,15 +138,15 @@ String taskWorkflowLabel(BuildContext context, WorkflowStatus status) {
   final l10n = AppLocalizations.of(context);
   switch (status) {
     case WorkflowStatus.todo:
-      return l10n?.workflowTodo ?? 'К выполнению';
+      return l10n?.workflowTodo ?? workflowLabel(status);
     case WorkflowStatus.in_progress:
-      return l10n?.workflowInProgress ?? 'В работе';
+      return l10n?.workflowInProgress ?? workflowLabel(status);
     case WorkflowStatus.in_review:
-      return l10n?.workflowInReview ?? 'На проверке';
+      return l10n?.workflowInReview ?? workflowLabel(status);
     case WorkflowStatus.done:
-      return l10n?.workflowDone ?? 'Выполнено';
+      return l10n?.workflowDone ?? workflowLabel(status);
     case WorkflowStatus.archive:
-      return l10n?.workflowArchive ?? 'Архив';
+      return l10n?.workflowArchive ?? workflowLabel(status);
   }
 }
 

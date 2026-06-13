@@ -11,16 +11,17 @@ const kProfileLabels = {
 };
 
 const kWorkflowLabels = {
-  WorkflowStatus.todo: 'К выполнению',
-  WorkflowStatus.in_progress: 'В работе',
-  WorkflowStatus.in_review: 'На проверке',
-  WorkflowStatus.done: 'Выполнено',
+  WorkflowStatus.todo: 'To do',
+  WorkflowStatus.in_progress: 'In progress',
+  WorkflowStatus.in_review: 'In review',
+  WorkflowStatus.done: 'Done',
+  WorkflowStatus.archive: 'Archive',
 };
 
 const kPriorityLabels = {
-  Priority.low: 'Низкий',
-  Priority.medium: 'Средний',
-  Priority.high: 'Высокий',
+  Priority.low: 'Low',
+  Priority.medium: 'Medium',
+  Priority.high: 'High',
 };
 
 String profileLabel(String key) => kProfileLabels[key] ?? key;
