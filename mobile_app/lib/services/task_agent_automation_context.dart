@@ -34,7 +34,7 @@ extension TaskAgentAutomationContextMerge on TaskAgentAutomationService {
           ...task.collaboration.activity,
           _activity(
             type: 'agent_status_changed',
-            text: 'автоматически перевел карточку в статус На проверке',
+            text: 'automatically moved card to In review',
             targetId: agentSessionId,
           ),
         ],
@@ -217,7 +217,7 @@ extension TaskAgentAutomationContextMerge on TaskAgentAutomationService {
     final checklists = actions.checklists.map((draft) {
       return TaskChecklist(
         id: _newId('checklist'),
-        title: draft.title.isEmpty ? 'План агента' : draft.title,
+        title: draft.title.isEmpty ? 'Agent plan' : draft.title,
         createdBy: 'agent',
         createdAt: now,
         items: draft.items
@@ -243,12 +243,12 @@ extension TaskAgentAutomationContextMerge on TaskAgentAutomationService {
           if (status != null && status != task.workflowStatus)
             _activity(
               type: 'agent_status_changed',
-              text: 'перевел карточку в статус ${_workflowStatusLabel(status)}',
+              text: 'moved card to ${_workflowStatusLabel(status)}',
               targetId: agentSessionId,
             ),
           _activity(
             type: 'agent_card_updated',
-            text: 'обновил карточку задачи',
+            text: 'updated task card',
             targetId: agentSessionId,
           ),
         ],

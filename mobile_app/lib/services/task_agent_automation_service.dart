@@ -121,7 +121,7 @@ class TaskAgentAutomationService {
     final bridge = _ensureBridge();
     final connected = await bridge.connect();
     if (!connected) {
-      throw StateError('CodeWhale недоступен');
+      throw StateError('CodeWhale is unavailable');
     }
     final run = _TaskAgentAutomationRun(
       task: task,
@@ -190,7 +190,7 @@ class TaskAgentAutomationService {
     }
     if (message.isError) {
       final errorText =
-          message.error.isEmpty ? 'Ошибка CodeWhale' : message.error;
+          message.error.isEmpty ? 'CodeWhale error' : message.error;
       _finishRunWithError(run, errorText);
       return;
     }
@@ -250,7 +250,10 @@ class TaskAgentAutomationService {
 
   void _finishActiveStep(_TaskAgentAutomationRun run, String taskStatus) {
     if (taskStatus == 'failed' || taskStatus == 'canceled') {
-      _finishRunWithError(run, 'Один из шагов агента не выполнен: $taskStatus');
+      _finishRunWithError(
+        run,
+        'One of the agent steps did not complete: $taskStatus',
+      );
       return;
     }
     final step = run.activeStep;
@@ -258,7 +261,7 @@ class TaskAgentAutomationService {
     if (_mandatoryStepFailed(step, resultText)) {
       _finishRunWithError(
         run,
-        'family-task-card недоступен. Автопродолжение остановлено.',
+        'family-task-card is unavailable. Auto continuation stopped.',
       );
       return;
     }
@@ -623,15 +626,15 @@ class TaskAgentAutomationService {
   String _workflowStatusLabel(WorkflowStatus status) {
     switch (status) {
       case WorkflowStatus.todo:
-        return 'К выполнению';
+        return 'To do';
       case WorkflowStatus.in_progress:
-        return 'В работе';
+        return 'In progress';
       case WorkflowStatus.in_review:
-        return 'На проверке';
+        return 'In review';
       case WorkflowStatus.done:
-        return 'Выполнено';
+        return 'Done';
       case WorkflowStatus.archive:
-        return 'Архив';
+        return 'Archive';
     }
   }
 

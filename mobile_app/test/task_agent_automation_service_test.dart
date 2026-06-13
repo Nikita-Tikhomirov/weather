@@ -147,6 +147,7 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
   final List<Map<String, dynamic>> settingsUpdates = [];
   int updateTaskCardCount = 0;
   String policyTicket = '';
+  String familyTaskCardSkillReply = '';
   String taskPromptReply = 'Готово. Исправил форму и добавил отчет.';
 
   @override
@@ -210,7 +211,17 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
   @override
   void sendSessionMessage(String workspaceId, String sessionId, String text) {
     sentMessages.add(text);
-    if (text.contains('Продолжи работу')) {
+    if (text.trim() == '/skill family-task-card' &&
+        familyTaskCardSkillReply.trim().isNotEmpty) {
+      onMessage(
+        CodeWhaleBridgeMessage.fromJson({
+          'type': 'assistant_delta',
+          'workspace_id': workspaceId,
+          'session_id': sessionId,
+          'text': familyTaskCardSkillReply,
+        }),
+      );
+    } else if (text.contains('Продолжи работу')) {
       onMessage(
         CodeWhaleBridgeMessage.fromJson({
           'type': 'assistant_delta',
@@ -362,5 +373,64 @@ void main() {
     expect(saved.workflowStatus, WorkflowStatus.in_review);
     expect(saved.collaboration.comments.last.text, contains('Исправил форму'));
     expect(saved.collaboration.agentSessions.single.status, 'waiting_review');
+    expect(
+      saved.collaboration.activity.map((item) => item.text),
+      containsAll([
+        'automatically moved card to In review',
+        'updated task card',
+      ]),
+    );
+  });
+
+  test('logs English auto continuation error when task card skill is missing',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = _FakeTaskRepository();
+    final task = _taskWithWaitingAgent();
+    repository.tasks.add(task);
+    final store = TaskStore(
+      repository: repository,
+      domainService: TaskDomainService(),
+    );
+    await store.initialize(initialOwner: 'test_user');
+    final logs = <String>[];
+    _FakeAgentBridge? bridge;
+    final service = TaskAgentAutomationService(
+      store: store,
+      actorPhone: () => '+70000000000',
+      onLog: logs.add,
+      bridgeFactory: ({required onMessage, required onStatusChange}) {
+        bridge = _FakeAgentBridge(
+          onMessage: onMessage,
+          onStatusChange: onStatusChange,
+        )..familyTaskCardSkillReply = 'Skill family-task-card not found';
+        return bridge!;
+      },
+    );
+
+    final started = await service.continueLatestForInProgressTask(
+      task: task,
+      policy: const AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Executor',
+        plugins: [],
+        allowedCommands: ['session_send', 'session_update_task_card'],
+        reason: '',
+        workspaceId: 'weather',
+      ),
+    );
+
+    expect(started, isTrue);
+    expect(
+      logs,
+      contains('family-task-card is unavailable. Auto continuation stopped.'),
+    );
+    expect(
+      logs,
+      isNot(
+        contains('family-task-card недоступен. Автопродолжение остановлено.'),
+      ),
+    );
   });
 }
