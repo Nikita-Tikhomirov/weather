@@ -915,6 +915,47 @@ class AppLocalizationsRu extends AppLocalizations {
   String get projectChats => 'Проектные чаты';
 
   @override
+  String get projectChatStartBridge => 'Запустить bridge';
+
+  @override
+  String get projectChatNewSession => 'Новая сессия';
+
+  @override
+  String get projectChatStopDeepSeek => 'Остановить DeepSeek';
+
+  @override
+  String get projectChatServerSettings => 'Настроить сервер';
+
+  @override
+  String get projectChatProjectFiles => 'Файлы проекта';
+
+  @override
+  String projectChatConnectedTo(Object address) {
+    return 'Подключено • $address';
+  }
+
+  @override
+  String projectChatConnectingTo(Object address) {
+    return 'Подключение к $address...';
+  }
+
+  @override
+  String get projectChatTerminalTitle => 'Терминал проекта';
+
+  @override
+  String get projectChatTerminalHint =>
+      'Напишите сообщение для взаимодействия с AI-ассистентом в проекте';
+
+  @override
+  String get projectChatReconnect => 'Переподключиться';
+
+  @override
+  String get projectChatPhotoToVision => 'Фото в vision';
+
+  @override
+  String get projectChatDocumentToVision => 'Документ в vision';
+
+  @override
   String get regularGroups => 'Обычные группы';
 
   @override

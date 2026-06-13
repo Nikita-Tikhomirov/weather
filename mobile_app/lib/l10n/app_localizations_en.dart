@@ -911,6 +911,47 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectChats => 'Project chats';
 
   @override
+  String get projectChatStartBridge => 'Start bridge';
+
+  @override
+  String get projectChatNewSession => 'New session';
+
+  @override
+  String get projectChatStopDeepSeek => 'Stop DeepSeek';
+
+  @override
+  String get projectChatServerSettings => 'Server settings';
+
+  @override
+  String get projectChatProjectFiles => 'Project files';
+
+  @override
+  String projectChatConnectedTo(Object address) {
+    return 'Connected • $address';
+  }
+
+  @override
+  String projectChatConnectingTo(Object address) {
+    return 'Connecting to $address...';
+  }
+
+  @override
+  String get projectChatTerminalTitle => 'Project terminal';
+
+  @override
+  String get projectChatTerminalHint =>
+      'Send a message to work with the AI assistant in this project';
+
+  @override
+  String get projectChatReconnect => 'Reconnect';
+
+  @override
+  String get projectChatPhotoToVision => 'Photo to vision';
+
+  @override
+  String get projectChatDocumentToVision => 'Document to vision';
+
+  @override
   String get regularGroups => 'Regular groups';
 
   @override

@@ -2,9 +2,47 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/project_contact.dart';
 import '../../services/project_bridge_service.dart';
 import 'project_icons.dart';
+
+class _ProjectChatText {
+  const _ProjectChatText(this.l10n);
+
+  factory _ProjectChatText.of(BuildContext context) {
+    return _ProjectChatText(AppLocalizations.of(context));
+  }
+
+  final AppLocalizations? l10n;
+
+  String get startBridge =>
+      l10n?.projectChatStartBridge ?? 'Запустить bridge';
+  String get newSession => l10n?.projectChatNewSession ?? 'Новая сессия';
+  String get stopDeepSeek =>
+      l10n?.projectChatStopDeepSeek ?? 'Остановить DeepSeek';
+  String get serverSettings =>
+      l10n?.projectChatServerSettings ?? 'Настроить сервер';
+  String get projectFiles =>
+      l10n?.projectChatProjectFiles ?? 'Файлы проекта';
+  String connectedTo(Object address) =>
+      l10n?.projectChatConnectedTo(address) ?? 'Подключено • $address';
+  String connectingTo(Object address) =>
+      l10n?.projectChatConnectingTo(address) ?? 'Подключение к $address...';
+  String get terminalTitle =>
+      l10n?.projectChatTerminalTitle ?? 'Терминал проекта';
+  String get terminalHint =>
+      l10n?.projectChatTerminalHint ??
+      'Напишите сообщение для взаимодействия с AI-ассистентом в проекте';
+  String get reconnect =>
+      l10n?.projectChatReconnect ?? 'Переподключиться';
+  String get photoToVision =>
+      l10n?.projectChatPhotoToVision ?? 'Фото в vision';
+  String get documentToVision =>
+      l10n?.projectChatDocumentToVision ?? 'Документ в vision';
+  String get message => l10n?.message ?? 'Сообщение';
+  String get send => l10n?.send ?? 'Отправить';
+}
 
 class ProjectChatView extends StatelessWidget {
   const ProjectChatView({
@@ -94,6 +132,7 @@ class _ProjectChatHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = _ProjectChatText.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -117,27 +156,27 @@ class _ProjectChatHeader extends StatelessWidget {
               ),
               const Spacer(),
               IconButton(
-                tooltip: 'Запустить bridge',
+                tooltip: text.startBridge,
                 icon: const Icon(Icons.power_settings_new),
                 onPressed: onRequestBridgeStart,
               ),
               IconButton(
-                tooltip: 'Новая сессия',
+                tooltip: text.newSession,
                 icon: const Icon(Icons.add_to_queue),
                 onPressed: onStartNewSession,
               ),
               IconButton(
-                tooltip: 'Остановить DeepSeek',
+                tooltip: text.stopDeepSeek,
                 icon: const Icon(Icons.stop_circle_outlined),
                 onPressed: onStopProjectPrompt,
               ),
               IconButton(
-                tooltip: 'Настроить сервер',
+                tooltip: text.serverSettings,
                 icon: const Icon(Icons.settings),
                 onPressed: onOpenBridgeSettings,
               ),
               IconButton(
-                tooltip: 'Файлы проекта',
+                tooltip: text.projectFiles,
                 icon: const Icon(Icons.folder_open),
                 onPressed: onOpenProjectFiles,
               ),
@@ -164,8 +203,8 @@ class _ProjectChatHeader extends StatelessWidget {
                           final addr = snapshot.data ?? '...';
                           return Text(
                             bridge?.isConnected == true
-                                ? 'Подключено • $addr'
-                                : 'Подключение к $addr...',
+                                ? text.connectedTo(addr)
+                                : text.connectingTo(addr),
                             style: TextStyle(
                               fontSize: 11,
                               color: bridge?.isConnected == true
@@ -194,6 +233,7 @@ class _EmptyProjectChat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = _ProjectChatText.of(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -204,10 +244,10 @@ class _EmptyProjectChat extends StatelessWidget {
             color: Theme.of(context).disabledColor,
           ),
           const SizedBox(height: 8),
-          const Text('Терминал проекта', style: TextStyle(fontSize: 16)),
+          Text(text.terminalTitle, style: const TextStyle(fontSize: 16)),
           const SizedBox(height: 4),
           Text(
-            'Напишите сообщение для взаимодействия\nс AI-ассистентом в проекте',
+            text.terminalHint,
             textAlign: TextAlign.center,
             style: TextStyle(color: Theme.of(context).disabledColor),
           ),
@@ -215,7 +255,7 @@ class _EmptyProjectChat extends StatelessWidget {
           ElevatedButton.icon(
             onPressed: onReconnect,
             icon: const Icon(Icons.refresh),
-            label: const Text('Переподключиться'),
+            label: Text(text.reconnect),
           ),
         ],
       ),
@@ -440,22 +480,23 @@ class _ProjectChatInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = _ProjectChatText.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
       child: Row(
         children: [
           IconButton(
-            tooltip: 'Фото в vision',
+            tooltip: text.photoToVision,
             onPressed: onSendPhotos,
             icon: const Icon(Icons.image_outlined),
           ),
           IconButton(
-            tooltip: 'Документ в vision',
+            tooltip: text.documentToVision,
             onPressed: onSendDocuments,
             icon: const Icon(Icons.description_outlined),
           ),
           IconButton(
-            tooltip: 'Файлы проекта',
+            tooltip: text.projectFiles,
             onPressed: onOpenProjectFiles,
             icon: const Icon(Icons.folder_open),
           ),
@@ -467,9 +508,9 @@ class _ProjectChatInput extends StatelessWidget {
               maxLines: 4,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => onSendMessage(),
-              decoration: const InputDecoration(
-                hintText: 'Сообщение',
-                border: OutlineInputBorder(
+              decoration: InputDecoration(
+                hintText: text.message,
+                border: const OutlineInputBorder(
                   borderRadius: BorderRadius.all(Radius.circular(24)),
                 ),
                 isDense: true,
@@ -478,7 +519,7 @@ class _ProjectChatInput extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           IconButton.filled(
-            tooltip: 'Отправить',
+            tooltip: text.send,
             onPressed: onSendMessage,
             icon: const Icon(Icons.send),
           ),

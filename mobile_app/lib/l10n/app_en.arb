@@ -385,6 +385,28 @@
   "createProjectAction": "Create project",
   "createGroupAction": "Create group",
   "projectChats": "Project chats",
+  "projectChatStartBridge": "Start bridge",
+  "projectChatNewSession": "New session",
+  "projectChatStopDeepSeek": "Stop DeepSeek",
+  "projectChatServerSettings": "Server settings",
+  "projectChatProjectFiles": "Project files",
+  "projectChatConnectedTo": "Connected • {address}",
+  "@projectChatConnectedTo": {
+    "placeholders": {
+      "address": {}
+    }
+  },
+  "projectChatConnectingTo": "Connecting to {address}...",
+  "@projectChatConnectingTo": {
+    "placeholders": {
+      "address": {}
+    }
+  },
+  "projectChatTerminalTitle": "Project terminal",
+  "projectChatTerminalHint": "Send a message to work with the AI assistant in this project",
+  "projectChatReconnect": "Reconnect",
+  "projectChatPhotoToVision": "Photo to vision",
+  "projectChatDocumentToVision": "Document to vision",
   "regularGroups": "Regular groups",
   "chatParticipantsCount": "Participants: {count}",
   "@chatParticipantsCount": {

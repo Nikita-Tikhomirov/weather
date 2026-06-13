@@ -385,6 +385,28 @@
   "createProjectAction": "Создать проект",
   "createGroupAction": "Создать группу",
   "projectChats": "Проектные чаты",
+  "projectChatStartBridge": "Запустить bridge",
+  "projectChatNewSession": "Новая сессия",
+  "projectChatStopDeepSeek": "Остановить DeepSeek",
+  "projectChatServerSettings": "Настроить сервер",
+  "projectChatProjectFiles": "Файлы проекта",
+  "projectChatConnectedTo": "Подключено • {address}",
+  "@projectChatConnectedTo": {
+    "placeholders": {
+      "address": {}
+    }
+  },
+  "projectChatConnectingTo": "Подключение к {address}...",
+  "@projectChatConnectingTo": {
+    "placeholders": {
+      "address": {}
+    }
+  },
+  "projectChatTerminalTitle": "Терминал проекта",
+  "projectChatTerminalHint": "Напишите сообщение для взаимодействия с AI-ассистентом в проекте",
+  "projectChatReconnect": "Переподключиться",
+  "projectChatPhotoToVision": "Фото в vision",
+  "projectChatDocumentToVision": "Документ в vision",
   "regularGroups": "Обычные группы",
   "chatParticipantsCount": "Участники: {count}",
   "@chatParticipantsCount": {

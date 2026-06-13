@@ -1787,6 +1787,78 @@ abstract class AppLocalizations {
   /// **'Project chats'**
   String get projectChats;
 
+  /// No description provided for @projectChatStartBridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Start bridge'**
+  String get projectChatStartBridge;
+
+  /// No description provided for @projectChatNewSession.
+  ///
+  /// In en, this message translates to:
+  /// **'New session'**
+  String get projectChatNewSession;
+
+  /// No description provided for @projectChatStopDeepSeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop DeepSeek'**
+  String get projectChatStopDeepSeek;
+
+  /// No description provided for @projectChatServerSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Server settings'**
+  String get projectChatServerSettings;
+
+  /// No description provided for @projectChatProjectFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Project files'**
+  String get projectChatProjectFiles;
+
+  /// No description provided for @projectChatConnectedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected • {address}'**
+  String projectChatConnectedTo(Object address);
+
+  /// No description provided for @projectChatConnectingTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting to {address}...'**
+  String projectChatConnectingTo(Object address);
+
+  /// No description provided for @projectChatTerminalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Project terminal'**
+  String get projectChatTerminalTitle;
+
+  /// No description provided for @projectChatTerminalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a message to work with the AI assistant in this project'**
+  String get projectChatTerminalHint;
+
+  /// No description provided for @projectChatReconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect'**
+  String get projectChatReconnect;
+
+  /// No description provided for @projectChatPhotoToVision.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo to vision'**
+  String get projectChatPhotoToVision;
+
+  /// No description provided for @projectChatDocumentToVision.
+  ///
+  /// In en, this message translates to:
+  /// **'Document to vision'**
+  String get projectChatDocumentToVision;
+
   /// No description provided for @regularGroups.
   ///
   /// In en, this message translates to:
