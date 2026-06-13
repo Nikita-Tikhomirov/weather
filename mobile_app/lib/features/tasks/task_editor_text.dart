@@ -140,6 +140,40 @@ class TaskEditorText {
   String agentContinueFailed(Object error) =>
       l10n?.taskAgentContinueFailed(error) ??
       'Не удалось продолжить агента: $error';
+  String get activityAgentSessionRequested =>
+      l10n?.taskActivityAgentSessionRequested ??
+      'запросил новый агентский чат';
+  String get activityAgentSessionStartFailed =>
+      l10n?.taskActivityAgentSessionStartFailed ??
+      'не смог запустить агентский чат';
+  String get activityAgentSessionResumed =>
+      l10n?.taskActivityAgentSessionResumed ?? 'продолжил агентский чат';
+  String get activityAgentSessionResumeFailed =>
+      l10n?.taskActivityAgentSessionResumeFailed ??
+      'не смог продолжить агентский чат';
+  String get activityAgentSessionError =>
+      l10n?.taskActivityAgentSessionError ??
+      'получил ошибку агентского чата';
+  String get activityAgentSessionLinked =>
+      l10n?.taskActivityAgentSessionLinked ?? 'подключил агентский чат';
+  String get activityAgentExistingSessionLinked =>
+      l10n?.taskActivityAgentExistingSessionLinked ??
+      'подключил существующий агентский чат';
+  String activityAgentAutoMovedToStatus(Object status) =>
+      l10n?.taskActivityAgentAutoMovedToStatus(status) ??
+      'автоматически перевел карточку в статус $status';
+  String get activityAgentQueueWaitingReview =>
+      l10n?.taskActivityAgentQueueWaitingReview ?? 'ждет проверки карточки';
+  String get activityAgentQueueCompleted =>
+      l10n?.taskActivityAgentQueueCompleted ?? 'завершил очередь агента';
+  String get activityAgentQueueNeedsMoreWork =>
+      l10n?.taskActivityAgentQueueNeedsMoreWork ?? 'ждет дальнейших правок';
+  String activityAgentStatusChanged(Object status) =>
+      l10n?.taskActivityAgentStatusChanged(status) ??
+      'перевел карточку в статус $status';
+  String get activityAgentCardUpdated =>
+      l10n?.taskActivityAgentCardUpdated ?? 'обновил карточку задачи';
+  String get agentPlanTitle => l10n?.taskAgentPlanTitle ?? 'План агента';
   String get codeWhaleError =>
       l10n?.codeWhaleErrorFallback ?? 'Ошибка CodeWhale';
   String get agentStatusPending => l10n?.waitingToStart ?? 'ожидает запуска';

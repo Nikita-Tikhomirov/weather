@@ -1623,7 +1623,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       _upsertAgentSession(session);
       _appendAgentActivity(
         type: 'agent_session_requested',
-        text: 'запросил новый агентский чат',
+        text: text.activityAgentSessionRequested,
         targetId: session.id,
       );
       if (_status == WorkflowStatus.todo) {
@@ -1704,7 +1704,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         _upsertAgentSession(session.copyWith(status: 'error'));
         _appendAgentActivity(
           type: 'agent_session_error',
-          text: 'не смог запустить агентский чат',
+          text: text.activityAgentSessionStartFailed,
           targetId: session.id,
         );
         _agentLaunching = false;
@@ -1981,7 +1981,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         _markAgentSession(session.id, status: 'running');
         _appendAgentActivity(
           type: 'agent_session_resumed',
-          text: 'продолжил агентский чат',
+          text: text.activityAgentSessionResumed,
           targetId: session.id,
         );
       });
@@ -2024,7 +2024,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         _markAgentSession(session.id, status: 'error');
         _appendAgentActivity(
           type: 'agent_session_error',
-          text: 'не смог продолжить агентский чат',
+          text: text.activityAgentSessionResumeFailed,
           targetId: session.id,
         );
         _agentLaunchError = message;
@@ -2056,6 +2056,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   void _handleAgentBridgeMessage(CodeWhaleBridgeMessage message) {
     if (!mounted) return;
+    final text = TaskEditorText.of(context);
     if (message.type == 'workspace_list' || message.workspaces.isNotEmpty) {
       final workspaces = message.workspaces;
       setState(() {
@@ -2103,15 +2104,14 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     }
     final pendingId = _pendingAgentSessionId;
     if (message.isError) {
-      final errorText = message.error.isEmpty
-          ? TaskEditorText.of(context).codeWhaleError
-          : message.error;
+      final errorText =
+          message.error.isEmpty ? text.codeWhaleError : message.error;
       if (pendingId.isNotEmpty) {
         setState(() {
           _markAgentSession(pendingId, status: 'error');
           _appendAgentActivity(
             type: 'agent_session_error',
-            text: 'получил ошибку агентского чата',
+            text: text.activityAgentSessionError,
             targetId: pendingId,
           );
           _agentLaunchError = errorText;
@@ -2148,7 +2148,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         );
         _appendAgentActivity(
           type: 'agent_session_linked',
-          text: 'подключил агентский чат',
+          text: text.activityAgentSessionLinked,
           targetId: pendingId,
         );
         _agentLaunching = false;
@@ -2474,11 +2474,12 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         _hasOpenBlockingAgentQuestion()) {
       return;
     }
+    final text = TaskEditorText.of(context);
     setState(() {
       _status = WorkflowStatus.in_review;
       _appendAgentActivity(
         type: 'agent_status_changed',
-        text: 'автоматически перевел карточку в статус На проверке',
+        text: text.activityAgentAutoMovedToStatus(text.workflowInReview),
         targetId: agentSessionId,
       );
     });
@@ -2654,13 +2655,14 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   String _agentQueueCompletionText(String status) {
+    final text = TaskEditorText.of(context);
     switch (status) {
       case 'waiting_review':
-        return 'ждет проверки карточки';
+        return text.activityAgentQueueWaitingReview;
       case 'completed':
-        return 'завершил очередь агента';
+        return text.activityAgentQueueCompleted;
       default:
-        return 'ждет дальнейших правок';
+        return text.activityAgentQueueNeedsMoreWork;
     }
   }
 
@@ -2849,6 +2851,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     if (actions.isEmpty && summary.trim().isEmpty) {
       return;
     }
+    final strings = TaskEditorText.of(context);
     final now = DateTime.now().toIso8601String();
     final nextStatus = _agentActionStatus(actions.status);
     final newAttachments = actions.attachments.map((draft) {
@@ -2887,7 +2890,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     final newChecklists = actions.checklists.map((draft) {
       return TaskChecklist(
         id: _newId('checklist'),
-        title: draft.title.isEmpty ? 'План агента' : draft.title,
+        title: draft.title.isEmpty ? strings.agentPlanTitle : draft.title,
         createdBy: 'agent',
         createdAt: now,
         items: draft.items
@@ -2907,13 +2910,14 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       if (nextStatus != null && nextStatus != _status)
         _activity(
           type: 'agent_status_changed',
-          text:
-              'перевел карточку в статус ${_agentWorkflowStatusLabel(nextStatus)}',
+          text: strings.activityAgentStatusChanged(
+            _agentWorkflowStatusLabel(nextStatus),
+          ),
           targetId: _pendingAgentSessionId,
         ),
       _activity(
         type: 'agent_card_updated',
-        text: 'обновил карточку задачи',
+        text: strings.activityAgentCardUpdated,
         targetId: _pendingAgentSessionId,
       ),
     ];
@@ -3099,17 +3103,18 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   String _agentWorkflowStatusLabel(WorkflowStatus status) {
+    final text = TaskEditorText.of(context);
     switch (status) {
       case WorkflowStatus.todo:
-        return 'К выполнению';
+        return text.workflowTodo;
       case WorkflowStatus.in_progress:
-        return 'В работе';
+        return text.workflowInProgress;
       case WorkflowStatus.in_review:
-        return 'На проверке';
+        return text.workflowInReview;
       case WorkflowStatus.done:
-        return 'Выполнено';
+        return text.workflowDone;
       case WorkflowStatus.archive:
-        return 'Архив';
+        return text.workflowArchive;
     }
   }
 
@@ -3384,7 +3389,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         _upsertAgentSession(session);
         _appendAgentActivity(
           type: 'agent_session_linked',
-          text: 'подключил существующий агентский чат',
+          text: text.activityAgentExistingSessionLinked,
           targetId: session.id,
         );
         if (_status == WorkflowStatus.todo) {

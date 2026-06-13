@@ -917,6 +917,90 @@ abstract class AppLocalizations {
   /// **'Could not continue agent: {error}'**
   String taskAgentContinueFailed(Object error);
 
+  /// No description provided for @taskActivityAgentSessionRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'requested a new agent chat'**
+  String get taskActivityAgentSessionRequested;
+
+  /// No description provided for @taskActivityAgentSessionStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'could not start agent chat'**
+  String get taskActivityAgentSessionStartFailed;
+
+  /// No description provided for @taskActivityAgentSessionResumed.
+  ///
+  /// In en, this message translates to:
+  /// **'continued agent chat'**
+  String get taskActivityAgentSessionResumed;
+
+  /// No description provided for @taskActivityAgentSessionResumeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'could not continue agent chat'**
+  String get taskActivityAgentSessionResumeFailed;
+
+  /// No description provided for @taskActivityAgentSessionError.
+  ///
+  /// In en, this message translates to:
+  /// **'received an agent chat error'**
+  String get taskActivityAgentSessionError;
+
+  /// No description provided for @taskActivityAgentSessionLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'linked agent chat'**
+  String get taskActivityAgentSessionLinked;
+
+  /// No description provided for @taskActivityAgentExistingSessionLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'linked existing agent chat'**
+  String get taskActivityAgentExistingSessionLinked;
+
+  /// No description provided for @taskActivityAgentAutoMovedToStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'automatically moved card to {status}'**
+  String taskActivityAgentAutoMovedToStatus(Object status);
+
+  /// No description provided for @taskActivityAgentQueueWaitingReview.
+  ///
+  /// In en, this message translates to:
+  /// **'waiting for card review'**
+  String get taskActivityAgentQueueWaitingReview;
+
+  /// No description provided for @taskActivityAgentQueueCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'completed agent queue'**
+  String get taskActivityAgentQueueCompleted;
+
+  /// No description provided for @taskActivityAgentQueueNeedsMoreWork.
+  ///
+  /// In en, this message translates to:
+  /// **'waiting for more changes'**
+  String get taskActivityAgentQueueNeedsMoreWork;
+
+  /// No description provided for @taskActivityAgentStatusChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'moved card to {status}'**
+  String taskActivityAgentStatusChanged(Object status);
+
+  /// No description provided for @taskActivityAgentCardUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'updated task card'**
+  String get taskActivityAgentCardUpdated;
+
+  /// No description provided for @taskAgentPlanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent plan'**
+  String get taskAgentPlanTitle;
+
   /// No description provided for @taskAgentSkills.
   ///
   /// In en, this message translates to:

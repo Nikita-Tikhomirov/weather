@@ -442,6 +442,59 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get taskActivityAgentSessionRequested =>
+      'requested a new agent chat';
+
+  @override
+  String get taskActivityAgentSessionStartFailed =>
+      'could not start agent chat';
+
+  @override
+  String get taskActivityAgentSessionResumed => 'continued agent chat';
+
+  @override
+  String get taskActivityAgentSessionResumeFailed =>
+      'could not continue agent chat';
+
+  @override
+  String get taskActivityAgentSessionError =>
+      'received an agent chat error';
+
+  @override
+  String get taskActivityAgentSessionLinked => 'linked agent chat';
+
+  @override
+  String get taskActivityAgentExistingSessionLinked =>
+      'linked existing agent chat';
+
+  @override
+  String taskActivityAgentAutoMovedToStatus(Object status) {
+    return 'automatically moved card to $status';
+  }
+
+  @override
+  String get taskActivityAgentQueueWaitingReview =>
+      'waiting for card review';
+
+  @override
+  String get taskActivityAgentQueueCompleted => 'completed agent queue';
+
+  @override
+  String get taskActivityAgentQueueNeedsMoreWork =>
+      'waiting for more changes';
+
+  @override
+  String taskActivityAgentStatusChanged(Object status) {
+    return 'moved card to $status';
+  }
+
+  @override
+  String get taskActivityAgentCardUpdated => 'updated task card';
+
+  @override
+  String get taskAgentPlanTitle => 'Agent plan';
+
+  @override
   String get taskAgentSkills => 'Skills';
 
   @override

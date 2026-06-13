@@ -183,6 +183,30 @@
       "error": {}
     }
   },
+  "taskActivityAgentSessionRequested": "requested a new agent chat",
+  "taskActivityAgentSessionStartFailed": "could not start agent chat",
+  "taskActivityAgentSessionResumed": "continued agent chat",
+  "taskActivityAgentSessionResumeFailed": "could not continue agent chat",
+  "taskActivityAgentSessionError": "received an agent chat error",
+  "taskActivityAgentSessionLinked": "linked agent chat",
+  "taskActivityAgentExistingSessionLinked": "linked existing agent chat",
+  "taskActivityAgentAutoMovedToStatus": "automatically moved card to {status}",
+  "@taskActivityAgentAutoMovedToStatus": {
+    "placeholders": {
+      "status": {}
+    }
+  },
+  "taskActivityAgentQueueWaitingReview": "waiting for card review",
+  "taskActivityAgentQueueCompleted": "completed agent queue",
+  "taskActivityAgentQueueNeedsMoreWork": "waiting for more changes",
+  "taskActivityAgentStatusChanged": "moved card to {status}",
+  "@taskActivityAgentStatusChanged": {
+    "placeholders": {
+      "status": {}
+    }
+  },
+  "taskActivityAgentCardUpdated": "updated task card",
+  "taskAgentPlanTitle": "Agent plan",
   "taskAgentSkills": "Skills",
   "taskAgentCommands": "Commands",
   "taskAgentAvailableCount": "Available: {count}",

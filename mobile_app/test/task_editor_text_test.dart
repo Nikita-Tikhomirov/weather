@@ -59,6 +59,35 @@ void main() {
       text.agentContinueFailed('ошибка'),
       'Не удалось продолжить агента: ошибка',
     );
+    expect(text.activityAgentSessionRequested, 'запросил новый агентский чат');
+    expect(
+      text.activityAgentSessionStartFailed,
+      'не смог запустить агентский чат',
+    );
+    expect(text.activityAgentSessionResumed, 'продолжил агентский чат');
+    expect(
+      text.activityAgentSessionResumeFailed,
+      'не смог продолжить агентский чат',
+    );
+    expect(text.activityAgentSessionError, 'получил ошибку агентского чата');
+    expect(text.activityAgentSessionLinked, 'подключил агентский чат');
+    expect(
+      text.activityAgentExistingSessionLinked,
+      'подключил существующий агентский чат',
+    );
+    expect(
+      text.activityAgentAutoMovedToStatus('На проверке'),
+      'автоматически перевел карточку в статус На проверке',
+    );
+    expect(text.activityAgentQueueWaitingReview, 'ждет проверки карточки');
+    expect(text.activityAgentQueueCompleted, 'завершил очередь агента');
+    expect(text.activityAgentQueueNeedsMoreWork, 'ждет дальнейших правок');
+    expect(
+      text.activityAgentStatusChanged('Выполнено'),
+      'перевел карточку в статус Выполнено',
+    );
+    expect(text.activityAgentCardUpdated, 'обновил карточку задачи');
+    expect(text.agentPlanTitle, 'План агента');
     expect(text.codeWhaleError, 'Ошибка CodeWhale');
     expect(text.activityCommentEdited, 'отредактировал комментарий');
     expect(text.activityCommentAdded, 'добавил комментарий');
@@ -178,6 +207,38 @@ void main() {
       text.agentContinueFailed('network'),
       'Could not continue agent: network',
     );
+    expect(
+      text.activityAgentSessionRequested,
+      'requested a new agent chat',
+    );
+    expect(
+      text.activityAgentSessionStartFailed,
+      'could not start agent chat',
+    );
+    expect(text.activityAgentSessionResumed, 'continued agent chat');
+    expect(
+      text.activityAgentSessionResumeFailed,
+      'could not continue agent chat',
+    );
+    expect(text.activityAgentSessionError, 'received an agent chat error');
+    expect(text.activityAgentSessionLinked, 'linked agent chat');
+    expect(
+      text.activityAgentExistingSessionLinked,
+      'linked existing agent chat',
+    );
+    expect(
+      text.activityAgentAutoMovedToStatus('In review'),
+      'automatically moved card to In review',
+    );
+    expect(text.activityAgentQueueWaitingReview, 'waiting for card review');
+    expect(text.activityAgentQueueCompleted, 'completed agent queue');
+    expect(text.activityAgentQueueNeedsMoreWork, 'waiting for more changes');
+    expect(
+      text.activityAgentStatusChanged('Done'),
+      'moved card to Done',
+    );
+    expect(text.activityAgentCardUpdated, 'updated task card');
+    expect(text.agentPlanTitle, 'Agent plan');
     expect(text.codeWhaleError, 'CodeWhale error');
     expect(text.activityCommentEdited, 'edited a comment');
     expect(text.activityCommentAdded, 'added a comment');

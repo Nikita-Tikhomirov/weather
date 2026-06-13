@@ -183,6 +183,30 @@
       "error": {}
     }
   },
+  "taskActivityAgentSessionRequested": "запросил новый агентский чат",
+  "taskActivityAgentSessionStartFailed": "не смог запустить агентский чат",
+  "taskActivityAgentSessionResumed": "продолжил агентский чат",
+  "taskActivityAgentSessionResumeFailed": "не смог продолжить агентский чат",
+  "taskActivityAgentSessionError": "получил ошибку агентского чата",
+  "taskActivityAgentSessionLinked": "подключил агентский чат",
+  "taskActivityAgentExistingSessionLinked": "подключил существующий агентский чат",
+  "taskActivityAgentAutoMovedToStatus": "автоматически перевел карточку в статус {status}",
+  "@taskActivityAgentAutoMovedToStatus": {
+    "placeholders": {
+      "status": {}
+    }
+  },
+  "taskActivityAgentQueueWaitingReview": "ждет проверки карточки",
+  "taskActivityAgentQueueCompleted": "завершил очередь агента",
+  "taskActivityAgentQueueNeedsMoreWork": "ждет дальнейших правок",
+  "taskActivityAgentStatusChanged": "перевел карточку в статус {status}",
+  "@taskActivityAgentStatusChanged": {
+    "placeholders": {
+      "status": {}
+    }
+  },
+  "taskActivityAgentCardUpdated": "обновил карточку задачи",
+  "taskAgentPlanTitle": "План агента",
   "taskAgentSkills": "Скиллы",
   "taskAgentCommands": "Команды",
   "taskAgentAvailableCount": "Доступно: {count}",

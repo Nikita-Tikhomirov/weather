@@ -445,6 +445,59 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get taskActivityAgentSessionRequested =>
+      'запросил новый агентский чат';
+
+  @override
+  String get taskActivityAgentSessionStartFailed =>
+      'не смог запустить агентский чат';
+
+  @override
+  String get taskActivityAgentSessionResumed => 'продолжил агентский чат';
+
+  @override
+  String get taskActivityAgentSessionResumeFailed =>
+      'не смог продолжить агентский чат';
+
+  @override
+  String get taskActivityAgentSessionError =>
+      'получил ошибку агентского чата';
+
+  @override
+  String get taskActivityAgentSessionLinked => 'подключил агентский чат';
+
+  @override
+  String get taskActivityAgentExistingSessionLinked =>
+      'подключил существующий агентский чат';
+
+  @override
+  String taskActivityAgentAutoMovedToStatus(Object status) {
+    return 'автоматически перевел карточку в статус $status';
+  }
+
+  @override
+  String get taskActivityAgentQueueWaitingReview =>
+      'ждет проверки карточки';
+
+  @override
+  String get taskActivityAgentQueueCompleted => 'завершил очередь агента';
+
+  @override
+  String get taskActivityAgentQueueNeedsMoreWork =>
+      'ждет дальнейших правок';
+
+  @override
+  String taskActivityAgentStatusChanged(Object status) {
+    return 'перевел карточку в статус $status';
+  }
+
+  @override
+  String get taskActivityAgentCardUpdated => 'обновил карточку задачи';
+
+  @override
+  String get taskAgentPlanTitle => 'План агента';
+
+  @override
   String get taskAgentSkills => 'Скиллы';
 
   @override

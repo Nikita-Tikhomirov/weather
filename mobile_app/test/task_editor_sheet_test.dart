@@ -1528,6 +1528,10 @@ void main() {
         find.text('Agent chat connected to the task card'),
         findsOneWidget,
       );
+      expect(
+        repository.upserts.last.collaboration.activity.last.text,
+        'linked existing agent chat',
+      );
       expect(find.text('Подключенный агентский чат'), findsNothing);
       expect(find.text('Агентский чат подключен к карточке'), findsNothing);
     });
