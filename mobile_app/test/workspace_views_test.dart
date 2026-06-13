@@ -338,10 +338,10 @@ void main() {
       ),
     );
 
-    expect(find.text('Управление сессией'), findsOneWidget);
-    await tester.tap(find.byTooltip('Остановить сессию'));
-    await tester.tap(find.byTooltip('Убить зависшую сессию'));
-    await tester.tap(find.byTooltip('Перезапустить worker'));
+    expect(find.text('Manage session'), findsOneWidget);
+    await tester.tap(find.byTooltip('Stop session'));
+    await tester.tap(find.byTooltip('Kill stuck session'));
+    await tester.tap(find.byTooltip('Restart worker'));
 
     expect(stopped, isTrue);
     expect(killed, isTrue);
@@ -374,27 +374,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(selectedSandboxMode, 'danger-full-access');
 
-    await tester.tap(find.byTooltip('Автоматически выполнять инструменты'));
+    await tester.tap(find.byTooltip('Run tools automatically'));
     await tester.pumpAndSettle();
     expect(selectedAutoMode, isTrue);
 
-    await tester.tap(find.text('Файлы'));
+    await tester.tap(find.text('Files'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Путь в чат'));
+    await tester.tap(find.byTooltip('Insert path in chat'));
     expect(insertedPath, 'README.md');
 
-    await tester.tap(find.text('Команды'));
+    await tester.tap(find.text('Commands'));
     await tester.pumpAndSettle();
-    expect(find.text('Скиллы'), findsOneWidget);
+    expect(find.text('Skills'), findsOneWidget);
     expect(find.text('Статус'), findsOneWidget);
     expect(find.text('vision'), findsNothing);
 
-    await tester.tap(find.text('Скиллы'));
+    await tester.tap(find.text('Skills'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('vision'));
     await tester.tap(find.text('web-screenshot'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Запустить выбранные'));
+    await tester.tap(find.text('Run selected'));
     expect(commands, ['/skill vision', '/skill web-screenshot']);
     expect(openedPath, isEmpty);
   });

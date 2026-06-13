@@ -11,69 +11,67 @@ class _SessionManagementText {
 
   final AppLocalizations? l10n;
 
-  String get back => l10n?.back ?? 'Назад';
-  String get manageSession => l10n?.manageSession ?? 'Управление сессией';
-  String get sessionTab => l10n?.sessionTab ?? 'Сессия';
-  String get filesTab => l10n?.filesTab ?? 'Файлы';
-  String get commandsTab => l10n?.commandsTab ?? 'Команды';
-  String get status => l10n?.sessionStatusLabel ?? 'Статус';
+  String get back => l10n?.back ?? 'Back';
+  String get manageSession => l10n?.manageSession ?? 'Manage session';
+  String get sessionTab => l10n?.sessionTab ?? 'Session';
+  String get filesTab => l10n?.filesTab ?? 'Files';
+  String get commandsTab => l10n?.commandsTab ?? 'Commands';
+  String get status => l10n?.sessionStatusLabel ?? 'Status';
   String get pid => l10n?.sessionPidLabel ?? 'PID';
-  String get port => l10n?.sessionPortLabel ?? 'Порт';
-  String get events => l10n?.sessionEventsLabel ?? 'Событий';
-  String get noValue => l10n?.noValue ?? 'нет';
-  String get restartWorker => l10n?.restartWorker ?? 'Перезапустить worker';
-  String get stopSession => l10n?.stopSession ?? 'Остановить сессию';
-  String get killStuckSession =>
-      l10n?.killStuckSession ?? 'Убить зависшую сессию';
-  String get restartAction => l10n?.restartAction ?? 'Перезапустить';
-  String get stopAction => l10n?.stopAction ?? 'Остановить';
-  String get killAction => l10n?.killAction ?? 'Убить';
-  String get photo => l10n?.photo ?? 'Фото';
-  String get document => l10n?.document ?? 'Документ';
-  String get projectRoot => l10n?.projectRoot ?? 'Корень проекта';
-  String get upOneLevel => l10n?.upOneLevel ?? 'Наверх';
-  String get refreshFiles => l10n?.refreshFiles ?? 'Обновить файлы';
-  String get copyFileText => l10n?.copyFileText ?? 'Копировать текст файла';
-  String get noFiles => l10n?.noFiles ?? 'Файлов нет';
-  String get insertPathInChat => l10n?.insertPathInChat ?? 'Путь в чат';
-  String get previewFile => l10n?.previewFile ?? 'Просмотр файла';
-  String get codeWhaleModes =>
-      l10n?.sessionCodeWhaleModes ?? 'Режимы CodeWhale';
-  String get provider => l10n?.provider ?? 'Провайдер';
-  String get model => l10n?.model ?? 'Модель';
-  String get approvalPolicy => l10n?.approvalPolicy ?? 'Подтверждения';
+  String get port => l10n?.sessionPortLabel ?? 'Port';
+  String get events => l10n?.sessionEventsLabel ?? 'Events';
+  String get noValue => l10n?.noValue ?? 'none';
+  String get restartWorker => l10n?.restartWorker ?? 'Restart worker';
+  String get stopSession => l10n?.stopSession ?? 'Stop session';
+  String get killStuckSession => l10n?.killStuckSession ?? 'Kill stuck session';
+  String get restartAction => l10n?.restartAction ?? 'Restart';
+  String get stopAction => l10n?.stopAction ?? 'Stop';
+  String get killAction => l10n?.killAction ?? 'Kill';
+  String get photo => l10n?.photo ?? 'Photo';
+  String get document => l10n?.document ?? 'Document';
+  String get projectRoot => l10n?.projectRoot ?? 'Project root';
+  String get upOneLevel => l10n?.upOneLevel ?? 'Up one level';
+  String get refreshFiles => l10n?.refreshFiles ?? 'Refresh files';
+  String get copyFileText => l10n?.copyFileText ?? 'Copy file text';
+  String get noFiles => l10n?.noFiles ?? 'No files';
+  String get insertPathInChat =>
+      l10n?.insertPathInChat ?? 'Insert path in chat';
+  String get previewFile => l10n?.previewFile ?? 'Preview file';
+  String get codeWhaleModes => l10n?.sessionCodeWhaleModes ?? 'CodeWhale modes';
+  String get provider => l10n?.provider ?? 'Provider';
+  String get model => l10n?.model ?? 'Model';
+  String get approvalPolicy => l10n?.approvalPolicy ?? 'Approval policy';
   String get sandbox => l10n?.sandbox ?? 'Sandbox';
-  String get defaultValue => l10n?.defaultValue ?? 'по умолчанию';
-  String get autoModeTools => l10n?.autoModeTools ?? 'Авто-режим инструментов';
+  String get defaultValue => l10n?.defaultValue ?? 'default';
+  String get autoModeTools => l10n?.autoModeTools ?? 'Tool auto mode';
   String get autoModeToolsTooltip =>
-      l10n?.autoModeToolsTooltip ?? 'Автоматически выполнять инструменты';
+      l10n?.autoModeToolsTooltip ?? 'Run tools automatically';
   String get autoModeToolsSubtitle =>
-      l10n?.autoModeToolsSubtitle ?? 'Передает --auto в CodeWhale exec';
+      l10n?.autoModeToolsSubtitle ?? 'Passes --auto to CodeWhale exec';
   String get commandsLoading =>
-      l10n?.codeWhaleCommandsLoading ?? 'Команды CodeWhale загружаются...';
-  String get skills => l10n?.skills ?? 'Скиллы';
-  String get runSelected => l10n?.runSelected ?? 'Запустить выбранные';
-  String get chooseSkills =>
-      l10n?.chooseSkills ?? 'Выбери один или несколько навыков';
+      l10n?.codeWhaleCommandsLoading ?? 'CodeWhale commands are loading...';
+  String get skills => l10n?.skills ?? 'Skills';
+  String get runSelected => l10n?.runSelected ?? 'Run selected';
+  String get chooseSkills => l10n?.chooseSkills ?? 'Choose one or more skills';
 
   String selectedSkillsCount(int count) {
-    return l10n?.selectedSkillsCount(count) ?? 'Выбрано: $count';
+    return l10n?.selectedSkillsCount(count) ?? 'Selected: $count';
   }
 
   String statusText(WorkspaceSessionStatus status) {
     switch (status) {
       case WorkspaceSessionStatus.idle:
-        return l10n?.sessionIdleStatus ?? 'Ожидает';
+        return l10n?.sessionIdleStatus ?? 'Idle';
       case WorkspaceSessionStatus.running:
-        return l10n?.running ?? 'Работает';
+        return l10n?.running ?? 'Running';
       case WorkspaceSessionStatus.stopped:
-        return l10n?.stopped ?? 'Остановлена';
+        return l10n?.stopped ?? 'Stopped';
       case WorkspaceSessionStatus.killed:
-        return l10n?.killed ?? 'Убита';
+        return l10n?.killed ?? 'Killed';
       case WorkspaceSessionStatus.error:
-        return l10n?.error ?? 'Ошибка';
+        return l10n?.error ?? 'Error';
       case WorkspaceSessionStatus.unknown:
-        return l10n?.sessionUnknownStatus ?? 'Неизвестно';
+        return l10n?.sessionUnknownStatus ?? 'Unknown';
     }
   }
 }
