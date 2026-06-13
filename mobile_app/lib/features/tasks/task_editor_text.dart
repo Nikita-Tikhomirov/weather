@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/task_domain_service.dart';
 import '../../l10n/app_localizations.dart';
 
 class TaskEditorText {
@@ -103,29 +104,39 @@ class TaskEditorText {
       l10n?.taskSaveTaskFirst ?? 'Сначала сохраните задачу';
   String saveError(String error) {
     switch (error) {
+      case TaskValidationError.titleRequired:
       case 'Укажите название задачи.':
         return l10n?.taskSaveTitleRequired ?? 'Укажите название задачи.';
+      case TaskValidationError.projectRequired:
       case 'Выберите проект.':
         return selectProject;
+      case TaskValidationError.projectGroupRequired:
       case 'Выберите группу проекта.':
         return selectProjectGroup;
+      case TaskValidationError.projectGroupNotFound:
       case 'Выбранная группа не входит в проект.':
         return l10n?.taskSaveGroupNotInProject ??
             'Выбранная группа не входит в проект.';
+      case TaskValidationError.projectGroupForbidden:
       case 'Нет прав на создание задачи в этой группе.':
         return l10n?.taskSaveGroupCreateNoAccess ??
             'Нет прав на создание задачи в этой группе.';
+      case TaskValidationError.assigneesOutsideGroup:
       case 'Ответственные должны входить в выбранную группу.':
         return l10n?.taskSaveAssigneesOutsideGroup ??
             'Ответственные должны входить в выбранную группу.';
+      case TaskValidationError.invalidStatus:
       case 'Некорректный статус задачи.':
         return l10n?.taskSaveInvalidStatus ?? 'Некорректный статус задачи.';
+      case TaskValidationError.invalidPriority:
       case 'Некорректный приоритет задачи.':
         return l10n?.taskSaveInvalidPriority ??
             'Некорректный приоритет задачи.';
+      case TaskValidationError.invalidReminders:
       case 'Некорректные интервалы напоминаний.':
         return l10n?.taskSaveInvalidReminders ??
             'Некорректные интервалы напоминаний.';
+      case TaskValidationError.genericFailure:
       case 'Невозможно сохранить задачу.':
         return l10n?.taskSaveGenericFailure ?? 'Невозможно сохранить задачу.';
     }
@@ -141,8 +152,7 @@ class TaskEditorText {
       l10n?.taskAgentContinueFailed(error) ??
       'Не удалось продолжить агента: $error';
   String get activityAgentSessionRequested =>
-      l10n?.taskActivityAgentSessionRequested ??
-      'запросил новый агентский чат';
+      l10n?.taskActivityAgentSessionRequested ?? 'запросил новый агентский чат';
   String get activityAgentSessionStartFailed =>
       l10n?.taskActivityAgentSessionStartFailed ??
       'не смог запустить агентский чат';
@@ -152,8 +162,7 @@ class TaskEditorText {
       l10n?.taskActivityAgentSessionResumeFailed ??
       'не смог продолжить агентский чат';
   String get activityAgentSessionError =>
-      l10n?.taskActivityAgentSessionError ??
-      'получил ошибку агентского чата';
+      l10n?.taskActivityAgentSessionError ?? 'получил ошибку агентского чата';
   String get activityAgentSessionLinked =>
       l10n?.taskActivityAgentSessionLinked ?? 'подключил агентский чат';
   String get activityAgentExistingSessionLinked =>
@@ -292,11 +301,9 @@ class TaskEditorText {
       l10n?.taskActivityChecklistRenamed(title) ??
       'переименовал чеклист "$title"';
   String activityChecklistDeleted(Object title) =>
-      l10n?.taskActivityChecklistDeleted(title) ??
-      'удалил чеклист "$title"';
+      l10n?.taskActivityChecklistDeleted(title) ?? 'удалил чеклист "$title"';
   String get activityChecklistItemRenamed =>
-      l10n?.taskActivityChecklistItemRenamed ??
-      'отредактировал пункт чеклиста';
+      l10n?.taskActivityChecklistItemRenamed ?? 'отредактировал пункт чеклиста';
   String get activityChecklistItemDeleted =>
       l10n?.taskActivityChecklistItemDeleted ?? 'удалил пункт чеклиста';
   String get deleteCommentTitle =>
@@ -348,8 +355,7 @@ class TaskEditorText {
   String get noChecklists => l10n?.taskNoChecklists ?? 'Чеклистов нет';
   String get editChecklist =>
       l10n?.taskEditChecklist ?? 'Редактировать чеклист';
-  String get checklistName =>
-      l10n?.taskChecklistName ?? 'Название чеклиста';
+  String get checklistName => l10n?.taskChecklistName ?? 'Название чеклиста';
   String get deleteChecklist => l10n?.taskDeleteChecklist ?? 'Удалить чеклист';
   String get deleteChecklistTitle =>
       l10n?.taskDeleteChecklistTitle ?? 'Удалить чеклист?';
@@ -358,8 +364,7 @@ class TaskEditorText {
       'Чеклист и все его пункты будут удалены из задачи.';
   String get editChecklistItem =>
       l10n?.taskEditChecklistItem ?? 'Редактировать пункт';
-  String get checklistItemText =>
-      l10n?.taskChecklistItemText ?? 'Текст пункта';
+  String get checklistItemText => l10n?.taskChecklistItemText ?? 'Текст пункта';
   String get deleteChecklistItem =>
       l10n?.taskDeleteChecklistItem ?? 'Удалить пункт';
   String get deleteChecklistItemTitle =>

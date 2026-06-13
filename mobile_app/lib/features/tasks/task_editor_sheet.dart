@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../domain/task_draft.dart';
+import '../../domain/task_domain_service.dart';
 import '../../models/agent_policy.dart';
 import '../../models/chat_models.dart';
 import '../../models/family_group.dart';
@@ -415,18 +416,14 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     if (error == null || (_savedTask ?? widget.existing) == null) {
       return false;
     }
-    return error == 'Выберите проект.' ||
-        error == 'Выберите группу проекта.' ||
-        error == 'Выбранная группа не входит в проект.' ||
-        error == 'Нет прав на создание задачи в этой группе.' ||
-        error == 'Ответственные должны входить в выбранную группу.';
+    return TaskValidationError.autosaveRecoverableProjectErrors.contains(error);
   }
 
   Future<TaskSaveResult> _saveExistingSnapshot() {
     final previous = _savedTask ?? widget.existing;
     if (previous == null) {
       return Future.value(
-        const TaskSaveResult.failure('Невозможно сохранить задачу.'),
+        const TaskSaveResult.failure(TaskValidationError.genericFailure),
       );
     }
     final title = _titleCtl.text.trim();

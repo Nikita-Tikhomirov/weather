@@ -28,7 +28,7 @@ void main() {
       final draft = validDraft().copyWith(title: '');
       expect(
         service.validateDraft(draft: draft, actorProfile: 'nik'),
-        isNotNull,
+        TaskValidationError.titleRequired,
       );
     });
 
@@ -36,7 +36,7 @@ void main() {
       final draft = validDraft().copyWith(title: '   ');
       expect(
         service.validateDraft(draft: draft, actorProfile: 'nik'),
-        isNotNull,
+        TaskValidationError.titleRequired,
       );
     });
 
@@ -164,7 +164,7 @@ void main() {
             'group-1': ['nik'],
           },
         ),
-        isNotNull,
+        TaskValidationError.invalidReminders,
       );
     });
 
@@ -229,7 +229,7 @@ void main() {
             'group-1': ['nik'],
           },
         ),
-        'Выберите группу проекта.',
+        TaskValidationError.projectGroupRequired,
       );
     });
 
@@ -247,7 +247,7 @@ void main() {
             'group-1': ['nik'],
           },
         ),
-        'Ответственные должны входить в выбранную группу.',
+        TaskValidationError.assigneesOutsideGroup,
       );
     });
 
@@ -268,7 +268,7 @@ void main() {
             'group-1': ['misha'],
           },
         ),
-        'Нет прав на создание задачи в этой группе.',
+        TaskValidationError.projectGroupForbidden,
       );
     });
 

@@ -1,6 +1,29 @@
 import '../models/task_item.dart';
 import 'task_draft.dart';
 
+class TaskValidationError {
+  const TaskValidationError._();
+
+  static const titleRequired = 'title_required';
+  static const projectRequired = 'project_required';
+  static const invalidStatus = 'invalid_status';
+  static const invalidPriority = 'invalid_priority';
+  static const invalidReminders = 'invalid_reminders';
+  static const projectGroupRequired = 'project_group_required';
+  static const projectGroupNotFound = 'project_group_not_found';
+  static const projectGroupForbidden = 'project_group_forbidden';
+  static const assigneesOutsideGroup = 'assignees_outside_group';
+  static const genericFailure = 'generic_failure';
+
+  static const autosaveRecoverableProjectErrors = {
+    projectRequired,
+    projectGroupRequired,
+    projectGroupNotFound,
+    projectGroupForbidden,
+    assigneesOutsideGroup,
+  };
+}
+
 class TaskDomainService {
   static final Set<WorkflowStatus> allowedStatuses =
       WorkflowStatus.values.toSet();
@@ -23,42 +46,42 @@ class TaskDomainService {
     Map<String, List<String>> projectGroupMembers = const {},
   }) {
     if (draft.title.trim().isEmpty) {
-      return 'Укажите название задачи.';
+      return TaskValidationError.titleRequired;
     }
     if (draft.projectId.isEmpty) {
-      return 'Выберите проект.';
+      return TaskValidationError.projectRequired;
     }
     if (!allowedStatuses.contains(draft.workflowStatus)) {
-      return 'Некорректный статус задачи.';
+      return TaskValidationError.invalidStatus;
     }
     if (!allowedPriority.contains(draft.priority)) {
-      return 'Некорректный приоритет задачи.';
+      return TaskValidationError.invalidPriority;
     }
 
     final invalidOffsets = draft.reminderOffsetsMinutes
         .where((offset) => !allowedReminderOffsets.contains(offset))
         .toList();
     if (invalidOffsets.isNotEmpty) {
-      return 'Некорректные интервалы напоминаний.';
+      return TaskValidationError.invalidReminders;
     }
     if (draft.projectId.isNotEmpty) {
       if (draft.groupId.isEmpty) {
-        return 'Выберите группу проекта.';
+        return TaskValidationError.projectGroupRequired;
       }
       final groupMembers = projectGroupMembers[draft.groupId] ?? const [];
       if (groupMembers.isEmpty) {
-        return 'Выбранная группа не входит в проект.';
+        return TaskValidationError.projectGroupNotFound;
       }
       final isProjectOwner =
           projectOwnerKey.isNotEmpty && projectOwnerKey == actorProfile;
       final isGroupMember = groupMembers.contains(actorProfile);
       if (!isProjectOwner && !isGroupMember) {
-        return 'Нет прав на создание задачи в этой группе.';
+        return TaskValidationError.projectGroupForbidden;
       }
       final invalidAssignees =
           draft.assignees.where((assignee) => !groupMembers.contains(assignee));
       if (invalidAssignees.isNotEmpty) {
-        return 'Ответственные должны входить в выбранную группу.';
+        return TaskValidationError.assigneesOutsideGroup;
       }
     }
 

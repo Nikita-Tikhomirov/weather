@@ -1,3 +1,4 @@
+import 'package:family_todo_mobile/domain/task_domain_service.dart';
 import 'package:family_todo_mobile/features/tasks/task_editor_text.dart';
 import 'package:family_todo_mobile/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -121,6 +122,10 @@ void main() {
     expect(text.activityChecklistItemDeleted, 'удалил пункт чеклиста');
     expect(
       text.saveError('Укажите название задачи.'),
+      'Укажите название задачи.',
+    );
+    expect(
+      text.saveError(TaskValidationError.titleRequired),
       'Укажите название задачи.',
     );
     expect(text.saveError('Выберите проект.'), 'Выберите проект');
@@ -279,6 +284,10 @@ void main() {
     expect(text.activityChecklistItemRenamed, 'edited checklist item');
     expect(text.activityChecklistItemDeleted, 'deleted checklist item');
     expect(text.saveError('Укажите название задачи.'), 'Enter a task title');
+    expect(
+      text.saveError(TaskValidationError.titleRequired),
+      'Enter a task title',
+    );
     expect(text.saveError('Выберите проект.'), 'Select project');
     expect(
       text.saveError('Неизвестная ошибка'),
