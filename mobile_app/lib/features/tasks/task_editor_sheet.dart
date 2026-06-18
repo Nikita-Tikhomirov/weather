@@ -2754,8 +2754,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   bool _isAgentSkillCommand(Map<String, dynamic> command) {
     final value = _agentCommandValue(command);
-    final group = (command['group'] ?? '').toString().toLowerCase();
-    return value.startsWith('/skill') || group == 'навыки';
+    return value.startsWith('/skill');
   }
 
   void _toggleAgentCommand(String value, bool selected) {

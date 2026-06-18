@@ -1001,6 +1001,79 @@ void main() {
       expect(find.text('Очередь выполнения'), findsNothing);
     });
 
+    testWidgets('agent tools classify skills by command value', (tester) async {
+      final store = _FakeTaskStore();
+      store.selectedDate.value = DateTime(2026, 5, 31);
+      _FakeAgentBridge? bridge;
+      const policy = AgentRunPolicy(
+        allowed: true,
+        mode: 'executor',
+        modeLabel: 'Executor',
+        plugins: [],
+        allowedCommands: ['session_open', 'session_create', 'session_send'],
+        reason: '',
+        workspaceId: '',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: TaskEditorScreen(
+            store: store,
+            knownContacts: const [],
+            contactLabel: (c) => c.displayName,
+            dateKey: (d) => d.toIso8601String(),
+            onSaved: () async {},
+            agentPolicy: policy,
+            agentBridgeFactory: ({
+              required onMessage,
+              required onStatusChange,
+            }) {
+              bridge = _FakeAgentBridge(
+                onMessage: onMessage,
+                onStatusChange: onStatusChange,
+              )..commands = const [
+                  {
+                    'group': 'Навыки',
+                    'label': 'Regular command',
+                    'value': '/status',
+                    'description': 'Not a skill command',
+                  },
+                  {
+                    'group': 'Навыки',
+                    'label': 'Browser',
+                    'value': '/skill browser',
+                    'description': 'Browser skill',
+                  },
+                ];
+              return bridge!;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Agent'));
+      await tester.pumpAndSettle();
+      final agentList = find.byType(ListView).first;
+      await tester.drag(agentList, const Offset(0, -1400));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Refresh').last);
+      await tester.pumpAndSettle();
+
+      expect(bridge?.commandListRequestCount, 1);
+      expect(find.text('Skills'), findsOneWidget);
+      expect(find.text('Commands'), findsOneWidget);
+
+      await tester.tap(find.text('Commands'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Regular command'), findsOneWidget);
+      expect(find.text('Browser'), findsNothing);
+    });
+
     testWidgets('uses localized agent workspace load error snackbar',
         (tester) async {
       final store = _FakeTaskStore();
