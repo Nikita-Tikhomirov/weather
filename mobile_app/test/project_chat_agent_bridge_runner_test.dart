@@ -146,6 +146,48 @@ void main() {
     expect(bridge?.createdSessionTitle, 'Tudushker');
   });
 
+  test('uses English fallback labels by default', () async {
+    _FakeProjectChatBridge? bridge;
+    final runner = ProjectChatAgentBridgeRunner(
+      bridgeFactory: ({
+        required void Function(CodeWhaleBridgeMessage message) onMessage,
+        required void Function(bool connected, String status) onStatusChange,
+      }) {
+        bridge = _FakeProjectChatBridge(
+          onMessage: onMessage,
+          onStatusChange: onStatusChange,
+          sendEmptyErrorOnMessage: true,
+        );
+        return bridge!;
+      },
+      taskPollDelay: Duration.zero,
+      timeout: const Duration(seconds: 2),
+    );
+
+    await expectLater(
+      runner.run(
+        workspaceId: 'workspace-1',
+        title: '',
+        taskCard: const {
+          'scope': 'project_chat',
+          'project_id': 'project-1',
+          'conversation_key': 'grp:project:project-1',
+        },
+        policyTicket: 'ticket-1',
+        prompt: 'Return JSON',
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'CodeWhale error',
+        ),
+      ),
+    );
+
+    expect(bridge?.createdSessionTitle, 'Tudushker');
+  });
+
   test('uses injected fallback label when bridge connection fails', () async {
     final runner = ProjectChatAgentBridgeRunner(
       bridgeFactory: ({
@@ -178,6 +220,42 @@ void main() {
           (error) => error.message,
           'message',
           'CodeWhale unavailable',
+        ),
+      ),
+    );
+  });
+
+  test('uses English unavailable label by default', () async {
+    final runner = ProjectChatAgentBridgeRunner(
+      bridgeFactory: ({
+        required void Function(CodeWhaleBridgeMessage message) onMessage,
+        required void Function(bool connected, String status) onStatusChange,
+      }) {
+        return _FakeProjectChatBridge(
+          onMessage: onMessage,
+          onStatusChange: onStatusChange,
+          connects: false,
+        );
+      },
+    );
+
+    await expectLater(
+      runner.run(
+        workspaceId: 'workspace-1',
+        title: '',
+        taskCard: const {
+          'scope': 'project_chat',
+          'project_id': 'project-1',
+          'conversation_key': 'grp:project:project-1',
+        },
+        policyTicket: 'ticket-1',
+        prompt: 'Return JSON',
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'CodeWhale is unavailable',
         ),
       ),
     );

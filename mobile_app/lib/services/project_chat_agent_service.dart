@@ -654,9 +654,9 @@ class ProjectChatAgentBridgeRunner {
     ProjectChatAgentBridgeFactory? bridgeFactory,
     this.taskPollDelay = const Duration(seconds: 2),
     this.timeout = const Duration(seconds: 90),
-    this.unavailableMessage = 'CodeWhale недоступен',
-    this.codeWhaleErrorFallback = 'Ошибка CodeWhale',
-    this.defaultSessionTitle = 'Тудушкер',
+    this.unavailableMessage = 'CodeWhale is unavailable',
+    this.codeWhaleErrorFallback = 'CodeWhale error',
+    this.defaultSessionTitle = 'Tudushker',
     this.onSessionLinked,
     this.onStatusChange,
   }) : _bridgeFactory = bridgeFactory;
