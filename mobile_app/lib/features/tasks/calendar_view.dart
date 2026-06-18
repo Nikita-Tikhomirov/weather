@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' as intl;
 
 import '../../l10n/app_localizations.dart';
 import '../../models/task_item.dart';
@@ -24,6 +25,23 @@ String _closeLabel(BuildContext context) {
 
 String _moreLabel(BuildContext context) {
   return AppLocalizations.of(context)?.more ?? 'more';
+}
+
+List<String> _localizedWeekdayLabels(BuildContext context) {
+  final localeName = Localizations.localeOf(context).toLanguageTag();
+  return List<String>.generate(7, (index) {
+    final label = intl.DateFormat.E(
+      localeName,
+    ).format(DateTime.utc(2024, 1, 1 + index));
+    return _capitalizeFirst(label);
+  });
+}
+
+String _capitalizeFirst(String value) {
+  if (value.isEmpty) {
+    return value;
+  }
+  return value[0].toUpperCase() + value.substring(1);
 }
 
 /// Full month grid calendar (4 columns). Tap a day → navigate to DayTasksPage.
@@ -378,7 +396,6 @@ class DesktopCalendarView extends StatelessWidget {
   final Future<void> Function(TaskItem) onDelete;
   final Future<void> Function(DateTime) onAddForDate;
 
-  static const _weekDayNamesRu = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
   static const _statuses = [
     'todo',
     'in_progress',
@@ -389,6 +406,7 @@ class DesktopCalendarView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final weekdayLabels = _localizedWeekdayLabels(context);
     final byDate = <String, List<TaskItem>>{};
     for (final task in allTasks) {
       byDate.putIfAbsent(task.dueDate, () => <TaskItem>[]).add(task);
@@ -421,7 +439,7 @@ class DesktopCalendarView extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              for (final label in _weekDayNamesRu)
+              for (final label in weekdayLabels)
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),

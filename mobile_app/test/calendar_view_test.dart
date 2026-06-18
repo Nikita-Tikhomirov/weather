@@ -90,6 +90,46 @@ void main() {
       expect(find.textContaining('May'), findsOneWidget);
     });
 
+    testWidgets('desktop calendar uses localized weekday labels',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: Scaffold(
+            body: SizedBox(
+              height: 900,
+              child: DesktopCalendarView(
+                month: DateTime(2026, 5),
+                selectedDate: DateTime(2026, 5, 15),
+                allTasks: const [],
+                monthGrid: List<DateTime>.generate(
+                  35,
+                  (index) => DateTime(2026, 5, index + 1),
+                ),
+                onGoPrevMonth: () {},
+                onGoNextMonth: () {},
+                onGoToday: () {},
+                onSelectDate: (DateTime date) {},
+                onDropToDay: (TaskItem task, DateTime date) async {},
+                onDropToStatus: (TaskItem task, String status) async {},
+                onOpenEditor: (DateTime date, TaskItem task) async {},
+                onDelete: (TaskItem task) async {},
+                onAddForDate: (DateTime date) async {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Mon'), findsOneWidget);
+      expect(find.text('Tue'), findsOneWidget);
+      expect(find.text('Пн'), findsNothing);
+      expect(find.text('Вт'), findsNothing);
+    });
+
     testWidgets('shows tasks on their dates', (tester) async {
       final tasks = [
         const TaskItem(
