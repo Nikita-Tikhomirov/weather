@@ -1,14 +1,26 @@
 package com.example.family_todo_mobile
 
+import android.app.KeyguardManager
+import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
+import android.view.WindowManager
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.firebase.installations.FirebaseInstallations
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
 
 class MainActivity : FlutterActivity() {
     private var sharedText: String? = null
@@ -19,6 +31,11 @@ class MainActivity : FlutterActivity() {
     private var pendingSharePayload: Map<String, Any>? = null
     private var pendingPushPayload: Map<String, String>? = null
     private var isPushChannelReady = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        applyCallWindowFlags(intent)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -113,21 +130,7 @@ class MainActivity : FlutterActivity() {
                     val url = call.argument<String>("url") ?: return@setMethodCallHandler result.error("NO_URL", null, null)
                     Thread {
                         try {
-                            val bytes = java.net.URL(url).readBytes()
-                            val filename = "FamilyTodo_${System.currentTimeMillis()}.jpg"
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                                val values = android.content.ContentValues().apply {
-                                    put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
-                                    put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                                    put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, android.os.Environment.DIRECTORY_PICTURES + "/FamilyTodo")
-                                }
-                                val uri = contentResolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                                uri?.let { contentResolver.openOutputStream(it)?.use { it.write(bytes) } }
-                            } else {
-                                val dir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_PICTURES), "FamilyTodo")
-                                dir.mkdirs()
-                                java.io.File(dir, filename).writeBytes(bytes)
-                            }
+                            saveImageToGallery(url)
                             runOnUiThread { result.success(true) }
                         } catch (e: Exception) {
                             runOnUiThread { result.error("SAVE_ERR", e.message, null) }
@@ -149,8 +152,35 @@ class MainActivity : FlutterActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        applyCallWindowFlags(intent)
         handlePushIntent(intent)
         handleShareIntent(intent)
+    }
+
+    private fun applyCallWindowFlags(intent: Intent?) {
+        val isIncomingCallIntent = intent?.action == PUSH_ACTION_OPEN &&
+            isIncomingCallPush(intent.pushData())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(isIncomingCallIntent)
+            setTurnScreenOn(isIncomingCallIntent)
+            if (isIncomingCallIntent) {
+                val keyguard = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                keyguard.requestDismissKeyguard(this, null)
+            }
+            return
+        }
+
+        @Suppress("DEPRECATION")
+        val callFlags = WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+            WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+        if (isIncomingCallIntent) {
+            @Suppress("DEPRECATION")
+            window.addFlags(callFlags)
+        } else {
+            @Suppress("DEPRECATION")
+            window.clearFlags(callFlags)
+        }
     }
 
     private fun handlePushIntent(intent: Intent?) {
@@ -186,6 +216,95 @@ class MainActivity : FlutterActivity() {
                 }
             }
         )
+    }
+
+    private fun saveImageToGallery(url: String) {
+        val download = downloadImage(url)
+        val imageFormat = detectImageFormat(download.bytes, download.contentType)
+        val filename = "FamilyTodo_${System.currentTimeMillis()}.${imageFormat.extension}"
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+                put(MediaStore.Images.Media.MIME_TYPE, imageFormat.mimeType)
+                put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/FamilyTodo")
+                put(MediaStore.Images.Media.IS_PENDING, 1)
+            }
+            val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                ?: throw IOException("Cannot create gallery image")
+            try {
+                contentResolver.openOutputStream(uri)?.use { stream ->
+                    stream.write(download.bytes)
+                } ?: throw IOException("Cannot open gallery image")
+
+                values.clear()
+                values.put(MediaStore.Images.Media.IS_PENDING, 0)
+                contentResolver.update(uri, values, null, null)
+            } catch (e: Exception) {
+                contentResolver.delete(uri, null, null)
+                throw e
+            }
+            return
+        }
+
+        @Suppress("DEPRECATION")
+        val dir = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
+            "FamilyTodo"
+        )
+        if (!dir.exists() && !dir.mkdirs()) {
+            throw IOException("Cannot create gallery directory")
+        }
+        val file = File(dir, filename)
+        file.writeBytes(download.bytes)
+        android.media.MediaScannerConnection.scanFile(
+            applicationContext,
+            arrayOf(file.absolutePath),
+            arrayOf(imageFormat.mimeType)
+        ) { _, _ -> }
+    }
+
+    private fun downloadImage(url: String): ImageDownload {
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            instanceFollowRedirects = true
+            connectTimeout = 15_000
+            readTimeout = 30_000
+            setRequestProperty("Accept", "image/*")
+        }
+        try {
+            val status = connection.responseCode
+            if (status !in 200..299) {
+                throw IOException("Image download failed: HTTP $status")
+            }
+            val bytes = connection.inputStream.use { it.readBytes() }
+            if (bytes.isEmpty()) {
+                throw IOException("Image download returned empty body")
+            }
+            return ImageDownload(bytes, connection.contentType)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun detectImageFormat(bytes: ByteArray, contentType: String?): GalleryImageFormat {
+        val options = BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+        val decodedMime = options.outMimeType?.trim()?.lowercase().orEmpty()
+        val format = imageFormatForMime(decodedMime)
+            ?: imageFormatForMime(contentType?.substringBefore(';')?.trim()?.lowercase().orEmpty())
+        return format ?: throw IOException("Downloaded file is not a supported image")
+    }
+
+    private fun imageFormatForMime(mimeType: String): GalleryImageFormat? {
+        return when (mimeType) {
+            "image/jpeg", "image/jpg" -> GalleryImageFormat("image/jpeg", "jpg")
+            "image/png" -> GalleryImageFormat("image/png", "png")
+            "image/webp" -> GalleryImageFormat("image/webp", "webp")
+            "image/gif" -> GalleryImageFormat("image/gif", "gif")
+            else -> null
+        }
     }
 
     private fun handleShareIntent(intent: Intent?) {
@@ -241,3 +360,13 @@ class MainActivity : FlutterActivity() {
         return uris
     }
 }
+
+private data class ImageDownload(
+    val bytes: ByteArray,
+    val contentType: String?
+)
+
+private data class GalleryImageFormat(
+    val mimeType: String,
+    val extension: String
+)

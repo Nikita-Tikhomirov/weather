@@ -295,7 +295,7 @@ function send_fcm_notification(array $config, string $token, string $title, stri
                 'priority' => 'HIGH',
                 'ttl' => $isIncomingCall ? '60s' : '3600s',
                 'notification' => [
-                    'channel_id' => $isIncomingCall ? 'family_calls' : 'family_updates',
+                    'channel_id' => $isIncomingCall ? 'family_calls_v2' : 'family_updates',
                 ],
             ],
         ],

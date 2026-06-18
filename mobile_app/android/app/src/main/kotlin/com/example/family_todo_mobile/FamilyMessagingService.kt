@@ -9,6 +9,7 @@ import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.app.Person
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import kotlin.math.abs
@@ -99,12 +100,21 @@ class FamilyMessagingService : FirebaseMessagingService() {
             declineIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        val callerPerson = Person.Builder()
+            .setName(caller)
+            .setImportant(true)
+            .build()
+        val callStyle = NotificationCompat.CallStyle.forIncomingCall(
+            callerPerson,
+            declinePendingIntent,
+            acceptPendingIntent
+        )
 
         val notification = NotificationCompat.Builder(this, PUSH_CALL_CHANNEL_ID)
             .setSmallIcon(applicationInfo.icon)
             .setContentTitle(title)
             .setContentText(body)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setStyle(callStyle)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -112,6 +122,9 @@ class FamilyMessagingService : FirebaseMessagingService() {
             .setAutoCancel(false)
             .setSound(ringtoneUri)
             .setDefaults(NotificationCompat.DEFAULT_VIBRATE or NotificationCompat.DEFAULT_LIGHTS)
+            .setVibrate(longArrayOf(0, 900, 300, 900, 300, 900))
+            .setOnlyAlertOnce(false)
+            .setColorized(true)
             .setTimeoutAfter(60_000)
             .setContentIntent(openPendingIntent)
             .setFullScreenIntent(openPendingIntent, true)
