@@ -89,6 +89,10 @@ void main() {
     expect(mainActivity, contains('BitmapFactory.Options'));
     expect(mainActivity, contains('outMimeType'));
     expect(mainActivity, contains('Downloaded file is not a supported image'));
+    expect(mainActivity, contains('Bitmap.CompressFormat'));
+    expect(mainActivity, contains('ByteArrayOutputStream'));
+    expect(mainActivity, contains('bitmap.compress'));
+    expect(mainActivity, contains('galleryImage.bytes'));
     expect(mainActivity, contains('MediaStore.Images.Media.IS_PENDING'));
     expect(mainActivity, contains('contentResolver.delete'));
     expect(mainActivity, contains('connection.contentType'));
@@ -109,6 +113,14 @@ void main() {
     expect(
       mainActivity,
       isNot(contains('imageFormatForMime(contentType')),
+    );
+    expect(
+      mainActivity,
+      isNot(contains('stream.write(download.bytes)')),
+    );
+    expect(
+      mainActivity,
+      isNot(contains('file.writeBytes(download.bytes)')),
     );
 
     final homeChatSection =
