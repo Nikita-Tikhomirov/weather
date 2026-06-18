@@ -3,6 +3,57 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('AgentLaunchPlan', () {
+    test('uses English step labels by default', () {
+      final plan = AgentLaunchPlan.build(
+        contextPrompt: 'Task context',
+        selectedCommandValues: const [],
+        commands: const [],
+      );
+      final continuation = AgentLaunchPlan.buildContinuation(
+        contextPrompt: 'Task context',
+        selectedCommandValues: const [],
+        commands: const [],
+      );
+
+      expect(plan.steps.map((step) => step.label), [
+        'Task card',
+        'Read task card',
+        'App context',
+        'Task work',
+      ]);
+      expect(continuation.steps.last.label, 'Continue work');
+    });
+
+    test('accepts localized step labels', () {
+      const labels = AgentLaunchPlanLabels(
+        taskCard: 'Карточка задачи',
+        taskCardRead: 'Чтение карточки',
+        appContext: 'Контекст приложения',
+        taskWork: 'Работа по задаче',
+        continueWork: 'Продолжение работы',
+      );
+      final plan = AgentLaunchPlan.build(
+        contextPrompt: 'Контекст задачи',
+        selectedCommandValues: const [],
+        commands: const [],
+        labels: labels,
+      );
+      final continuation = AgentLaunchPlan.buildContinuation(
+        contextPrompt: 'Контекст задачи',
+        selectedCommandValues: const [],
+        commands: const [],
+        labels: labels,
+      );
+
+      expect(plan.steps.map((step) => step.label), [
+        'Карточка задачи',
+        'Чтение карточки',
+        'Контекст приложения',
+        'Работа по задаче',
+      ]);
+      expect(continuation.steps.last.label, 'Продолжение работы');
+    });
+
     test('always starts with family task card skill and read', () {
       final plan = AgentLaunchPlan.build(
         contextPrompt: 'Контекст задачи',
@@ -47,12 +98,12 @@ void main() {
         contains('Контекст задачи'),
       ]);
       expect(plan.steps.map((step) => step.label), [
-        'Карточка задачи',
-        'Чтение карточки',
+        'Task card',
+        'Read task card',
         'TDD',
         'Review',
-        'Контекст приложения',
-        'Работа по задаче',
+        'App context',
+        'Task work',
       ]);
       expect(
         plan.steps.last.text,
@@ -95,7 +146,7 @@ void main() {
           contains('Свежий комментарий: поправить валидацию.'),
         ),
       ]);
-      expect(plan.steps.last.label, 'Продолжение работы');
+      expect(plan.steps.last.label, 'Continue work');
       expect(
         plan.steps.last.text,
         contains('Не спрашивай подтверждение'),

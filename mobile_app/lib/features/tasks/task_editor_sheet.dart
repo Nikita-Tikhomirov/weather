@@ -1663,6 +1663,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         contextPrompt: prompt,
         selectedCommandValues: _selectedAgentCommandValues,
         commands: _agentCommands,
+        labels: _agentLaunchPlanLabels(),
       );
       _pendingAgentSteps = launchPlan.steps;
       _pendingAgentStepTotal = launchPlan.steps.length;
@@ -1953,6 +1954,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         contextPrompt: prompt,
         selectedCommandValues: selectedCommandValues,
         commands: _agentCommands,
+        labels: _agentLaunchPlanLabels(),
       );
       final taskCard = {
         'task_id': saved.id,
@@ -2737,6 +2739,17 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         )
         .whereType<Map<String, dynamic>>()
         .toList();
+  }
+
+  AgentLaunchPlanLabels _agentLaunchPlanLabels() {
+    final text = TaskEditorText.of(context);
+    return AgentLaunchPlanLabels(
+      taskCard: text.agentTaskCardStep,
+      taskCardRead: text.agentTaskCardReadStep,
+      appContext: text.agentAppContextStep,
+      taskWork: text.workStep,
+      continueWork: text.continueWork,
+    );
   }
 
   String _agentCommandValue(Map<String, dynamic> command) {

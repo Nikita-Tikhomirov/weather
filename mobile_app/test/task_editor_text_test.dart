@@ -122,6 +122,10 @@ void main() {
       text.agentQueueTaskCardUnavailable,
       localized.agentQueueTaskCardUnavailable,
     );
+    expect(text.agentTaskCardStep, localized.agentTaskCardStep);
+    expect(text.agentTaskCardReadStep, localized.agentTaskCardReadStep);
+    expect(text.agentAppContextStep, localized.agentAppContextStep);
+    expect(text.workStep, localized.workStep);
     expect(text.codeWhaleError, localized.codeWhaleError);
     expect(text.activityCommentEdited, localized.activityCommentEdited);
     expect(text.activityCommentAdded, localized.activityCommentAdded);
@@ -212,6 +216,10 @@ void main() {
     expect(text.title, 'Title');
     expect(text.selectProject, 'Select project');
     expect(text.agent, 'Agent');
+    expect(text.agentTaskCardStep, 'Task card');
+    expect(text.agentTaskCardReadStep, 'Read task card');
+    expect(text.agentAppContextStep, 'App context');
+    expect(text.workStep, 'Task work');
     expect(text.user, 'User');
     expect(text.openPhotoAttachment, 'Open photo');
     expect(text.openFileAttachment, 'Open file');

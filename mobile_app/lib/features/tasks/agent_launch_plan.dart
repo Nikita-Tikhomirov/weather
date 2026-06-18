@@ -1,5 +1,21 @@
 import 'dart:convert';
 
+class AgentLaunchPlanLabels {
+  const AgentLaunchPlanLabels({
+    this.taskCard = 'Task card',
+    this.taskCardRead = 'Read task card',
+    this.appContext = 'App context',
+    this.taskWork = 'Task work',
+    this.continueWork = 'Continue work',
+  });
+
+  final String taskCard;
+  final String taskCardRead;
+  final String appContext;
+  final String taskWork;
+  final String continueWork;
+}
+
 class AgentLaunchPlan {
   const AgentLaunchPlan({required this.steps});
 
@@ -9,14 +25,16 @@ class AgentLaunchPlan {
     required String contextPrompt,
     required List<String> selectedCommandValues,
     required List<Map<String, dynamic>> commands,
+    AgentLaunchPlanLabels labels = const AgentLaunchPlanLabels(),
   }) {
     final steps = _baseSteps(
       selectedCommandValues: selectedCommandValues,
       commands: commands,
+      labels: labels,
     );
     steps.add(
       AgentLaunchStep(
-        label: 'Работа по задаче',
+        label: labels.taskWork,
         text: _taskPrompt(contextPrompt),
         kind: AgentLaunchStepKind.taskPrompt,
       ),
@@ -28,14 +46,16 @@ class AgentLaunchPlan {
     required String contextPrompt,
     required List<String> selectedCommandValues,
     required List<Map<String, dynamic>> commands,
+    AgentLaunchPlanLabels labels = const AgentLaunchPlanLabels(),
   }) {
     final steps = _baseSteps(
       selectedCommandValues: selectedCommandValues,
       commands: commands,
+      labels: labels,
     );
     steps.add(
       AgentLaunchStep(
-        label: 'Продолжение работы',
+        label: labels.continueWork,
         text: _continuationPrompt(contextPrompt),
         kind: AgentLaunchStepKind.taskPrompt,
       ),
@@ -46,6 +66,7 @@ class AgentLaunchPlan {
   static List<AgentLaunchStep> _baseSteps({
     required List<String> selectedCommandValues,
     required List<Map<String, dynamic>> commands,
+    required AgentLaunchPlanLabels labels,
   }) {
     final commandByValue = <String, Map<String, dynamic>>{};
     for (final command in commands) {
@@ -58,13 +79,13 @@ class AgentLaunchPlan {
 
     final seen = <String>{'/skill family-task-card'};
     final steps = <AgentLaunchStep>[
-      const AgentLaunchStep(
-        label: 'Карточка задачи',
+      AgentLaunchStep(
+        label: labels.taskCard,
         text: '/skill family-task-card',
         kind: AgentLaunchStepKind.command,
       ),
-      const AgentLaunchStep(
-        label: 'Чтение карточки',
+      AgentLaunchStep(
+        label: labels.taskCardRead,
         text:
             'Выполни команду family-task-card read. Изучи snapshot карточки: описание, комментарии, чеклисты, вопросы и вложения. Если команда недоступна или вернула ошибку, остановись и напиши, что карточка задачи недоступна. Не спрашивай подтверждение на перевод карточки: если работа уже готова и нет блокирующего вопроса, используй family-task-card finish --summary "..." --result-status ready_for_review.',
         kind: AgentLaunchStepKind.taskCardRead,
@@ -89,8 +110,8 @@ class AgentLaunchPlan {
     }
 
     steps.add(
-      const AgentLaunchStep(
-        label: 'Контекст приложения',
+      AgentLaunchStep(
+        label: labels.appContext,
         text: _appContextPrompt,
         kind: AgentLaunchStepKind.appContext,
       ),

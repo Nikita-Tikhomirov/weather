@@ -204,6 +204,11 @@ class TaskEditorText {
       l10n?.taskAgentQueueHint ?? 'Select tools; the work step will run last';
   String get moveUp => l10n?.taskMoveUp ?? 'Up';
   String get moveDown => l10n?.taskMoveDown ?? 'Down';
+  String get agentTaskCardStep => l10n?.taskAgentTaskCardStep ?? 'Task card';
+  String get agentTaskCardReadStep =>
+      l10n?.taskAgentTaskCardReadStep ?? 'Read task card';
+  String get agentAppContextStep =>
+      l10n?.taskAgentAppContextStep ?? 'App context';
   String get workStep => l10n?.taskWorkStep ?? 'Task work';
   String get workStepSubtitle =>
       l10n?.taskWorkStepSubtitle ??

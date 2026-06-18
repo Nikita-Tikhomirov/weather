@@ -1337,6 +1337,24 @@ abstract class AppLocalizations {
   /// **'Down'**
   String get taskMoveDown;
 
+  /// No description provided for @taskAgentTaskCardStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Task card'**
+  String get taskAgentTaskCardStep;
+
+  /// No description provided for @taskAgentTaskCardReadStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Read task card'**
+  String get taskAgentTaskCardReadStep;
+
+  /// No description provided for @taskAgentAppContextStep.
+  ///
+  /// In en, this message translates to:
+  /// **'App context'**
+  String get taskAgentAppContextStep;
+
   /// No description provided for @taskWorkStep.
   ///
   /// In en, this message translates to:

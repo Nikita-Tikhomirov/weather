@@ -678,6 +678,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskMoveDown => 'Down';
 
   @override
+  String get taskAgentTaskCardStep => 'Task card';
+
+  @override
+  String get taskAgentTaskCardReadStep => 'Read task card';
+
+  @override
+  String get taskAgentAppContextStep => 'App context';
+
+  @override
   String get taskWorkStep => 'Task work';
 
   @override

@@ -678,6 +678,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskMoveDown => 'Ниже';
 
   @override
+  String get taskAgentTaskCardStep => 'Карточка задачи';
+
+  @override
+  String get taskAgentTaskCardReadStep => 'Чтение карточки';
+
+  @override
+  String get taskAgentAppContextStep => 'Контекст приложения';
+
+  @override
   String get taskWorkStep => 'Работа по задаче';
 
   @override
