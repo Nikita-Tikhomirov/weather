@@ -1510,7 +1510,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get profileSystemCallsDisabled => 'Включите, чтобы входящие звонки открывались на экране блокировки';
 
   @override
+  String get profileSystemCallsFullScreenDisabled => 'Разрешите полноэкранные уведомления для звонков на экране блокировки';
+
+  @override
   String get profileEnableSystemCalls => 'Включить';
+
+  @override
+  String get profileAllowSystemCallsFullScreen => 'Разрешить';
 
   @override
   String get profileSystemCallsSettingsFailed => 'Не удалось открыть настройки системных звонков';

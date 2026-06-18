@@ -9,8 +9,12 @@ import android.telecom.VideoProfile
 class FamilyCallConnection(
     private val appContext: Context,
     private val data: Map<String, String>,
+    private val isSelfManaged: Boolean,
 ) : Connection() {
     init {
+        if (isSelfManaged) {
+            setConnectionProperties(PROPERTY_SELF_MANAGED)
+        }
         setAddress(TelecomCallManager.callAddress(data), TelecomManager.PRESENTATION_ALLOWED)
         setCallerDisplayName(
             TelecomCallManager.callerDisplayName(data),

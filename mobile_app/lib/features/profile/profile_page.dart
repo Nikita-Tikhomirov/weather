@@ -33,7 +33,12 @@ class _ProfileText {
   String get systemCallsDisabled =>
       l10n?.profileSystemCallsDisabled ??
       'Enable to show incoming calls on lock screen';
+  String get systemCallsFullScreenDisabled =>
+      l10n?.profileSystemCallsFullScreenDisabled ??
+      'Allow full-screen alerts for lock-screen calls';
   String get enableSystemCalls => l10n?.profileEnableSystemCalls ?? 'Enable';
+  String get allowSystemCallsFullScreen =>
+      l10n?.profileAllowSystemCallsFullScreen ?? 'Allow';
   String get systemCallsSettingsFailed =>
       l10n?.profileSystemCallsSettingsFailed ??
       'Could not open system call settings';
@@ -79,6 +84,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   late TextEditingController _nameCtl;
   String? _avatarUrl;
   bool? _systemCallAccountEnabled;
+  bool? _fullScreenIntentEnabled;
 
   @override
   void initState() {
@@ -105,14 +111,33 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
 
   Future<void> _refreshSystemCallStatus() async {
     await widget.callIntegration.registerPhoneAccounts();
-    final enabled = await widget.callIntegration.isManagedPhoneAccountEnabled();
+    final phoneAccountEnabled =
+        await widget.callIntegration.isManagedPhoneAccountEnabled();
+    final fullScreenEnabled =
+        await widget.callIntegration.canUseFullScreenIntent();
     if (!mounted) return;
-    setState(() => _systemCallAccountEnabled = enabled);
+    setState(() {
+      _systemCallAccountEnabled = phoneAccountEnabled;
+      _fullScreenIntentEnabled = fullScreenEnabled;
+    });
   }
 
-  Future<void> _openSystemCallSettings() async {
+  Future<void> _openPhoneAccountSettings() async {
     await widget.callIntegration.registerPhoneAccounts();
     final opened = await widget.callIntegration.openPhoneAccountSettings();
+    if (!mounted) return;
+    if (!opened) {
+      final text = _ProfileText(AppLocalizations.of(context));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(text.systemCallsSettingsFailed)),
+      );
+      return;
+    }
+    unawaited(_refreshSystemCallStatus());
+  }
+
+  Future<void> _openFullScreenIntentSettings() async {
+    final opened = await widget.callIntegration.openFullScreenIntentSettings();
     if (!mounted) return;
     if (!opened) {
       final text = _ProfileText(AppLocalizations.of(context));
@@ -225,31 +250,24 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
             ),
             ListTile(
               leading: Icon(
-                _systemCallAccountEnabled == true
+                _systemCallsReady
                     ? Icons.phone_in_talk_outlined
                     : Icons.phone_callback_outlined,
               ),
               title: Text(text.systemCalls),
-              subtitle: Text(
-                _systemCallAccountEnabled == true
-                    ? text.systemCallsEnabled
-                    : text.systemCallsDisabled,
-              ),
-              trailing: _systemCallAccountEnabled == null
+              subtitle: Text(_systemCallsSubtitle(text)),
+              trailing: _systemCallsLoading
                   ? const SizedBox(
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : _systemCallAccountEnabled == true
+                  : _systemCallsReady
                       ? Icon(
                           Icons.check_circle_outline,
                           color: Theme.of(context).colorScheme.primary,
                         )
-                      : TextButton(
-                          onPressed: _openSystemCallSettings,
-                          child: Text(text.enableSystemCalls),
-                        ),
+                      : _systemCallsAction(text),
             ),
             ListTile(
               leading: const Icon(Icons.badge),
@@ -275,5 +293,35 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
 
   ImageProvider? _avatarImageProvider(String? url) {
     return AvatarUrlResolver.imageProvider(url);
+  }
+
+  bool get _systemCallsLoading =>
+      _systemCallAccountEnabled == null || _fullScreenIntentEnabled == null;
+
+  bool get _systemCallsReady =>
+      _systemCallAccountEnabled == true && _fullScreenIntentEnabled == true;
+
+  String _systemCallsSubtitle(_ProfileText text) {
+    if (_systemCallAccountEnabled == true &&
+        _fullScreenIntentEnabled == false) {
+      return text.systemCallsFullScreenDisabled;
+    }
+    return _systemCallsReady
+        ? text.systemCallsEnabled
+        : text.systemCallsDisabled;
+  }
+
+  Widget _systemCallsAction(_ProfileText text) {
+    if (_systemCallAccountEnabled == true &&
+        _fullScreenIntentEnabled == false) {
+      return TextButton(
+        onPressed: _openFullScreenIntentSettings,
+        child: Text(text.allowSystemCallsFullScreen),
+      );
+    }
+    return TextButton(
+      onPressed: _openPhoneAccountSettings,
+      child: Text(text.enableSystemCalls),
+    );
   }
 }

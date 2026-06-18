@@ -19,6 +19,14 @@ class TelecomCallIntegration {
     return _invokeBool('openPhoneAccountSettings');
   }
 
+  Future<bool> canUseFullScreenIntent() {
+    return _invokeBool('canUseFullScreenIntent');
+  }
+
+  Future<bool> openFullScreenIntentSettings() {
+    return _invokeBool('openFullScreenIntentSettings');
+  }
+
   Future<bool> _invokeBool(String method) async {
     try {
       return await _channel.invokeMethod<bool>(method) ?? false;

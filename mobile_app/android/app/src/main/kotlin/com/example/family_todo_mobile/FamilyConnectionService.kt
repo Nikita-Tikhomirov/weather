@@ -17,7 +17,11 @@ class FamilyConnectionService : ConnectionService() {
         request: ConnectionRequest,
     ): Connection {
         val data = TelecomCallManager.callDataFromRequest(request)
-        return FamilyCallConnection(applicationContext, data)
+        return FamilyCallConnection(
+            applicationContext,
+            data,
+            TelecomCallManager.isSelfManagedPhoneAccount(connectionManagerPhoneAccount),
+        )
     }
 
     override fun onCreateIncomingConnectionFailed(

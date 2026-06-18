@@ -119,6 +119,17 @@ class MainActivity : FlutterActivity() {
                         result.success(false)
                     }
                 }
+                "canUseFullScreenIntent" -> {
+                    result.success(TelecomCallManager.canUseFullScreenIntent(this))
+                }
+                "openFullScreenIntentSettings" -> {
+                    try {
+                        startActivity(TelecomCallManager.fullScreenIntentSettingsIntent(this))
+                        result.success(true)
+                    } catch (_: Exception) {
+                        result.success(false)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

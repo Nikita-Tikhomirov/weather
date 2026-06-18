@@ -1,5 +1,6 @@
 package com.example.family_todo_mobile
 
+import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -7,6 +8,7 @@ import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.telecom.PhoneAccount
 import android.telecom.PhoneAccountHandle
 import android.telecom.TelecomManager
@@ -49,6 +51,32 @@ object TelecomCallManager {
         val telecom = context.getSystemService(TelecomManager::class.java) ?: return false
         registerPhoneAccounts(context)
         return isManagedPhoneAccountEnabled(context, telecom)
+    }
+
+    fun isSelfManagedPhoneAccount(handle: PhoneAccountHandle): Boolean {
+        return handle.id == SELF_MANAGED_PHONE_ACCOUNT_ID
+    }
+
+    fun canUseFullScreenIntent(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return true
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return true
+        return try {
+            manager.canUseFullScreenIntent()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun fullScreenIntentSettingsIntent(context: Context): Intent {
+        val action = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT
+        } else {
+            Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+        }
+        return Intent(action)
+            .setData(Uri.parse("package:${context.packageName}"))
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
 
     fun callDataFromRequest(request: android.telecom.ConnectionRequest): Map<String, String> {

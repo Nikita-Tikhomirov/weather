@@ -75,21 +75,41 @@ void main() {
     expect(manager, contains('PhoneAccount.CAPABILITY_CALL_PROVIDER'));
     expect(manager, contains('PhoneAccount.CAPABILITY_SELF_MANAGED'));
     expect(manager, contains('TelecomManager.ACTION_CHANGE_PHONE_ACCOUNTS'));
+    expect(manager, contains('canUseFullScreenIntent'));
+    expect(manager, contains('ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT'));
     expect(
       manager,
       contains('fun isManagedPhoneAccountEnabled(context: Context): Boolean'),
+    );
+    expect(
+      manager,
+      contains('fun canUseFullScreenIntent(context: Context): Boolean'),
+    );
+    expect(
+      manager,
+      contains('fun fullScreenIntentSettingsIntent(context: Context): Intent'),
     );
     expect(mainActivity, contains('"family_todo_mobile/telecom"'));
     expect(mainActivity, contains('"registerPhoneAccounts"'));
     expect(mainActivity, contains('"isManagedPhoneAccountEnabled"'));
     expect(mainActivity, contains('"openPhoneAccountSettings"'));
+    expect(mainActivity, contains('"canUseFullScreenIntent"'));
+    expect(mainActivity, contains('"openFullScreenIntentSettings"'));
     expect(
       mainActivity,
       contains('TelecomCallManager.phoneAccountSettingsIntent()'),
     );
     expect(connectionService, contains('onCreateIncomingConnection'));
+    expect(
+      connectionService,
+      contains('TelecomCallManager.isSelfManagedPhoneAccount'),
+    );
     expect(connectionService, contains('onCreateIncomingConnectionFailed'));
     expect(connection, contains('onShowIncomingCallUi'));
+    expect(
+      connection,
+      contains('setConnectionProperties(PROPERTY_SELF_MANAGED)'),
+    );
     expect(connection, contains('onAnswer'));
     expect(connection, contains('onReject'));
     expect(connection, contains('onDisconnect'));
