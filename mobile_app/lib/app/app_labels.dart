@@ -2,12 +2,12 @@ import '../models/task_item.dart';
 
 /// Human-readable labels for actor profiles shown in UI.
 const kProfileLabels = {
-  'nik': 'Ник',
-  'nastya': 'Настя',
-  'misha': 'Миша',
-  'arisha': 'Ариша',
-  'family': 'Общие',
-  'tudushker': 'Тудушкер',
+  'nik': 'Nik',
+  'nastya': 'Nastya',
+  'misha': 'Misha',
+  'arisha': 'Arisha',
+  'family': 'Family',
+  'tudushker': 'Tudushker',
 };
 
 const kWorkflowLabels = {
