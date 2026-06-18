@@ -1501,6 +1501,21 @@ class AppLocalizationsRu extends AppLocalizations {
   String get profileAdminSubtitle => 'Пользователи, проекты, воркспейсы и роли агентов';
 
   @override
+  String get profileSystemCalls => 'Системные звонки';
+
+  @override
+  String get profileSystemCallsEnabled => 'Входящие звонки могут открываться через экран звонка Android';
+
+  @override
+  String get profileSystemCallsDisabled => 'Включите, чтобы входящие звонки открывались на экране блокировки';
+
+  @override
+  String get profileEnableSystemCalls => 'Включить';
+
+  @override
+  String get profileSystemCallsSettingsFailed => 'Не удалось открыть настройки системных звонков';
+
+  @override
   String get adminNoAccess => 'Нет доступа к администрированию';
 
   @override

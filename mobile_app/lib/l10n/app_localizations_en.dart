@@ -1501,6 +1501,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileAdminSubtitle => 'Users, projects, workspaces, and agent roles';
 
   @override
+  String get profileSystemCalls => 'System calls';
+
+  @override
+  String get profileSystemCallsEnabled => 'Incoming calls can use the Android call screen';
+
+  @override
+  String get profileSystemCallsDisabled => 'Enable to show incoming calls on lock screen';
+
+  @override
+  String get profileEnableSystemCalls => 'Enable';
+
+  @override
+  String get profileSystemCallsSettingsFailed => 'Could not open system call settings';
+
+  @override
   String get adminNoAccess => 'No administration access';
 
   @override

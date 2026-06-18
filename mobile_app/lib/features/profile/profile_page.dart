@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/agent_policy.dart';
 import '../../services/api_client.dart';
+import '../../services/telecom_call_integration.dart';
 import '../../shared/utils/avatar_url_resolver.dart';
 
 class _ProfileText {
@@ -24,6 +26,17 @@ class _ProfileText {
       l10n?.profileAdminSubtitle ??
       'Users, projects, workspaces, and agent roles';
   String get nameSaved => l10n?.nameSaved ?? 'Name saved';
+  String get systemCalls => l10n?.profileSystemCalls ?? 'System calls';
+  String get systemCallsEnabled =>
+      l10n?.profileSystemCallsEnabled ??
+      'Incoming calls can use the Android call screen';
+  String get systemCallsDisabled =>
+      l10n?.profileSystemCallsDisabled ??
+      'Enable to show incoming calls on lock screen';
+  String get enableSystemCalls => l10n?.profileEnableSystemCalls ?? 'Enable';
+  String get systemCallsSettingsFailed =>
+      l10n?.profileSystemCallsSettingsFailed ??
+      'Could not open system call settings';
 
   String avatarUploadFailed(Object error) {
     return l10n?.avatarUploadFailed(error.toString()) ??
@@ -42,6 +55,7 @@ class ProfilePage extends StatefulWidget {
     this.avatarUrl,
     required this.onAvatarChanged,
     required this.onDisplayNameChanged,
+    this.callIntegration = const TelecomCallIntegration(),
     this.onOpenAdmin,
   });
 
@@ -53,28 +67,61 @@ class ProfilePage extends StatefulWidget {
   final String? avatarUrl;
   final void Function(String? avatarUrl) onAvatarChanged;
   final void Function(String name) onDisplayNameChanged;
+  final TelecomCallIntegration callIntegration;
   final VoidCallback? onOpenAdmin;
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   final ImagePicker _picker = ImagePicker();
   late TextEditingController _nameCtl;
   String? _avatarUrl;
+  bool? _systemCallAccountEnabled;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _nameCtl = TextEditingController(text: widget.displayName);
     _avatarUrl = widget.avatarUrl;
+    unawaited(_refreshSystemCallStatus());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _nameCtl.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_refreshSystemCallStatus());
+    }
+  }
+
+  Future<void> _refreshSystemCallStatus() async {
+    await widget.callIntegration.registerPhoneAccounts();
+    final enabled = await widget.callIntegration.isManagedPhoneAccountEnabled();
+    if (!mounted) return;
+    setState(() => _systemCallAccountEnabled = enabled);
+  }
+
+  Future<void> _openSystemCallSettings() async {
+    await widget.callIntegration.registerPhoneAccounts();
+    final opened = await widget.callIntegration.openPhoneAccountSettings();
+    if (!mounted) return;
+    if (!opened) {
+      final text = _ProfileText(AppLocalizations.of(context));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(text.systemCallsSettingsFailed)),
+      );
+      return;
+    }
+    unawaited(_refreshSystemCallStatus());
   }
 
   Future<void> _pickAvatar() async {
@@ -175,6 +222,34 @@ class _ProfilePageState extends State<ProfilePage> {
               leading: const Icon(Icons.phone),
               title: Text(text.phone),
               subtitle: Text(widget.phone),
+            ),
+            ListTile(
+              leading: Icon(
+                _systemCallAccountEnabled == true
+                    ? Icons.phone_in_talk_outlined
+                    : Icons.phone_callback_outlined,
+              ),
+              title: Text(text.systemCalls),
+              subtitle: Text(
+                _systemCallAccountEnabled == true
+                    ? text.systemCallsEnabled
+                    : text.systemCallsDisabled,
+              ),
+              trailing: _systemCallAccountEnabled == null
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : _systemCallAccountEnabled == true
+                      ? Icon(
+                          Icons.check_circle_outline,
+                          color: Theme.of(context).colorScheme.primary,
+                        )
+                      : TextButton(
+                          onPressed: _openSystemCallSettings,
+                          child: Text(text.enableSystemCalls),
+                        ),
             ),
             ListTile(
               leading: const Icon(Icons.badge),

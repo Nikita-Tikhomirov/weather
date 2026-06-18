@@ -44,6 +44,13 @@ object TelecomCallManager {
         return false
     }
 
+    fun isManagedPhoneAccountEnabled(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false
+        val telecom = context.getSystemService(TelecomManager::class.java) ?: return false
+        registerPhoneAccounts(context)
+        return isManagedPhoneAccountEnabled(context, telecom)
+    }
+
     fun callDataFromRequest(request: android.telecom.ConnectionRequest): Map<String, String> {
         val out = linkedMapOf<String, String>()
         collectPushExtras(request.extras, out)

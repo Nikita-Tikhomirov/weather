@@ -2867,6 +2867,36 @@ abstract class AppLocalizations {
   /// **'Users, projects, workspaces, and agent roles'**
   String get profileAdminSubtitle;
 
+  /// No description provided for @profileSystemCalls.
+  ///
+  /// In en, this message translates to:
+  /// **'System calls'**
+  String get profileSystemCalls;
+
+  /// No description provided for @profileSystemCallsEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming calls can use the Android call screen'**
+  String get profileSystemCallsEnabled;
+
+  /// No description provided for @profileSystemCallsDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable to show incoming calls on lock screen'**
+  String get profileSystemCallsDisabled;
+
+  /// No description provided for @profileEnableSystemCalls.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get profileEnableSystemCalls;
+
+  /// No description provided for @profileSystemCallsSettingsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open system call settings'**
+  String get profileSystemCallsSettingsFailed;
+
   /// No description provided for @adminNoAccess.
   ///
   /// In en, this message translates to:

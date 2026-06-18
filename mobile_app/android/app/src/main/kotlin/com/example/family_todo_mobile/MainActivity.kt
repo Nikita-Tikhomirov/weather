@@ -98,6 +98,31 @@ class MainActivity : FlutterActivity() {
         // Voice recording + playback
         VoiceChannel.register(flutterEngine, this)
 
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "family_todo_mobile/telecom"
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "registerPhoneAccounts" -> {
+                    TelecomCallManager.registerPhoneAccounts(this)
+                    result.success(true)
+                }
+                "isManagedPhoneAccountEnabled" -> {
+                    result.success(TelecomCallManager.isManagedPhoneAccountEnabled(this))
+                }
+                "openPhoneAccountSettings" -> {
+                    try {
+                        TelecomCallManager.registerPhoneAccounts(this)
+                        startActivity(TelecomCallManager.phoneAccountSettingsIntent())
+                        result.success(true)
+                    } catch (_: Exception) {
+                        result.success(false)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
         pushChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "family_todo_mobile/push_intents"

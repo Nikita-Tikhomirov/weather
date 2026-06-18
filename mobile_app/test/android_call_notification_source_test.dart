@@ -48,6 +48,9 @@ void main() {
     final service = File(
       'android/app/src/main/kotlin/com/example/family_todo_mobile/FamilyMessagingService.kt',
     ).readAsStringSync();
+    final mainActivity = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/MainActivity.kt',
+    ).readAsStringSync();
     final manager = File(
       'android/app/src/main/kotlin/com/example/family_todo_mobile/TelecomCallManager.kt',
     ).readAsStringSync();
@@ -72,6 +75,18 @@ void main() {
     expect(manager, contains('PhoneAccount.CAPABILITY_CALL_PROVIDER'));
     expect(manager, contains('PhoneAccount.CAPABILITY_SELF_MANAGED'));
     expect(manager, contains('TelecomManager.ACTION_CHANGE_PHONE_ACCOUNTS'));
+    expect(
+      manager,
+      contains('fun isManagedPhoneAccountEnabled(context: Context): Boolean'),
+    );
+    expect(mainActivity, contains('"family_todo_mobile/telecom"'));
+    expect(mainActivity, contains('"registerPhoneAccounts"'));
+    expect(mainActivity, contains('"isManagedPhoneAccountEnabled"'));
+    expect(mainActivity, contains('"openPhoneAccountSettings"'));
+    expect(
+      mainActivity,
+      contains('TelecomCallManager.phoneAccountSettingsIntent()'),
+    );
     expect(connectionService, contains('onCreateIncomingConnection'));
     expect(connectionService, contains('onCreateIncomingConnectionFailed'));
     expect(connection, contains('onShowIncomingCallUi'));
@@ -100,8 +115,14 @@ void main() {
     expect(mainActivity, contains('setRequestProperty("X-Api-Key", apiKey)'));
     expect(mainActivity, contains('call.argument<String>("apiKey")'));
     expect(mainActivity, contains('call.argument<String>("apiBaseUrl")'));
-    expect(mainActivity, contains('shouldAttachApiKey(downloadUrl, apiBaseUrl)'));
-    expect(mainActivity, contains('effectivePort(imageUrl) == effectivePort(apiUrl)'));
+    expect(
+      mainActivity,
+      contains('shouldAttachApiKey(downloadUrl, apiBaseUrl)'),
+    );
+    expect(
+      mainActivity,
+      contains('effectivePort(imageUrl) == effectivePort(apiUrl)'),
+    );
     expect(
       mainActivity,
       isNot(contains(r'FamilyTodo_${System.currentTimeMillis()}.jpg')),
@@ -127,7 +148,8 @@ void main() {
         File('lib/features/home/home_chat_section.dart').readAsStringSync();
     expect(homeChatSection, contains("'apiKey': AppConfig.apiKey"));
     expect(homeChatSection, contains("'apiBaseUrl': AppConfig.apiBaseUrl"));
-    final homePage = File('lib/features/home/home_page.dart').readAsStringSync();
+    final homePage =
+        File('lib/features/home/home_page.dart').readAsStringSync();
     expect(homePage, contains("import '../../app/app_config.dart';"));
   });
 }
