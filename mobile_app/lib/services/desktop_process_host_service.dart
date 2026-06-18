@@ -4,6 +4,43 @@ import 'dart:io';
 
 enum DesktopHostStatus { stopped, running, error }
 
+List<String> desktopPythonExecutableCandidates({
+  Map<String, String>? environment,
+  bool? isWindows,
+}) {
+  final env = environment ?? Platform.environment;
+  final result = <String>[];
+  void add(String value) {
+    final candidate = value.trim();
+    if (candidate.isNotEmpty && !result.contains(candidate)) {
+      result.add(candidate);
+    }
+  }
+
+  add(env['FAMILY_TODO_PYTHON'] ?? '');
+  final windows = isWindows ?? Platform.isWindows;
+  if (!windows) {
+    add('python3');
+    add('python');
+    return List.unmodifiable(result);
+  }
+
+  add('python');
+  add('py');
+  final localAppData = env['LOCALAPPDATA']?.trim() ?? '';
+  if (localAppData.isNotEmpty) {
+    for (final version in const [
+      'Python313',
+      'Python312',
+      'Python311',
+      'Python310',
+    ]) {
+      add('$localAppData\\Programs\\Python\\$version\\python.exe');
+    }
+  }
+  return List.unmodifiable(result);
+}
+
 class DesktopHostState {
   const DesktopHostState({
     required this.status,
@@ -198,11 +235,7 @@ class DesktopProcessHostService {
     List<String> args, {
     Map<String, String> extraEnvironment = const {},
   }) async {
-    final candidates = <String>[
-      'python',
-      r'C:\Users\user\AppData\Local\Programs\Python\Python310\python.exe',
-      r'C:\Users\user\AppData\Local\Programs\Python\Python311\python.exe',
-    ];
+    final candidates = desktopPythonExecutableCandidates();
     for (final executable in candidates) {
       try {
         final env = Map<String, String>.from(Platform.environment)

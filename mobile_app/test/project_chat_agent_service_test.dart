@@ -111,7 +111,7 @@ void main() {
       );
 
       expect(directive.action, ProjectChatAgentAction.reply);
-      expect(directive.replyText, contains('не получил ответ AI'));
+      expect(directive.replyText, contains('AI did not return a response'));
       expect(directive.replyText, isNot(contains('анимации')));
       expect(directive.replyText, isNot(contains('секцию')));
       expect(directive.replyText, isNot(contains('task-card.json')));
@@ -132,7 +132,7 @@ void main() {
 
       expect(calls, 1);
       expect(directive.action, ProjectChatAgentAction.reply);
-      expect(directive.replyText, contains('не получил ответ AI'));
+      expect(directive.replyText, contains('AI did not return a response'));
       expect(directive.replyText, isNot(contains('анимации')));
     });
 
@@ -149,7 +149,7 @@ void main() {
       expect(directive.draft, isNull);
       expect(
         directive.replyText,
-        contains('не смог собрать нормальный черновик'),
+        contains('could not build a reliable task draft'),
       );
       expect(directive.replyText, isNot(contains('анимации')));
     });
@@ -176,6 +176,17 @@ void main() {
 
       expect(replyDirective.replyText, 'AI is unavailable.');
       expect(draftDirective.replyText, 'Task draft AI is unavailable.');
+    });
+
+    test('default unavailable fallback messages are English', () {
+      expect(
+        ProjectChatAgentFallbackMessages.defaults.replyText,
+        isNot(contains(RegExp(r'[А-Яа-яЁё]'))),
+      );
+      expect(
+        ProjectChatAgentFallbackMessages.defaults.taskDraftReplyText,
+        isNot(contains(RegExp(r'[А-Яа-яЁё]'))),
+      );
     });
 
     test('resolver accepts connected plain model reply without repair',

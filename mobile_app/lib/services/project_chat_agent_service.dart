@@ -38,9 +38,9 @@ class ProjectChatAgentFallbackMessages {
 
   static const defaults = ProjectChatAgentFallbackMessages(
     replyText:
-        'Сейчас не получил ответ AI, поэтому не буду придумывать ответ из кусков чата. Проверьте CodeWhale и workspace проекта, затем повторите запрос.',
+        'AI did not return a response, so I will not invent an answer from chat fragments. Check CodeWhale and the project workspace, then try again.',
     taskDraftReplyText:
-        'Я не смог собрать нормальный черновик: не получил ответ AI. Не буду создавать карточку из кусков чата. Проверьте CodeWhale и workspace проекта, затем повторите запрос.',
+        'I could not build a reliable task draft because AI did not return a response. I will not create a task card from chat fragments. Check CodeWhale and the project workspace, then try again.',
   );
 
   final String replyText;

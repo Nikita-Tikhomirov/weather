@@ -187,7 +187,7 @@ extension TaskAgentAutomationContextMerge on TaskAgentAutomationService {
           : draft.path.split(RegExp(r'[/\\]')).last;
       final mimeType = draft.mimeType.isNotEmpty
           ? draft.mimeType
-          : _mimeTypeForName(filename);
+          : taskAgentMimeTypeForName(filename);
       return TaskAttachment(
         id: _newId('attachment'),
         kind: _attachmentKind(filename, mimeType),

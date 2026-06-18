@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../features/tasks/agent_launch_plan.dart';
+import '../features/tasks/task_agent_attachment_upload.dart';
 import '../features/tasks/task_agent_card_prompt.dart';
 import '../models/agent_policy.dart';
 import '../models/task_collaboration.dart';
@@ -496,15 +497,9 @@ class TaskAgentAutomationService {
         workspaceId: workspaceId,
         sessionId: sessionId,
         bytes: bytes,
-        filename: attachment.filename.isEmpty
-            ? 'task-attachment.bin'
-            : attachment.filename,
-        mimeType: attachment.mimeType.isEmpty
-            ? _mimeTypeForName(attachment.filename)
-            : attachment.mimeType,
-        caption: attachment.caption.isEmpty
-            ? 'File from task card'
-            : attachment.caption,
+        filename: taskAgentUploadFilename(attachment),
+        mimeType: taskAgentUploadMimeType(attachment),
+        caption: taskAgentUploadCaption(attachment),
       );
     }
   }
@@ -617,17 +612,6 @@ class TaskAgentAutomationService {
       return 'photo';
     }
     return 'file';
-  }
-
-  String _mimeTypeForName(String filename) {
-    final lower = filename.toLowerCase();
-    if (lower.endsWith('.png')) return 'image/png';
-    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
-    if (lower.endsWith('.gif')) return 'image/gif';
-    if (lower.endsWith('.pdf')) return 'application/pdf';
-    if (lower.endsWith('.md')) return 'text/markdown';
-    if (lower.endsWith('.txt')) return 'text/plain';
-    return 'application/octet-stream';
   }
 
   TaskActivityEntry _activity({

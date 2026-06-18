@@ -21,6 +21,7 @@ import '../../models/workspace_session.dart';
 import '../../services/codewhale_bridge_service.dart';
 import '../../state/task_store.dart';
 import 'agent_launch_plan.dart';
+import 'task_agent_attachment_upload.dart';
 import 'task_agent_card_prompt.dart';
 import 'task_editor_text.dart';
 
@@ -2269,15 +2270,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         workspaceId: workspaceId,
         sessionId: sessionId,
         bytes: bytes,
-        filename: attachment.filename.isEmpty
-            ? 'task-attachment.bin'
-            : attachment.filename,
-        mimeType: attachment.mimeType.isEmpty
-            ? _mimeTypeForName(attachment.filename)
-            : attachment.mimeType,
-        caption: attachment.caption.isEmpty
-            ? 'File from task card'
-            : attachment.caption,
+        filename: taskAgentUploadFilename(attachment),
+        mimeType: taskAgentUploadMimeType(attachment),
+        caption: taskAgentUploadCaption(attachment),
       );
     }
   }
