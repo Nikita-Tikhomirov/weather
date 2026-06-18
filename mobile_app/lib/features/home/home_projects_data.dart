@@ -24,6 +24,7 @@ class HomeProjectsDataManager {
     required this.api,
     required this.owner,
     this.currentProfilePhone = '',
+    this.projectChatsUnavailableMessage = 'Project chats are unavailable',
     this.onShowFileContentViewer,
     this.onShowError,
   });
@@ -34,6 +35,7 @@ class HomeProjectsDataManager {
 
   /// The current profile phone – used by [canUseProjectChats].
   String currentProfilePhone;
+  final String projectChatsUnavailableMessage;
 
   // ── Mutable state (watched by the UI) ────────────────────────
 
@@ -153,7 +155,7 @@ class HomeProjectsDataManager {
     ProjectContact project,
   ) async {
     if (!canUseProjectChats(currentProfilePhone)) {
-      onShowError?.call('Проектные чаты недоступны');
+      onShowError?.call(projectChatsUnavailableMessage);
       return;
     }
 
