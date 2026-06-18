@@ -183,6 +183,7 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
 
   final List<String> sentMessages = [];
   final List<String> uploadedFiles = [];
+  final List<String> uploadedCaptions = [];
   final List<String> readFilePaths = [];
   final List<String> createSessionWorkspaceIds = [];
   final List<Map<String, dynamic>> sessionSettingsUpdates = [];
@@ -378,6 +379,7 @@ class _FakeAgentBridge extends CodeWhaleBridgeService {
     String caption = '',
   }) {
     uploadedFiles.add(filename);
+    uploadedCaptions.add(caption);
   }
 
   @override
@@ -1828,6 +1830,7 @@ void main() {
         expect(fakeBridge.lastTaskCard['agent_session_id'], isNotEmpty);
         expect(fakeBridge.lastTaskCard['policy_ticket'], 'test-policy-ticket');
         expect(fakeBridge.uploadedFiles, contains('report.txt'));
+        expect(fakeBridge.uploadedCaptions, contains('File from task card'));
         expect(fakeBridge.sentMessages[0], '/skill family-task-card');
         expect(fakeBridge.sentMessages[1], contains('family-task-card read'));
         final appContext = fakeBridge.sentMessages.firstWhere(

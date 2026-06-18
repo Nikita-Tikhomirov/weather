@@ -2276,7 +2276,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
             ? _mimeTypeForName(attachment.filename)
             : attachment.mimeType,
         caption: attachment.caption.isEmpty
-            ? 'Файл из карточки задачи'
+            ? 'File from task card'
             : attachment.caption,
       );
     }
