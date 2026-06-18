@@ -19,6 +19,7 @@ import 'home_attachment_labels.dart';
 import 'home_chat_action_labels.dart';
 import 'home_dashboard_labels.dart';
 import 'home_group_chat_labels.dart';
+import 'home_call_history.dart';
 import 'home_misc_labels.dart';
 import 'home_navigation_widget.dart';
 import 'home_project_chat_agent_labels.dart';
@@ -143,6 +144,7 @@ class _HomePageState extends State<HomePage> {
   final Map<String, String> _chatOlderCursors = <String, String>{};
   final Set<String> _chatOlderLoading = <String>{};
   final Set<String> _chatOlderExhausted = <String>{};
+  final Set<String> _recordedCallHistoryIds = <String>{};
   String _activeConversationKey = '';
   String _currentProfileDisplayName = '';
   String _currentProfilePhone = '';
@@ -1237,7 +1239,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _handleCallStateChanged(CallState state) {
+    final previousState = _activeCallState;
     final session = _callService?.currentSession ?? _activeCallSession;
+    if (state == CallState.ended && session != null) {
+      unawaited(_recordCallHistoryMessage(session, previousState));
+    }
     if (!mounted) return;
     setState(() {
       _activeCallState = state;
@@ -1248,6 +1254,62 @@ class _HomePageState extends State<HomePage> {
         _activeCallSession = session;
       }
     });
+  }
+
+  Future<void> _recordCallHistoryMessage(
+    CallSession session,
+    CallState previousState,
+  ) async {
+    final store = _store;
+    final owner = store?.owner.value ?? '';
+    final sessionId = session.sessionId.trim();
+    final conversationKey = canonicalConversationKey(session.conversationKey);
+    if (store == null ||
+        owner.isEmpty ||
+        sessionId.isEmpty ||
+        conversationKey.isEmpty ||
+        previousState == CallState.idle ||
+        previousState == CallState.ended) {
+      return;
+    }
+
+    final status =
+        previousState == CallState.connected ? 'completed' : 'missed';
+    final historyKey = '$sessionId:$status';
+    if (!_recordedCallHistoryIds.add(historyKey)) {
+      return;
+    }
+
+    final message = buildCallHistoryMessage(
+      session: session.copyWith(conversationKey: conversationKey),
+      owner: owner,
+      previousState: previousState,
+      endedAt: DateTime.now(),
+    );
+    _appendSentChatMessage(message);
+
+    final db = store.repository.db;
+    final api = store.repository.api;
+    await db.upsertMessages([message]);
+    try {
+      final sent = await api.chatSendMessage(
+        actorProfile: owner,
+        conversationKey: conversationKey,
+        messageType: 'call',
+        text: message.text,
+        imageMeta: message.imageMeta,
+        clientMessageId: message.clientMessageId,
+      );
+      final displayMessage = sent.copyWith(
+        deliveryStatus: 'sent',
+        text: sent.text.trim().isEmpty ? message.text : sent.text,
+        imageMeta: sent.imageMeta.isEmpty ? message.imageMeta : sent.imageMeta,
+      );
+      await db.upsertMessages([displayMessage]);
+      _appendSentChatMessage(displayMessage);
+    } catch (e, st) {
+      debugPrint('[call] history message send error: $e\n$st');
+    }
   }
 
   Future<void> _safeSyncDelta(
@@ -1296,6 +1358,7 @@ class _HomePageState extends State<HomePage> {
             conversationKey: convKey,
             messageType: m.messageType,
             text: m.text,
+            imageMeta: m.imageMeta,
             clientMessageId: m.clientMessageId,
             attachments: m.attachments,
           );
@@ -2855,7 +2918,10 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _receiveIncomingCall(CallSession session) {
+  void _receiveIncomingCall(
+    CallSession session,
+    IncomingCallPushAction action,
+  ) {
     if (!mounted) {
       _pendingIncomingCallSession = session;
       return;
@@ -2865,6 +2931,9 @@ class _HomePageState extends State<HomePage> {
     if (service != null &&
         service.state != CallState.idle &&
         service.state != CallState.ended) {
+      if (service.sessionId == session.sessionId) {
+        _handleIncomingCallOpenAction(session, action);
+      }
       return;
     }
 
@@ -2878,6 +2947,7 @@ class _HomePageState extends State<HomePage> {
       return;
     }
     service.notifyIncomingCall(session);
+    _handleIncomingCallOpenAction(session, action);
   }
 
   void _handleIncomingCall(CallSession session) {
@@ -2893,6 +2963,31 @@ class _HomePageState extends State<HomePage> {
     if (session == null) return;
     final isIncoming = session.callerProfile != _store?.owner.value;
     _openCallScreen(session: session, isIncoming: isIncoming);
+  }
+
+  void _handleIncomingCallOpenAction(
+    CallSession session,
+    IncomingCallPushAction action,
+  ) {
+    _openCallScreen(session: session, isIncoming: true);
+    if (action != IncomingCallPushAction.accept) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final service = _callService;
+      if (!mounted ||
+          service == null ||
+          service.sessionId != session.sessionId ||
+          service.state != CallState.ringing) {
+        return;
+      }
+      unawaited(
+        service.acceptCall(
+          session.sessionId,
+          callType: session.callType,
+        ),
+      );
+    });
   }
 
   void _openCallScreen({

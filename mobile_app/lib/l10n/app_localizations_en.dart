@@ -329,6 +329,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get callEnded => 'Call ended';
 
   @override
+  String get missedAudioCall => 'Missed audio call';
+
+  @override
+  String get missedVideoCall => 'Missed video call';
+
+  @override
+  String get audioCallEnded => 'Audio call ended';
+
+  @override
+  String get videoCallEnded => 'Video call ended';
+
+  @override
   String get decline => 'Decline';
 
   @override

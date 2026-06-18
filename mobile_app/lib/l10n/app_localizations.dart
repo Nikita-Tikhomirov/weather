@@ -683,6 +683,30 @@ abstract class AppLocalizations {
   /// **'Call ended'**
   String get callEnded;
 
+  /// No description provided for @missedAudioCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Missed audio call'**
+  String get missedAudioCall;
+
+  /// No description provided for @missedVideoCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Missed video call'**
+  String get missedVideoCall;
+
+  /// No description provided for @audioCallEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio call ended'**
+  String get audioCallEnded;
+
+  /// No description provided for @videoCallEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Video call ended'**
+  String get videoCallEnded;
+
   /// No description provided for @decline.
   ///
   /// In en, this message translates to:

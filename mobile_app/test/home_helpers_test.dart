@@ -174,6 +174,17 @@ void main() {
       expect(chatMessageText(message('image')), 'Photo');
       expect(chatMessageText(message('voice')), 'Voice message');
       expect(chatMessageText(message('document')), 'Document');
+      expect(
+        chatMessageText(
+          message('call').copyWith(
+            imageMeta: const {
+              'call_status': 'missed',
+              'call_type': 'audio',
+            },
+          ),
+        ),
+        'Missed audio call',
+      );
     });
   });
 

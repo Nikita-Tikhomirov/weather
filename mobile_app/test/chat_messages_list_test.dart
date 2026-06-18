@@ -263,12 +263,62 @@ void main() {
     expect(find.textContaining('изменено'), findsNothing);
     expect(find.text('Отправка... 75%'), findsNothing);
   });
+
+  testWidgets('renders missed and completed call events', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: ChatMessagesList(
+            messages: [
+              _message(
+                id: 'missed-call',
+                text: '',
+                messageType: 'call',
+                imageMeta: const {
+                  'call_status': 'missed',
+                  'call_type': 'audio',
+                },
+              ),
+              _message(
+                id: 'completed-call',
+                text: '',
+                messageType: 'call',
+                imageMeta: const {
+                  'call_status': 'completed',
+                  'call_type': 'video',
+                  'duration_seconds': 125,
+                },
+              ),
+            ],
+            owner: 'nik',
+            compact: true,
+            textFor: (message) => message.text,
+            senderLabelFor: (profile) => profile,
+            stickerAssetFor: (_) => '',
+            imageUrlFor: (_) => '',
+            onLongPress: (_) {},
+            onImageTap: (_, __) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.call_missed), findsOneWidget);
+    expect(find.text('Missed audio call'), findsOneWidget);
+    expect(find.byIcon(Icons.videocam), findsOneWidget);
+    expect(find.text('Video call ended'), findsOneWidget);
+    expect(find.text('02:05'), findsOneWidget);
+  });
 }
 
 ChatMessage _message({
   required String id,
   required String text,
   String messageType = 'text',
+  Map<String, dynamic> imageMeta = const {},
   String? deletedAt,
   String? editedAt,
   bool isUploading = false,
@@ -280,6 +330,7 @@ ChatMessage _message({
     senderProfile: id.hashCode.isEven ? 'nik' : 'misha',
     messageType: messageType,
     text: text,
+    imageMeta: imageMeta,
     createdAt: '2026-06-08T10:00:00Z',
     deletedAt: deletedAt,
     editedAt: editedAt,

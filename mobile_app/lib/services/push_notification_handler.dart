@@ -23,6 +23,13 @@ enum PendingPushAction {
   routeOpenedPush,
 }
 
+enum IncomingCallPushAction { show, accept }
+
+typedef IncomingCallHandler = void Function(
+  CallSession session,
+  IncomingCallPushAction action,
+);
+
 /// Standalone push-notification handler extracted from _HomePageState.
 ///
 /// Manages FCM binding, pending push processing, dedup, and navigation
@@ -55,7 +62,7 @@ class PushNotificationHandler {
   final void Function()? onNavigateToTasks;
   final void Function()? onNavigateToMessenger;
   final Future<void> Function(String conversationKey)? onOpenConversation;
-  final void Function(CallSession session)? onIncomingCall;
+  final IncomingCallHandler? onIncomingCall;
   final Future<void> Function({required bool showErrors})? onSyncDelta;
   final Future<void> Function({required bool useNetwork, required bool quiet})?
       onRefreshActiveConversation;
@@ -215,7 +222,7 @@ class PushNotificationHandler {
           status: 'ringing',
           createdAt: DateTime.now().toIso8601String(),
         );
-        onIncomingCall?.call(session);
+        onIncomingCall?.call(session, _incomingCallAction(data));
       }
       return;
     }
@@ -270,5 +277,18 @@ class PushNotificationHandler {
     final pushType = (data['type'] ?? data['entity'] ?? '').toString().trim();
     return pushType == 'call_incoming' &&
         (data['session_id'] ?? '').toString().trim().isNotEmpty;
+  }
+
+  IncomingCallPushAction _incomingCallAction(Map<String, dynamic> data) {
+    final action = (data['call_action'] ??
+            data['native_call_action'] ??
+            data['push_call_action'] ??
+            '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    return action == 'accept'
+        ? IncomingCallPushAction.accept
+        : IncomingCallPushAction.show;
   }
 }

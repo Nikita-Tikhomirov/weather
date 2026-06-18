@@ -8,6 +8,7 @@ import '../../models/chat_models.dart';
 import '../../shared/utils/avatar_url_resolver.dart';
 import 'chat_attachment_bubble.dart';
 import 'chat_audio_bubble.dart';
+import 'chat_call_bubble.dart';
 import 'chat_image_bubble.dart';
 import 'chat_sticker_bubble.dart';
 import 'chat_text_bubble.dart';
@@ -179,6 +180,9 @@ class ChatMessageBubble extends StatelessWidget {
         text: text,
         mine: mine,
       );
+    }
+    if (message.messageType == 'call') {
+      return ChatCallBubble(message: message, mine: mine);
     }
     if (message.messageType == 'sticker') {
       return ChatStickerBubble(

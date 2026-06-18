@@ -286,20 +286,26 @@ function send_fcm_notification(array $config, string $token, string $title, stri
     }
 
     $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
+    $isIncomingCall = ((string)($data['type'] ?? $data['entity'] ?? '')) === 'call_incoming';
     $payload = [
         'message' => [
             'token' => $token,
-            'notification' => [
-                'title' => $title,
-                'body' => $body,
-            ],
             'data' => array_map(static fn($v): string => (string)$v, $data),
             'android' => [
                 'priority' => 'HIGH',
-                'notification' => ['channel_id' => 'family_updates'],
+                'ttl' => $isIncomingCall ? '60s' : '3600s',
+                'notification' => [
+                    'channel_id' => $isIncomingCall ? 'family_calls' : 'family_updates',
+                ],
             ],
         ],
     ];
+    if (!$isIncomingCall) {
+        $payload['message']['notification'] = [
+            'title' => $title,
+            'body' => $body,
+        ];
+    }
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [

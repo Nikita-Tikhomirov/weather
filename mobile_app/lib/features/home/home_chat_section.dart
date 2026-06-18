@@ -985,22 +985,14 @@ extension _ChatSection on _HomePageState {
     return profileLabel(profile);
   }
 
-  Future<void> _saveImageToGallery(String url) async {
+  Future<bool> _saveImageToGallery(String url) async {
     try {
       const channel = MethodChannel('family_todo_mobile/share');
       await channel.invokeMethod<bool>('saveImage', {'url': url});
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_projectChatAgentLabels.imageSavedToGallery)),
-        );
-      }
+      return true;
     } catch (e, st) {
       debugPrint('[gallery] save photo error: $e\n$st');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_projectChatAgentLabels.imageSaveFailed)),
-        );
-      }
+      return false;
     }
   }
 
@@ -1010,6 +1002,10 @@ extension _ChatSection on _HomePageState {
       urls: _messageImageUrls(message),
       initialIndex: initialIndex,
       onSaveImage: _saveImageToGallery,
+      onImageSaved: () =>
+          _showSnack(_projectChatAgentLabels.imageSavedToGallery),
+      onImageSaveFailed: () =>
+          _showSnack(_projectChatAgentLabels.imageSaveFailed),
     );
   }
 

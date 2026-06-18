@@ -1,4 +1,5 @@
 import '../../models/chat_models.dart';
+import '../chat/chat_call_helpers.dart';
 
 /// Pure helper functions extracted from HomePage to reduce file size.
 ///
@@ -92,6 +93,14 @@ String chatMessageText(ChatMessage message) {
   }
   if (message.messageType == 'document') {
     return 'Document';
+  }
+  if (message.messageType == 'call') {
+    final explicitText = message.text.trim();
+    if (explicitText.isNotEmpty) return explicitText;
+    return defaultChatCallTitle(
+      status: chatCallStatus(message.imageMeta),
+      callType: chatCallType(message.imageMeta),
+    );
   }
   return message.text;
 }

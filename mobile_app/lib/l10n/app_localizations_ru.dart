@@ -329,6 +329,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get callEnded => 'Звонок завершён';
 
   @override
+  String get missedAudioCall => 'Пропущенный аудиозвонок';
+
+  @override
+  String get missedVideoCall => 'Пропущенный видеозвонок';
+
+  @override
+  String get audioCallEnded => 'Аудиозвонок завершён';
+
+  @override
+  String get videoCallEnded => 'Видеозвонок завершён';
+
+  @override
   String get decline => 'Отклонить';
 
   @override
