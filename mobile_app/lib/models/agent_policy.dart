@@ -1,16 +1,16 @@
 import 'package:flutter/foundation.dart';
 
 const Map<String, String> _pluginLabels = {
-  'task_context': 'Контекст задачи',
-  'project_chat_context': 'Контекст чата проекта',
-  'task_write': 'Запись в задачу',
-  'workspace_read': 'Чтение воркспейса',
-  'workspace_write': 'Запись в воркспейс',
+  'task_context': 'Task context',
+  'project_chat_context': 'Project chat context',
+  'task_write': 'Task write',
+  'workspace_read': 'Workspace read',
+  'workspace_write': 'Workspace write',
   'git': 'Git',
   'github': 'GitHub',
-  'browser': 'Браузер',
-  'deploy': 'Деплой',
-  'audit': 'Аудит',
+  'browser': 'Browser',
+  'deploy': 'Deploy',
+  'audit': 'Audit',
 };
 
 @immutable
@@ -36,7 +36,7 @@ class AgentRunPolicy {
         modeLabel = '',
         plugins = const [],
         allowedCommands = const [],
-        reason = 'AI доступен только пользователям с правами на воркспейс.',
+        reason = 'AI is available only to users with workspace access.',
         workspaceId = '',
         taskId = '',
         scope = 'task',
