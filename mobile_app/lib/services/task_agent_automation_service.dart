@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../features/tasks/agent_launch_plan.dart';
+import '../features/tasks/task_agent_card_prompt.dart';
 import '../models/agent_policy.dart';
 import '../models/task_collaboration.dart';
 import '../models/task_item.dart';
@@ -437,63 +438,14 @@ class TaskAgentAutomationService {
   }
 
   String _buildAgentCardPrompt(String backendPrompt, TaskItem task) {
-    final lines = <String>[];
-    final remote = backendPrompt.trim();
-    if (remote.isNotEmpty) {
-      lines.add(remote);
-      lines.add('');
-    }
-    lines.add('Актуальная карточка из мобильного приложения:');
-    lines.add('Название: ${task.title}');
-    if (task.details.trim().isNotEmpty) {
-      lines.add('Описание: ${task.details.trim()}');
-    }
-    lines.add('Статус: ${task.workflowStatus.name}');
-    lines.add('Проект: ${task.projectId}');
-    final comments =
-        task.collaboration.comments.where((item) => !item.isDeleted);
-    if (comments.isNotEmpty) {
-      lines.add('');
-      lines.add('Комментарии карточки:');
-      for (final comment in comments.take(30)) {
-        final text = comment.text.trim();
-        if (text.isNotEmpty) {
-          lines.add('- ${comment.authorProfile}: $text');
-        }
-      }
-    }
-    if (task.collaboration.checklists.isNotEmpty) {
-      lines.add('');
-      lines.add('Чеклисты карточки:');
-      for (final checklist in task.collaboration.checklists) {
-        lines.add('- ${checklist.title}');
-        for (final item in checklist.items) {
-          lines.add('  - [${item.done ? 'x' : ' '}] ${item.text}');
-        }
-      }
-    }
-    if (task.collaboration.attachments.isNotEmpty) {
-      lines.add('');
-      lines.add('Вложения карточки:');
-      for (final attachment in task.collaboration.attachments) {
-        final source = attachment.assetUrl.trim().isNotEmpty
-            ? attachment.assetUrl.trim()
-            : 'будет прикреплено в агентский чат';
-        final caption = attachment.caption.trim();
-        lines.add(
-          '- ${attachment.filename} - $source'
-          '${caption.isEmpty ? '' : ' - $caption'}',
-        );
-      }
-    }
-    lines.add('');
-    lines.add(
-      'После работы обнови карточку через family-task-card и не спрашивай подтверждение на перевод: если работа готова и нет блокирующего вопроса, сразу выполни family-task-card finish --summary "<краткий итог>" --result-status ready_for_review.',
+    return buildTaskAgentCardPrompt(
+      backendPrompt: backendPrompt,
+      card: TaskAgentCardPromptInput.fromTask(task),
+      footerInstructions: const [
+        'После работы обнови карточку через family-task-card и не спрашивай подтверждение на перевод: если работа готова и нет блокирующего вопроса, сразу выполни family-task-card finish --summary "<краткий итог>" --result-status ready_for_review.',
+        'Если без ответа пользователя продолжать нельзя, задай блокирующий вопрос через family-task-card question ask --text "..." --blocking.',
+      ],
     );
-    lines.add(
-      'Если без ответа пользователя продолжать нельзя, задай блокирующий вопрос через family-task-card question ask --text "..." --blocking.',
-    );
-    return lines.join('\n');
   }
 
   List<String> _agentCommandValuesFor(

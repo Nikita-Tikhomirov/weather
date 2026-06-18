@@ -21,6 +21,7 @@ import '../../models/workspace_session.dart';
 import '../../services/codewhale_bridge_service.dart';
 import '../../state/task_store.dart';
 import 'agent_launch_plan.dart';
+import 'task_agent_card_prompt.dart';
 import 'task_editor_text.dart';
 
 part 'task_editor_collaboration_widgets.dart';
@@ -2218,73 +2219,25 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   String _buildAgentCardPrompt(String backendPrompt, TaskItem task) {
-    final lines = <String>[];
-    final remote = backendPrompt.trim();
-    if (remote.isNotEmpty) {
-      lines.add(remote);
-      lines.add('');
-    }
-    lines.add('Актуальная карточка из мобильного приложения:');
-    lines.add(
-      'Название: ${_titleCtl.text.trim().isEmpty ? task.title : _titleCtl.text.trim()}',
+    return buildTaskAgentCardPrompt(
+      backendPrompt: backendPrompt,
+      card: TaskAgentCardPromptInput(
+        title:
+            _titleCtl.text.trim().isEmpty ? task.title : _titleCtl.text.trim(),
+        details: _detailsCtl.text,
+        status: _status.name,
+        projectId:
+            _selectedProjectId.isEmpty ? task.projectId : _selectedProjectId,
+        comments: _collaboration.comments,
+        checklists: _collaboration.checklists,
+        attachments: _agentCardAttachments(),
+      ),
+      commentAuthorLabel: _profileLabel,
+      footerInstructions: const [
+        'После работы обнови карточку через family-task-card и не спрашивай подтверждение на перевод: если работа готова и нет блокирующего вопроса, сразу выполни family-task-card finish --summary "<краткий итог>" --result-status ready_for_review.',
+        'Если family-task-card недоступен, используй TASK_CARD_ACTIONS_JSON: добавь комментарий-итог, новые чеклисты/пункты, пути файлов отчета или скриншотов и status=in_review.',
+      ],
     );
-    final details = _detailsCtl.text.trim();
-    if (details.isNotEmpty) {
-      lines.add('Описание: $details');
-    }
-    lines.add('Статус: ${_status.name}');
-    lines.add(
-      'Проект: ${_selectedProjectId.isEmpty ? task.projectId : _selectedProjectId}',
-    );
-
-    final comments = _collaboration.comments.where((item) => !item.isDeleted);
-    if (comments.isNotEmpty) {
-      lines.add('');
-      lines.add('Комментарии карточки:');
-      for (final comment in comments.take(30)) {
-        final text = comment.text.trim();
-        if (text.isEmpty) {
-          continue;
-        }
-        lines.add('- ${_profileLabel(comment.authorProfile)}: $text');
-      }
-    }
-
-    if (_collaboration.checklists.isNotEmpty) {
-      lines.add('');
-      lines.add('Чеклисты карточки:');
-      for (final checklist in _collaboration.checklists) {
-        lines.add('- ${checklist.title}');
-        for (final item in checklist.items) {
-          lines.add('  - [${item.done ? 'x' : ' '}] ${item.text}');
-        }
-      }
-    }
-
-    final attachments = _agentCardAttachments();
-    if (attachments.isNotEmpty) {
-      lines.add('');
-      lines.add('Вложения карточки:');
-      for (final attachment in attachments) {
-        final source = attachment.assetUrl.trim().isNotEmpty
-            ? attachment.assetUrl.trim()
-            : 'будет прикреплено в агентский чат';
-        final caption = attachment.caption.trim();
-        lines.add(
-          '- ${attachment.filename} · $source'
-          '${caption.isEmpty ? '' : ' · $caption'}',
-        );
-      }
-    }
-
-    lines.add('');
-    lines.add(
-      'После работы обнови карточку через family-task-card и не спрашивай подтверждение на перевод: если работа готова и нет блокирующего вопроса, сразу выполни family-task-card finish --summary "<краткий итог>" --result-status ready_for_review.',
-    );
-    lines.add(
-      'Если family-task-card недоступен, используй TASK_CARD_ACTIONS_JSON: добавь комментарий-итог, новые чеклисты/пункты, пути файлов отчета или скриншотов и status=in_review.',
-    );
-    return lines.join('\n');
   }
 
   List<TaskAttachment> _agentCardAttachments() {
