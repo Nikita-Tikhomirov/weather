@@ -7,10 +7,42 @@ import 'package:family_todo_mobile/models/task_project.dart';
 import 'package:family_todo_mobile/repositories/task_repository.dart';
 import 'package:family_todo_mobile/services/api_client.dart';
 import 'package:family_todo_mobile/services/local_db.dart';
+import 'package:family_todo_mobile/services/project_access.dart';
 import 'package:family_todo_mobile/state/task_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('fallbackProjects does not embed local user workspaces', () {
+    final manager = HomeProjectsDataManager(
+      store: TaskStore(
+        repository: _FakeTaskRepository(),
+        domainService: TaskDomainService(),
+      ),
+      api: ApiClient(baseUrl: 'http://localhost', apiKey: 'test'),
+      owner: 'nik',
+      currentProfilePhone: projectChatOwnerPhone,
+    );
+
+    expect(manager.fallbackProjects(), isEmpty);
+  });
+
+  test('loadProjects finds repository project config from mobile app cwd', () {
+    final manager = HomeProjectsDataManager(
+      store: TaskStore(
+        repository: _FakeTaskRepository(),
+        domainService: TaskDomainService(),
+      ),
+      api: ApiClient(baseUrl: 'http://localhost', apiKey: 'test'),
+      owner: 'nik',
+      currentProfilePhone: projectChatOwnerPhone,
+    );
+
+    manager.loadProjects();
+
+    expect(manager.projectContacts, isNotEmpty);
+    expect(manager.projectContacts.first.id, 'tudushka');
+  });
+
   test('openProjectContact uses injected unavailable project chat message',
       () async {
     final errors = <String>[];

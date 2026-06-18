@@ -77,7 +77,9 @@ class HomeProjectsDataManager {
     try {
       final candidates = <String>[
         'family_data/nik/projects.json',
+        '../family_data/nik/projects.json',
         '${Directory.current.path}/family_data/nik/projects.json',
+        '${Directory.current.parent.path}/family_data/nik/projects.json',
       ];
       final normalized = candidates
           .map((p) => p.replaceAll('\\', '/').replaceAll(RegExp(r'/+'), '/'))
@@ -111,44 +113,7 @@ class HomeProjectsDataManager {
   }
 
   List<ProjectContact> fallbackProjects() {
-    return const [
-      ProjectContact(
-        id: 'tudushka',
-        name: 'Тудушка',
-        path: r'C:\Users\user\Desktop\weather',
-        icon: 'terminal',
-      ),
-      ProjectContact(
-        id: 'cifra',
-        name: 'Цифра',
-        path: r'C:\Users\user\Desktop\depseeker_test',
-        icon: 'code',
-      ),
-      ProjectContact(
-        id: 'stylish-house',
-        name: 'Stylysh-house',
-        path: r'C:\Users\user\Desktop\stylish-house',
-        icon: 'code',
-      ),
-      ProjectContact(
-        id: 'exp76',
-        name: 'Exp76',
-        path: r'C:\Users\user\Desktop\exp76.ru',
-        icon: 'code',
-      ),
-      ProjectContact(
-        id: 'groot',
-        name: 'Грут',
-        path: r'C:\Users\user\Desktop\Грут',
-        icon: 'code',
-      ),
-      ProjectContact(
-        id: 'nousro',
-        name: 'Nousro',
-        path: r'C:\Users\user\Desktop\nousro',
-        icon: 'folder',
-      ),
-    ];
+    return const <ProjectContact>[];
   }
 
   Future<void> openProjectContact(
