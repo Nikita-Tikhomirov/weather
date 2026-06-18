@@ -34,6 +34,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        TelecomCallManager.registerPhoneAccounts(this)
         applyCallWindowFlags(intent)
     }
 
@@ -128,9 +129,11 @@ class MainActivity : FlutterActivity() {
                 }
                 "saveImage" -> {
                     val url = call.argument<String>("url") ?: return@setMethodCallHandler result.error("NO_URL", null, null)
+                    val apiKey = call.argument<String>("apiKey").orEmpty()
+                    val apiBaseUrl = call.argument<String>("apiBaseUrl").orEmpty()
                     Thread {
                         try {
-                            saveImageToGallery(url)
+                            saveImageToGallery(url, apiKey, apiBaseUrl)
                             runOnUiThread { result.success(true) }
                         } catch (e: Exception) {
                             runOnUiThread { result.error("SAVE_ERR", e.message, null) }
@@ -218,8 +221,8 @@ class MainActivity : FlutterActivity() {
         )
     }
 
-    private fun saveImageToGallery(url: String) {
-        val download = downloadImage(url)
+    private fun saveImageToGallery(url: String, apiKey: String, apiBaseUrl: String) {
+        val download = downloadImage(url, apiKey, apiBaseUrl)
         val imageFormat = detectImageFormat(download.bytes, download.contentType)
         val filename = "FamilyTodo_${System.currentTimeMillis()}.${imageFormat.extension}"
 
@@ -264,12 +267,16 @@ class MainActivity : FlutterActivity() {
         ) { _, _ -> }
     }
 
-    private fun downloadImage(url: String): ImageDownload {
-        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+    private fun downloadImage(url: String, apiKey: String, apiBaseUrl: String): ImageDownload {
+        val downloadUrl = URL(url)
+        val connection = (downloadUrl.openConnection() as HttpURLConnection).apply {
             instanceFollowRedirects = true
             connectTimeout = 15_000
             readTimeout = 30_000
             setRequestProperty("Accept", "image/*")
+            if (apiKey.trim().isNotEmpty() && shouldAttachApiKey(downloadUrl, apiBaseUrl)) {
+                setRequestProperty("X-Api-Key", apiKey)
+            }
         }
         try {
             val status = connection.responseCode
@@ -286,15 +293,35 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun shouldAttachApiKey(imageUrl: URL, apiBaseUrl: String): Boolean {
+        val trimmedBaseUrl = apiBaseUrl.trim()
+        if (trimmedBaseUrl.isEmpty()) return false
+        return try {
+            val apiUrl = URL(trimmedBaseUrl)
+            imageUrl.protocol.equals(apiUrl.protocol, ignoreCase = true) &&
+                imageUrl.host.equals(apiUrl.host, ignoreCase = true) &&
+                effectivePort(imageUrl) == effectivePort(apiUrl)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun effectivePort(url: URL): Int {
+        return if (url.port >= 0) url.port else url.defaultPort
+    }
+
     private fun detectImageFormat(bytes: ByteArray, contentType: String?): GalleryImageFormat {
         val options = BitmapFactory.Options().apply {
             inJustDecodeBounds = true
         }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
         val decodedMime = options.outMimeType?.trim()?.lowercase().orEmpty()
-        val format = imageFormatForMime(decodedMime)
-            ?: imageFormatForMime(contentType?.substringBefore(';')?.trim()?.lowercase().orEmpty())
-        return format ?: throw IOException("Downloaded file is not a supported image")
+        if (decodedMime.isEmpty()) {
+            val headerMime = contentType?.substringBefore(';')?.trim().orEmpty()
+            throw IOException("Decoded gallery image has no MIME type; Content-Type was $headerMime")
+        }
+        return imageFormatForMime(decodedMime)
+            ?: throw IOException("Downloaded file is not a supported image")
     }
 
     private fun imageFormatForMime(mimeType: String): GalleryImageFormat? {

@@ -988,7 +988,11 @@ extension _ChatSection on _HomePageState {
   Future<bool> _saveImageToGallery(String url) async {
     try {
       const channel = MethodChannel('family_todo_mobile/share');
-      await channel.invokeMethod<bool>('saveImage', {'url': url});
+      await channel.invokeMethod<bool>('saveImage', {
+        'url': url,
+        'apiKey': AppConfig.apiKey,
+        'apiBaseUrl': AppConfig.apiBaseUrl,
+      });
       return true;
     } catch (e, st) {
       debugPrint('[gallery] save photo error: $e\n$st');

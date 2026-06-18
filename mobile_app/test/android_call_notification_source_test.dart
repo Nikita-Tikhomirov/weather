@@ -42,6 +42,44 @@ void main() {
     expect(backendPushOutbox, contains(r'if (!$isIncomingCall)'));
   });
 
+  test('Android incoming calls are reported to Telecom before fallback UI', () {
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    final service = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/FamilyMessagingService.kt',
+    ).readAsStringSync();
+    final manager = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/TelecomCallManager.kt',
+    ).readAsStringSync();
+    final connectionService = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/FamilyConnectionService.kt',
+    ).readAsStringSync();
+    final connection = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/FamilyCallConnection.kt',
+    ).readAsStringSync();
+
+    expect(manifest, contains('android.permission.MANAGE_OWN_CALLS'));
+    expect(
+      manifest,
+      contains('android.permission.BIND_TELECOM_CONNECTION_SERVICE'),
+    );
+    expect(manifest, contains('android.telecom.ConnectionService'));
+    expect(service, contains('TelecomCallManager.reportIncomingCall'));
+    expect(service, contains('TelecomCallManager.registerPhoneAccounts'));
+    expect(manager, contains('addNewIncomingCall'));
+    expect(manager, contains('TelecomManager.EXTRA_INCOMING_CALL_ADDRESS'));
+    expect(manager, contains('TelecomManager.EXTRA_INCOMING_VIDEO_STATE'));
+    expect(manager, contains('PhoneAccount.CAPABILITY_CALL_PROVIDER'));
+    expect(manager, contains('PhoneAccount.CAPABILITY_SELF_MANAGED'));
+    expect(manager, contains('TelecomManager.ACTION_CHANGE_PHONE_ACCOUNTS'));
+    expect(connectionService, contains('onCreateIncomingConnection'));
+    expect(connectionService, contains('onCreateIncomingConnectionFailed'));
+    expect(connection, contains('onShowIncomingCallUi'));
+    expect(connection, contains('onAnswer'));
+    expect(connection, contains('onReject'));
+    expect(connection, contains('onDisconnect'));
+  });
+
   test('Android gallery image save validates bytes and preserves image MIME',
       () {
     final mainActivity = File(
@@ -54,6 +92,12 @@ void main() {
     expect(mainActivity, contains('MediaStore.Images.Media.IS_PENDING'));
     expect(mainActivity, contains('contentResolver.delete'));
     expect(mainActivity, contains('connection.contentType'));
+    expect(mainActivity, contains('Decoded gallery image has no MIME type'));
+    expect(mainActivity, contains('setRequestProperty("X-Api-Key", apiKey)'));
+    expect(mainActivity, contains('call.argument<String>("apiKey")'));
+    expect(mainActivity, contains('call.argument<String>("apiBaseUrl")'));
+    expect(mainActivity, contains('shouldAttachApiKey(downloadUrl, apiBaseUrl)'));
+    expect(mainActivity, contains('effectivePort(imageUrl) == effectivePort(apiUrl)'));
     expect(
       mainActivity,
       isNot(contains(r'FamilyTodo_${System.currentTimeMillis()}.jpg')),
@@ -62,5 +106,16 @@ void main() {
       mainActivity,
       isNot(contains('MediaStore.Images.Media.MIME_TYPE, "image/jpeg"')),
     );
+    expect(
+      mainActivity,
+      isNot(contains('imageFormatForMime(contentType')),
+    );
+
+    final homeChatSection =
+        File('lib/features/home/home_chat_section.dart').readAsStringSync();
+    expect(homeChatSection, contains("'apiKey': AppConfig.apiKey"));
+    expect(homeChatSection, contains("'apiBaseUrl': AppConfig.apiBaseUrl"));
+    final homePage = File('lib/features/home/home_page.dart').readAsStringSync();
+    expect(homePage, contains("import '../../app/app_config.dart';"));
   });
 }
