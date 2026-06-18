@@ -279,11 +279,12 @@ jobs:
         run: |
           set -euo pipefail
           APK_PATH="/tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk"
-          # Find apksigner in common locations
+          # Find apksigner only inside Android build-tools. Scanning $HOME can
+          # walk large tool caches on GitHub runners and stall this step.
           APKSIGNER=""
-          for d in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" /usr/local/lib/android /opt/android "$HOME"; do
-            if [ -n "$d" ] && [ -d "$d" ]; then
-              found="$(find "$d" -maxdepth 6 -type f -name apksigner 2>/dev/null | sort -V | tail -n 1 || true)"
+          for d in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" /usr/local/lib/android/sdk /opt/android-sdk; do
+            if [ -n "$d" ] && [ -d "$d/build-tools" ]; then
+              found="$(find "$d/build-tools" -maxdepth 2 -type f -name apksigner 2>/dev/null | sort -V | tail -n 1 || true)"
               if [ -n "$found" ]; then
                 APKSIGNER="$found"
                 break
