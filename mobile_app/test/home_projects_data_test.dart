@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:family_todo_mobile/domain/task_domain_service.dart';
 import 'package:family_todo_mobile/features/home/home_projects_data.dart';
 import 'package:family_todo_mobile/models/family_group.dart';
@@ -26,7 +28,25 @@ void main() {
     expect(manager.fallbackProjects(), isEmpty);
   });
 
-  test('loadProjects finds repository project config from mobile app cwd', () {
+  test('loadProjects reads injected project config path', () {
+    final dir = Directory.systemTemp.createTempSync('project-config-test-');
+    addTearDown(() {
+      if (dir.existsSync()) {
+        dir.deleteSync(recursive: true);
+      }
+    });
+    final file = File('${dir.path}/projects.json')..writeAsStringSync('''
+{
+  "projects": [
+    {
+      "id": "weather",
+      "name": "Weather",
+      "path": "C:\\\\weather",
+      "icon": "code"
+    }
+  ]
+}
+''');
     final manager = HomeProjectsDataManager(
       store: TaskStore(
         repository: _FakeTaskRepository(),
@@ -35,12 +55,13 @@ void main() {
       api: ApiClient(baseUrl: 'http://localhost', apiKey: 'test'),
       owner: 'nik',
       currentProfilePhone: projectChatOwnerPhone,
+      projectConfigPaths: [file.path],
     );
 
     manager.loadProjects();
 
     expect(manager.projectContacts, isNotEmpty);
-    expect(manager.projectContacts.first.id, 'tudushka');
+    expect(manager.projectContacts.first.id, 'weather');
   });
 
   test('openProjectContact uses injected unavailable project chat message',

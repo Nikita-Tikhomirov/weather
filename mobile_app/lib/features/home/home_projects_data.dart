@@ -25,9 +25,12 @@ class HomeProjectsDataManager {
     required this.owner,
     this.currentProfilePhone = '',
     this.projectChatsUnavailableMessage = 'Project chats are unavailable',
+    List<String>? projectConfigPaths,
     this.onShowFileContentViewer,
     this.onShowError,
-  });
+  }) : projectConfigPaths = List.unmodifiable(
+          projectConfigPaths ?? _defaultProjectConfigPaths(),
+        );
 
   final TaskStore store;
   final ApiClient api;
@@ -36,6 +39,7 @@ class HomeProjectsDataManager {
   /// The current profile phone – used by [canUseProjectChats].
   String currentProfilePhone;
   final String projectChatsUnavailableMessage;
+  final List<String> projectConfigPaths;
 
   // ── Mutable state (watched by the UI) ────────────────────────
 
@@ -75,13 +79,7 @@ class HomeProjectsDataManager {
       return;
     }
     try {
-      final candidates = <String>[
-        'family_data/nik/projects.json',
-        '../family_data/nik/projects.json',
-        '${Directory.current.path}/family_data/nik/projects.json',
-        '${Directory.current.parent.path}/family_data/nik/projects.json',
-      ];
-      final normalized = candidates
+      final normalized = projectConfigPaths
           .map((p) => p.replaceAll('\\', '/').replaceAll(RegExp(r'/+'), '/'))
           .toList();
 
@@ -308,4 +306,13 @@ class HomeProjectsDataManager {
       pendingFileContent!.value = msg.fileContentText;
     }
   }
+}
+
+List<String> _defaultProjectConfigPaths() {
+  return [
+    'family_data/nik/projects.json',
+    '../family_data/nik/projects.json',
+    '${Directory.current.path}/family_data/nik/projects.json',
+    '${Directory.current.parent.path}/family_data/nik/projects.json',
+  ];
 }
