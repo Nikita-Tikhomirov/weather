@@ -419,6 +419,67 @@ void main() {
     expect(openedPath, isEmpty);
   });
 
+  testWidgets('session management classifies skills by command value',
+      (tester) async {
+    final commands = <String>[];
+
+    await tester.pumpWidget(
+      _testApp(
+        home: SessionManagementView(
+          workspace: workspace,
+          session: session,
+          files: const [],
+          currentFilePath: '',
+          isFilesLoading: false,
+          filePreviewPath: '',
+          filePreviewText: '',
+          commands: const [
+            {
+              'group': 'Навыки',
+              'label': 'Regular command',
+              'value': '/status',
+              'description': 'Not a skill command',
+            },
+            {
+              'group': 'Tools',
+              'label': 'vision',
+              'value': '/skill vision',
+              'description': 'Image checks',
+            },
+          ],
+          onBack: () {},
+          onStop: () {},
+          onKill: () {},
+          onRestart: () {},
+          onRefreshFiles: () {},
+          onOpenFilePath: (_) {},
+          onReadFile: (_) {},
+          onInsertFilePath: (_) {},
+          onSendPhoto: () {},
+          onSendDocument: () {},
+          onRunCommand: commands.add,
+          onUpdateSettings: ({
+            String? provider,
+            String? model,
+            String? approvalPolicy,
+            String? sandboxMode,
+            bool? autoMode,
+          }) {},
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Commands'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Skills'), findsOneWidget);
+    expect(find.text('Regular command'), findsOneWidget);
+    expect(find.text('vision'), findsNothing);
+
+    await tester.tap(find.text('Regular command'));
+    expect(commands, ['/status']);
+  });
+
   testWidgets('session management uses localized labels', (tester) async {
     var stopped = false;
     var killed = false;

@@ -610,9 +610,8 @@ class _CodeWhaleCommandsListState extends State<_CodeWhaleCommandsList> {
   }
 
   bool _isSkillCommand(Map<String, dynamic> command) {
-    final value = (command['value'] ?? '').toString();
-    final group = (command['group'] ?? '').toString().toLowerCase();
-    return value.startsWith('/skill') || group == 'навыки' || group == 'skills';
+    final value = (command['value'] ?? '').toString().trim();
+    return value.startsWith('/skill');
   }
 
   void _toggleSkill(String value, bool selected) {
