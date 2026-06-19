@@ -57,6 +57,7 @@ import '../../services/call_service.dart';
 import '../../services/chat_realtime_service.dart';
 import '../../services/codewhale_bridge_service.dart';
 import '../../services/desktop_process_host_service.dart';
+import '../../services/gallery_image_saver.dart';
 import '../../services/local_db.dart';
 import '../../services/desktop_theme_service.dart';
 import '../../services/project_access.dart';

@@ -26,7 +26,10 @@ void main() {
     expect(service, contains('Person.Builder'));
     expect(service, contains('setFullScreenIntent'));
     expect(service, contains('setDeleteIntent(declinePendingIntent)'));
-    expect(mainActivity, contains('TelecomCallManager.cancelIncomingCallNotification'));
+    expect(
+      mainActivity,
+      contains('TelecomCallManager.cancelIncomingCallNotification'),
+    );
     expect(mainActivity, contains('setShowWhenLocked'));
     expect(mainActivity, contains('setTurnScreenOn'));
     expect(mainActivity, contains('requestDismissKeyguard'));
@@ -93,7 +96,9 @@ void main() {
     );
     expect(
       manager,
-      contains('fun cancelIncomingCallNotification(context: Context, data: Map<String, String>)'),
+      contains(
+        'fun cancelIncomingCallNotification(context: Context, data: Map<String, String>)',
+      ),
     );
     expect(mainActivity, contains('"family_todo_mobile/telecom"'));
     expect(mainActivity, contains('"registerPhoneAccounts"'));
@@ -112,7 +117,10 @@ void main() {
     );
     expect(connectionService, contains('onCreateIncomingConnectionFailed'));
     expect(connection, contains('onShowIncomingCallUi'));
-    expect(connection, contains('openCallActivity(appContext, data, "accept")'));
+    expect(
+      connection,
+      contains('openCallActivity(appContext, data, "accept")'),
+    );
     expect(
       connection,
       contains('setConnectionProperties(PROPERTY_SELF_MANAGED)'),
@@ -122,18 +130,21 @@ void main() {
     expect(connection, contains('onDisconnect'));
   });
 
-  test('Android gallery image save validates bytes and preserves image MIME',
+  test(
+      'Android gallery image save validates bytes and preserves original bytes',
       () {
     final mainActivity = File(
       'android/app/src/main/kotlin/com/example/family_todo_mobile/MainActivity.kt',
     ).readAsStringSync();
 
+    expect(mainActivity, contains('"saveImageBytes"'));
+    expect(mainActivity, contains('call.argument<ByteArray>("bytes")'));
+    expect(mainActivity, contains('saveImageBytesToGallery'));
     expect(mainActivity, contains('BitmapFactory.Options'));
     expect(mainActivity, contains('outMimeType'));
     expect(mainActivity, contains('Downloaded file is not a supported image'));
-    expect(mainActivity, contains('Bitmap.CompressFormat'));
-    expect(mainActivity, contains('ByteArrayOutputStream'));
-    expect(mainActivity, contains('bitmap.compress'));
+    expect(mainActivity, contains('imageFormatForDecodedMime(decodedMime)'));
+    expect(mainActivity, contains('GalleryImage(bytes, imageFormat)'));
     expect(mainActivity, contains('galleryImage.bytes'));
     expect(mainActivity, contains('MediaStore.Images.Media.IS_PENDING'));
     expect(mainActivity, contains('contentResolver.delete'));
@@ -164,6 +175,14 @@ void main() {
     );
     expect(
       mainActivity,
+      isNot(contains('ByteArrayOutputStream')),
+    );
+    expect(
+      mainActivity,
+      isNot(contains('bitmap.compress')),
+    );
+    expect(
+      mainActivity,
       isNot(contains('stream.write(download.bytes)')),
     );
     expect(
@@ -173,10 +192,16 @@ void main() {
 
     final homeChatSection =
         File('lib/features/home/home_chat_section.dart').readAsStringSync();
-    expect(homeChatSection, contains("'apiKey': AppConfig.apiKey"));
-    expect(homeChatSection, contains("'apiBaseUrl': AppConfig.apiBaseUrl"));
+    expect(homeChatSection, contains('apiKey: AppConfig.apiKey'));
+    expect(homeChatSection, contains('apiBaseUrl: AppConfig.apiBaseUrl'));
     final homePage =
         File('lib/features/home/home_page.dart').readAsStringSync();
     expect(homePage, contains("import '../../app/app_config.dart';"));
+    expect(
+      homePage,
+      contains("import '../../services/gallery_image_saver.dart';"),
+    );
+    expect(homeChatSection, contains('GalleryImageSaver('));
+    expect(homeChatSection, contains('saveNetworkImage(url)'));
   });
 }

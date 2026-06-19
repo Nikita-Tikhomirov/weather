@@ -986,17 +986,17 @@ extension _ChatSection on _HomePageState {
   }
 
   Future<bool> _saveImageToGallery(String url) async {
+    final saver = GalleryImageSaver(
+      apiKey: AppConfig.apiKey,
+      apiBaseUrl: AppConfig.apiBaseUrl,
+    );
     try {
-      const channel = MethodChannel('family_todo_mobile/share');
-      await channel.invokeMethod<bool>('saveImage', {
-        'url': url,
-        'apiKey': AppConfig.apiKey,
-        'apiBaseUrl': AppConfig.apiBaseUrl,
-      });
-      return true;
+      return await saver.saveNetworkImage(url);
     } catch (e, st) {
       debugPrint('[gallery] save photo error: $e\n$st');
       return false;
+    } finally {
+      saver.close();
     }
   }
 

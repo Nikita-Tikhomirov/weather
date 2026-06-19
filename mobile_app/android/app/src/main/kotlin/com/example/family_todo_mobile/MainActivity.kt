@@ -4,7 +4,6 @@ import android.app.KeyguardManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
@@ -18,7 +17,6 @@ import com.google.firebase.installations.FirebaseInstallations
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -178,6 +176,19 @@ class MainActivity : FlutterActivity() {
                         }
                     }.start()
                 }
+                "saveImageBytes" -> {
+                    val bytes = call.argument<ByteArray>("bytes")
+                        ?: return@setMethodCallHandler result.error("NO_BYTES", null, null)
+                    val contentType = call.argument<String>("contentType")
+                    Thread {
+                        try {
+                            saveImageBytesToGallery(bytes, contentType)
+                            runOnUiThread { result.success(true) }
+                        } catch (e: Exception) {
+                            runOnUiThread { result.error("SAVE_ERR", e.message, null) }
+                        }
+                    }.start()
+                }
                 else -> result.notImplemented()
             }
         }
@@ -264,7 +275,18 @@ class MainActivity : FlutterActivity() {
 
     private fun saveImageToGallery(url: String, apiKey: String, apiBaseUrl: String) {
         val download = downloadImage(url, apiKey, apiBaseUrl)
-        val galleryImage = prepareGalleryImage(download.bytes, download.contentType)
+        saveImageBytesToGallery(download.bytes, download.contentType)
+    }
+
+    private fun saveImageBytesToGallery(bytes: ByteArray, contentType: String?) {
+        if (bytes.isEmpty()) {
+            throw IOException("Image download returned empty body")
+        }
+        val galleryImage = prepareGalleryImage(bytes, contentType)
+        writeGalleryImage(galleryImage)
+    }
+
+    private fun writeGalleryImage(galleryImage: GalleryImage) {
         val filename = "FamilyTodo_${System.currentTimeMillis()}.${galleryImage.format.extension}"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -357,34 +379,36 @@ class MainActivity : FlutterActivity() {
         }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
         val decodedMime = options.outMimeType?.trim()?.lowercase().orEmpty()
-        if (decodedMime.isEmpty() || options.outWidth <= 0 || options.outHeight <= 0) {
+        if (decodedMime.isEmpty()) {
             val headerMime = contentType?.substringBefore(';')?.trim().orEmpty()
             throw IOException("Decoded gallery image has no MIME type; Content-Type was $headerMime")
         }
-
-        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-            ?: throw IOException("Downloaded file is not a supported image")
-        try {
-            val imageFormat = imageFormatForBitmap(bitmap)
-            val output = ByteArrayOutputStream()
-            if (!bitmap.compress(imageFormat.compressFormat, imageFormat.quality, output)) {
-                throw IOException("Cannot encode gallery image")
-            }
-            val galleryBytes = output.toByteArray()
-            if (galleryBytes.isEmpty()) {
-                throw IOException("Encoded gallery image is empty")
-            }
-            return GalleryImage(galleryBytes, imageFormat)
-        } finally {
-            bitmap.recycle()
+        if (options.outWidth <= 0 || options.outHeight <= 0) {
+            throw IOException("Downloaded file is not a supported image")
         }
+
+        val imageFormat = imageFormatForDecodedMime(decodedMime)
+        return GalleryImage(bytes, imageFormat)
     }
 
-    private fun imageFormatForBitmap(bitmap: Bitmap): GalleryImageFormat {
-        return if (bitmap.hasAlpha()) {
-            GalleryImageFormat("image/png", "png", Bitmap.CompressFormat.PNG, 100)
-        } else {
-            GalleryImageFormat("image/jpeg", "jpg", Bitmap.CompressFormat.JPEG, 95)
+    private fun imageFormatForDecodedMime(decodedMime: String): GalleryImageFormat {
+        return when (decodedMime) {
+            "image/jpeg", "image/jpg" -> GalleryImageFormat("image/jpeg", "jpg")
+            "image/png" -> GalleryImageFormat("image/png", "png")
+            "image/webp" -> GalleryImageFormat("image/webp", "webp")
+            "image/gif" -> GalleryImageFormat("image/gif", "gif")
+            "image/bmp", "image/x-ms-bmp" -> GalleryImageFormat("image/bmp", "bmp")
+            "image/heic" -> GalleryImageFormat("image/heic", "heic")
+            "image/heif" -> GalleryImageFormat("image/heif", "heif")
+            "image/avif" -> GalleryImageFormat("image/avif", "avif")
+            else -> {
+                val extension = decodedMime
+                    .substringAfter('/', "img")
+                    .substringBefore('+')
+                    .replace(Regex("[^a-z0-9]"), "")
+                    .ifEmpty { "img" }
+                GalleryImageFormat(decodedMime, extension)
+            }
         }
     }
 
@@ -454,7 +478,5 @@ private data class GalleryImage(
 
 private data class GalleryImageFormat(
     val mimeType: String,
-    val extension: String,
-    val compressFormat: Bitmap.CompressFormat,
-    val quality: Int
+    val extension: String
 )
