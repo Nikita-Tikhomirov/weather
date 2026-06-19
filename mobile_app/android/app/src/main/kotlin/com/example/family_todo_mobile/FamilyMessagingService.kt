@@ -153,7 +153,12 @@ class FamilyMessagingService : FirebaseMessagingService() {
         ): PendingIntent {
             val callData = data.toMutableMap()
             callData["call_action"] = callAction
-            val intent = Intent(context, MainActivity::class.java)
+            val activityClass = if (callAction == "show") {
+                IncomingCallActivity::class.java
+            } else {
+                MainActivity::class.java
+            }
+            val intent = Intent(context, activityClass)
                 .setAction(PUSH_ACTION_OPEN)
                 .putPushData(callData)
                 .addFlags(

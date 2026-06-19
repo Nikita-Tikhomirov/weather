@@ -131,6 +131,59 @@ void main() {
   });
 
   test(
+    'Android incoming call full-screen intent opens native lockscreen UI',
+    () {
+      final manifest =
+          File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+      final service = File(
+        'android/app/src/main/kotlin/com/example/family_todo_mobile/FamilyMessagingService.kt',
+      ).readAsStringSync();
+    final activity = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/IncomingCallActivity.kt',
+    ).readAsStringSync();
+    final styles =
+        File('android/app/src/main/res/values/styles.xml').readAsStringSync();
+
+    expect(manifest, contains('android:name=".IncomingCallActivity"'));
+    expect(manifest, contains('android:showWhenLocked="true"'));
+    expect(manifest, contains('android:turnScreenOn="true"'));
+    expect(manifest, contains('android:excludeFromRecents="true"'));
+    expect(manifest, contains('android:exported="false"'));
+    expect(manifest, contains('android:theme="@style/IncomingCallTheme"'));
+    expect(styles, contains('name="IncomingCallTheme"'));
+    expect(styles, contains('<item name="android:windowBackground">@android:color/black</item>'));
+
+    expect(service, contains('IncomingCallActivity::class.java'));
+      expect(service, contains('if (callAction == "show")'));
+      expect(service, contains('setFullScreenIntent(openPendingIntent, true)'));
+
+      expect(activity, contains('class IncomingCallActivity : Activity()'));
+      expect(activity, contains('setShowWhenLocked(true)'));
+      expect(activity, contains('setTurnScreenOn(true)'));
+      expect(activity, contains('requestDismissKeyguard'));
+      expect(activity, contains('FLAG_SHOW_WHEN_LOCKED'));
+      expect(activity, contains('FLAG_TURN_SCREEN_ON'));
+      expect(activity, contains('FLAG_DISMISS_KEYGUARD'));
+      expect(
+        activity,
+        contains('TelecomCallManager.openCallActivity(this, data, "accept")'),
+      );
+      expect(
+        activity,
+        contains('TelecomCallManager.rejectIncomingCall(this, data)'),
+      );
+      expect(
+        activity,
+        contains('TelecomCallManager.cancelIncomingCallNotification'),
+      );
+      expect(activity, contains('finish()'));
+      expect(activity, contains('Принять'));
+      expect(activity, contains('Отклонить'));
+      expect(activity, contains('Видеозвонок'));
+    },
+  );
+
+  test(
       'Android gallery image save validates bytes and preserves original bytes',
       () {
     final mainActivity = File(
