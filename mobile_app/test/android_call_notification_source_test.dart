@@ -171,8 +171,14 @@ void main() {
     expect(manager, contains('ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT'));
     expect(manager, contains('canPostNotifications'));
     expect(manager, contains('NotificationManagerCompat.from(context)'));
+    expect(manager, contains('canUseCallNotificationChannel'));
+    expect(manager, contains('getNotificationChannel(PUSH_CALL_CHANNEL_ID)'));
+    expect(manager, contains('NotificationManager.IMPORTANCE_HIGH'));
     expect(manager, contains('notificationSettingsIntent'));
     expect(manager, contains('ACTION_APP_NOTIFICATION_SETTINGS'));
+    expect(manager, contains('callNotificationChannelSettingsIntent'));
+    expect(manager, contains('ACTION_CHANNEL_NOTIFICATION_SETTINGS'));
+    expect(manager, contains('Settings.EXTRA_CHANNEL_ID'));
     expect(
       manager,
       contains('fun isManagedPhoneAccountEnabled(context: Context): Boolean'),
@@ -225,6 +231,8 @@ void main() {
     expect(mainActivity, contains('"openFullScreenIntentSettings"'));
     expect(mainActivity, contains('"canPostNotifications"'));
     expect(mainActivity, contains('"openNotificationSettings"'));
+    expect(mainActivity, contains('"canUseCallNotificationChannel"'));
+    expect(mainActivity, contains('"openCallNotificationChannelSettings"'));
     expect(
       mainActivity,
       contains('TelecomCallManager.phoneAccountSettingsIntent()'),
@@ -232,6 +240,12 @@ void main() {
     expect(
       mainActivity,
       contains('TelecomCallManager.notificationSettingsIntent(this)'),
+    );
+    expect(
+      mainActivity,
+      contains(
+        'TelecomCallManager.callNotificationChannelSettingsIntent(this)',
+      ),
     );
     expect(connectionService, contains('onCreateIncomingConnection'));
     expect(

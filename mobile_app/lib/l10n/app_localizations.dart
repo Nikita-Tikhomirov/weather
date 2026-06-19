@@ -2897,6 +2897,12 @@ abstract class AppLocalizations {
   /// **'Allow notifications for lock-screen calls'**
   String get profileSystemCallsNotificationsDisabled;
 
+  /// No description provided for @profileSystemCallsChannelDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow the call notification channel for lock-screen calls'**
+  String get profileSystemCallsChannelDisabled;
+
   /// No description provided for @profileEnableSystemCalls.
   ///
   /// In en, this message translates to:
@@ -2914,6 +2920,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Allow notifications'**
   String get profileAllowSystemCallsNotifications;
+
+  /// No description provided for @profileAllowSystemCallsChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Call channel'**
+  String get profileAllowSystemCallsChannel;
 
   /// No description provided for @profileSystemCallsSettingsFailed.
   ///

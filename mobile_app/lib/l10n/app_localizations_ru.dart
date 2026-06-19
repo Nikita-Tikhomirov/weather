@@ -1516,6 +1516,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get profileSystemCallsNotificationsDisabled => 'Разрешите уведомления для звонков на экране блокировки';
 
   @override
+  String get profileSystemCallsChannelDisabled => 'Разрешите канал уведомлений звонков для экрана блокировки';
+
+  @override
   String get profileEnableSystemCalls => 'Включить';
 
   @override
@@ -1523,6 +1526,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get profileAllowSystemCallsNotifications => 'Разрешить уведомления';
+
+  @override
+  String get profileAllowSystemCallsChannel => 'Канал звонков';
 
   @override
   String get profileSystemCallsSettingsFailed => 'Не удалось открыть настройки системных звонков';

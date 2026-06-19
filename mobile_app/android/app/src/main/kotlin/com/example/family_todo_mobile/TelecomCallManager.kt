@@ -100,6 +100,18 @@ object TelecomCallManager {
         }
     }
 
+    fun canUseCallNotificationChannel(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true
+        return try {
+            FamilyMessagingService.ensureChannels(context)
+            val manager = context.getSystemService(NotificationManager::class.java) ?: return true
+            val channel = manager.getNotificationChannel(PUSH_CALL_CHANNEL_ID) ?: return false
+            channel.importance >= NotificationManager.IMPORTANCE_HIGH
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun notificationSettingsIntent(context: Context): Intent {
         val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
@@ -107,6 +119,17 @@ object TelecomCallManager {
         } else {
             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                 .setData(Uri.parse("package:${context.packageName}"))
+        }
+        return intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    fun callNotificationChannelSettingsIntent(context: Context): Intent {
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                .putExtra(Settings.EXTRA_CHANNEL_ID, PUSH_CALL_CHANNEL_ID)
+        } else {
+            notificationSettingsIntent(context)
         }
         return intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }

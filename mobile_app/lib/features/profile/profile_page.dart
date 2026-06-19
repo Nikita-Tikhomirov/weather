@@ -39,11 +39,16 @@ class _ProfileText {
   String get systemCallsNotificationsDisabled =>
       l10n?.profileSystemCallsNotificationsDisabled ??
       'Allow notifications for lock-screen calls';
+  String get systemCallsChannelDisabled =>
+      l10n?.profileSystemCallsChannelDisabled ??
+      'Allow the call notification channel for lock-screen calls';
   String get enableSystemCalls => l10n?.profileEnableSystemCalls ?? 'Enable';
   String get allowSystemCallsFullScreen =>
       l10n?.profileAllowSystemCallsFullScreen ?? 'Allow';
   String get allowSystemCallsNotifications =>
       l10n?.profileAllowSystemCallsNotifications ?? 'Allow notifications';
+  String get allowSystemCallsChannel =>
+      l10n?.profileAllowSystemCallsChannel ?? 'Call channel';
   String get systemCallsSettingsFailed =>
       l10n?.profileSystemCallsSettingsFailed ??
       'Could not open system call settings';
@@ -91,6 +96,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   bool? _systemCallAccountEnabled;
   bool? _fullScreenIntentEnabled;
   bool? _notificationsEnabled;
+  bool? _callNotificationChannelEnabled;
 
   @override
   void initState() {
@@ -123,11 +129,14 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
         await widget.callIntegration.canUseFullScreenIntent();
     final notificationsEnabled =
         await widget.callIntegration.canPostNotifications();
+    final callChannelEnabled =
+        await widget.callIntegration.canUseCallNotificationChannel();
     if (!mounted) return;
     setState(() {
       _systemCallAccountEnabled = phoneAccountEnabled;
       _fullScreenIntentEnabled = fullScreenEnabled;
       _notificationsEnabled = notificationsEnabled;
+      _callNotificationChannelEnabled = callChannelEnabled;
     });
   }
 
@@ -160,6 +169,20 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
 
   Future<void> _openNotificationSettings() async {
     final opened = await widget.callIntegration.openNotificationSettings();
+    if (!mounted) return;
+    if (!opened) {
+      final text = _ProfileText(AppLocalizations.of(context));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(text.systemCallsSettingsFailed)),
+      );
+      return;
+    }
+    unawaited(_refreshSystemCallStatus());
+  }
+
+  Future<void> _openCallNotificationChannelSettings() async {
+    final opened =
+        await widget.callIntegration.openCallNotificationChannelSettings();
     if (!mounted) return;
     if (!opened) {
       final text = _ProfileText(AppLocalizations.of(context));
@@ -320,16 +343,22 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   bool get _systemCallsLoading =>
       _systemCallAccountEnabled == null ||
       _fullScreenIntentEnabled == null ||
-      _notificationsEnabled == null;
+      _notificationsEnabled == null ||
+      _callNotificationChannelEnabled == null;
 
   bool get _systemCallsReady =>
       _systemCallAccountEnabled == true &&
       _fullScreenIntentEnabled == true &&
-      _notificationsEnabled == true;
+      _notificationsEnabled == true &&
+      _callNotificationChannelEnabled == true;
 
   String _systemCallsSubtitle(_ProfileText text) {
     if (_systemCallAccountEnabled == true && _notificationsEnabled == false) {
       return text.systemCallsNotificationsDisabled;
+    }
+    if (_systemCallAccountEnabled == true &&
+        _callNotificationChannelEnabled == false) {
+      return text.systemCallsChannelDisabled;
     }
     if (_systemCallAccountEnabled == true &&
         _fullScreenIntentEnabled == false) {
@@ -345,6 +374,13 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
       return TextButton(
         onPressed: _openNotificationSettings,
         child: Text(text.allowSystemCallsNotifications),
+      );
+    }
+    if (_systemCallAccountEnabled == true &&
+        _callNotificationChannelEnabled == false) {
+      return TextButton(
+        onPressed: _openCallNotificationChannelSettings,
+        child: Text(text.allowSystemCallsChannel),
       );
     }
     if (_systemCallAccountEnabled == true &&

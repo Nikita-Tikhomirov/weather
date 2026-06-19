@@ -35,6 +35,14 @@ class TelecomCallIntegration {
     return _invokeBool('openNotificationSettings');
   }
 
+  Future<bool> canUseCallNotificationChannel() {
+    return _invokeBool('canUseCallNotificationChannel');
+  }
+
+  Future<bool> openCallNotificationChannelSettings() {
+    return _invokeBool('openCallNotificationChannelSettings');
+  }
+
   Future<bool> answerIncomingConnection(String sessionId) {
     return _invokeBool(
       'answerIncomingConnection',

@@ -1516,6 +1516,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileSystemCallsNotificationsDisabled => 'Allow notifications for lock-screen calls';
 
   @override
+  String get profileSystemCallsChannelDisabled => 'Allow the call notification channel for lock-screen calls';
+
+  @override
   String get profileEnableSystemCalls => 'Enable';
 
   @override
@@ -1523,6 +1526,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileAllowSystemCallsNotifications => 'Allow notifications';
+
+  @override
+  String get profileAllowSystemCallsChannel => 'Call channel';
 
   @override
   String get profileSystemCallsSettingsFailed => 'Could not open system call settings';

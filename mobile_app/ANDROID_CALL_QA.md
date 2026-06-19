@@ -7,7 +7,8 @@ Prerequisites:
 - Open the app once after install.
 - In Profile -> System calls, make the row show the enabled/check state.
   If it asks for setup, enable the Android phone account, app notifications,
-  and full-screen alerts when Android opens the related settings.
+  the call notification channel, and full-screen alerts when Android opens the
+  related settings.
 - Connect the phone with USB debugging enabled.
 
 Windows adb path used on the development machine:
@@ -48,6 +49,8 @@ Expected result:
 
 If the result is still an ordinary notification:
 - Open Profile -> System calls and confirm there is a check mark.
+- If Profile asks to allow the call channel, open it and keep the channel at
+  high/urgent importance.
 - Re-run the same `adb shell am broadcast ...` command while the phone is locked.
 - Capture diagnostics with:
 

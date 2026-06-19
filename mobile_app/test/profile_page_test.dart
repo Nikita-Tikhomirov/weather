@@ -102,6 +102,8 @@ void main() {
           return true;
         case 'canPostNotifications':
           return true;
+        case 'canUseCallNotificationChannel':
+          return true;
         case 'openPhoneAccountSettings':
           return true;
       }
@@ -171,6 +173,8 @@ void main() {
           return false;
         case 'canPostNotifications':
           return true;
+        case 'canUseCallNotificationChannel':
+          return true;
         case 'openFullScreenIntentSettings':
           return true;
       }
@@ -227,69 +231,142 @@ void main() {
   testWidgets(
     'opens Android notification settings when call notifications are off',
     (tester) async {
-    const channel = MethodChannel('family_todo_mobile/telecom');
-    final calls = <String>[];
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (call) async {
-      calls.add(call.method);
-      switch (call.method) {
-        case 'registerPhoneAccounts':
-          return true;
-        case 'isManagedPhoneAccountEnabled':
-          return true;
-        case 'canUseFullScreenIntent':
-          return true;
-        case 'canPostNotifications':
-          return false;
-        case 'openNotificationSettings':
-          return true;
-      }
-      return null;
-    });
-    addTearDown(() {
+      const channel = MethodChannel('family_todo_mobile/telecom');
+      final calls = <String>[];
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(channel, null);
-    });
+          .setMockMethodCallHandler(channel, (call) async {
+        calls.add(call.method);
+        switch (call.method) {
+          case 'registerPhoneAccounts':
+            return true;
+          case 'isManagedPhoneAccountEnabled':
+            return true;
+          case 'canUseFullScreenIntent':
+            return true;
+          case 'canPostNotifications':
+            return false;
+          case 'canUseCallNotificationChannel':
+            return true;
+          case 'openNotificationSettings':
+            return true;
+        }
+        return null;
+      });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      });
 
-    await tester.pumpWidget(
-      MaterialApp(
-        locale: const Locale('en'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        theme: ThemeData(splashFactory: NoSplash.splashFactory),
-        home: ProfilePage(
-          api: ApiClient(baseUrl: 'http://localhost', apiKey: 'test'),
-          displayName: 'Nikita',
-          phone: '+10000000000',
-          profileKey: 'nik',
-          avatarUrl: null,
-          accessPolicy: const UserAccessPolicy(
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: ProfilePage(
+            api: ApiClient(baseUrl: 'http://localhost', apiKey: 'test'),
+            displayName: 'Nikita',
             phone: '+10000000000',
             profileKey: 'nik',
-            roles: ['admin'],
-            capabilities: ['workspaces.grant_access'],
-            workspaces: [],
-            isSuperadmin: false,
+            avatarUrl: null,
+            accessPolicy: const UserAccessPolicy(
+              phone: '+10000000000',
+              profileKey: 'nik',
+              roles: ['admin'],
+              capabilities: ['workspaces.grant_access'],
+              workspaces: [],
+              isSuperadmin: false,
+            ),
+            onAvatarChanged: (_) {},
+            onDisplayNameChanged: (_) {},
           ),
-          onAvatarChanged: (_) {},
-          onDisplayNameChanged: (_) {},
         ),
-      ),
-    );
-    await tester.pump();
+      );
+      await tester.pump();
 
-    expect(find.text('System calls'), findsOneWidget);
-    expect(
-      find.text('Allow notifications for lock-screen calls'),
-      findsOneWidget,
-    );
-    expect(find.text('Allow notifications'), findsOneWidget);
-    expect(calls, contains('canPostNotifications'));
+      expect(find.text('System calls'), findsOneWidget);
+      expect(
+        find.text('Allow notifications for lock-screen calls'),
+        findsOneWidget,
+      );
+      expect(find.text('Allow notifications'), findsOneWidget);
+      expect(calls, contains('canPostNotifications'));
 
-    await tester.tap(find.text('Allow notifications'));
-    await tester.pump();
+      await tester.tap(find.text('Allow notifications'));
+      await tester.pump();
 
-    expect(calls, contains('openNotificationSettings'));
+      expect(calls, contains('openNotificationSettings'));
+    },
+  );
+
+  testWidgets(
+    'opens Android call notification channel settings when channel is off',
+    (tester) async {
+      const channel = MethodChannel('family_todo_mobile/telecom');
+      final calls = <String>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        calls.add(call.method);
+        switch (call.method) {
+          case 'registerPhoneAccounts':
+            return true;
+          case 'isManagedPhoneAccountEnabled':
+            return true;
+          case 'canUseFullScreenIntent':
+            return true;
+          case 'canPostNotifications':
+            return true;
+          case 'canUseCallNotificationChannel':
+            return false;
+          case 'openCallNotificationChannelSettings':
+            return true;
+        }
+        return null;
+      });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: ProfilePage(
+            api: ApiClient(baseUrl: 'http://localhost', apiKey: 'test'),
+            displayName: 'Nikita',
+            phone: '+10000000000',
+            profileKey: 'nik',
+            avatarUrl: null,
+            accessPolicy: const UserAccessPolicy(
+              phone: '+10000000000',
+              profileKey: 'nik',
+              roles: ['admin'],
+              capabilities: ['workspaces.grant_access'],
+              workspaces: [],
+              isSuperadmin: false,
+            ),
+            onAvatarChanged: (_) {},
+            onDisplayNameChanged: (_) {},
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('System calls'), findsOneWidget);
+      expect(
+        find.text('Allow the call notification channel for lock-screen calls'),
+        findsOneWidget,
+      );
+      expect(find.text('Call channel'), findsOneWidget);
+      expect(calls, contains('canUseCallNotificationChannel'));
+
+      await tester.tap(find.text('Call channel'));
+      await tester.pump();
+
+      expect(calls, contains('openCallNotificationChannelSettings'));
     },
   );
 }
