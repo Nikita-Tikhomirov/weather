@@ -34,6 +34,7 @@ class FamilyCallConnection(
 
     override fun onShowIncomingCallUi() {
         FamilyMessagingService.showIncomingCallNotification(appContext, data)
+        TelecomCallManager.openIncomingCallActivity(appContext, data)
     }
 
     override fun onAnswer() {

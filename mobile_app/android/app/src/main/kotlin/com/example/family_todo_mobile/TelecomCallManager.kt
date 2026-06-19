@@ -112,6 +112,23 @@ object TelecomCallManager {
         context.startActivity(intent)
     }
 
+    fun openIncomingCallActivity(context: Context, data: Map<String, String>) {
+        val callData = data.toMutableMap()
+        callData["call_action"] = "show"
+        val intent = Intent(context, IncomingCallActivity::class.java)
+            .setAction(PUSH_ACTION_OPEN)
+            .putPushData(callData)
+            .addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+            )
+        try {
+            context.startActivity(intent)
+        } catch (_: Exception) {
+        }
+    }
+
     fun rejectIncomingCall(context: Context, data: Map<String, String>) {
         val intent = Intent(context, PushActionReceiver::class.java)
             .setAction(PUSH_ACTION_CALL_DECLINE)

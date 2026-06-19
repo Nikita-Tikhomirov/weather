@@ -100,6 +100,16 @@ void main() {
         'fun cancelIncomingCallNotification(context: Context, data: Map<String, String>)',
       ),
     );
+    expect(
+      manager,
+      contains(
+        'fun openIncomingCallActivity(context: Context, data: Map<String, String>)',
+      ),
+    );
+    expect(
+      manager,
+      contains('Intent(context, IncomingCallActivity::class.java)'),
+    );
     expect(mainActivity, contains('"family_todo_mobile/telecom"'));
     expect(mainActivity, contains('"registerPhoneAccounts"'));
     expect(mainActivity, contains('"isManagedPhoneAccountEnabled"'));
@@ -117,6 +127,10 @@ void main() {
     );
     expect(connectionService, contains('onCreateIncomingConnectionFailed'));
     expect(connection, contains('onShowIncomingCallUi'));
+    expect(
+      connection,
+      contains('TelecomCallManager.openIncomingCallActivity(appContext, data)'),
+    );
     expect(
       connection,
       contains('openCallActivity(appContext, data, "accept")'),
