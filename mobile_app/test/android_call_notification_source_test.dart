@@ -298,6 +298,11 @@ void main() {
       expect(activity, contains('Принять'));
       expect(activity, contains('Отклонить'));
       expect(activity, contains('Видеозвонок'));
+      expect(activity, contains('GradientDrawable.OVAL'));
+      expect(activity, contains('actionButtonColumn('));
+      expect(activity, contains('callActionCircle('));
+      expect(activity, contains('contentDescription = label'));
+      expect(activity, isNot(contains('GradientDrawable.RECTANGLE')));
     },
   );
 

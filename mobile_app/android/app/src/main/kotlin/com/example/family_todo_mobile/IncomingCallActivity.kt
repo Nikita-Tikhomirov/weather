@@ -11,7 +11,6 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.ViewGroup
 import android.view.WindowManager
-import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.Space
 import android.widget.TextView
@@ -107,33 +106,58 @@ class IncomingCallActivity : Activity() {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            addView(callButton("Отклонить", Color.rgb(220, 55, 55)) { declineCall() })
+            addView(actionButtonColumn("Отклонить", "×", Color.rgb(220, 55, 55)) { declineCall() })
             addView(Space(this@IncomingCallActivity).apply {
-                layoutParams = LinearLayout.LayoutParams(dp(42), 1)
+                layoutParams = LinearLayout.LayoutParams(dp(72), 1)
             })
-            addView(callButton("Принять", Color.rgb(38, 170, 90)) { acceptCall() })
+            addView(actionButtonColumn("Принять", "✓", Color.rgb(38, 170, 90)) { acceptCall() })
         }
     }
 
-    private fun callButton(
+    private fun actionButtonColumn(
         label: String,
+        glyph: String,
         color: Int,
         onClick: () -> Unit,
-    ): Button {
-        return Button(this).apply {
-            text = label
+    ): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            addView(callActionCircle(label, glyph, color, onClick))
+            addView(TextView(this@IncomingCallActivity).apply {
+                text = label
+                setTextColor(Color.rgb(225, 231, 238))
+                textSize = 15f
+                gravity = Gravity.CENTER
+                setPadding(0, dp(10), 0, 0)
+            })
+            layoutParams = LinearLayout.LayoutParams(dp(92), ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+    }
+
+    private fun callActionCircle(
+        label: String,
+        glyph: String,
+        color: Int,
+        onClick: () -> Unit,
+    ): TextView {
+        return TextView(this).apply {
+            text = glyph
+            contentDescription = label
+            includeFontPadding = false
+            gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
-            textSize = 16f
+            textSize = 34f
             typeface = Typeface.DEFAULT_BOLD
             background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(28).toFloat()
+                shape = GradientDrawable.OVAL
                 setColor(color)
             }
             minHeight = 0
             minWidth = 0
-            setPadding(dp(22), 0, dp(22), 0)
-            layoutParams = LinearLayout.LayoutParams(dp(132), dp(56))
+            isClickable = true
+            isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(dp(76), dp(76))
             setOnClickListener { onClick() }
         }
     }
