@@ -215,6 +215,20 @@ void main() {
     );
     expect(connectionService, contains('onCreateIncomingConnectionFailed'));
     expect(
+      connectionService,
+      contains('val data = TelecomCallManager.callDataFromRequest(request)'),
+    );
+    expect(
+      connectionService,
+      contains('TelecomCallManager.showIncomingCallFallback(this, data)'),
+    );
+    expect(
+      manager,
+      contains(
+        'fun showIncomingCallFallback(context: Context, data: Map<String, String>)',
+      ),
+    );
+    expect(
       connection,
       contains('TelecomCallManager.trackIncomingConnection(data, this)'),
     );

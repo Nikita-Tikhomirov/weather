@@ -154,6 +154,12 @@ object TelecomCallManager {
         }
     }
 
+    fun showIncomingCallFallback(context: Context, data: Map<String, String>) {
+        val appContext = context.applicationContext
+        FamilyMessagingService.showIncomingCallNotification(appContext, data)
+        openIncomingCallActivity(appContext, data)
+    }
+
     fun answerIncomingConnection(data: Map<String, String>) {
         IncomingCallAlertManager.stop()
         activeConnection(data)?.answerFromNative()
@@ -238,8 +244,7 @@ object TelecomCallManager {
         Handler(Looper.getMainLooper()).postDelayed({
             val connection = activeConnection(data) ?: return@postDelayed
             if (connection.hasShownIncomingUi()) return@postDelayed
-            FamilyMessagingService.showIncomingCallNotification(appContext, data)
-            openIncomingCallActivity(appContext, data)
+            showIncomingCallFallback(appContext, data)
         }, SELF_MANAGED_UI_FALLBACK_DELAY_MS)
     }
 

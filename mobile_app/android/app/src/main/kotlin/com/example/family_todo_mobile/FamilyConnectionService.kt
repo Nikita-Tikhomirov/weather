@@ -28,10 +28,12 @@ class FamilyConnectionService : ConnectionService() {
         connectionManagerPhoneAccount: PhoneAccountHandle,
         request: ConnectionRequest,
     ) {
-        TelecomCallManager.rejectIncomingCall(
-            applicationContext,
-            TelecomCallManager.callDataFromRequest(request),
-        )
+        val data = TelecomCallManager.callDataFromRequest(request)
+        if (isIncomingCallPush(data)) {
+            TelecomCallManager.showIncomingCallFallback(this, data)
+            return
+        }
+        TelecomCallManager.rejectIncomingCall(applicationContext, data)
     }
 
     override fun onCreateOutgoingConnection(
