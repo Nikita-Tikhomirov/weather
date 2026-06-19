@@ -30,6 +30,7 @@ $files = @(
     @{Local="laravel_backend_vps\app\Domain\Agent\AgentTaskService.php"; Remote="$RemoteBase/app/Domain/Agent/AgentTaskService.php"},
     @{Local="laravel_backend_vps\app\Http\Controllers\AgentPolicyController.php"; Remote="$RemoteBase/app/Http/Controllers/AgentPolicyController.php"},
     @{Local="laravel_backend_vps\app\Http\Controllers\AuthController.php"; Remote="$RemoteBase/app/Http/Controllers/AuthController.php"},
+    @{Local="laravel_backend_vps\app\Domain\Profiles\PhoneProfileRepository.php"; Remote="$RemoteBase/app/Domain/Profiles/PhoneProfileRepository.php"},
     @{Local="laravel_backend_vps\app\Services\Push\FcmPushGateway.php";   Remote="$RemoteBase/app/Services/Push/FcmPushGateway.php"},
     @{Local="laravel_backend_vps\app\Http\Controllers\ChatController.php"; Remote="$RemoteBase/app/Http/Controllers/ChatController.php"},
     @{Local="laravel_backend_vps\app\Domain\Chat\ChatRepository.php";      Remote="$RemoteBase/app/Domain/Chat/ChatRepository.php"},
@@ -47,7 +48,8 @@ $files = @(
     @{Local="laravel_backend_vps\database\migrations\2026_06_08_001100_create_project_control_center_tables.php"; Remote="$RemoteBase/database/migrations/2026_06_08_001100_create_project_control_center_tables.php"},
     @{Local="laravel_backend_vps\database\migrations\2026_06_09_001200_add_tudushker_to_project_chats.php"; Remote="$RemoteBase/database/migrations/2026_06_09_001200_add_tudushker_to_project_chats.php"},
     @{Local="laravel_backend_vps\database\migrations\2026_06_02_000700_deactivate_legacy_chat_stickers.php"; Remote="$RemoteBase/database/migrations/2026_06_02_000700_deactivate_legacy_chat_stickers.php"},
-    @{Local="laravel_backend_vps\database\migrations\2026_05_26_000800_add_projects_and_family_groups.php"; Remote="$RemoteBase/database/migrations/2026_05_26_000800_add_projects_and_family_groups.php"}
+    @{Local="laravel_backend_vps\database\migrations\2026_05_26_000800_add_projects_and_family_groups.php"; Remote="$RemoteBase/database/migrations/2026_05_26_000800_add_projects_and_family_groups.php"},
+    @{Local="laravel_backend_vps\database\migrations\2026_06_19_001300_create_phone_family_group_tables.php"; Remote="$RemoteBase/database/migrations/2026_06_19_001300_create_phone_family_group_tables.php"}
 )
 
 if ($DryRun) {

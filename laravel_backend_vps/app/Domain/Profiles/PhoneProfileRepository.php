@@ -8,6 +8,9 @@ use InvalidArgumentException;
 
 final class PhoneProfileRepository
 {
+    private const FAMILY_GROUPS_TABLE = 'phone_family_groups';
+    private const FAMILY_GROUP_MEMBERS_TABLE = 'phone_family_group_members';
+
     public function startDevice(string $phone, string $deviceId, string $displayName = '', string $platform = 'android', string $appVersion = ''): array
     {
         $normalizedPhone = $this->normalizePhone($phone);
@@ -108,11 +111,17 @@ final class PhoneProfileRepository
     public function familyMembers(string $actor): array
     {
         $group = $this->ensureFamilyGroup($actor);
-        return DB::table('family_group_members')
-            ->join('messenger_users', 'messenger_users.profile_key', '=', 'family_group_members.profile_key')
-            ->where('family_group_members.family_group_id', (int)$group->id)
+        return DB::table(self::FAMILY_GROUP_MEMBERS_TABLE)
+            ->join('messenger_users', 'messenger_users.profile_key', '=', self::FAMILY_GROUP_MEMBERS_TABLE.'.profile_key')
+            ->where(self::FAMILY_GROUP_MEMBERS_TABLE.'.family_group_id', (int)$group->id)
             ->orderBy('messenger_users.display_name')
-            ->get(['messenger_users.profile_key', 'messenger_users.phone_normalized', 'messenger_users.display_name', 'messenger_users.avatar_url', 'family_group_members.role'])
+            ->get([
+                'messenger_users.profile_key',
+                'messenger_users.phone_normalized',
+                'messenger_users.display_name',
+                'messenger_users.avatar_url',
+                self::FAMILY_GROUP_MEMBERS_TABLE.'.role',
+            ])
             ->map(fn ($row): array => [
                 'profile_key' => (string)$row->profile_key,
                 'phone' => (string)$row->phone_normalized,
@@ -136,7 +145,7 @@ final class PhoneProfileRepository
             if ($key === '' || !$this->profileExists($key)) {
                 continue;
             }
-            DB::table('family_group_members')->updateOrInsert(
+            DB::table(self::FAMILY_GROUP_MEMBERS_TABLE)->updateOrInsert(
                 ['family_group_id' => (int)$group->id, 'profile_key' => $key],
                 ['role' => $key === $actor ? 'owner' : 'member', 'joined_at' => $now]
             );
@@ -150,7 +159,7 @@ final class PhoneProfileRepository
         $group = $this->ensureFamilyGroup($actor);
         $key = trim($profile);
         if ($key !== $actor) {
-            DB::table('family_group_members')
+            DB::table(self::FAMILY_GROUP_MEMBERS_TABLE)
                 ->where('family_group_id', (int)$group->id)
                 ->where('profile_key', $key)
                 ->delete();
@@ -230,18 +239,18 @@ final class PhoneProfileRepository
             throw new InvalidArgumentException('Unknown actor_profile');
         }
         $now = $this->nowIso();
-        $group = DB::table('family_groups')->where('owner_profile_key', $profile)->first();
+        $group = DB::table(self::FAMILY_GROUPS_TABLE)->where('owner_profile_key', $profile)->first();
         if ($group === null) {
-            $id = (int) DB::table('family_groups')->insertGetId([
+            $id = (int) DB::table(self::FAMILY_GROUPS_TABLE)->insertGetId([
                 'owner_profile_key' => $profile,
                 'title' => 'Family',
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
-            $group = DB::table('family_groups')->where('id', $id)->first();
+            $group = DB::table(self::FAMILY_GROUPS_TABLE)->where('id', $id)->first();
         }
 
-        DB::table('family_group_members')->updateOrInsert(
+        DB::table(self::FAMILY_GROUP_MEMBERS_TABLE)->updateOrInsert(
             ['family_group_id' => (int)$group->id, 'profile_key' => $profile],
             ['role' => 'owner', 'joined_at' => $now]
         );

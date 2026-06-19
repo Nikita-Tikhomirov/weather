@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -41,6 +42,32 @@ class PhoneProfileMessengerTest extends TestCase
             data_get($first->json(), 'user.profile_key'),
             data_get($second->json(), 'user.profile_key')
         );
+    }
+
+    #[Test]
+    public function device_start_uses_phone_family_tables_alongside_project_family_groups(): void
+    {
+        $response = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 605 880 42 01',
+                'device_id' => 'new-user-device',
+                'display_name' => 'Did',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true);
+
+        $profile = (string) data_get($response->json(), 'user.profile_key');
+        $this->assertNotSame('', $profile);
+        $this->assertTrue(Schema::hasColumn('family_groups', 'owner_key'));
+        $this->assertFalse(Schema::hasColumn('family_groups', 'owner_profile_key'));
+        $this->assertDatabaseHas('phone_family_groups', [
+            'owner_profile_key' => $profile,
+            'title' => 'Family',
+        ]);
+        $this->assertDatabaseHas('phone_family_group_members', [
+            'profile_key' => $profile,
+            'role' => 'owner',
+        ]);
     }
 
     #[Test]

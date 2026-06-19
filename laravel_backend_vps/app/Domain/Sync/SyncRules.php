@@ -76,10 +76,15 @@ final class SyncRules
         if ($entity === 'family_task') {
             try {
                 // 1) Actor's family-group members (the real contact list)
-                $familyMembers = DB::table('family_group_members')
-                    ->join('family_groups', 'family_groups.id', '=', 'family_group_members.family_group_id')
-                    ->where('family_groups.owner_profile_key', $actor)
-                    ->pluck('family_group_members.profile_key')
+                $familyMembers = DB::table('phone_family_group_members')
+                    ->join(
+                        'phone_family_groups',
+                        'phone_family_groups.id',
+                        '=',
+                        'phone_family_group_members.family_group_id',
+                    )
+                    ->where('phone_family_groups.owner_profile_key', $actor)
+                    ->pluck('phone_family_group_members.profile_key')
                     ->unique()
                     ->toArray();
 

@@ -31,25 +31,25 @@ return new class extends Migration
             $table->index('user_id', 'idx_messenger_devices_user');
         });
 
-        Schema::create('family_groups', function (Blueprint $table): void {
+        Schema::create('phone_family_groups', function (Blueprint $table): void {
             $table->bigIncrements('id');
             $table->string('owner_profile_key', 32);
             $table->string('title', 120)->default('Family');
             $table->string('created_at', 32);
             $table->string('updated_at', 32);
 
-            $table->index('owner_profile_key', 'idx_family_groups_owner');
+            $table->index('owner_profile_key', 'idx_phone_family_groups_owner');
         });
 
-        Schema::create('family_group_members', function (Blueprint $table): void {
+        Schema::create('phone_family_group_members', function (Blueprint $table): void {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('family_group_id');
             $table->string('profile_key', 32);
             $table->string('role', 32)->default('member');
             $table->string('joined_at', 32);
 
-            $table->unique(['family_group_id', 'profile_key'], 'uq_family_group_profile');
-            $table->index('profile_key', 'idx_family_members_profile');
+            $table->unique(['family_group_id', 'profile_key'], 'uq_phone_family_group_profile');
+            $table->index('profile_key', 'idx_phone_family_members_profile');
         });
 
         Schema::create('chat_message_attachments', function (Blueprint $table): void {
@@ -81,8 +81,8 @@ return new class extends Migration
     {
         Schema::dropIfExists('chat_message_reactions');
         Schema::dropIfExists('chat_message_attachments');
-        Schema::dropIfExists('family_group_members');
-        Schema::dropIfExists('family_groups');
+        Schema::dropIfExists('phone_family_group_members');
+        Schema::dropIfExists('phone_family_groups');
         Schema::dropIfExists('messenger_devices');
         Schema::dropIfExists('messenger_users');
     }
