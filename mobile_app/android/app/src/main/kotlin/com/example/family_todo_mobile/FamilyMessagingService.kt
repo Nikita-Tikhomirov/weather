@@ -136,6 +136,7 @@ class FamilyMessagingService : FirebaseMessagingService() {
                 .setTimeoutAfter(60_000)
                 .setContentIntent(openPendingIntent)
                 .setFullScreenIntent(openPendingIntent, true)
+                .setDeleteIntent(declinePendingIntent)
                 .addAction(context.applicationInfo.icon, "Отклонить", declinePendingIntent)
                 .addAction(context.applicationInfo.icon, "Принять", acceptPendingIntent)
                 .build()

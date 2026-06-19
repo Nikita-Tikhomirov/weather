@@ -25,6 +25,8 @@ void main() {
     expect(service, contains('NotificationCompat.CallStyle.forIncomingCall'));
     expect(service, contains('Person.Builder'));
     expect(service, contains('setFullScreenIntent'));
+    expect(service, contains('setDeleteIntent(declinePendingIntent)'));
+    expect(mainActivity, contains('TelecomCallManager.cancelIncomingCallNotification'));
     expect(mainActivity, contains('setShowWhenLocked'));
     expect(mainActivity, contains('setTurnScreenOn'));
     expect(mainActivity, contains('requestDismissKeyguard'));
@@ -89,6 +91,10 @@ void main() {
       manager,
       contains('fun fullScreenIntentSettingsIntent(context: Context): Intent'),
     );
+    expect(
+      manager,
+      contains('fun cancelIncomingCallNotification(context: Context, data: Map<String, String>)'),
+    );
     expect(mainActivity, contains('"family_todo_mobile/telecom"'));
     expect(mainActivity, contains('"registerPhoneAccounts"'));
     expect(mainActivity, contains('"isManagedPhoneAccountEnabled"'));
@@ -106,6 +112,7 @@ void main() {
     );
     expect(connectionService, contains('onCreateIncomingConnectionFailed'));
     expect(connection, contains('onShowIncomingCallUi'));
+    expect(connection, contains('openCallActivity(appContext, data, "accept")'));
     expect(
       connection,
       contains('setConnectionProperties(PROPERTY_SELF_MANAGED)'),

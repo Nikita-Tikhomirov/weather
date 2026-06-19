@@ -96,6 +96,9 @@ object TelecomCallManager {
         data: Map<String, String>,
         callAction: String,
     ) {
+        if (callAction == "accept") {
+            cancelIncomingCallNotification(context, data)
+        }
         val callData = data.toMutableMap()
         callData["call_action"] = callAction
         val intent = Intent(context, MainActivity::class.java)
@@ -114,6 +117,14 @@ object TelecomCallManager {
             .setAction(PUSH_ACTION_CALL_DECLINE)
             .putPushData(data)
         context.sendBroadcast(intent)
+    }
+
+    fun cancelIncomingCallNotification(context: Context, data: Map<String, String>) {
+        try {
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.cancel(callNotificationId(data))
+        } catch (_: Exception) {
+        }
     }
 
     fun phoneAccountSettingsIntent(): Intent {

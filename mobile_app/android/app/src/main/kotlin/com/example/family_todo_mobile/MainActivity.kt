@@ -229,6 +229,9 @@ class MainActivity : FlutterActivity() {
         if (intent.action != PUSH_ACTION_OPEN) return
         val payload = intent.pushData()
         if (payload.isEmpty()) return
+        if (isIncomingCallPush(payload) && payload["call_action"] == "accept") {
+            TelecomCallManager.cancelIncomingCallNotification(this, payload)
+        }
         pendingPushPayload = payload
         deliverPendingPushPayload()
     }
