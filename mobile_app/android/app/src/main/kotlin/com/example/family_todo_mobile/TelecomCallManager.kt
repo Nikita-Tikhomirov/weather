@@ -106,7 +106,7 @@ object TelecomCallManager {
             FamilyMessagingService.ensureChannels(context)
             val manager = context.getSystemService(NotificationManager::class.java) ?: return true
             val channel = manager.getNotificationChannel(PUSH_CALL_CHANNEL_ID) ?: return false
-            channel.importance >= NotificationManager.IMPORTANCE_HIGH
+            channel.importance >= NotificationManager.IMPORTANCE_MAX
         } catch (_: Exception) {
             false
         }

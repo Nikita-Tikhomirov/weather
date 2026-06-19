@@ -175,7 +175,11 @@ void main() {
     expect(manager, contains('NotificationManagerCompat.from(context)'));
     expect(manager, contains('canUseCallNotificationChannel'));
     expect(manager, contains('getNotificationChannel(PUSH_CALL_CHANNEL_ID)'));
-    expect(manager, contains('NotificationManager.IMPORTANCE_HIGH'));
+    expect(manager, contains('channel.importance >= NotificationManager.IMPORTANCE_MAX'));
+    expect(
+      manager,
+      isNot(contains('channel.importance >= NotificationManager.IMPORTANCE_HIGH')),
+    );
     expect(service, contains('NotificationManager.IMPORTANCE_MAX'));
     expect(manager, contains('notificationSettingsIntent'));
     expect(manager, contains('ACTION_APP_NOTIFICATION_SETTINGS'));
