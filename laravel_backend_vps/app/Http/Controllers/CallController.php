@@ -40,10 +40,11 @@ class CallController extends Controller
             $callee = $session['callee_profile'];
             $eventId = 'call-incoming-' . $session['session_id'];
             $typeLabel = $callType === 'video' ? 'Видеозвонок' : 'Аудиозвонок';
+            $callerLabel = $this->profileLabel($actor);
             $title = $typeLabel;
             $body = sprintf(
                 'Входящий звонок от %s',
-                $this->profileLabel($actor),
+                $callerLabel,
             );
 
             $this->pushOutbox->enqueueRawToRecipients(
@@ -57,6 +58,10 @@ class CallController extends Controller
                     'session_id' => $session['session_id'],
                     'call_type' => $callType,
                     'caller_profile' => $actor,
+                    'caller_display_name' => $callerLabel,
+                    'caller_name' => $callerLabel,
+                    'callee_profile' => $callee,
+                    'recipient_profile' => $callee,
                     'conversation_key' => $conversationKey,
                 ],
             );
