@@ -99,6 +99,13 @@ void main() {
       receiver,
       contains('TelecomCallManager.rejectIncomingConnection(data)'),
     );
+    final cancelIndex =
+        receiver.indexOf('manager.cancel(callNotificationId(data))');
+    final missingDataReturnIndex =
+        receiver.indexOf('if (sessionId.isEmpty() || actor.isEmpty()) return');
+    expect(cancelIndex, isNonNegative);
+    expect(missingDataReturnIndex, isNonNegative);
+    expect(cancelIndex, lessThan(missingDataReturnIndex));
     expect(connection, contains('IncomingCallAlertManager.stop()'));
   });
 

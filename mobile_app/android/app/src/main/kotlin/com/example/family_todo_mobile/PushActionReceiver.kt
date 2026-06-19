@@ -35,6 +35,9 @@ class PushActionReceiver : BroadcastReceiver() {
     private fun declineIncomingCall(context: Context, data: Map<String, String>) {
         IncomingCallAlertManager.stop()
         TelecomCallManager.rejectIncomingConnection(data)
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.cancel(callNotificationId(data))
+
         val sessionId = data["session_id"]?.trim().orEmpty()
         val actor = (
             data["recipient_profile"]
@@ -43,9 +46,6 @@ class PushActionReceiver : BroadcastReceiver() {
                 ?: ""
             ).trim()
         if (sessionId.isEmpty() || actor.isEmpty()) return
-
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.cancel(callNotificationId(data))
 
         Thread {
             try {
