@@ -300,20 +300,14 @@ void main() {
       );
       expect(
         styles,
-        contains('<item name="android:windowShowWhenLocked">true</item>'),
-      );
-      expect(
-        styles,
-        contains('<item name="android:windowTurnScreenOn">true</item>'),
-      );
-      expect(
-        styles,
         contains('<item name="android:windowFullscreen">true</item>'),
       );
       expect(
         styles,
         contains('<item name="android:windowNoTitle">true</item>'),
       );
+      expect(styles, isNot(contains('android:windowShowWhenLocked')));
+      expect(styles, isNot(contains('android:windowTurnScreenOn')));
 
       expect(service, contains('IncomingCallActivity::class.java'));
       expect(service, contains('if (callAction == "show")'));
