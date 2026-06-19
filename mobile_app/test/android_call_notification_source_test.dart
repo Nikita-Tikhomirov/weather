@@ -490,7 +490,7 @@ void main() {
     },
   );
 
-  test('Android gallery image save preserves decoded original bytes', () {
+  test('Android gallery image save writes decoded gallery-safe bytes', () {
     final mainActivity = File(
       'android/app/src/main/kotlin/com/example/family_todo_mobile/MainActivity.kt',
     ).readAsStringSync();
@@ -506,11 +506,18 @@ void main() {
     expect(mainActivity, contains('outMimeType'));
     expect(mainActivity, contains('Downloaded file is not a supported image'));
     expect(mainActivity, contains('imageFormatForDecodedMime(decodedMime)'));
+    expect(
+      mainActivity,
+      contains('normaliseGalleryImageBytes(bytes, imageFormat)'),
+    );
+    expect(mainActivity, contains('Bitmap.CompressFormat.PNG'));
+    expect(mainActivity, contains('Bitmap.CompressFormat.JPEG'));
+    expect(mainActivity, contains('ByteArrayOutputStream'));
+    expect(mainActivity, contains('bitmap.compress'));
+    expect(mainActivity, contains('Cannot encode gallery image'));
+    expect(mainActivity, contains('Encoded gallery image is empty'));
     expect(mainActivity, contains('return GalleryImage('));
-    expect(mainActivity, contains('bytes,'));
-    expect(mainActivity, contains('imageFormat,'));
-    expect(mainActivity, contains('options.outWidth,'));
-    expect(mainActivity, contains('options.outHeight'));
+    expect(mainActivity, contains('galleryBytes,'));
     expect(mainActivity, contains('options.outWidth'));
     expect(mainActivity, contains('options.outHeight'));
     expect(mainActivity, contains('galleryImage.width'));
@@ -546,27 +553,7 @@ void main() {
     );
     expect(
       mainActivity,
-      isNot(contains('normaliseGalleryImageBytes(')),
-    );
-    expect(
-      mainActivity,
-      isNot(contains('BitmapFactory.decodeByteArray(bytes, 0, bytes.size)\n')),
-    );
-    expect(
-      mainActivity,
-      isNot(contains('NormalisedGalleryImage')),
-    );
-    expect(
-      mainActivity,
-      isNot(contains('Bitmap.CompressFormat')),
-    );
-    expect(
-      mainActivity,
-      isNot(contains('ByteArrayOutputStream')),
-    );
-    expect(
-      mainActivity,
-      isNot(contains('bitmap.compress')),
+      isNot(contains('return GalleryImage(\n            bytes,')),
     );
     expect(
       mainActivity,
