@@ -28,4 +28,26 @@ void main() {
     expect(config['androidAudioStreamType'], 'voiceCall');
     expect(config['androidAudioAttributesUsageType'], 'voiceCommunication');
   });
+
+  test('call audio routing is forced while Android is in communication mode',
+      () {
+    final config = buildCallAndroidAudioConfiguration().toMap();
+
+    expect(config['forceHandleAudioRouting'], isTrue);
+  });
+
+  test('video speaker control never switches to earpiece', () {
+    expect(
+      callSpeakerStateAfterTap(isVideoCall: true, isSpeakerOn: true),
+      isTrue,
+    );
+    expect(
+      callSpeakerStateAfterTap(isVideoCall: true, isSpeakerOn: false),
+      isTrue,
+    );
+    expect(
+      callSpeakerStateAfterTap(isVideoCall: false, isSpeakerOn: true),
+      isFalse,
+    );
+  });
 }

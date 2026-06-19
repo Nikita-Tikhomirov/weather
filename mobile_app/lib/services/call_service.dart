@@ -18,12 +18,31 @@ enum CallState {
 String callSignalingErrorMessage(Object error) =>
     'Call signaling error: $error';
 
+bool isVideoCallType(String callType) =>
+    callType.trim().toLowerCase() == 'video';
+
+bool callSpeakerStateAfterTap({
+  required bool isVideoCall,
+  required bool isSpeakerOn,
+}) {
+  return isVideoCall ? true : !isSpeakerOn;
+}
+
 AndroidAudioConfiguration buildCallAndroidAudioConfiguration() {
-  return AndroidAudioConfiguration.communication;
+  return AndroidAudioConfiguration(
+    manageAudioFocus: true,
+    androidAudioMode: AndroidAudioMode.inCommunication,
+    androidAudioFocusMode: AndroidAudioFocusMode.gain,
+    androidAudioStreamType: AndroidAudioStreamType.voiceCall,
+    androidAudioAttributesUsageType:
+        AndroidAudioAttributesUsageType.voiceCommunication,
+    androidAudioAttributesContentType: AndroidAudioAttributesContentType.speech,
+    forceHandleAudioRouting: true,
+  );
 }
 
 Map<String, dynamic> buildCallMediaConstraints(String callType) {
-  final wantsVideo = callType.trim().toLowerCase() == 'video';
+  final wantsVideo = isVideoCallType(callType);
   return {
     'audio': true,
     'video': wantsVideo
@@ -166,6 +185,9 @@ class CallService {
   final List<RTCIceCandidate> _pendingRemoteCandidates = <RTCIceCandidate>[];
   bool _hasRemoteDescription = false;
   bool _disposed = false;
+  String _currentCallType = 'audio';
+  bool _speakerOn = false;
+  bool _headsetPreferred = false;
 
   CallState _state = CallState.idle;
   CallState get state => _state;
@@ -216,11 +238,14 @@ class CallService {
         _stateController.add(_state);
       }
 
+      _resetAudioRoutePreference(callType);
       await _prepareAudioSession();
+      await _applyCurrentAudioRoute();
 
       // Create peer connection and local stream
       await _createPeerConnection();
       await _openLocalMedia(callType: callType);
+      await _applyCurrentAudioRoute();
 
       // Create and send offer
       final offer = await _pc!.createOffer();
@@ -269,9 +294,12 @@ class CallService {
         _stateController.add(_state);
       }
 
+      _resetAudioRoutePreference(callType);
       await _prepareAudioSession();
+      await _applyCurrentAudioRoute();
       await _createPeerConnection();
       await _openLocalMedia(callType: callType);
+      await _applyCurrentAudioRoute();
 
       // Start polling for offer
       _startSignalPolling();
@@ -393,7 +421,7 @@ class CallService {
   }
 
   Future<void> _openLocalMedia({required String callType}) async {
-    final wantsVideo = callType.trim().toLowerCase() == 'video';
+    final wantsVideo = isVideoCallType(callType);
 
     try {
       _localStream = await navigator.mediaDevices.getUserMedia(
@@ -431,6 +459,24 @@ class CallService {
     }
   }
 
+  void _resetAudioRoutePreference(String callType) {
+    _currentCallType = callType;
+    _speakerOn = isVideoCallType(callType);
+    _headsetPreferred = false;
+  }
+
+  Future<void> _applyCurrentAudioRoute() async {
+    try {
+      if (_headsetPreferred) {
+        await _audioDevice.preferHeadsetOrBluetooth();
+        return;
+      }
+      await _audioDevice.setSpeakerOn(_speakerOn);
+    } catch (_) {
+      // Route changes are best effort; the call itself should keep going.
+    }
+  }
+
   Future<void> _addLocalTracks() async {
     final stream = _localStream;
     final pc = _pc;
@@ -450,11 +496,16 @@ class CallService {
   }
 
   Future<void> setSpeakerOn(bool enabled) async {
-    await _audioDevice.setSpeakerOn(enabled);
+    final nextSpeakerOn = isVideoCallType(_currentCallType) ? true : enabled;
+    _headsetPreferred = false;
+    _speakerOn = nextSpeakerOn;
+    await _applyCurrentAudioRoute();
   }
 
   Future<void> preferHeadsetOrBluetooth() async {
-    await _audioDevice.preferHeadsetOrBluetooth();
+    _headsetPreferred = true;
+    _speakerOn = false;
+    await _applyCurrentAudioRoute();
   }
 
   void _startSignalPolling() {
@@ -540,6 +591,7 @@ class CallService {
     );
 
     _setState(CallState.connected);
+    await _applyCurrentAudioRoute();
   }
 
   Future<void> _handleAnswer(CallSignal signal) async {
@@ -554,6 +606,7 @@ class CallService {
     await _flushPendingRemoteCandidates();
 
     _setState(CallState.connected);
+    await _applyCurrentAudioRoute();
   }
 
   Future<void> _handleIceCandidate(CallSignal signal) async {
@@ -638,5 +691,8 @@ class CallService {
     _currentSession = null;
     _remoteStream = null;
     _signalCursor = '0';
+    _currentCallType = 'audio';
+    _speakerOn = false;
+    _headsetPreferred = false;
   }
 }

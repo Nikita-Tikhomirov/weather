@@ -87,8 +87,7 @@ class _CallScreenState extends State<CallScreen> {
   static const double _localPreviewMargin = 16;
   static const double _controlsReservedHeight = 164;
 
-  bool get _isVideoCall =>
-      widget.session.callType.trim().toLowerCase() == 'video';
+  bool get _isVideoCall => isVideoCallType(widget.session.callType);
 
   @override
   void initState() {
@@ -499,7 +498,10 @@ class _CallScreenState extends State<CallScreen> {
               label: text.speaker,
               onTap: () {
                 setState(() {
-                  _isSpeakerOn = !_isSpeakerOn;
+                  _isSpeakerOn = callSpeakerStateAfterTap(
+                    isVideoCall: _isVideoCall,
+                    isSpeakerOn: _isSpeakerOn,
+                  );
                   if (_isSpeakerOn) {
                     _isHeadsetPreferred = false;
                   }
