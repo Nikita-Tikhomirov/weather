@@ -51,7 +51,51 @@ class FcmPushGatewayTest extends TestCase
     }
 
     #[Test]
-    public function non_chat_pushes_keep_notification_payload_for_system_delivery(): void
+    public function incoming_calls_are_data_only_so_android_can_show_call_ui(): void
+    {
+        config([
+            'push.enabled' => true,
+            'push.fcm.project_id' => 'demo-project',
+            'push.fcm.client_email' => 'demo@example.com',
+            'push.fcm.private_key' => 'configured',
+        ]);
+        Cache::put('push.fcm.oauth_token', 'oauth-token', now()->addMinutes(5));
+
+        Http::fake([
+            'https://fcm.googleapis.com/*' => Http::response(['name' => 'ok'], 200),
+        ]);
+
+        $result = (new FcmPushGateway())->sendToToken(
+            'device-token',
+            'Аудиозвонок',
+            'Входящий звонок от Мармеладка',
+            [
+                'type' => 'call_incoming',
+                'event_id' => 'call-incoming-session-1',
+                'session_id' => 'session-1',
+                'call_type' => 'audio',
+                'caller_profile' => 'marmeladka',
+            ],
+        );
+
+        $this->assertTrue($result['success']);
+        Http::assertSent(function ($request): bool {
+            $payload = $request->data();
+            $message = $payload['message'] ?? [];
+
+            return !array_key_exists('notification', $message)
+                && !array_key_exists('notification', $message['android'] ?? [])
+                && ($message['android']['priority'] ?? '') === 'high'
+                && ($message['android']['ttl'] ?? '') === '60s'
+                && ($message['data']['type'] ?? '') === 'call_incoming'
+                && ($message['data']['title'] ?? '') === 'Аудиозвонок'
+                && ($message['data']['body'] ?? '') === 'Входящий звонок от Мармеладка'
+                && ($message['data']['session_id'] ?? '') === 'session-1';
+        });
+    }
+
+    #[Test]
+    public function task_reminder_pushes_keep_notification_payload_for_system_delivery(): void
     {
         config([
             'push.enabled' => true,

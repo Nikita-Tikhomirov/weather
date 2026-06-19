@@ -54,7 +54,10 @@ class FcmPushGateway implements PushGateway
                 'priority' => 'high',
             ],
         ];
-        if (!$this->isChatMessage($normalizedData)) {
+        if ($this->isIncomingCall($normalizedData)) {
+            $message['android']['ttl'] = '60s';
+        }
+        if (!$this->isNativeHandledPush($normalizedData)) {
             $message['android']['notification'] = [
                 'channel_id' => (string) config('push.fcm.android_channel_id', 'family_updates'),
                 'sound' => 'default',
@@ -172,10 +175,21 @@ class FcmPushGateway implements PushGateway
         return $out;
     }
 
+    private function isNativeHandledPush(array $data): bool
+    {
+        return $this->isChatMessage($data) || $this->isIncomingCall($data);
+    }
+
     private function isChatMessage(array $data): bool
     {
         return ($data['entity'] ?? $data['type'] ?? '') === 'chat_message'
             && trim((string) ($data['conversation_key'] ?? '')) !== '';
+    }
+
+    private function isIncomingCall(array $data): bool
+    {
+        return ($data['entity'] ?? $data['type'] ?? '') === 'call_incoming'
+            && trim((string) ($data['session_id'] ?? '')) !== '';
     }
 
     private function extractErrorText(mixed $json, string $raw): string

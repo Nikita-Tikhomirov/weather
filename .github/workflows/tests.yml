@@ -7,6 +7,7 @@ on:
       - 'mobile_app/**'
       - 'assets/stickers/**'
       - 'backend_api/**'
+      - 'laravel_backend_vps/**'
       - '**.py'
       - '**.dart'
       - '.github/workflows/**'
@@ -54,3 +55,21 @@ jobs:
         timeout-minutes: 5
       - run: python -c "import family_todo; print('family_todo imports OK')" 2>&1 || echo "family_todo not importable"
       - run: python -c "import desktop_app; print('desktop_app imports OK')" 2>&1 || echo "desktop_app not importable"
+
+  laravel-fcm-tests:
+    name: Laravel FCM tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: laravel_backend_vps
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
+      - run: mkdir -p bootstrap/cache
+      - run: php vendor/bin/phpunit --configuration phpunit.xml tests/Unit/FcmPushGatewayTest.php
