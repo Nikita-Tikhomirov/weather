@@ -194,7 +194,7 @@ class FamilyMessagingService : FirebaseMessagingService() {
             val callChannel = NotificationChannel(
                 PUSH_CALL_CHANNEL_ID,
                 "Семейные звонки",
-                NotificationManager.IMPORTANCE_HIGH
+                NotificationManager.IMPORTANCE_MAX
             )
             callChannel.description = "Входящие аудио- и видеозвонки"
             callChannel.setSound(ringtoneUri, callAudioAttributes)

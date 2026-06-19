@@ -18,7 +18,8 @@ void main() {
     expect(manifest, contains('android.permission.USE_FULL_SCREEN_INTENT'));
     expect(payloads, contains('PUSH_CALL_CHANNEL_ID'));
     expect(manifest, contains('android.permission.VIBRATE'));
-    expect(payloads, contains('family_calls_v3'));
+    expect(payloads, contains('family_calls_v4'));
+    expect(payloads, isNot(contains('family_calls_v3')));
     expect(payloads, isNot(contains('family_calls_v2')));
     expect(payloads, contains('PUSH_ACTION_CALL_DECLINE'));
     expect(payloads, contains('isIncomingCallPush'));
@@ -54,10 +55,11 @@ void main() {
       backendPushOutbox,
       isNot(
         contains(
-          r"'channel_id' => $isIncomingCall ? 'family_calls_v3' : 'family_updates'",
+          r"'channel_id' => $isIncomingCall ? 'family_calls_v4' : 'family_updates'",
         ),
       ),
     );
+    expect(backendPushOutbox, isNot(contains("'family_calls_v4'")));
     expect(backendPushOutbox, isNot(contains("'family_calls_v3'")));
   });
 
@@ -174,6 +176,7 @@ void main() {
     expect(manager, contains('canUseCallNotificationChannel'));
     expect(manager, contains('getNotificationChannel(PUSH_CALL_CHANNEL_ID)'));
     expect(manager, contains('NotificationManager.IMPORTANCE_HIGH'));
+    expect(service, contains('NotificationManager.IMPORTANCE_MAX'));
     expect(manager, contains('notificationSettingsIntent'));
     expect(manager, contains('ACTION_APP_NOTIFICATION_SETTINGS'));
     expect(manager, contains('callNotificationChannelSettingsIntent'));

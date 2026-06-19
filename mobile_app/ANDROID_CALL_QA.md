@@ -55,7 +55,7 @@ If the result is still an ordinary notification:
 - Capture diagnostics with:
 
 ```powershell
-& $adb shell dumpsys notification --noredact | findstr /i "family_todo family_calls fullscreen"
+& $adb shell dumpsys notification --noredact | findstr /i "family_todo family_calls_v4 fullscreen"
 & $adb shell dumpsys telecom | findstr /i "Family Todo family_todo"
 ```
 

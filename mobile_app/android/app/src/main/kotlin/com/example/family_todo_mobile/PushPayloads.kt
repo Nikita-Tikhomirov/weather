@@ -8,7 +8,7 @@ const val PUSH_ACTION_CALL_DECLINE = "com.example.family_todo_mobile.action.CALL
 const val PUSH_ACTION_TEST_INCOMING_CALL =
     "com.example.family_todo_mobile.action.TEST_INCOMING_CALL"
 const val PUSH_CHANNEL_ID = "family_updates"
-const val PUSH_CALL_CHANNEL_ID = "family_calls_v3"
+const val PUSH_CALL_CHANNEL_ID = "family_calls_v4"
 const val PUSH_PREFS = "FlutterSharedPreferences"
 
 val pushApiBaseUrl: String get() = BuildConfig.PUSH_API_BASE_URL
