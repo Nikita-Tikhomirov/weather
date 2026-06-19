@@ -31,6 +31,13 @@ class IncomingCallTestReceiver : BroadcastReceiver() {
             "caller_display_name",
             if (callType == "video") "QA Video Call" else "QA Audio Call"
         )
+        val calleeProfile = stringExtra(
+            intent,
+            "callee_profile",
+            stringExtra(intent, "recipient_profile", "qa_callee")
+        )
+        val recipientProfile = stringExtra(intent, "recipient_profile", calleeProfile)
+        val callTitle = if (callType == "video") "Видеозвонок" else "Аудиозвонок"
         return linkedMapOf(
             "entity" to "call_incoming",
             "type" to "call_incoming",
@@ -40,8 +47,11 @@ class IncomingCallTestReceiver : BroadcastReceiver() {
             "caller_profile" to stringExtra(intent, "caller_profile", "qa_caller"),
             "caller_display_name" to callerName,
             "caller_name" to callerName,
+            "callee_profile" to calleeProfile,
+            "recipient_profile" to recipientProfile,
             "call_type" to callType,
-            "title" to callerName,
+            "title" to callTitle,
+            "body" to "Входящий звонок от $callerName",
         )
     }
 

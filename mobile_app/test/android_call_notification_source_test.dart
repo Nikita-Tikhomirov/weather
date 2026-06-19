@@ -407,6 +407,12 @@ void main() {
     expect(receiver, contains('"type" to "call_incoming"'));
     expect(receiver, contains('"session_id"'));
     expect(receiver, contains('"call_type" to callType'));
+    expect(receiver, contains('"caller_display_name" to callerName'));
+    expect(receiver, contains('"caller_name" to callerName'));
+    expect(receiver, contains('"callee_profile"'));
+    expect(receiver, contains('"recipient_profile"'));
+    expect(receiver, contains('"title" to callTitle'));
+    expect(receiver, contains(r'"body" to "Входящий звонок от $callerName"'));
     expect(
       receiver,
       contains('rawCallType.equals("video", ignoreCase = true)'),
