@@ -5,6 +5,8 @@ import android.content.Intent
 const val PUSH_ACTION_OPEN = "com.example.family_todo_mobile.action.OPEN_PUSH"
 const val PUSH_ACTION_MARK_READ = "com.example.family_todo_mobile.action.MARK_READ"
 const val PUSH_ACTION_CALL_DECLINE = "com.example.family_todo_mobile.action.CALL_DECLINE"
+const val PUSH_ACTION_TEST_INCOMING_CALL =
+    "com.example.family_todo_mobile.action.TEST_INCOMING_CALL"
 const val PUSH_CHANNEL_ID = "family_updates"
 const val PUSH_CALL_CHANNEL_ID = "family_calls_v3"
 const val PUSH_PREFS = "FlutterSharedPreferences"

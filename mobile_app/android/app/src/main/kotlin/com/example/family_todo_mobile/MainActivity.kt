@@ -4,6 +4,7 @@ import android.app.KeyguardManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
@@ -17,6 +18,7 @@ import com.google.firebase.installations.FirebaseInstallations
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -407,12 +409,52 @@ class MainActivity : FlutterActivity() {
         }
 
         val imageFormat = imageFormatForDecodedMime(decodedMime)
+        val normalised = normaliseGalleryImageBytes(bytes, imageFormat)
+        val galleryBytes = normalised.bytes
         return GalleryImage(
-            bytes,
-            imageFormat,
-            options.outWidth,
-            options.outHeight
+            galleryBytes,
+            normalised.format,
+            normalised.width,
+            normalised.height
         )
+    }
+
+    private fun normaliseGalleryImageBytes(
+        bytes: ByteArray,
+        sourceFormat: GalleryImageFormat
+    ): NormalisedGalleryImage {
+        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            ?: throw IOException("Downloaded file cannot be decoded")
+        try {
+            val targetFormat = if (sourceFormat.mimeType == "image/png" || bitmap.hasAlpha()) {
+                GalleryImageFormat("image/png", "png")
+            } else {
+                GalleryImageFormat("image/jpeg", "jpg")
+            }
+            val compressFormat = if (targetFormat.mimeType == "image/png") {
+                Bitmap.CompressFormat.PNG
+            } else {
+                Bitmap.CompressFormat.JPEG
+            }
+            val quality = if (compressFormat == Bitmap.CompressFormat.PNG) 100 else 95
+            val galleryBytes = ByteArrayOutputStream().use { output ->
+                if (!bitmap.compress(compressFormat, quality, output)) {
+                    throw IOException("Cannot encode gallery image")
+                }
+                output.toByteArray()
+            }
+            if (galleryBytes.isEmpty()) {
+                throw IOException("Encoded gallery image is empty")
+            }
+            return NormalisedGalleryImage(
+                bytes = galleryBytes,
+                format = targetFormat,
+                width = bitmap.width,
+                height = bitmap.height
+            )
+        } finally {
+            bitmap.recycle()
+        }
     }
 
     private fun imageFormatForDecodedMime(decodedMime: String): GalleryImageFormat {
@@ -505,4 +547,11 @@ private data class GalleryImage(
 private data class GalleryImageFormat(
     val mimeType: String,
     val extension: String
+)
+
+private data class NormalisedGalleryImage(
+    val bytes: ByteArray,
+    val format: GalleryImageFormat,
+    val width: Int,
+    val height: Int
 )

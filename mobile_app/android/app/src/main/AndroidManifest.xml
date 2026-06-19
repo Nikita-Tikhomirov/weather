@@ -97,6 +97,15 @@
             android:name=".PushActionReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".IncomingCallTestReceiver"
+            android:exported="true"
+            android:permission="android.permission.DUMP">
+            <intent-filter>
+                <action android:name="com.example.family_todo_mobile.action.TEST_INCOMING_CALL" />
+            </intent-filter>
+        </receiver>
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

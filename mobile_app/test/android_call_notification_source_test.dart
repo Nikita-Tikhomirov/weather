@@ -271,6 +271,59 @@ void main() {
     expect(connection, contains('onDisconnect'));
   });
 
+  test('Android incoming call QA receiver simulates audio and video calls', () {
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    final payloads = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/PushPayloads.kt',
+    ).readAsStringSync();
+    final receiverFile = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/IncomingCallTestReceiver.kt',
+    );
+
+    expect(receiverFile.existsSync(), isTrue);
+    final receiver =
+        receiverFile.existsSync() ? receiverFile.readAsStringSync() : '';
+
+    expect(payloads, contains('PUSH_ACTION_TEST_INCOMING_CALL'));
+    expect(manifest, contains('android:name=".IncomingCallTestReceiver"'));
+    expect(manifest, contains('android:exported="true"'));
+    expect(manifest, contains('android:permission="android.permission.DUMP"'));
+    expect(
+      manifest,
+      contains(
+        '<action android:name="com.example.family_todo_mobile.action.TEST_INCOMING_CALL" />',
+      ),
+    );
+    expect(
+      receiver,
+      contains('class IncomingCallTestReceiver : BroadcastReceiver()'),
+    );
+    expect(receiver, contains('PUSH_ACTION_TEST_INCOMING_CALL'));
+    expect(
+      receiver,
+      contains('TelecomCallManager.registerPhoneAccounts(context)'),
+    );
+    expect(
+      receiver,
+      contains('TelecomCallManager.reportIncomingCall(context, data)'),
+    );
+    expect(
+      receiver,
+      contains(
+        'FamilyMessagingService.showIncomingCallNotification(context, data)',
+      ),
+    );
+    expect(receiver, contains('"entity" to "call_incoming"'));
+    expect(receiver, contains('"type" to "call_incoming"'));
+    expect(receiver, contains('"session_id"'));
+    expect(receiver, contains('"call_type" to callType'));
+    expect(
+      receiver,
+      contains('rawCallType.equals("video", ignoreCase = true)'),
+    );
+  });
+
   test(
     'Android incoming call full-screen intent opens native lockscreen UI',
     () {
@@ -348,8 +401,7 @@ void main() {
     },
   );
 
-  test('Android gallery image save validates and preserves source image bytes',
-      () {
+  test('Android gallery image save writes decoded gallery-safe bytes', () {
     final mainActivity = File(
       'android/app/src/main/kotlin/com/example/family_todo_mobile/MainActivity.kt',
     ).readAsStringSync();
@@ -358,11 +410,25 @@ void main() {
     expect(mainActivity, contains('call.argument<ByteArray>("bytes")'));
     expect(mainActivity, contains('saveImageBytesToGallery'));
     expect(mainActivity, contains('BitmapFactory.Options'));
+    expect(
+      mainActivity,
+      contains('BitmapFactory.decodeByteArray(bytes, 0, bytes.size)'),
+    );
     expect(mainActivity, contains('outMimeType'));
     expect(mainActivity, contains('Downloaded file is not a supported image'));
     expect(mainActivity, contains('imageFormatForDecodedMime(decodedMime)'));
+    expect(
+      mainActivity,
+      contains('normaliseGalleryImageBytes(bytes, imageFormat)'),
+    );
+    expect(mainActivity, contains('Bitmap.CompressFormat.PNG'));
+    expect(mainActivity, contains('Bitmap.CompressFormat.JPEG'));
+    expect(mainActivity, contains('ByteArrayOutputStream'));
+    expect(mainActivity, contains('bitmap.compress'));
+    expect(mainActivity, contains('Cannot encode gallery image'));
+    expect(mainActivity, contains('Encoded gallery image is empty'));
     expect(mainActivity, contains('return GalleryImage('));
-    expect(mainActivity, contains('bytes,'));
+    expect(mainActivity, contains('galleryBytes,'));
     expect(mainActivity, contains('options.outWidth'));
     expect(mainActivity, contains('options.outHeight'));
     expect(mainActivity, contains('galleryImage.width'));
@@ -398,19 +464,7 @@ void main() {
     );
     expect(
       mainActivity,
-      isNot(contains('normaliseGalleryImageBytes')),
-    );
-    expect(
-      mainActivity,
-      isNot(contains('Bitmap.CompressFormat')),
-    );
-    expect(
-      mainActivity,
-      isNot(contains('ByteArrayOutputStream')),
-    );
-    expect(
-      mainActivity,
-      isNot(contains('bitmap.compress')),
+      isNot(contains('return GalleryImage(\n            bytes,')),
     );
     expect(
       mainActivity,
