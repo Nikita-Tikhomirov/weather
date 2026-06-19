@@ -46,9 +46,18 @@ void main() {
     final backendPushOutbox = backendPushOutboxFile.readAsStringSync();
     expect(backendPushOutbox, contains(r'$isIncomingCall'));
     expect(backendPushOutbox, contains("'ttl' => \$isIncomingCall ? '60s'"));
-    expect(backendPushOutbox, contains("'family_calls_v3'"));
+    expect(backendPushOutbox, contains("'channel_id' => 'family_updates'"));
     expect(backendPushOutbox, isNot(contains("'family_calls_v2'")));
     expect(backendPushOutbox, contains(r'if (!$isIncomingCall)'));
+    expect(
+      backendPushOutbox,
+      isNot(
+        contains(
+          r"'channel_id' => $isIncomingCall ? 'family_calls_v3' : 'family_updates'",
+        ),
+      ),
+    );
+    expect(backendPushOutbox, isNot(contains("'family_calls_v3'")));
   });
 
   test('Android incoming calls play and stop a native ringtone loop', () {

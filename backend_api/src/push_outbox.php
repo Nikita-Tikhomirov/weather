@@ -294,9 +294,6 @@ function send_fcm_notification(array $config, string $token, string $title, stri
             'android' => [
                 'priority' => 'HIGH',
                 'ttl' => $isIncomingCall ? '60s' : '3600s',
-                'notification' => [
-                    'channel_id' => $isIncomingCall ? 'family_calls_v3' : 'family_updates',
-                ],
             ],
         ],
     ];
@@ -304,6 +301,9 @@ function send_fcm_notification(array $config, string $token, string $title, stri
         $payload['message']['notification'] = [
             'title' => $title,
             'body' => $body,
+        ];
+        $payload['message']['android']['notification'] = [
+            'channel_id' => 'family_updates',
         ];
     }
     $ch = curl_init($url);
