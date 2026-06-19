@@ -20,6 +20,9 @@ private const val MANAGED_PHONE_ACCOUNT_ID = "family_todo_managed_calls"
 private const val SELF_MANAGED_PHONE_ACCOUNT_ID = "family_todo_self_managed_calls"
 private const val TELECOM_EXTRA_PREFIX = "family_todo_mobile.push."
 private const val SELF_MANAGED_UI_FALLBACK_DELAY_MS = 1_500L
+private val VIDEO_PHONE_ACCOUNT_CAPABILITIES =
+    PhoneAccount.CAPABILITY_SUPPORTS_VIDEO_CALLING or
+        PhoneAccount.CAPABILITY_VIDEO_CALLING
 
 object TelecomCallManager {
     private val activeConnections = mutableMapOf<String, FamilyCallConnection>()
@@ -259,7 +262,10 @@ object TelecomCallManager {
                 managedPhoneAccountHandle(context),
                 "Family Todo"
             )
-                .setCapabilities(PhoneAccount.CAPABILITY_CALL_PROVIDER)
+                .setCapabilities(
+                    PhoneAccount.CAPABILITY_CALL_PROVIDER or
+                        VIDEO_PHONE_ACCOUNT_CAPABILITIES
+                )
                 .setSupportedUriSchemes(listOf(PhoneAccount.SCHEME_TEL, PhoneAccount.SCHEME_SIP))
                 .setShortDescription("Family Todo")
                 .setIcon(Icon.createWithResource(context, context.applicationInfo.icon))
@@ -276,7 +282,10 @@ object TelecomCallManager {
                 selfManagedPhoneAccountHandle(context),
                 "Family Todo"
             )
-                .setCapabilities(PhoneAccount.CAPABILITY_SELF_MANAGED)
+                .setCapabilities(
+                    PhoneAccount.CAPABILITY_SELF_MANAGED or
+                        VIDEO_PHONE_ACCOUNT_CAPABILITIES
+                )
                 .setSupportedUriSchemes(listOf(PhoneAccount.SCHEME_TEL, PhoneAccount.SCHEME_SIP))
                 .setShortDescription("Family Todo")
                 .setIcon(Icon.createWithResource(context, context.applicationInfo.icon))

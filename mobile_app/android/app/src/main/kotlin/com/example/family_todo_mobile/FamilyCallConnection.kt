@@ -31,7 +31,7 @@ class FamilyCallConnection(
                 VideoProfile.STATE_AUDIO_ONLY
             }
         )
-        setConnectionCapabilities(CAPABILITY_MUTE or CAPABILITY_SUPPORT_HOLD)
+        setConnectionCapabilities(connectionCapabilities(data))
         setRinging()
         TelecomCallManager.trackIncomingConnection(data, this)
     }
@@ -84,6 +84,16 @@ class FamilyCallConnection(
 
     fun hasShownIncomingUi(): Boolean {
         return incomingUiShown
+    }
+
+    private fun connectionCapabilities(data: Map<String, String>): Int {
+        var capabilities = CAPABILITY_MUTE or CAPABILITY_SUPPORT_HOLD
+        if (TelecomCallManager.isVideoCall(data)) {
+            capabilities = capabilities or
+                CAPABILITY_SUPPORTS_VT_LOCAL_BIDIRECTIONAL or
+                CAPABILITY_SUPPORTS_VT_REMOTE_BIDIRECTIONAL
+        }
+        return capabilities
     }
 
     private fun activate(videoState: Int) {

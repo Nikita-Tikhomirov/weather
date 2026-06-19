@@ -10,7 +10,7 @@ class IncomingCallTestReceiver : BroadcastReceiver() {
         val data = incomingCallData(intent)
         TelecomCallManager.registerPhoneAccounts(context)
         if (!TelecomCallManager.reportIncomingCall(context, data)) {
-            FamilyMessagingService.showIncomingCallNotification(context, data)
+            TelecomCallManager.showIncomingCallFallback(context, data)
         }
     }
 

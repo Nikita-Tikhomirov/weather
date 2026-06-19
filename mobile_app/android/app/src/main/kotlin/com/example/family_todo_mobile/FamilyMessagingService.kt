@@ -21,7 +21,7 @@ class FamilyMessagingService : FirebaseMessagingService() {
             isIncomingCallPush(data) -> {
                 TelecomCallManager.registerPhoneAccounts(this)
                 if (!TelecomCallManager.reportIncomingCall(this, data)) {
-                    showIncomingCallNotification(this, data)
+                    TelecomCallManager.showIncomingCallFallback(this, data)
                 }
             }
             isChatPush(data) -> showChatNotification(data)

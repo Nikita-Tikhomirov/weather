@@ -23,6 +23,7 @@ void main() {
     expect(payloads, contains('PUSH_ACTION_CALL_DECLINE'));
     expect(payloads, contains('isIncomingCallPush'));
     expect(service, contains('showIncomingCallNotification'));
+    expect(service, contains('TelecomCallManager.showIncomingCallFallback'));
     expect(service, contains('IncomingCallAlertManager.start(context)'));
     expect(service, contains('NotificationCompat.CATEGORY_CALL'));
     expect(service, contains('NotificationCompat.CallStyle.forIncomingCall'));
@@ -145,12 +146,26 @@ void main() {
     expect(manifest, contains('android.telecom.ConnectionService'));
     expect(service, contains('TelecomCallManager.reportIncomingCall'));
     expect(service, contains('TelecomCallManager.registerPhoneAccounts'));
+    expect(
+      service,
+      contains('TelecomCallManager.showIncomingCallFallback(this, data)'),
+    );
+    final reportIndex =
+        service.indexOf('TelecomCallManager.reportIncomingCall(this, data)');
+    final fallbackIndex = service.indexOf(
+      'TelecomCallManager.showIncomingCallFallback(this, data)',
+    );
+    expect(reportIndex, isNonNegative);
+    expect(fallbackIndex, isNonNegative);
+    expect(reportIndex, lessThan(fallbackIndex));
     expect(manager, contains('addNewIncomingCall'));
     expect(manager, contains('TelecomManager.EXTRA_INCOMING_CALL_ADDRESS'));
     expect(manager, contains('TelecomManager.EXTRA_INCOMING_VIDEO_STATE'));
     expect(manager, contains('activeConnections'));
     expect(manager, contains('PhoneAccount.CAPABILITY_CALL_PROVIDER'));
     expect(manager, contains('PhoneAccount.CAPABILITY_SELF_MANAGED'));
+    expect(manager, contains('PhoneAccount.CAPABILITY_SUPPORTS_VIDEO_CALLING'));
+    expect(manager, contains('PhoneAccount.CAPABILITY_VIDEO_CALLING'));
     expect(manager, contains('TelecomManager.ACTION_CHANGE_PHONE_ACCOUNTS'));
     expect(manager, contains('canUseFullScreenIntent'));
     expect(manager, contains('ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT'));
@@ -266,6 +281,8 @@ void main() {
       connection,
       contains('setConnectionProperties(PROPERTY_SELF_MANAGED)'),
     );
+    expect(connection, contains('CAPABILITY_SUPPORTS_VT_LOCAL_BIDIRECTIONAL'));
+    expect(connection, contains('CAPABILITY_SUPPORTS_VT_REMOTE_BIDIRECTIONAL'));
     expect(connection, contains('onAnswer'));
     expect(connection, contains('onReject'));
     expect(connection, contains('onDisconnect'));
@@ -311,7 +328,7 @@ void main() {
     expect(
       receiver,
       contains(
-        'FamilyMessagingService.showIncomingCallNotification(context, data)',
+        'TelecomCallManager.showIncomingCallFallback(context, data)',
       ),
     );
     expect(receiver, contains('"entity" to "call_incoming"'));
