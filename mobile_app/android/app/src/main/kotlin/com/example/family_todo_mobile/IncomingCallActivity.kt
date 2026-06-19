@@ -29,6 +29,7 @@ class IncomingCallActivity : Activity() {
 
         applyLockscreenFlags()
         TelecomCallManager.registerPhoneAccounts(this)
+        IncomingCallAlertManager.start(this)
         setContentView(buildIncomingCallView(data))
     }
 
@@ -138,6 +139,7 @@ class IncomingCallActivity : Activity() {
     }
 
     private fun acceptCall() {
+        IncomingCallAlertManager.stop()
         TelecomCallManager.answerIncomingConnection(data)
         TelecomCallManager.cancelIncomingCallNotification(this, data)
         TelecomCallManager.openCallActivity(this, data, "accept")
@@ -145,6 +147,7 @@ class IncomingCallActivity : Activity() {
     }
 
     private fun declineCall() {
+        IncomingCallAlertManager.stop()
         TelecomCallManager.rejectIncomingConnection(this, data)
         finish()
     }

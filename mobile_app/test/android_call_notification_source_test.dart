@@ -17,10 +17,13 @@ void main() {
         File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
     expect(manifest, contains('android.permission.USE_FULL_SCREEN_INTENT'));
     expect(payloads, contains('PUSH_CALL_CHANNEL_ID'));
-    expect(payloads, contains('family_calls_v2'));
+    expect(manifest, contains('android.permission.VIBRATE'));
+    expect(payloads, contains('family_calls_v3'));
+    expect(payloads, isNot(contains('family_calls_v2')));
     expect(payloads, contains('PUSH_ACTION_CALL_DECLINE'));
     expect(payloads, contains('isIncomingCallPush'));
     expect(service, contains('showIncomingCallNotification'));
+    expect(service, contains('IncomingCallAlertManager.start(context)'));
     expect(service, contains('NotificationCompat.CATEGORY_CALL'));
     expect(service, contains('NotificationCompat.CallStyle.forIncomingCall'));
     expect(service, contains('Person.Builder'));
@@ -43,8 +46,56 @@ void main() {
     final backendPushOutbox = backendPushOutboxFile.readAsStringSync();
     expect(backendPushOutbox, contains(r'$isIncomingCall'));
     expect(backendPushOutbox, contains("'ttl' => \$isIncomingCall ? '60s'"));
-    expect(backendPushOutbox, contains("'family_calls_v2'"));
+    expect(backendPushOutbox, contains("'family_calls_v3'"));
+    expect(backendPushOutbox, isNot(contains("'family_calls_v2'")));
     expect(backendPushOutbox, contains(r'if (!$isIncomingCall)'));
+  });
+
+  test('Android incoming calls play and stop a native ringtone loop', () {
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    final service = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/FamilyMessagingService.kt',
+    ).readAsStringSync();
+    final manager = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/TelecomCallManager.kt',
+    ).readAsStringSync();
+    final receiver = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/PushActionReceiver.kt',
+    ).readAsStringSync();
+    final activity = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/IncomingCallActivity.kt',
+    ).readAsStringSync();
+    final connection = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/FamilyCallConnection.kt',
+    ).readAsStringSync();
+    final alertManagerFile = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/IncomingCallAlertManager.kt',
+    );
+    expect(alertManagerFile.existsSync(), isTrue);
+    final alertManager = alertManagerFile.existsSync()
+        ? alertManagerFile.readAsStringSync()
+        : '';
+
+    expect(manifest, contains('android.permission.VIBRATE'));
+    expect(alertManager, contains('object IncomingCallAlertManager'));
+    expect(alertManager, contains('MediaPlayer'));
+    expect(alertManager, contains('RingtoneManager.TYPE_RINGTONE'));
+    expect(
+      alertManager,
+      contains('AudioAttributes.USAGE_NOTIFICATION_RINGTONE'),
+    );
+    expect(alertManager, contains('isLooping = true'));
+    expect(alertManager, contains('VibrationEffect.createWaveform'));
+    expect(alertManager, contains('CALL_RING_TIMEOUT_MS'));
+    expect(alertManager, contains('handler.postDelayed(stopRunnable'));
+    expect(alertManager, contains('fun stop()'));
+    expect(service, contains('IncomingCallAlertManager.start(context)'));
+    expect(activity, contains('IncomingCallAlertManager.start(this)'));
+    expect(activity, contains('IncomingCallAlertManager.stop()'));
+    expect(manager, contains('IncomingCallAlertManager.stop()'));
+    expect(receiver, contains('IncomingCallAlertManager.stop()'));
+    expect(connection, contains('IncomingCallAlertManager.stop()'));
   });
 
   test('Android incoming calls are reported to Telecom before fallback UI', () {

@@ -148,23 +148,28 @@ object TelecomCallManager {
     }
 
     fun answerIncomingConnection(data: Map<String, String>) {
+        IncomingCallAlertManager.stop()
         activeConnection(data)?.answerFromNative()
     }
 
     fun rejectIncomingConnection(data: Map<String, String>) {
+        IncomingCallAlertManager.stop()
         activeConnection(data)?.rejectFromNative()
     }
 
     fun rejectIncomingConnection(context: Context, data: Map<String, String>) {
+        IncomingCallAlertManager.stop()
         activeConnection(data)?.rejectFromNative()
         rejectIncomingCall(context, data)
     }
 
     fun endIncomingConnection(data: Map<String, String>) {
+        IncomingCallAlertManager.stop()
         activeConnection(data)?.endFromNative()
     }
 
     fun rejectIncomingCall(context: Context, data: Map<String, String>) {
+        IncomingCallAlertManager.stop()
         val intent = Intent(context, PushActionReceiver::class.java)
             .setAction(PUSH_ACTION_CALL_DECLINE)
             .putPushData(data)
@@ -172,6 +177,7 @@ object TelecomCallManager {
     }
 
     fun cancelIncomingCallNotification(context: Context, data: Map<String, String>) {
+        IncomingCallAlertManager.stop()
         try {
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.cancel(callNotificationId(data))

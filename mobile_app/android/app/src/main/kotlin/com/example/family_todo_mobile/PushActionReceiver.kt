@@ -33,6 +33,7 @@ class PushActionReceiver : BroadcastReceiver() {
     }
 
     private fun declineIncomingCall(context: Context, data: Map<String, String>) {
+        IncomingCallAlertManager.stop()
         val sessionId = data["session_id"]?.trim().orEmpty()
         val actor = (
             data["recipient_profile"]
