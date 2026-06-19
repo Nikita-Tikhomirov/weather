@@ -95,6 +95,10 @@ void main() {
     expect(activity, contains('IncomingCallAlertManager.stop()'));
     expect(manager, contains('IncomingCallAlertManager.stop()'));
     expect(receiver, contains('IncomingCallAlertManager.stop()'));
+    expect(
+      receiver,
+      contains('TelecomCallManager.rejectIncomingConnection(data)'),
+    );
     expect(connection, contains('IncomingCallAlertManager.stop()'));
   });
 
