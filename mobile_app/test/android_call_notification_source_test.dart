@@ -231,6 +231,24 @@ void main() {
       contains('openCallActivity(appContext, data, "accept")'),
     );
     expect(
+      manager,
+      contains('scheduleSelfManagedUiFallback(context, data)'),
+    );
+    expect(manager, contains('Handler(Looper.getMainLooper())'));
+    expect(manager, contains('SELF_MANAGED_UI_FALLBACK_DELAY_MS'));
+    expect(manager, contains('connection.hasShownIncomingUi()'));
+    expect(
+      manager,
+      contains('FamilyMessagingService.showIncomingCallNotification'),
+    );
+    expect(
+      manager,
+      contains('openIncomingCallActivity(appContext, data)'),
+    );
+    expect(connection, contains('private var incomingUiShown = false'));
+    expect(connection, contains('incomingUiShown = true'));
+    expect(connection, contains('fun hasShownIncomingUi(): Boolean'));
+    expect(
       connection,
       contains('setConnectionProperties(PROPERTY_SELF_MANAGED)'),
     );

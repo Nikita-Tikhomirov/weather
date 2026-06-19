@@ -11,6 +11,9 @@ class FamilyCallConnection(
     private val data: Map<String, String>,
     private val isSelfManaged: Boolean,
 ) : Connection() {
+    @Volatile
+    private var incomingUiShown = false
+
     init {
         if (isSelfManaged) {
             setConnectionProperties(PROPERTY_SELF_MANAGED)
@@ -34,6 +37,7 @@ class FamilyCallConnection(
     }
 
     override fun onShowIncomingCallUi() {
+        incomingUiShown = true
         FamilyMessagingService.showIncomingCallNotification(appContext, data)
         TelecomCallManager.openIncomingCallActivity(appContext, data)
     }
@@ -76,6 +80,10 @@ class FamilyCallConnection(
 
     fun endFromNative() {
         disconnectAndDestroy(DisconnectCause.LOCAL)
+    }
+
+    fun hasShownIncomingUi(): Boolean {
+        return incomingUiShown
     }
 
     private fun activate(videoState: Int) {

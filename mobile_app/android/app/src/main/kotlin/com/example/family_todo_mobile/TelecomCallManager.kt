@@ -8,6 +8,8 @@ import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.telecom.PhoneAccount
 import android.telecom.PhoneAccountHandle
@@ -17,6 +19,7 @@ import android.telecom.VideoProfile
 private const val MANAGED_PHONE_ACCOUNT_ID = "family_todo_managed_calls"
 private const val SELF_MANAGED_PHONE_ACCOUNT_ID = "family_todo_self_managed_calls"
 private const val TELECOM_EXTRA_PREFIX = "family_todo_mobile.push."
+private const val SELF_MANAGED_UI_FALLBACK_DELAY_MS = 1_500L
 
 object TelecomCallManager {
     private val activeConnections = mutableMapOf<String, FamilyCallConnection>()
@@ -43,7 +46,11 @@ object TelecomCallManager {
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            return tryAddIncomingCall(telecom, selfManagedPhoneAccountHandle(context), extras)
+            val reported = tryAddIncomingCall(telecom, selfManagedPhoneAccountHandle(context), extras)
+            if (reported) {
+                scheduleSelfManagedUiFallback(context, data)
+            }
+            return reported
         }
         return false
     }
@@ -224,6 +231,16 @@ object TelecomCallManager {
         return synchronized(activeConnections) {
             activeConnections[sessionKey]
         }
+    }
+
+    private fun scheduleSelfManagedUiFallback(context: Context, data: Map<String, String>) {
+        val appContext = context.applicationContext
+        Handler(Looper.getMainLooper()).postDelayed({
+            val connection = activeConnection(data) ?: return@postDelayed
+            if (connection.hasShownIncomingUi()) return@postDelayed
+            FamilyMessagingService.showIncomingCallNotification(appContext, data)
+            openIncomingCallActivity(appContext, data)
+        }, SELF_MANAGED_UI_FALLBACK_DELAY_MS)
     }
 
     private fun callSessionKey(data: Map<String, String>): String? {
