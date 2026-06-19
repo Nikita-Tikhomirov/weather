@@ -228,6 +228,9 @@ class _CallScreenState extends State<CallScreen> {
   }
 
   Future<void> _applyAudioRoute() {
+    if (_isVideoCall) {
+      return widget.callService.setSpeakerOn(true);
+    }
     if (_isHeadsetPreferred) {
       return widget.callService.preferHeadsetOrBluetooth();
     }
@@ -425,6 +428,7 @@ class _CallScreenState extends State<CallScreen> {
     if (_currentState == CallState.ended) {
       return const SizedBox.shrink();
     }
+    final showRouteControls = callShowsRouteControls(widget.session.callType);
 
     return FittedBox(
       fit: BoxFit.scaleDown,
@@ -466,20 +470,22 @@ class _CallScreenState extends State<CallScreen> {
               },
             ),
             const SizedBox(width: 16),
-            // Headset / Bluetooth
-            _CallButton(
-              icon: Icons.headset_mic,
-              color: _isHeadsetPreferred ? Colors.white : Colors.white38,
-              label: text.headset,
-              onTap: () {
-                setState(() {
-                  _isHeadsetPreferred = true;
-                  _isSpeakerOn = false;
-                });
-                unawaited(widget.callService.preferHeadsetOrBluetooth());
-              },
-            ),
-            const SizedBox(width: 16),
+            if (showRouteControls) ...[
+              // Headset / Bluetooth
+              _CallButton(
+                icon: Icons.headset_mic,
+                color: _isHeadsetPreferred ? Colors.white : Colors.white38,
+                label: text.headset,
+                onTap: () {
+                  setState(() {
+                    _isHeadsetPreferred = true;
+                    _isSpeakerOn = false;
+                  });
+                  unawaited(widget.callService.preferHeadsetOrBluetooth());
+                },
+              ),
+              const SizedBox(width: 16),
+            ],
             // End call
             _CallButton(
               icon: Icons.call_end,
@@ -490,25 +496,27 @@ class _CallScreenState extends State<CallScreen> {
               },
               size: 64,
             ),
-            const SizedBox(width: 16),
-            // Speaker
-            _CallButton(
-              icon: _isSpeakerOn ? Icons.volume_up : Icons.volume_down,
-              color: _isSpeakerOn ? Colors.white : Colors.white38,
-              label: text.speaker,
-              onTap: () {
-                setState(() {
-                  _isSpeakerOn = callSpeakerStateAfterTap(
-                    isVideoCall: _isVideoCall,
-                    isSpeakerOn: _isSpeakerOn,
-                  );
-                  if (_isSpeakerOn) {
-                    _isHeadsetPreferred = false;
-                  }
-                });
-                unawaited(widget.callService.setSpeakerOn(_isSpeakerOn));
-              },
-            ),
+            if (showRouteControls) ...[
+              const SizedBox(width: 16),
+              // Speaker
+              _CallButton(
+                icon: _isSpeakerOn ? Icons.volume_up : Icons.volume_down,
+                color: _isSpeakerOn ? Colors.white : Colors.white38,
+                label: text.speaker,
+                onTap: () {
+                  setState(() {
+                    _isSpeakerOn = callSpeakerStateAfterTap(
+                      isVideoCall: _isVideoCall,
+                      isSpeakerOn: _isSpeakerOn,
+                    );
+                    if (_isSpeakerOn) {
+                      _isHeadsetPreferred = false;
+                    }
+                  });
+                  unawaited(widget.callService.setSpeakerOn(_isSpeakerOn));
+                },
+              ),
+            ],
           ],
         ],
       ),

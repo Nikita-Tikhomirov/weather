@@ -100,6 +100,32 @@ class MainActivity : FlutterActivity() {
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
+            "family_todo_mobile/call_audio_route"
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "configureForCall" -> {
+                    CallAudioRouteManager.configureForCall(applicationContext)
+                    result.success(true)
+                }
+                "setSpeakerOn" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    CallAudioRouteManager.setSpeakerOn(applicationContext, enabled)
+                    result.success(true)
+                }
+                "preferHeadsetOrBluetooth" -> {
+                    CallAudioRouteManager.preferHeadsetOrBluetooth(applicationContext)
+                    result.success(true)
+                }
+                "clearCommunicationDevice" -> {
+                    CallAudioRouteManager.clearCommunicationDevice(applicationContext)
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
             "family_todo_mobile/telecom"
         ).setMethodCallHandler { call, result ->
             when (call.method) {

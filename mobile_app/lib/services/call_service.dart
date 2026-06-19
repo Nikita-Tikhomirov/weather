@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../app/app_config.dart';
@@ -27,6 +28,10 @@ bool callSpeakerStateAfterTap({
 }) {
   return isVideoCall ? true : !isSpeakerOn;
 }
+
+bool callCanUseHeadsetRoute(String callType) => !isVideoCallType(callType);
+
+bool callShowsRouteControls(String callType) => !isVideoCallType(callType);
 
 AndroidAudioConfiguration buildCallAndroidAudioConfiguration() {
   return AndroidAudioConfiguration(
@@ -65,11 +70,20 @@ abstract interface class CallAudioDevice {
 }
 
 class WebRtcCallAudioDevice implements CallAudioDevice {
-  const WebRtcCallAudioDevice();
+  const WebRtcCallAudioDevice({
+    MethodChannel nativeAudioRouteChannel = const MethodChannel(
+      'family_todo_mobile/call_audio_route',
+    ),
+  }) : _nativeAudioRouteChannel = nativeAudioRouteChannel;
+
+  final MethodChannel _nativeAudioRouteChannel;
 
   @override
   Future<void> configureForCall(AndroidAudioConfiguration configuration) {
-    return Helper.setAndroidAudioConfiguration(configuration);
+    return _runWebRtcThenNative(
+      () => Helper.setAndroidAudioConfiguration(configuration),
+      'configureForCall',
+    );
   }
 
   @override
@@ -79,17 +93,57 @@ class WebRtcCallAudioDevice implements CallAudioDevice {
 
   @override
   Future<void> setSpeakerOn(bool enabled) {
-    return Helper.setSpeakerphoneOn(enabled);
+    return _runWebRtcThenNative(
+      () => Helper.setSpeakerphoneOn(enabled),
+      'setSpeakerOn',
+      {'enabled': enabled},
+    );
   }
 
   @override
   Future<void> preferHeadsetOrBluetooth() {
-    return Helper.setSpeakerphoneOnButPreferBluetooth();
+    return _runWebRtcThenNative(
+      Helper.setSpeakerphoneOnButPreferBluetooth,
+      'preferHeadsetOrBluetooth',
+    );
   }
 
   @override
   Future<void> clearCommunicationDevice() {
-    return Helper.clearAndroidCommunicationDevice();
+    return _runWebRtcThenNative(
+      Helper.clearAndroidCommunicationDevice,
+      'clearCommunicationDevice',
+    );
+  }
+
+  Future<void> _runWebRtcThenNative(
+    Future<void> Function() webRtcAction,
+    String nativeMethod, [
+    Map<String, Object?> nativeArguments = const <String, Object?>{},
+  ]) async {
+    Object? webRtcError;
+    StackTrace? webRtcStack;
+    try {
+      await webRtcAction();
+    } catch (error, stack) {
+      webRtcError = error;
+      webRtcStack = stack;
+    }
+
+    try {
+      await _nativeAudioRouteChannel.invokeMethod<void>(
+        nativeMethod,
+        nativeArguments,
+      );
+    } on MissingPluginException {
+      // Non-Android targets do not expose the native route channel.
+    } catch (_) {
+      // WebRTC routing still remains the fallback if native routing is absent.
+    }
+
+    if (webRtcError != null) {
+      Error.throwWithStackTrace(webRtcError, webRtcStack!);
+    }
   }
 }
 
@@ -467,6 +521,12 @@ class CallService {
 
   Future<void> _applyCurrentAudioRoute() async {
     try {
+      if (isVideoCallType(_currentCallType)) {
+        _headsetPreferred = false;
+        _speakerOn = true;
+        await _audioDevice.setSpeakerOn(true);
+        return;
+      }
       if (_headsetPreferred) {
         await _audioDevice.preferHeadsetOrBluetooth();
         return;
@@ -503,6 +563,12 @@ class CallService {
   }
 
   Future<void> preferHeadsetOrBluetooth() async {
+    if (!callCanUseHeadsetRoute(_currentCallType)) {
+      _headsetPreferred = false;
+      _speakerOn = true;
+      await _applyCurrentAudioRoute();
+      return;
+    }
     _headsetPreferred = true;
     _speakerOn = false;
     await _applyCurrentAudioRoute();

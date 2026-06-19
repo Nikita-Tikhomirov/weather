@@ -616,4 +616,39 @@ void main() {
     expect(homeChatSection, contains('GalleryImageSaver('));
     expect(homeChatSection, contains('saveNetworkImage(url)'));
   });
+
+  test('Android call audio route is forced with native communication devices',
+      () {
+    final routeManagerFile = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/CallAudioRouteManager.kt',
+    );
+    expect(routeManagerFile.existsSync(), isTrue);
+    final routeManager =
+        routeManagerFile.existsSync() ? routeManagerFile.readAsStringSync() : '';
+    final mainActivity = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/MainActivity.kt',
+    ).readAsStringSync();
+    final callService = File('lib/services/call_service.dart').readAsStringSync();
+
+    expect(mainActivity, contains('"family_todo_mobile/call_audio_route"'));
+    expect(mainActivity, contains('"configureForCall"'));
+    expect(mainActivity, contains('"setSpeakerOn"'));
+    expect(mainActivity, contains('"preferHeadsetOrBluetooth"'));
+    expect(mainActivity, contains('"clearCommunicationDevice"'));
+
+    expect(routeManager, contains('AudioManager.MODE_IN_COMMUNICATION'));
+    expect(routeManager, contains('setCommunicationDevice'));
+    expect(routeManager, contains('TYPE_BUILTIN_SPEAKER'));
+    expect(routeManager, contains('TYPE_BUILTIN_EARPIECE'));
+    expect(routeManager, contains('TYPE_BLUETOOTH_SCO'));
+    expect(routeManager, contains('TYPE_WIRED_HEADSET'));
+    expect(routeManager, contains('REAPPLY_ROUTE_DELAYS_MS'));
+    expect(routeManager, contains('handler.postDelayed'));
+    expect(routeManager, contains('clearCommunicationDevice'));
+
+    expect(callService, contains('MethodChannel'));
+    expect(callService, contains('family_todo_mobile/call_audio_route'));
+    expect(callService, contains("'setSpeakerOn'"));
+    expect(callService, contains('Helper.setSpeakerphoneOn'));
+  });
 }

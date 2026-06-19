@@ -50,4 +50,14 @@ void main() {
       isFalse,
     );
   });
+
+  test('video calls do not expose route switching controls', () {
+    expect(callCanUseHeadsetRoute('video'), isFalse);
+    expect(callCanUseHeadsetRoute(' VIDEO '), isFalse);
+    expect(callCanUseHeadsetRoute('audio'), isTrue);
+    expect(callCanUseHeadsetRoute(''), isTrue);
+
+    expect(callShowsRouteControls('video'), isFalse);
+    expect(callShowsRouteControls('audio'), isTrue);
+  });
 }
