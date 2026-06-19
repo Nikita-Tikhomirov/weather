@@ -292,7 +292,7 @@ void main() {
     },
   );
 
-  test('Android gallery image save validates and normalises bytes for gallery',
+  test('Android gallery image save validates and preserves source image bytes',
       () {
     final mainActivity = File(
       'android/app/src/main/kotlin/com/example/family_todo_mobile/MainActivity.kt',
@@ -305,13 +305,8 @@ void main() {
     expect(mainActivity, contains('outMimeType'));
     expect(mainActivity, contains('Downloaded file is not a supported image'));
     expect(mainActivity, contains('imageFormatForDecodedMime(decodedMime)'));
-    expect(mainActivity, contains('normaliseGalleryImageBytes'));
-    expect(mainActivity, contains('Bitmap.CompressFormat.JPEG'));
-    expect(mainActivity, contains('Bitmap.CompressFormat.PNG'));
-    expect(mainActivity, contains('ByteArrayOutputStream'));
-    expect(mainActivity, contains('bitmap.compress'));
     expect(mainActivity, contains('return GalleryImage('));
-    expect(mainActivity, contains('galleryBytes,'));
+    expect(mainActivity, contains('bytes,'));
     expect(mainActivity, contains('options.outWidth'));
     expect(mainActivity, contains('options.outHeight'));
     expect(mainActivity, contains('galleryImage.width'));
@@ -344,6 +339,22 @@ void main() {
     expect(
       mainActivity,
       isNot(contains('imageFormatForMime(contentType')),
+    );
+    expect(
+      mainActivity,
+      isNot(contains('normaliseGalleryImageBytes')),
+    );
+    expect(
+      mainActivity,
+      isNot(contains('Bitmap.CompressFormat')),
+    );
+    expect(
+      mainActivity,
+      isNot(contains('ByteArrayOutputStream')),
+    );
+    expect(
+      mainActivity,
+      isNot(contains('bitmap.compress')),
     );
     expect(
       mainActivity,
