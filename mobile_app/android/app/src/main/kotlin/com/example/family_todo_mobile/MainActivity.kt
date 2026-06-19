@@ -4,6 +4,7 @@ import android.app.KeyguardManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
@@ -17,6 +18,7 @@ import com.google.firebase.installations.FirebaseInstallations
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -127,6 +129,21 @@ class MainActivity : FlutterActivity() {
                     } catch (_: Exception) {
                         result.success(false)
                     }
+                }
+                "answerIncomingConnection" -> {
+                    val sessionId = call.argument<String>("sessionId").orEmpty()
+                    TelecomCallManager.answerIncomingConnection(mapOf("session_id" to sessionId))
+                    result.success(sessionId.isNotBlank())
+                }
+                "rejectIncomingConnection" -> {
+                    val sessionId = call.argument<String>("sessionId").orEmpty()
+                    TelecomCallManager.rejectIncomingConnection(mapOf("session_id" to sessionId))
+                    result.success(sessionId.isNotBlank())
+                }
+                "endIncomingConnection" -> {
+                    val sessionId = call.argument<String>("sessionId").orEmpty()
+                    TelecomCallManager.endIncomingConnection(mapOf("session_id" to sessionId))
+                    result.success(sessionId.isNotBlank())
                 }
                 else -> result.notImplemented()
             }
@@ -287,6 +304,9 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun writeGalleryImage(galleryImage: GalleryImage) {
+        if (galleryImage.width <= 0 || galleryImage.height <= 0) {
+            throw IOException("Gallery image has invalid dimensions")
+        }
         val filename = "FamilyTodo_${System.currentTimeMillis()}.${galleryImage.format.extension}"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -299,8 +319,9 @@ class MainActivity : FlutterActivity() {
             val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
                 ?: throw IOException("Cannot create gallery image")
             try {
-                contentResolver.openOutputStream(uri)?.use { stream ->
+                contentResolver.openOutputStream(uri, "w")?.use { stream ->
                     stream.write(galleryImage.bytes)
+                    stream.flush()
                 } ?: throw IOException("Cannot open gallery image")
 
                 values.clear()
@@ -388,7 +409,52 @@ class MainActivity : FlutterActivity() {
         }
 
         val imageFormat = imageFormatForDecodedMime(decodedMime)
-        return GalleryImage(bytes, imageFormat)
+        val normalised = normaliseGalleryImageBytes(bytes, imageFormat)
+        val galleryBytes = normalised.bytes
+        return GalleryImage(
+            galleryBytes,
+            normalised.format,
+            normalised.width,
+            normalised.height
+        )
+    }
+
+    private fun normaliseGalleryImageBytes(
+        bytes: ByteArray,
+        sourceFormat: GalleryImageFormat
+    ): NormalisedGalleryImage {
+        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            ?: throw IOException("Downloaded file cannot be decoded")
+        try {
+            val targetFormat = if (sourceFormat.mimeType == "image/png" || bitmap.hasAlpha()) {
+                GalleryImageFormat("image/png", "png")
+            } else {
+                GalleryImageFormat("image/jpeg", "jpg")
+            }
+            val compressFormat = if (targetFormat.mimeType == "image/png") {
+                Bitmap.CompressFormat.PNG
+            } else {
+                Bitmap.CompressFormat.JPEG
+            }
+            val quality = if (compressFormat == Bitmap.CompressFormat.PNG) 100 else 95
+            val galleryBytes = ByteArrayOutputStream().use { output ->
+                if (!bitmap.compress(compressFormat, quality, output)) {
+                    throw IOException("Cannot encode gallery image")
+                }
+                output.toByteArray()
+            }
+            if (galleryBytes.isEmpty()) {
+                throw IOException("Encoded gallery image is empty")
+            }
+            return NormalisedGalleryImage(
+                bytes = galleryBytes,
+                format = targetFormat,
+                width = bitmap.width,
+                height = bitmap.height
+            )
+        } finally {
+            bitmap.recycle()
+        }
     }
 
     private fun imageFormatForDecodedMime(decodedMime: String): GalleryImageFormat {
@@ -473,10 +539,19 @@ private data class ImageDownload(
 
 private data class GalleryImage(
     val bytes: ByteArray,
-    val format: GalleryImageFormat
+    val format: GalleryImageFormat,
+    val width: Int,
+    val height: Int
 )
 
 private data class GalleryImageFormat(
     val mimeType: String,
     val extension: String
+)
+
+private data class NormalisedGalleryImage(
+    val bytes: ByteArray,
+    val format: GalleryImageFormat,
+    val width: Int,
+    val height: Int
 )

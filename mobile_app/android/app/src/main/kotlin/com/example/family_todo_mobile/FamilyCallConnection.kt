@@ -30,6 +30,7 @@ class FamilyCallConnection(
         )
         setConnectionCapabilities(CAPABILITY_MUTE or CAPABILITY_SUPPORT_HOLD)
         setRinging()
+        TelecomCallManager.trackIncomingConnection(data, this)
     }
 
     override fun onShowIncomingCallUi() {
@@ -42,24 +43,49 @@ class FamilyCallConnection(
     }
 
     override fun onAnswer(videoState: Int) {
-        setVideoState(videoState)
-        setActive()
+        activate(videoState)
         TelecomCallManager.openCallActivity(appContext, data, "accept")
     }
 
     override fun onReject() {
-        setDisconnected(DisconnectCause(DisconnectCause.REJECTED))
+        rejectFromNative()
         TelecomCallManager.rejectIncomingCall(appContext, data)
-        destroy()
     }
 
     override fun onDisconnect() {
-        setDisconnected(DisconnectCause(DisconnectCause.LOCAL))
-        destroy()
+        disconnectAndDestroy(DisconnectCause.LOCAL)
     }
 
     override fun onAbort() {
-        setDisconnected(DisconnectCause(DisconnectCause.CANCELED))
+        disconnectAndDestroy(DisconnectCause.CANCELED)
+    }
+
+    fun answerFromNative() {
+        activate(
+            if (TelecomCallManager.isVideoCall(data)) {
+                VideoProfile.STATE_BIDIRECTIONAL
+            } else {
+                VideoProfile.STATE_AUDIO_ONLY
+            }
+        )
+    }
+
+    fun rejectFromNative() {
+        disconnectAndDestroy(DisconnectCause.REJECTED)
+    }
+
+    fun endFromNative() {
+        disconnectAndDestroy(DisconnectCause.LOCAL)
+    }
+
+    private fun activate(videoState: Int) {
+        setVideoState(videoState)
+        setActive()
+    }
+
+    private fun disconnectAndDestroy(causeCode: Int) {
+        setDisconnected(DisconnectCause(causeCode))
+        TelecomCallManager.untrackIncomingConnection(data, this)
         destroy()
     }
 }

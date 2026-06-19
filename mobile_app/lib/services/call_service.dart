@@ -5,6 +5,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../app/app_config.dart';
 import '../models/call_models.dart';
 import 'api_client.dart';
+import 'telecom_call_integration.dart';
 
 enum CallState {
   idle,
@@ -144,11 +145,14 @@ class CallService {
     required this.api,
     required this.actorProfile,
     CallAudioDevice? audioDevice,
-  }) : _audioDevice = audioDevice ?? const WebRtcCallAudioDevice();
+    TelecomCallIntegration telecom = const TelecomCallIntegration(),
+  })  : _audioDevice = audioDevice ?? const WebRtcCallAudioDevice(),
+        _telecom = telecom;
 
   final ApiClient api;
   final String actorProfile;
   final CallAudioDevice _audioDevice;
+  final TelecomCallIntegration _telecom;
 
   RTCPeerConnection? _pc;
   MediaStream? _localStream;
@@ -253,6 +257,7 @@ class CallService {
 
     _setState(CallState.calling);
     _sessionId = sessionId;
+    unawaited(_telecom.answerIncomingConnection(sessionId));
 
     try {
       final session = await api.callAccept(
@@ -284,6 +289,7 @@ class CallService {
 
   /// Reject incoming call
   Future<void> rejectCall(String sessionId) async {
+    unawaited(_telecom.rejectIncomingConnection(sessionId));
     try {
       await api.callReject(
         actorProfile: actorProfile,
@@ -300,6 +306,7 @@ class CallService {
   Future<void> endCall() async {
     final sid = _sessionId;
     if (sid != null) {
+      unawaited(_telecom.endIncomingConnection(sid));
       try {
         await api.callEnd(
           actorProfile: actorProfile,

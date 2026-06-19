@@ -77,6 +77,7 @@ void main() {
     expect(manager, contains('addNewIncomingCall'));
     expect(manager, contains('TelecomManager.EXTRA_INCOMING_CALL_ADDRESS'));
     expect(manager, contains('TelecomManager.EXTRA_INCOMING_VIDEO_STATE'));
+    expect(manager, contains('activeConnections'));
     expect(manager, contains('PhoneAccount.CAPABILITY_CALL_PROVIDER'));
     expect(manager, contains('PhoneAccount.CAPABILITY_SELF_MANAGED'));
     expect(manager, contains('TelecomManager.ACTION_CHANGE_PHONE_ACCOUNTS'));
@@ -110,6 +111,22 @@ void main() {
       manager,
       contains('Intent(context, IncomingCallActivity::class.java)'),
     );
+    expect(
+      manager,
+      contains(
+        'fun trackIncomingConnection(data: Map<String, String>, connection: FamilyCallConnection)',
+      ),
+    );
+    expect(
+      manager,
+      contains('fun answerIncomingConnection(data: Map<String, String>)'),
+    );
+    expect(
+      manager,
+      contains(
+        'fun rejectIncomingConnection(context: Context, data: Map<String, String>)',
+      ),
+    );
     expect(mainActivity, contains('"family_todo_mobile/telecom"'));
     expect(mainActivity, contains('"registerPhoneAccounts"'));
     expect(mainActivity, contains('"isManagedPhoneAccountEnabled"'));
@@ -126,6 +143,13 @@ void main() {
       contains('TelecomCallManager.isSelfManagedPhoneAccount'),
     );
     expect(connectionService, contains('onCreateIncomingConnectionFailed'));
+    expect(
+      connection,
+      contains('TelecomCallManager.trackIncomingConnection(data, this)'),
+    );
+    expect(connection, contains('fun answerFromNative()'));
+    expect(connection, contains('fun rejectFromNative()'));
+    expect(connection, contains('fun endFromNative()'));
     expect(connection, contains('onShowIncomingCallUi'));
     expect(
       connection,
@@ -152,22 +176,27 @@ void main() {
       final service = File(
         'android/app/src/main/kotlin/com/example/family_todo_mobile/FamilyMessagingService.kt',
       ).readAsStringSync();
-    final activity = File(
-      'android/app/src/main/kotlin/com/example/family_todo_mobile/IncomingCallActivity.kt',
-    ).readAsStringSync();
-    final styles =
-        File('android/app/src/main/res/values/styles.xml').readAsStringSync();
+      final activity = File(
+        'android/app/src/main/kotlin/com/example/family_todo_mobile/IncomingCallActivity.kt',
+      ).readAsStringSync();
+      final styles =
+          File('android/app/src/main/res/values/styles.xml').readAsStringSync();
 
-    expect(manifest, contains('android:name=".IncomingCallActivity"'));
-    expect(manifest, contains('android:showWhenLocked="true"'));
-    expect(manifest, contains('android:turnScreenOn="true"'));
-    expect(manifest, contains('android:excludeFromRecents="true"'));
-    expect(manifest, contains('android:exported="false"'));
-    expect(manifest, contains('android:theme="@style/IncomingCallTheme"'));
-    expect(styles, contains('name="IncomingCallTheme"'));
-    expect(styles, contains('<item name="android:windowBackground">@android:color/black</item>'));
+      expect(manifest, contains('android:name=".IncomingCallActivity"'));
+      expect(manifest, contains('android:showWhenLocked="true"'));
+      expect(manifest, contains('android:turnScreenOn="true"'));
+      expect(manifest, contains('android:excludeFromRecents="true"'));
+      expect(manifest, contains('android:exported="false"'));
+      expect(manifest, contains('android:theme="@style/IncomingCallTheme"'));
+      expect(styles, contains('name="IncomingCallTheme"'));
+      expect(
+        styles,
+        contains(
+          '<item name="android:windowBackground">@android:color/black</item>',
+        ),
+      );
 
-    expect(service, contains('IncomingCallActivity::class.java'));
+      expect(service, contains('IncomingCallActivity::class.java'));
       expect(service, contains('if (callAction == "show")'));
       expect(service, contains('setFullScreenIntent(openPendingIntent, true)'));
 
@@ -180,11 +209,15 @@ void main() {
       expect(activity, contains('FLAG_DISMISS_KEYGUARD'));
       expect(
         activity,
+        contains('TelecomCallManager.answerIncomingConnection(data)'),
+      );
+      expect(
+        activity,
         contains('TelecomCallManager.openCallActivity(this, data, "accept")'),
       );
       expect(
         activity,
-        contains('TelecomCallManager.rejectIncomingCall(this, data)'),
+        contains('TelecomCallManager.rejectIncomingConnection(this, data)'),
       );
       expect(
         activity,
@@ -197,8 +230,7 @@ void main() {
     },
   );
 
-  test(
-      'Android gallery image save validates bytes and preserves original bytes',
+  test('Android gallery image save validates and normalises bytes for gallery',
       () {
     final mainActivity = File(
       'android/app/src/main/kotlin/com/example/family_todo_mobile/MainActivity.kt',
@@ -211,8 +243,19 @@ void main() {
     expect(mainActivity, contains('outMimeType'));
     expect(mainActivity, contains('Downloaded file is not a supported image'));
     expect(mainActivity, contains('imageFormatForDecodedMime(decodedMime)'));
-    expect(mainActivity, contains('GalleryImage(bytes, imageFormat)'));
+    expect(mainActivity, contains('normaliseGalleryImageBytes'));
+    expect(mainActivity, contains('Bitmap.CompressFormat.JPEG'));
+    expect(mainActivity, contains('Bitmap.CompressFormat.PNG'));
+    expect(mainActivity, contains('ByteArrayOutputStream'));
+    expect(mainActivity, contains('bitmap.compress'));
+    expect(mainActivity, contains('return GalleryImage('));
+    expect(mainActivity, contains('galleryBytes,'));
+    expect(mainActivity, contains('options.outWidth'));
+    expect(mainActivity, contains('options.outHeight'));
+    expect(mainActivity, contains('galleryImage.width'));
+    expect(mainActivity, contains('galleryImage.height'));
     expect(mainActivity, contains('galleryImage.bytes'));
+    expect(mainActivity, contains('stream.flush()'));
     expect(mainActivity, contains('MediaStore.Images.Media.IS_PENDING'));
     expect(mainActivity, contains('contentResolver.delete'));
     expect(mainActivity, contains('connection.contentType'));
@@ -239,14 +282,6 @@ void main() {
     expect(
       mainActivity,
       isNot(contains('imageFormatForMime(contentType')),
-    );
-    expect(
-      mainActivity,
-      isNot(contains('ByteArrayOutputStream')),
-    );
-    expect(
-      mainActivity,
-      isNot(contains('bitmap.compress')),
     );
     expect(
       mainActivity,

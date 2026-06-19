@@ -138,13 +138,14 @@ class IncomingCallActivity : Activity() {
     }
 
     private fun acceptCall() {
+        TelecomCallManager.answerIncomingConnection(data)
         TelecomCallManager.cancelIncomingCallNotification(this, data)
         TelecomCallManager.openCallActivity(this, data, "accept")
         finish()
     }
 
     private fun declineCall() {
-        TelecomCallManager.rejectIncomingCall(this, data)
+        TelecomCallManager.rejectIncomingConnection(this, data)
         finish()
     }
 

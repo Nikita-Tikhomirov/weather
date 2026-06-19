@@ -27,9 +27,33 @@ class TelecomCallIntegration {
     return _invokeBool('openFullScreenIntentSettings');
   }
 
-  Future<bool> _invokeBool(String method) async {
+  Future<bool> answerIncomingConnection(String sessionId) {
+    return _invokeBool(
+      'answerIncomingConnection',
+      {'sessionId': sessionId},
+    );
+  }
+
+  Future<bool> rejectIncomingConnection(String sessionId) {
+    return _invokeBool(
+      'rejectIncomingConnection',
+      {'sessionId': sessionId},
+    );
+  }
+
+  Future<bool> endIncomingConnection(String sessionId) {
+    return _invokeBool(
+      'endIncomingConnection',
+      {'sessionId': sessionId},
+    );
+  }
+
+  Future<bool> _invokeBool(
+    String method, [
+    Map<String, Object?>? arguments,
+  ]) async {
     try {
-      return await _channel.invokeMethod<bool>(method) ?? false;
+      return await _channel.invokeMethod<bool>(method, arguments) ?? false;
     } on MissingPluginException {
       return false;
     } on PlatformException {

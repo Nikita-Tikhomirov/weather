@@ -19,6 +19,8 @@ private const val SELF_MANAGED_PHONE_ACCOUNT_ID = "family_todo_self_managed_call
 private const val TELECOM_EXTRA_PREFIX = "family_todo_mobile.push."
 
 object TelecomCallManager {
+    private val activeConnections = mutableMapOf<String, FamilyCallConnection>()
+
     fun registerPhoneAccounts(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
         val telecom = context.getSystemService(TelecomManager::class.java) ?: return
@@ -91,6 +93,22 @@ object TelecomCallManager {
         return out
     }
 
+    fun trackIncomingConnection(data: Map<String, String>, connection: FamilyCallConnection) {
+        val sessionKey = callSessionKey(data) ?: return
+        synchronized(activeConnections) {
+            activeConnections[sessionKey] = connection
+        }
+    }
+
+    fun untrackIncomingConnection(data: Map<String, String>, connection: FamilyCallConnection) {
+        val sessionKey = callSessionKey(data) ?: return
+        synchronized(activeConnections) {
+            if (activeConnections[sessionKey] === connection) {
+                activeConnections.remove(sessionKey)
+            }
+        }
+    }
+
     fun openCallActivity(
         context: Context,
         data: Map<String, String>,
@@ -127,6 +145,23 @@ object TelecomCallManager {
             context.startActivity(intent)
         } catch (_: Exception) {
         }
+    }
+
+    fun answerIncomingConnection(data: Map<String, String>) {
+        activeConnection(data)?.answerFromNative()
+    }
+
+    fun rejectIncomingConnection(data: Map<String, String>) {
+        activeConnection(data)?.rejectFromNative()
+    }
+
+    fun rejectIncomingConnection(context: Context, data: Map<String, String>) {
+        activeConnection(data)?.rejectFromNative()
+        rejectIncomingCall(context, data)
+    }
+
+    fun endIncomingConnection(data: Map<String, String>) {
+        activeConnection(data)?.endFromNative()
     }
 
     fun rejectIncomingCall(context: Context, data: Map<String, String>) {
@@ -176,6 +211,18 @@ object TelecomCallManager {
             .replace(Regex("[^A-Za-z0-9_.@-]"), "_")
             .ifBlank { "unknown" }
         return Uri.fromParts(PhoneAccount.SCHEME_SIP, sipName, null)
+    }
+
+    private fun activeConnection(data: Map<String, String>): FamilyCallConnection? {
+        val sessionKey = callSessionKey(data) ?: return null
+        return synchronized(activeConnections) {
+            activeConnections[sessionKey]
+        }
+    }
+
+    private fun callSessionKey(data: Map<String, String>): String? {
+        return data["session_id"]?.trim()?.takeIf { it.isNotEmpty() }
+            ?: data["event_id"]?.trim()?.takeIf { it.isNotEmpty() }
     }
 
     private fun registerManagedPhoneAccount(context: Context, telecom: TelecomManager) {
