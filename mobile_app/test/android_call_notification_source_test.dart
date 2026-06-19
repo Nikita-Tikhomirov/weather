@@ -319,6 +319,47 @@ void main() {
     expect(connection, contains('onDisconnect'));
   });
 
+  test('Android notification accept answers native call before Flutter', () {
+    final service = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/FamilyMessagingService.kt',
+    ).readAsStringSync();
+    final mainActivity = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/MainActivity.kt',
+    ).readAsStringSync();
+
+    expect(service, contains('callAction = "accept"'));
+    expect(service, contains('MainActivity::class.java'));
+    expect(
+      mainActivity,
+      contains('payload["call_action"] == "accept"'),
+    );
+    expect(
+      mainActivity,
+      contains('TelecomCallManager.answerIncomingConnection(payload)'),
+    );
+    expect(
+      mainActivity,
+      contains('TelecomCallManager.cancelIncomingCallNotification(this, payload)'),
+    );
+
+    final acceptGuardIndex =
+        mainActivity.indexOf('payload["call_action"] == "accept"');
+    final answerIndex = mainActivity
+        .indexOf('TelecomCallManager.answerIncomingConnection(payload)');
+    final cancelIndex = mainActivity.indexOf(
+      'TelecomCallManager.cancelIncomingCallNotification(this, payload)',
+    );
+    final pendingIndex = mainActivity.indexOf('pendingPushPayload = payload');
+
+    expect(acceptGuardIndex, isNonNegative);
+    expect(answerIndex, isNonNegative);
+    expect(cancelIndex, isNonNegative);
+    expect(pendingIndex, isNonNegative);
+    expect(acceptGuardIndex, lessThan(answerIndex));
+    expect(answerIndex, lessThan(cancelIndex));
+    expect(cancelIndex, lessThan(pendingIndex));
+  });
+
   test('Android incoming call QA receiver simulates audio and video calls', () {
     final manifest =
         File('android/app/src/main/AndroidManifest.xml').readAsStringSync();

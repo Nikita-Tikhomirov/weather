@@ -278,6 +278,7 @@ class MainActivity : FlutterActivity() {
         val payload = intent.pushData()
         if (payload.isEmpty()) return
         if (isIncomingCallPush(payload) && payload["call_action"] == "accept") {
+            TelecomCallManager.answerIncomingConnection(payload)
             TelecomCallManager.cancelIncomingCallNotification(this, payload)
         }
         pendingPushPayload = payload
