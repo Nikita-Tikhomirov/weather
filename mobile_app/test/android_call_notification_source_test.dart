@@ -298,6 +298,22 @@ void main() {
           '<item name="android:windowBackground">@android:color/black</item>',
         ),
       );
+      expect(
+        styles,
+        contains('<item name="android:windowShowWhenLocked">true</item>'),
+      );
+      expect(
+        styles,
+        contains('<item name="android:windowTurnScreenOn">true</item>'),
+      );
+      expect(
+        styles,
+        contains('<item name="android:windowFullscreen">true</item>'),
+      );
+      expect(
+        styles,
+        contains('<item name="android:windowNoTitle">true</item>'),
+      );
 
       expect(service, contains('IncomingCallActivity::class.java'));
       expect(service, contains('if (callAction == "show")'));
