@@ -43,6 +43,13 @@ class TelecomCallIntegration {
     return _invokeBool('openCallNotificationChannelSettings');
   }
 
+  Future<bool> showIncomingCall(Map<String, dynamic> data) {
+    return _invokeBool(
+      'showIncomingCall',
+      {'data': _stringMap(data)},
+    );
+  }
+
   Future<bool> answerIncomingConnection(String sessionId) {
     return _invokeBool(
       'answerIncomingConnection',
@@ -75,5 +82,15 @@ class TelecomCallIntegration {
     } on PlatformException {
       return false;
     }
+  }
+
+  Map<String, String> _stringMap(Map<String, dynamic> data) {
+    final out = <String, String>{};
+    for (final entry in data.entries) {
+      final key = entry.key.trim();
+      if (key.isEmpty) continue;
+      out[key] = entry.value?.toString() ?? '';
+    }
+    return out;
   }
 }

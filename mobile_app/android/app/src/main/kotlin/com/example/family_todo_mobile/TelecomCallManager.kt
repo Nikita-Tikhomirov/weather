@@ -39,6 +39,7 @@ object TelecomCallManager {
 
     fun reportIncomingCall(context: Context, data: Map<String, String>): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false
+        if (activeConnection(data) != null) return true
         val telecom = context.getSystemService(TelecomManager::class.java) ?: return false
         registerPhoneAccounts(context)
         val extras = incomingCallExtras(data)

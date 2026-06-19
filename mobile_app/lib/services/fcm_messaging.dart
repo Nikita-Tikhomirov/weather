@@ -82,7 +82,7 @@ extension FcmServiceMessaging on FcmService {
     _onMessageSub =
         FirebaseMessaging.onMessage.listen((RemoteMessage msg) async {
       if (isIncomingCallData(msg.data)) {
-        await onOpenPush(msg.data);
+        await const TelecomCallIntegration().showIncomingCall(msg.data);
         return;
       }
 

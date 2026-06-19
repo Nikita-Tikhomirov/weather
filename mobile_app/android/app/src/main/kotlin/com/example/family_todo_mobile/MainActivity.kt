@@ -152,6 +152,18 @@ class MainActivity : FlutterActivity() {
                         result.success(false)
                     }
                 }
+                "showIncomingCall" -> {
+                    val data = stringMapArgument(call.argument<Map<String, Any?>>("data"))
+                    if (isIncomingCallPush(data)) {
+                        TelecomCallManager.registerPhoneAccounts(this)
+                        if (!TelecomCallManager.reportIncomingCall(this, data)) {
+                            TelecomCallManager.showIncomingCallFallback(this, data)
+                        }
+                        result.success(true)
+                    } else {
+                        result.success(false)
+                    }
+                }
                 "answerIncomingConnection" -> {
                     val sessionId = call.argument<String>("sessionId").orEmpty()
                     TelecomCallManager.answerIncomingConnection(mapOf("session_id" to sessionId))
@@ -415,6 +427,16 @@ class MainActivity : FlutterActivity() {
 
     private fun effectivePort(url: URL): Int {
         return if (url.port >= 0) url.port else url.defaultPort
+    }
+
+    private fun stringMapArgument(value: Map<String, Any?>?): Map<String, String> {
+        if (value == null) return emptyMap()
+        return value
+            .mapNotNull { (key, item) ->
+                val cleanKey = key.trim()
+                if (cleanKey.isEmpty()) null else cleanKey to item?.toString().orEmpty()
+            }
+            .toMap()
     }
 
     private fun prepareGalleryImage(bytes: ByteArray, contentType: String?): GalleryImage {

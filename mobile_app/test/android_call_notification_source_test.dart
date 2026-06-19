@@ -319,6 +319,38 @@ void main() {
     expect(connection, contains('onDisconnect'));
   });
 
+  test('Flutter foreground incoming calls are routed to native Telecom UI', () {
+    final fcmMessaging =
+        File('lib/services/fcm_messaging.dart').readAsStringSync();
+    final telecomIntegration =
+        File('lib/services/telecom_call_integration.dart').readAsStringSync();
+    final mainActivity = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/MainActivity.kt',
+    ).readAsStringSync();
+    final manager = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/TelecomCallManager.kt',
+    ).readAsStringSync();
+
+    expect(fcmMessaging, contains('isIncomingCallData(msg.data)'));
+    expect(
+      fcmMessaging,
+      contains('await const TelecomCallIntegration().showIncomingCall(msg.data)'),
+    );
+    expect(telecomIntegration, contains('Future<bool> showIncomingCall'));
+    expect(telecomIntegration, contains("'showIncomingCall'"));
+    expect(telecomIntegration, contains('_stringMap(data)'));
+    expect(mainActivity, contains('"showIncomingCall"'));
+    expect(
+      mainActivity,
+      contains('TelecomCallManager.reportIncomingCall(this, data)'),
+    );
+    expect(
+      mainActivity,
+      contains('TelecomCallManager.showIncomingCallFallback(this, data)'),
+    );
+    expect(manager, contains('if (activeConnection(data) != null) return true'));
+  });
+
   test('Android notification accept answers native call before Flutter', () {
     final service = File(
       'android/app/src/main/kotlin/com/example/family_todo_mobile/FamilyMessagingService.kt',

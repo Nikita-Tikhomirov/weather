@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../features/home/home_helpers.dart'
     show isChatMessageData, isIncomingCallData;
 import 'api_client.dart';
+import 'telecom_call_integration.dart';
 
 part 'fcm_messaging.dart';
 part 'fcm_notifications.dart';
