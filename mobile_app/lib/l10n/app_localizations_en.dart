@@ -1513,10 +1513,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileSystemCallsFullScreenDisabled => 'Allow full-screen alerts for lock-screen calls';
 
   @override
+  String get profileSystemCallsNotificationsDisabled => 'Allow notifications for lock-screen calls';
+
+  @override
   String get profileEnableSystemCalls => 'Enable';
 
   @override
   String get profileAllowSystemCallsFullScreen => 'Allow';
+
+  @override
+  String get profileAllowSystemCallsNotifications => 'Allow notifications';
 
   @override
   String get profileSystemCallsSettingsFailed => 'Could not open system call settings';

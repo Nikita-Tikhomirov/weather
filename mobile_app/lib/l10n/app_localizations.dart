@@ -2891,6 +2891,12 @@ abstract class AppLocalizations {
   /// **'Allow full-screen alerts for lock-screen calls'**
   String get profileSystemCallsFullScreenDisabled;
 
+  /// No description provided for @profileSystemCallsNotificationsDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow notifications for lock-screen calls'**
+  String get profileSystemCallsNotificationsDisabled;
+
   /// No description provided for @profileEnableSystemCalls.
   ///
   /// In en, this message translates to:
@@ -2902,6 +2908,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Allow'**
   String get profileAllowSystemCallsFullScreen;
+
+  /// No description provided for @profileAllowSystemCallsNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow notifications'**
+  String get profileAllowSystemCallsNotifications;
 
   /// No description provided for @profileSystemCallsSettingsFailed.
   ///

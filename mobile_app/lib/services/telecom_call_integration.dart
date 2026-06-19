@@ -27,6 +27,14 @@ class TelecomCallIntegration {
     return _invokeBool('openFullScreenIntentSettings');
   }
 
+  Future<bool> canPostNotifications() {
+    return _invokeBool('canPostNotifications');
+  }
+
+  Future<bool> openNotificationSettings() {
+    return _invokeBool('openNotificationSettings');
+  }
+
   Future<bool> answerIncomingConnection(String sessionId) {
     return _invokeBool(
       'answerIncomingConnection',

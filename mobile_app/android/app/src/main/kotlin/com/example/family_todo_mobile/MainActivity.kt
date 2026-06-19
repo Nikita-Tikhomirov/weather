@@ -130,6 +130,17 @@ class MainActivity : FlutterActivity() {
                         result.success(false)
                     }
                 }
+                "canPostNotifications" -> {
+                    result.success(TelecomCallManager.canPostNotifications(this))
+                }
+                "openNotificationSettings" -> {
+                    try {
+                        startActivity(TelecomCallManager.notificationSettingsIntent(this))
+                        result.success(true)
+                    } catch (_: Exception) {
+                        result.success(false)
+                    }
+                }
                 "answerIncomingConnection" -> {
                     val sessionId = call.argument<String>("sessionId").orEmpty()
                     TelecomCallManager.answerIncomingConnection(mapOf("session_id" to sessionId))

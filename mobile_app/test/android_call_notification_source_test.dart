@@ -169,6 +169,10 @@ void main() {
     expect(manager, contains('TelecomManager.ACTION_CHANGE_PHONE_ACCOUNTS'));
     expect(manager, contains('canUseFullScreenIntent'));
     expect(manager, contains('ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT'));
+    expect(manager, contains('canPostNotifications'));
+    expect(manager, contains('NotificationManagerCompat.from(context)'));
+    expect(manager, contains('notificationSettingsIntent'));
+    expect(manager, contains('ACTION_APP_NOTIFICATION_SETTINGS'));
     expect(
       manager,
       contains('fun isManagedPhoneAccountEnabled(context: Context): Boolean'),
@@ -219,9 +223,15 @@ void main() {
     expect(mainActivity, contains('"openPhoneAccountSettings"'));
     expect(mainActivity, contains('"canUseFullScreenIntent"'));
     expect(mainActivity, contains('"openFullScreenIntentSettings"'));
+    expect(mainActivity, contains('"canPostNotifications"'));
+    expect(mainActivity, contains('"openNotificationSettings"'));
     expect(
       mainActivity,
       contains('TelecomCallManager.phoneAccountSettingsIntent()'),
+    );
+    expect(
+      mainActivity,
+      contains('TelecomCallManager.notificationSettingsIntent(this)'),
     );
     expect(connectionService, contains('onCreateIncomingConnection'));
     expect(

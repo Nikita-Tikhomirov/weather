@@ -15,6 +15,7 @@ import android.telecom.PhoneAccount
 import android.telecom.PhoneAccountHandle
 import android.telecom.TelecomManager
 import android.telecom.VideoProfile
+import androidx.core.app.NotificationManagerCompat
 
 private const val MANAGED_PHONE_ACCOUNT_ID = "family_todo_managed_calls"
 private const val SELF_MANAGED_PHONE_ACCOUNT_ID = "family_todo_self_managed_calls"
@@ -89,6 +90,25 @@ object TelecomCallManager {
             .setData(Uri.parse("package:${context.packageName}"))
             .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    fun canPostNotifications(context: Context): Boolean {
+        return try {
+            NotificationManagerCompat.from(context).areNotificationsEnabled()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun notificationSettingsIntent(context: Context): Intent {
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        } else {
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                .setData(Uri.parse("package:${context.packageName}"))
+        }
+        return intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
 
     fun callDataFromRequest(request: android.telecom.ConnectionRequest): Map<String, String> {
