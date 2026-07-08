@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/chat_models.dart';
 import '../../state/task_store.dart';
+import 'home_chat_action_labels.dart';
 import 'home_helpers.dart';
 
 /// Standalone manager that handles content shared from other Android
@@ -95,7 +96,7 @@ class HomeShareReceiver {
           );
         },
       );
-      if (selected == null) return;
+      if (selected == null || !context.mounted) return;
 
       var conversationKey = selected.conversationKey;
       if (conversationKey.isEmpty) {
@@ -104,7 +105,32 @@ class HomeShareReceiver {
       }
 
       final api = store.repository.api;
+      final l10n = AppLocalizations.of(context);
+      final labels = HomeChatActionLabels(l10n);
+      void showShareFeedback(
+        String message, {
+        Duration duration = const Duration(seconds: 4),
+      }) {
+        if (!context.mounted) return;
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        if (messenger == null) return;
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(message),
+              duration: duration,
+            ),
+          );
+      }
+
+      showShareFeedback(
+        '${l10n?.share ?? labels.share}...',
+        duration: const Duration(seconds: 1),
+      );
+
       try {
+        var sentAny = false;
         if (text.isNotEmpty) {
           await api.chatSendMessage(
             actorProfile: store.owner.value,
@@ -112,6 +138,7 @@ class HomeShareReceiver {
             messageType: 'text',
             text: text,
           );
+          sentAny = true;
         }
         if (imageUris.isNotEmpty) {
           final attachments = <ChatAttachment>[];
@@ -145,6 +172,7 @@ class HomeShareReceiver {
               messageType: attachments.length == 1 ? 'image' : 'image_group',
               attachments: attachments,
             );
+            sentAny = true;
           }
         }
         if (videoUris.isNotEmpty) {
@@ -179,7 +207,11 @@ class HomeShareReceiver {
               messageType: attachments.length == 1 ? 'video' : 'video_group',
               attachments: attachments,
             );
+            sentAny = true;
           }
+        }
+        if (!sentAny) {
+          throw StateError('No shared content was sent');
         }
         setActiveConversation(conversationKey);
         // Mark messages as read
@@ -195,9 +227,10 @@ class HomeShareReceiver {
           useNetwork: true,
           quiet: true,
         );
+        showShareFeedback(labels.forwardedTo(contactLabel(selected)));
       } catch (e, st) {
         debugPrint('[share] share error: $e\n$st');
-        // silently ignore share errors
+        showShareFeedback(labels.forwardFailed(e));
       }
     });
     // Signal to Android that Flutter is ready to receive share data

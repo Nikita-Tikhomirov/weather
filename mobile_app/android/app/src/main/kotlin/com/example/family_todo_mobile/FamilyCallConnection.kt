@@ -97,13 +97,11 @@ class FamilyCallConnection(
     }
 
     private fun activate(videoState: Int) {
-        IncomingCallAlertManager.stop()
         setVideoState(videoState)
         setActive()
     }
 
     private fun disconnectAndDestroy(causeCode: Int) {
-        IncomingCallAlertManager.stop()
         setDisconnected(DisconnectCause(causeCode))
         TelecomCallManager.untrackIncomingConnection(data, this)
         destroy()

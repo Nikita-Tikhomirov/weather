@@ -75,7 +75,6 @@ class FamilyMessagingService : FirebaseMessagingService() {
     companion object {
         fun showIncomingCallNotification(context: Context, data: Map<String, String>) {
             ensureChannels(context)
-            IncomingCallAlertManager.start(context)
             val notificationId = callNotificationId(data)
             val callType = data["call_type"]?.trim()?.lowercase() ?: "audio"
             val isVideo = callType == "video"

@@ -86,8 +86,7 @@ void main() {
     expect(find.text('Изменить фото'), findsNothing);
   });
 
-  testWidgets('opens Android system call account settings when disabled',
-      (tester) async {
+  testWidgets('does not expose Android phone account settings', (tester) async {
     const channel = MethodChannel('family_todo_mobile/telecom');
     final calls = <String>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -96,15 +95,11 @@ void main() {
       switch (call.method) {
         case 'registerPhoneAccounts':
           return true;
-        case 'isManagedPhoneAccountEnabled':
-          return false;
         case 'canUseFullScreenIntent':
           return true;
         case 'canPostNotifications':
           return true;
         case 'canUseCallNotificationChannel':
-          return true;
-        case 'openPhoneAccountSettings':
           return true;
       }
       return null;
@@ -144,17 +139,13 @@ void main() {
 
     expect(find.text('System calls'), findsOneWidget);
     expect(
-      find.text('Enable to show incoming calls on lock screen'),
+      find.text('Incoming calls can use the Android call screen'),
       findsOneWidget,
     );
-    expect(find.text('Enable'), findsOneWidget);
+    expect(find.text('Enable'), findsNothing);
     expect(calls, contains('registerPhoneAccounts'));
-    expect(calls, contains('isManagedPhoneAccountEnabled'));
-
-    await tester.tap(find.text('Enable'));
-    await tester.pump();
-
-    expect(calls, contains('openPhoneAccountSettings'));
+    expect(calls, isNot(contains('isManagedPhoneAccountEnabled')));
+    expect(calls, isNot(contains('openPhoneAccountSettings')));
   });
 
   testWidgets('opens Android full-screen call settings when fullscreen is off',
@@ -166,8 +157,6 @@ void main() {
       calls.add(call.method);
       switch (call.method) {
         case 'registerPhoneAccounts':
-          return true;
-        case 'isManagedPhoneAccountEnabled':
           return true;
         case 'canUseFullScreenIntent':
           return false;
@@ -219,7 +208,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Allow'), findsOneWidget);
-    expect(calls, contains('isManagedPhoneAccountEnabled'));
+    expect(calls, isNot(contains('isManagedPhoneAccountEnabled')));
     expect(calls, contains('canUseFullScreenIntent'));
 
     await tester.tap(find.text('Allow'));
@@ -238,8 +227,6 @@ void main() {
         calls.add(call.method);
         switch (call.method) {
           case 'registerPhoneAccounts':
-            return true;
-          case 'isManagedPhoneAccountEnabled':
             return true;
           case 'canUseFullScreenIntent':
             return true;
@@ -309,8 +296,6 @@ void main() {
         calls.add(call.method);
         switch (call.method) {
           case 'registerPhoneAccounts':
-            return true;
-          case 'isManagedPhoneAccountEnabled':
             return true;
           case 'canUseFullScreenIntent':
             return true;

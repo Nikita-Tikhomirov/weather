@@ -133,18 +133,6 @@ class MainActivity : FlutterActivity() {
                     TelecomCallManager.registerPhoneAccounts(this)
                     result.success(true)
                 }
-                "isManagedPhoneAccountEnabled" -> {
-                    result.success(TelecomCallManager.isManagedPhoneAccountEnabled(this))
-                }
-                "openPhoneAccountSettings" -> {
-                    try {
-                        TelecomCallManager.registerPhoneAccounts(this)
-                        startActivity(TelecomCallManager.phoneAccountSettingsIntent())
-                        result.success(true)
-                    } catch (_: Exception) {
-                        result.success(false)
-                    }
-                }
                 "canUseFullScreenIntent" -> {
                     result.success(TelecomCallManager.canUseFullScreenIntent(this))
                 }

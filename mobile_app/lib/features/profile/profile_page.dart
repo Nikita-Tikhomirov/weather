@@ -42,7 +42,6 @@ class _ProfileText {
   String get systemCallsChannelDisabled =>
       l10n?.profileSystemCallsChannelDisabled ??
       'Allow the call notification channel for lock-screen calls';
-  String get enableSystemCalls => l10n?.profileEnableSystemCalls ?? 'Enable';
   String get allowSystemCallsFullScreen =>
       l10n?.profileAllowSystemCallsFullScreen ?? 'Allow';
   String get allowSystemCallsNotifications =>
@@ -93,7 +92,6 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   final ImagePicker _picker = ImagePicker();
   late TextEditingController _nameCtl;
   String? _avatarUrl;
-  bool? _systemCallAccountEnabled;
   bool? _fullScreenIntentEnabled;
   bool? _notificationsEnabled;
   bool? _callNotificationChannelEnabled;
@@ -123,8 +121,6 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
 
   Future<void> _refreshSystemCallStatus() async {
     await widget.callIntegration.registerPhoneAccounts();
-    final phoneAccountEnabled =
-        await widget.callIntegration.isManagedPhoneAccountEnabled();
     final fullScreenEnabled =
         await widget.callIntegration.canUseFullScreenIntent();
     final notificationsEnabled =
@@ -133,25 +129,10 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
         await widget.callIntegration.canUseCallNotificationChannel();
     if (!mounted) return;
     setState(() {
-      _systemCallAccountEnabled = phoneAccountEnabled;
       _fullScreenIntentEnabled = fullScreenEnabled;
       _notificationsEnabled = notificationsEnabled;
       _callNotificationChannelEnabled = callChannelEnabled;
     });
-  }
-
-  Future<void> _openPhoneAccountSettings() async {
-    await widget.callIntegration.registerPhoneAccounts();
-    final opened = await widget.callIntegration.openPhoneAccountSettings();
-    if (!mounted) return;
-    if (!opened) {
-      final text = _ProfileText(AppLocalizations.of(context));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(text.systemCallsSettingsFailed)),
-      );
-      return;
-    }
-    unawaited(_refreshSystemCallStatus());
   }
 
   Future<void> _openFullScreenIntentSettings() async {
@@ -341,27 +322,23 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   }
 
   bool get _systemCallsLoading =>
-      _systemCallAccountEnabled == null ||
       _fullScreenIntentEnabled == null ||
       _notificationsEnabled == null ||
       _callNotificationChannelEnabled == null;
 
   bool get _systemCallsReady =>
-      _systemCallAccountEnabled == true &&
       _fullScreenIntentEnabled == true &&
       _notificationsEnabled == true &&
       _callNotificationChannelEnabled == true;
 
   String _systemCallsSubtitle(_ProfileText text) {
-    if (_systemCallAccountEnabled == true && _notificationsEnabled == false) {
+    if (_notificationsEnabled == false) {
       return text.systemCallsNotificationsDisabled;
     }
-    if (_systemCallAccountEnabled == true &&
-        _callNotificationChannelEnabled == false) {
+    if (_callNotificationChannelEnabled == false) {
       return text.systemCallsChannelDisabled;
     }
-    if (_systemCallAccountEnabled == true &&
-        _fullScreenIntentEnabled == false) {
+    if (_fullScreenIntentEnabled == false) {
       return text.systemCallsFullScreenDisabled;
     }
     return _systemCallsReady
@@ -370,29 +347,24 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   }
 
   Widget _systemCallsAction(_ProfileText text) {
-    if (_systemCallAccountEnabled == true && _notificationsEnabled == false) {
+    if (_notificationsEnabled == false) {
       return TextButton(
         onPressed: _openNotificationSettings,
         child: Text(text.allowSystemCallsNotifications),
       );
     }
-    if (_systemCallAccountEnabled == true &&
-        _callNotificationChannelEnabled == false) {
+    if (_callNotificationChannelEnabled == false) {
       return TextButton(
         onPressed: _openCallNotificationChannelSettings,
         child: Text(text.allowSystemCallsChannel),
       );
     }
-    if (_systemCallAccountEnabled == true &&
-        _fullScreenIntentEnabled == false) {
+    if (_fullScreenIntentEnabled == false) {
       return TextButton(
         onPressed: _openFullScreenIntentSettings,
         child: Text(text.allowSystemCallsFullScreen),
       );
     }
-    return TextButton(
-      onPressed: _openPhoneAccountSettings,
-      child: Text(text.enableSystemCalls),
-    );
+    return const SizedBox.shrink();
   }
 }

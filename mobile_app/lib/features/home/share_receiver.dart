@@ -71,7 +71,32 @@ extension _ShareReceiverExtension on _HomePageState {
       }
 
       final api = store.repository.api;
+      final l10n = AppLocalizations.of(context);
+      final labels = _chatActionLabels;
+      void showShareFeedback(
+        String message, {
+        Duration duration = const Duration(seconds: 4),
+      }) {
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        if (messenger == null) return;
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(message),
+              duration: duration,
+            ),
+          );
+      }
+
+      showShareFeedback(
+        '${l10n?.share ?? labels.share}...',
+        duration: const Duration(seconds: 1),
+      );
+
       try {
+        var sentAny = false;
         if (text.isNotEmpty) {
           await api.chatSendMessage(
             actorProfile: store.owner.value,
@@ -79,6 +104,7 @@ extension _ShareReceiverExtension on _HomePageState {
             messageType: 'text',
             text: text,
           );
+          sentAny = true;
         }
         if (imageUris.isNotEmpty) {
           final attachments = <ChatAttachment>[];
@@ -112,6 +138,7 @@ extension _ShareReceiverExtension on _HomePageState {
               messageType: attachments.length == 1 ? 'image' : 'image_group',
               attachments: attachments,
             );
+            sentAny = true;
           }
         }
         if (videoUris.isNotEmpty) {
@@ -146,7 +173,11 @@ extension _ShareReceiverExtension on _HomePageState {
               messageType: attachments.length == 1 ? 'video' : 'video_group',
               attachments: attachments,
             );
+            sentAny = true;
           }
+        }
+        if (!sentAny) {
+          throw StateError('No shared content was sent');
         }
         _setActiveConversation(conversationKey);
         // Mark messages as read
@@ -162,9 +193,10 @@ extension _ShareReceiverExtension on _HomePageState {
           useNetwork: true,
           quiet: true,
         );
+        showShareFeedback(labels.forwardedTo(contactLabel(selected)));
       } catch (e, st) {
         debugPrint('[share] share error: $e\n$st');
-        // silently ignore share errors
+        showShareFeedback(labels.forwardFailed(e));
       }
     });
     // Signal to Android that Flutter is ready to receive share data

@@ -3429,6 +3429,31 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  bool _hasBackNavigationTarget(TaskStore store) {
+    return _editingMessageId != null ||
+        _replyToMessage != null ||
+        _activeConversationKey.isNotEmpty ||
+        (_accessPolicy.canUseTaskManager && store.pageIndex.value != 0);
+  }
+
+  void _handleBackNavigation(TaskStore store) {
+    if (_editingMessageId != null) {
+      _cancelChatEdit();
+      return;
+    }
+    if (_replyToMessage != null) {
+      _clearChatReply();
+      return;
+    }
+    if (_activeConversationKey.isNotEmpty) {
+      _clearActiveConversation();
+      return;
+    }
+    if (_accessPolicy.canUseTaskManager && store.pageIndex.value != 0) {
+      store.setPage(0);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = _store;
@@ -3456,111 +3481,121 @@ class _HomePageState extends State<HomePage> {
                     selectedDateKey: selectedDateKey,
                   );
                 }
-                return Scaffold(
-                  appBar: AppBar(
-                    leading: IconButton(
-                      tooltip: labels.profile,
-                      icon: const Icon(Icons.person_outline),
-                      onPressed: _openProfile,
-                    ),
-                    actions: [
-                      if (_accessPolicy.canManageWorkspaceAccess)
-                        IconButton(
-                          tooltip: labels.administration,
-                          icon: const Icon(
-                            Icons.admin_panel_settings_outlined,
+                return ValueListenableBuilder<int>(
+                  valueListenable: store.pageIndex,
+                  builder: (context, page, ____) {
+                    return PopScope(
+                      canPop: !_hasBackNavigationTarget(store),
+                      onPopInvokedWithResult: (didPop, _) {
+                        if (didPop) return;
+                        _handleBackNavigation(store);
+                      },
+                      child: Scaffold(
+                        appBar: AppBar(
+                          leading: IconButton(
+                            tooltip: labels.profile,
+                            icon: const Icon(Icons.person_outline),
+                            onPressed: _openProfile,
                           ),
-                          onPressed: _openAdminAccess,
+                          actions: [
+                            if (_accessPolicy.canManageWorkspaceAccess)
+                              IconButton(
+                                tooltip: labels.administration,
+                                icon: const Icon(
+                                  Icons.admin_panel_settings_outlined,
+                                ),
+                                onPressed: _openAdminAccess,
+                              ),
+                            _themeMenuButton(),
+                            ValueListenableBuilder<bool>(
+                              valueListenable: store.canUndo,
+                              builder: (context, canUndo, _) {
+                                return IconButton(
+                                  tooltip: labels.undoLastAction,
+                                  onPressed: canUndo
+                                      ? () async {
+                                          final messenger =
+                                              ScaffoldMessenger.of(
+                                            this.context,
+                                          );
+                                          final ok =
+                                              await store.undoLastAction();
+                                          if (!mounted) {
+                                            return;
+                                          }
+                                          if (ok) {
+                                            messenger.showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  labels.lastActionUndone,
+                                                ),
+                                              ),
+                                            );
+                                            await _safeSyncDelta(
+                                              store,
+                                              showErrors: false,
+                                            );
+                                          }
+                                        }
+                                      : null,
+                                  icon: const Icon(Icons.undo),
+                                );
+                              },
+                            ),
+                            IconButton(
+                              tooltip: labels.fcmDiagnostics,
+                              icon: const Icon(Icons.bug_report_outlined),
+                              onPressed: _showFcmDiagnosticsDialog,
+                            ),
+                            IconButton(
+                              tooltip: labels.calendar,
+                              icon: const Icon(Icons.calendar_month),
+                              onPressed: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: selectedDate,
+                                  firstDate: DateTime(2024),
+                                  lastDate: DateTime(2035),
+                                );
+                                if (picked != null) {
+                                  store.setSelectedDate(picked);
+                                }
+                              },
+                            ),
+                            IconButton(
+                              tooltip: labels.sync,
+                              icon: const Icon(Icons.sync),
+                              onPressed: () async =>
+                                  _safeSyncFull(store, showErrors: true),
+                            ),
+                          ],
                         ),
-                      _themeMenuButton(),
-                      ValueListenableBuilder<bool>(
-                        valueListenable: store.canUndo,
-                        builder: (context, canUndo, _) {
-                          return IconButton(
-                            tooltip: labels.undoLastAction,
-                            onPressed: canUndo
-                                ? () async {
-                                    final messenger =
-                                        ScaffoldMessenger.of(this.context);
-                                    final ok = await store.undoLastAction();
-                                    if (!mounted) {
-                                      return;
-                                    }
-                                    if (ok) {
-                                      messenger.showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            labels.lastActionUndone,
-                                          ),
+                        body: ActiveCallOverlay(
+                          session: _activeCallSession,
+                          state: _activeCallState,
+                          owner: owner,
+                          profileLabel: _profileLabel,
+                          onOpen: _openActiveCallScreen,
+                          onAccept: _acceptActiveCallFromBanner,
+                          onEnd: _endActiveCallFromBanner,
+                          child: loading
+                              ? const Center(child: CircularProgressIndicator())
+                              : _accessPolicy.canUseTaskManager
+                                  ? switch (page) {
+                                      0 => buildTasksPage(store),
+                                      1 => buildCalendarPage(store),
+                                      _ => buildMessengerPage(
+                                          store,
+                                          compact: true,
                                         ),
-                                      );
-                                      await _safeSyncDelta(
-                                        store,
-                                        showErrors: false,
-                                      );
                                     }
-                                  }
-                                : null,
-                            icon: const Icon(Icons.undo),
-                          );
-                        },
+                                  : buildMessengerPage(store, compact: true),
+                        ),
+                        floatingActionButton: buildFloatingActionButton(store),
+                        bottomNavigationBar: buildNavigationBar(store),
                       ),
-                      IconButton(
-                        tooltip: labels.fcmDiagnostics,
-                        icon: const Icon(Icons.bug_report_outlined),
-                        onPressed: _showFcmDiagnosticsDialog,
-                      ),
-                      IconButton(
-                        tooltip: labels.calendar,
-                        icon: const Icon(Icons.calendar_month),
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: selectedDate,
-                            firstDate: DateTime(2024),
-                            lastDate: DateTime(2035),
-                          );
-                          if (picked != null) {
-                            store.setSelectedDate(picked);
-                          }
-                        },
-                      ),
-                      IconButton(
-                        tooltip: labels.sync,
-                        icon: const Icon(Icons.sync),
-                        onPressed: () async =>
-                            _safeSyncFull(store, showErrors: true),
-                      ),
-                    ],
-                  ),
-                  body: ActiveCallOverlay(
-                    session: _activeCallSession,
-                    state: _activeCallState,
-                    owner: owner,
-                    profileLabel: _profileLabel,
-                    onOpen: _openActiveCallScreen,
-                    onAccept: _acceptActiveCallFromBanner,
-                    onEnd: _endActiveCallFromBanner,
-                    child: loading
-                        ? const Center(child: CircularProgressIndicator())
-                        : ValueListenableBuilder<int>(
-                            valueListenable: store.pageIndex,
-                            builder: (context, page, ____) {
-                              if (!_accessPolicy.canUseTaskManager) {
-                                return buildMessengerPage(store, compact: true);
-                              }
-                              if (page == 0) {
-                                return buildTasksPage(store);
-                              }
-                              if (page == 1) {
-                                return buildCalendarPage(store);
-                              }
-                              return buildMessengerPage(store, compact: true);
-                            },
-                          ),
-                  ),
-                  floatingActionButton: buildFloatingActionButton(store),
-                  bottomNavigationBar: buildNavigationBar(store),
+                    );
+                  },
                 );
               },
             );

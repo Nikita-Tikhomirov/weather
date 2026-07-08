@@ -25,7 +25,7 @@ void main() {
     expect(payloads, contains('isIncomingCallPush'));
     expect(service, contains('showIncomingCallNotification'));
     expect(service, contains('TelecomCallManager.showIncomingCallFallback'));
-    expect(service, contains('IncomingCallAlertManager.start(context)'));
+    expect(service, isNot(contains('IncomingCallAlertManager.start(context)')));
     expect(service, contains('NotificationCompat.CATEGORY_CALL'));
     expect(service, contains('NotificationCompat.CallStyle.forIncomingCall'));
     expect(service, contains('Person.Builder'));
@@ -63,7 +63,7 @@ void main() {
     expect(backendPushOutbox, isNot(contains("'family_calls_v3'")));
   });
 
-  test('Android incoming calls play and stop a native ringtone loop', () {
+  test('Android incoming calls do not start a second native ringtone loop', () {
     final manifest =
         File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
     final service = File(
@@ -84,29 +84,14 @@ void main() {
     final alertManagerFile = File(
       'android/app/src/main/kotlin/com/example/family_todo_mobile/IncomingCallAlertManager.kt',
     );
-    expect(alertManagerFile.existsSync(), isTrue);
-    final alertManager = alertManagerFile.existsSync()
-        ? alertManagerFile.readAsStringSync()
-        : '';
 
     expect(manifest, contains('android.permission.VIBRATE'));
-    expect(alertManager, contains('object IncomingCallAlertManager'));
-    expect(alertManager, contains('MediaPlayer'));
-    expect(alertManager, contains('RingtoneManager.TYPE_RINGTONE'));
-    expect(
-      alertManager,
-      contains('AudioAttributes.USAGE_NOTIFICATION_RINGTONE'),
-    );
-    expect(alertManager, contains('isLooping = true'));
-    expect(alertManager, contains('VibrationEffect.createWaveform'));
-    expect(alertManager, contains('CALL_RING_TIMEOUT_MS'));
-    expect(alertManager, contains('handler.postDelayed(stopRunnable'));
-    expect(alertManager, contains('fun stop()'));
-    expect(service, contains('IncomingCallAlertManager.start(context)'));
-    expect(activity, contains('IncomingCallAlertManager.start(this)'));
-    expect(activity, contains('IncomingCallAlertManager.stop()'));
-    expect(manager, contains('IncomingCallAlertManager.stop()'));
-    expect(receiver, contains('IncomingCallAlertManager.stop()'));
+    expect(service, contains('setSound(ringtoneUri)'));
+    expect(service, contains('NotificationManager.IMPORTANCE_MAX'));
+    expect(alertManagerFile.existsSync(), isFalse);
+    for (final source in [service, manager, receiver, activity, connection]) {
+      expect(source, isNot(contains('IncomingCallAlertManager')));
+    }
     expect(
       receiver,
       contains('TelecomCallManager.rejectIncomingConnection(data)'),
@@ -118,7 +103,6 @@ void main() {
     expect(cancelIndex, isNonNegative);
     expect(missingDataReturnIndex, isNonNegative);
     expect(cancelIndex, lessThan(missingDataReturnIndex));
-    expect(connection, contains('IncomingCallAlertManager.stop()'));
   });
 
   test('Android incoming calls are reported to Telecom before fallback UI', () {
@@ -164,21 +148,31 @@ void main() {
     expect(manager, contains('TelecomManager.EXTRA_INCOMING_CALL_ADDRESS'));
     expect(manager, contains('TelecomManager.EXTRA_INCOMING_VIDEO_STATE'));
     expect(manager, contains('activeConnections'));
-    expect(manager, contains('PhoneAccount.CAPABILITY_CALL_PROVIDER'));
+    expect(manager, isNot(contains('PhoneAccount.CAPABILITY_CALL_PROVIDER')));
     expect(manager, contains('PhoneAccount.CAPABILITY_SELF_MANAGED'));
     expect(manager, contains('PhoneAccount.CAPABILITY_SUPPORTS_VIDEO_CALLING'));
     expect(manager, contains('PhoneAccount.CAPABILITY_VIDEO_CALLING'));
-    expect(manager, contains('TelecomManager.ACTION_CHANGE_PHONE_ACCOUNTS'));
+    expect(manager, contains('unregisterLegacyManagedPhoneAccount'));
+    expect(manager, contains('telecom.unregisterPhoneAccount'));
+    expect(
+      manager,
+      isNot(contains('TelecomManager.ACTION_CHANGE_PHONE_ACCOUNTS')),
+    );
     expect(manager, contains('canUseFullScreenIntent'));
     expect(manager, contains('ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT'));
     expect(manager, contains('canPostNotifications'));
     expect(manager, contains('NotificationManagerCompat.from(context)'));
     expect(manager, contains('canUseCallNotificationChannel'));
     expect(manager, contains('getNotificationChannel(PUSH_CALL_CHANNEL_ID)'));
-    expect(manager, contains('channel.importance >= NotificationManager.IMPORTANCE_MAX'));
     expect(
       manager,
-      isNot(contains('channel.importance >= NotificationManager.IMPORTANCE_HIGH')),
+      contains('channel.importance >= NotificationManager.IMPORTANCE_MAX'),
+    );
+    expect(
+      manager,
+      isNot(
+        contains('channel.importance >= NotificationManager.IMPORTANCE_HIGH'),
+      ),
     );
     expect(service, contains('NotificationManager.IMPORTANCE_MAX'));
     expect(manager, contains('notificationSettingsIntent'));
@@ -186,10 +180,7 @@ void main() {
     expect(manager, contains('callNotificationChannelSettingsIntent'));
     expect(manager, contains('ACTION_CHANNEL_NOTIFICATION_SETTINGS'));
     expect(manager, contains('Settings.EXTRA_CHANNEL_ID'));
-    expect(
-      manager,
-      contains('fun isManagedPhoneAccountEnabled(context: Context): Boolean'),
-    );
+    expect(manager, isNot(contains('isManagedPhoneAccountEnabled')));
     expect(
       manager,
       contains('fun canUseFullScreenIntent(context: Context): Boolean'),
@@ -232,18 +223,15 @@ void main() {
     );
     expect(mainActivity, contains('"family_todo_mobile/telecom"'));
     expect(mainActivity, contains('"registerPhoneAccounts"'));
-    expect(mainActivity, contains('"isManagedPhoneAccountEnabled"'));
-    expect(mainActivity, contains('"openPhoneAccountSettings"'));
+    expect(mainActivity, isNot(contains('"isManagedPhoneAccountEnabled"')));
+    expect(mainActivity, isNot(contains('"openPhoneAccountSettings"')));
     expect(mainActivity, contains('"canUseFullScreenIntent"'));
     expect(mainActivity, contains('"openFullScreenIntentSettings"'));
     expect(mainActivity, contains('"canPostNotifications"'));
     expect(mainActivity, contains('"openNotificationSettings"'));
     expect(mainActivity, contains('"canUseCallNotificationChannel"'));
     expect(mainActivity, contains('"openCallNotificationChannelSettings"'));
-    expect(
-      mainActivity,
-      contains('TelecomCallManager.phoneAccountSettingsIntent()'),
-    );
+    expect(mainActivity, isNot(contains('phoneAccountSettingsIntent')));
     expect(
       mainActivity,
       contains('TelecomCallManager.notificationSettingsIntent(this)'),
@@ -334,7 +322,9 @@ void main() {
     expect(fcmMessaging, contains('isIncomingCallData(msg.data)'));
     expect(
       fcmMessaging,
-      contains('await const TelecomCallIntegration().showIncomingCall(msg.data)'),
+      contains(
+        'await const TelecomCallIntegration().showIncomingCall(msg.data)',
+      ),
     );
     expect(telecomIntegration, contains('Future<bool> showIncomingCall'));
     expect(telecomIntegration, contains("'showIncomingCall'"));
@@ -348,7 +338,10 @@ void main() {
       mainActivity,
       contains('TelecomCallManager.showIncomingCallFallback(this, data)'),
     );
-    expect(manager, contains('if (activeConnection(data) != null) return true'));
+    expect(
+      manager,
+      contains('if (activeConnection(data) != null) return true'),
+    );
   });
 
   test('Android notification accept answers native call before Flutter', () {
@@ -371,7 +364,9 @@ void main() {
     );
     expect(
       mainActivity,
-      contains('TelecomCallManager.cancelIncomingCallNotification(this, payload)'),
+      contains(
+        'TelecomCallManager.cancelIncomingCallNotification(this, payload)',
+      ),
     );
 
     final acceptGuardIndex =
@@ -623,12 +618,14 @@ void main() {
       'android/app/src/main/kotlin/com/example/family_todo_mobile/CallAudioRouteManager.kt',
     );
     expect(routeManagerFile.existsSync(), isTrue);
-    final routeManager =
-        routeManagerFile.existsSync() ? routeManagerFile.readAsStringSync() : '';
+    final routeManager = routeManagerFile.existsSync()
+        ? routeManagerFile.readAsStringSync()
+        : '';
     final mainActivity = File(
       'android/app/src/main/kotlin/com/example/family_todo_mobile/MainActivity.kt',
     ).readAsStringSync();
-    final callService = File('lib/services/call_service.dart').readAsStringSync();
+    final callService =
+        File('lib/services/call_service.dart').readAsStringSync();
 
     expect(mainActivity, contains('"family_todo_mobile/call_audio_route"'));
     expect(mainActivity, contains('"configureForCall"'));

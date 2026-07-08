@@ -11,14 +11,6 @@ class TelecomCallIntegration {
     return _invokeBool('registerPhoneAccounts');
   }
 
-  Future<bool> isManagedPhoneAccountEnabled() {
-    return _invokeBool('isManagedPhoneAccountEnabled');
-  }
-
-  Future<bool> openPhoneAccountSettings() {
-    return _invokeBool('openPhoneAccountSettings');
-  }
-
   Future<bool> canUseFullScreenIntent() {
     return _invokeBool('canUseFullScreenIntent');
   }

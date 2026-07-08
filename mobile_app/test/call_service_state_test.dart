@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:family_todo_mobile/models/call_models.dart';
 import 'package:family_todo_mobile/services/api_client.dart';
@@ -195,5 +196,18 @@ void main() {
       {'sessionId': 'call-native-end'},
     );
     service.dispose();
+  });
+
+  test('cleanup closes native Telecom connection before clearing session id',
+      () {
+    final source = File('lib/services/call_service.dart').readAsStringSync();
+    final cleanup = source.substring(source.indexOf('Future<void> _cleanup'));
+
+    expect(cleanup, contains('final sid = _sessionId;'));
+    expect(cleanup, contains('_telecom.endIncomingConnection(sid)'));
+    expect(
+      cleanup.indexOf('_telecom.endIncomingConnection(sid)'),
+      lessThan(cleanup.indexOf('_sessionId = null;')),
+    );
   });
 }

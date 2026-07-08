@@ -17,7 +17,7 @@ import android.telecom.TelecomManager
 import android.telecom.VideoProfile
 import androidx.core.app.NotificationManagerCompat
 
-private const val MANAGED_PHONE_ACCOUNT_ID = "family_todo_managed_calls"
+private const val LEGACY_MANAGED_PHONE_ACCOUNT_ID = "family_todo_managed_calls"
 private const val SELF_MANAGED_PHONE_ACCOUNT_ID = "family_todo_self_managed_calls"
 private const val TELECOM_EXTRA_PREFIX = "family_todo_mobile.push."
 private const val SELF_MANAGED_UI_FALLBACK_DELAY_MS = 1_500L
@@ -31,7 +31,7 @@ object TelecomCallManager {
     fun registerPhoneAccounts(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
         val telecom = context.getSystemService(TelecomManager::class.java) ?: return
-        registerManagedPhoneAccount(context, telecom)
+        unregisterLegacyManagedPhoneAccount(context, telecom)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             registerSelfManagedPhoneAccount(context, telecom)
         }
@@ -44,12 +44,6 @@ object TelecomCallManager {
         registerPhoneAccounts(context)
         val extras = incomingCallExtras(data)
 
-        if (isManagedPhoneAccountEnabled(context, telecom) &&
-            tryAddIncomingCall(telecom, managedPhoneAccountHandle(context), extras)
-        ) {
-            return true
-        }
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val reported = tryAddIncomingCall(telecom, selfManagedPhoneAccountHandle(context), extras)
             if (reported) {
@@ -58,13 +52,6 @@ object TelecomCallManager {
             return reported
         }
         return false
-    }
-
-    fun isManagedPhoneAccountEnabled(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false
-        val telecom = context.getSystemService(TelecomManager::class.java) ?: return false
-        registerPhoneAccounts(context)
-        return isManagedPhoneAccountEnabled(context, telecom)
     }
 
     fun isSelfManagedPhoneAccount(handle: PhoneAccountHandle): Boolean {
@@ -208,28 +195,23 @@ object TelecomCallManager {
     }
 
     fun answerIncomingConnection(data: Map<String, String>) {
-        IncomingCallAlertManager.stop()
         activeConnection(data)?.answerFromNative()
     }
 
     fun rejectIncomingConnection(data: Map<String, String>) {
-        IncomingCallAlertManager.stop()
         activeConnection(data)?.rejectFromNative()
     }
 
     fun rejectIncomingConnection(context: Context, data: Map<String, String>) {
-        IncomingCallAlertManager.stop()
         activeConnection(data)?.rejectFromNative()
         rejectIncomingCall(context, data)
     }
 
     fun endIncomingConnection(data: Map<String, String>) {
-        IncomingCallAlertManager.stop()
         activeConnection(data)?.endFromNative()
     }
 
     fun rejectIncomingCall(context: Context, data: Map<String, String>) {
-        IncomingCallAlertManager.stop()
         val intent = Intent(context, PushActionReceiver::class.java)
             .setAction(PUSH_ACTION_CALL_DECLINE)
             .putPushData(data)
@@ -237,17 +219,11 @@ object TelecomCallManager {
     }
 
     fun cancelIncomingCallNotification(context: Context, data: Map<String, String>) {
-        IncomingCallAlertManager.stop()
         try {
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.cancel(callNotificationId(data))
         } catch (_: Exception) {
         }
-    }
-
-    fun phoneAccountSettingsIntent(): Intent {
-        return Intent(TelecomManager.ACTION_CHANGE_PHONE_ACCOUNTS)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
 
     fun callerDisplayName(data: Map<String, String>): String {
@@ -300,21 +276,9 @@ object TelecomCallManager {
             ?: data["event_id"]?.trim()?.takeIf { it.isNotEmpty() }
     }
 
-    private fun registerManagedPhoneAccount(context: Context, telecom: TelecomManager) {
+    private fun unregisterLegacyManagedPhoneAccount(context: Context, telecom: TelecomManager) {
         try {
-            val account = PhoneAccount.Builder(
-                managedPhoneAccountHandle(context),
-                "Family Todo"
-            )
-                .setCapabilities(
-                    PhoneAccount.CAPABILITY_CALL_PROVIDER or
-                        VIDEO_PHONE_ACCOUNT_CAPABILITIES
-                )
-                .setSupportedUriSchemes(listOf(PhoneAccount.SCHEME_TEL, PhoneAccount.SCHEME_SIP))
-                .setShortDescription("Family Todo")
-                .setIcon(Icon.createWithResource(context, context.applicationInfo.icon))
-                .build()
-            telecom.registerPhoneAccount(account)
+            telecom.unregisterPhoneAccount(legacyManagedPhoneAccountHandle(context))
         } catch (_: Exception) {
         }
     }
@@ -336,17 +300,6 @@ object TelecomCallManager {
                 .build()
             telecom.registerPhoneAccount(account)
         } catch (_: Exception) {
-        }
-    }
-
-    private fun isManagedPhoneAccountEnabled(
-        context: Context,
-        telecom: TelecomManager,
-    ): Boolean {
-        return try {
-            telecom.getPhoneAccount(managedPhoneAccountHandle(context))?.isEnabled == true
-        } catch (_: Exception) {
-            false
         }
     }
 
@@ -395,8 +348,8 @@ object TelecomCallManager {
         }
     }
 
-    private fun managedPhoneAccountHandle(context: Context): PhoneAccountHandle {
-        return PhoneAccountHandle(connectionServiceName(context), MANAGED_PHONE_ACCOUNT_ID)
+    private fun legacyManagedPhoneAccountHandle(context: Context): PhoneAccountHandle {
+        return PhoneAccountHandle(connectionServiceName(context), LEGACY_MANAGED_PHONE_ACCOUNT_ID)
     }
 
     private fun selfManagedPhoneAccountHandle(context: Context): PhoneAccountHandle {

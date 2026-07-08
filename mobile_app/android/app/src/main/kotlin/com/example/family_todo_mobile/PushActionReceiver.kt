@@ -33,7 +33,6 @@ class PushActionReceiver : BroadcastReceiver() {
     }
 
     private fun declineIncomingCall(context: Context, data: Map<String, String>) {
-        IncomingCallAlertManager.stop()
         TelecomCallManager.rejectIncomingConnection(data)
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.cancel(callNotificationId(data))

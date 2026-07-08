@@ -381,7 +381,7 @@ class CallService {
       // Best-effort
     }
     _setState(CallState.ended);
-    await _cleanup();
+    await _cleanup(notifyNative: false);
   }
 
   /// End active call
@@ -399,7 +399,7 @@ class CallService {
       }
     }
     _setState(CallState.ended);
-    await _cleanup();
+    await _cleanup(notifyNative: false);
   }
 
   /// Called when FCM push indicates incoming call
@@ -714,7 +714,14 @@ class CallService {
     _stateController.add(newState);
   }
 
-  Future<void> _cleanup({bool notifyStreams = true}) async {
+  Future<void> _cleanup({
+    bool notifyStreams = true,
+    bool notifyNative = true,
+  }) async {
+    final sid = _sessionId;
+    if (notifyNative && sid != null && sid.isNotEmpty) {
+      unawaited(_telecom.endIncomingConnection(sid));
+    }
     _signalPoller?.cancel();
     _signalPoller = null;
     _ringingTimer?.cancel();

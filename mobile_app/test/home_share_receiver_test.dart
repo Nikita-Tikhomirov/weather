@@ -151,6 +151,72 @@ void main() {
     expect(find.text('Поделиться текстом'), findsNothing);
     expect(find.text('Отмена'), findsNothing);
   });
+
+  testWidgets('share receiver confirms after selected contact receives content',
+      (tester) async {
+    const channel = MethodChannel('family_todo_mobile/share');
+    final repository = _FakeTaskRepository();
+    final store = TaskStore(
+      repository: repository,
+      domainService: TaskDomainService(),
+    );
+    store.owner.value = 'nik';
+    addTearDown(store.dispose);
+
+    late BuildContext receiverContext;
+    var activeConversation = '';
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) {
+              receiverContext = context;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
+    );
+
+    HomeShareReceiver(store: store).initShareReceiver(
+      context: receiverContext,
+      getAllContacts: (_) => const [
+        ChatContact(
+          profileKey: 'mia',
+          displayName: 'Mia',
+          phone: '',
+          conversationKey: 'dm:mia:nik',
+        ),
+      ],
+      setActiveConversation: (key) => activeConversation = key,
+      refreshConversation: (
+        _,
+        __, {
+        required quiet,
+        required useNetwork,
+      }) async {},
+    );
+
+    unawaited(
+      _simulateIncomingShare(
+        tester,
+        channel,
+        const <String, Object?>{'text': 'hello'},
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mia'));
+    await tester.pumpAndSettle();
+
+    expect(repository.fakeApi.sentTexts, ['hello']);
+    expect(activeConversation, 'dm:mia:nik');
+    expect(find.text('Forwarded to Mia'), findsOneWidget);
+  });
 }
 
 Future<void> _simulateIncomingShare(
@@ -217,4 +283,36 @@ class _FakeTaskRepository implements TaskRepository {
 
 class _FakeApiClient extends ApiClient {
   _FakeApiClient() : super(baseUrl: 'http://localhost', apiKey: 'test');
+
+  final sentTexts = <String>[];
+
+  @override
+  Future<ChatMessage> chatSendMessage({
+    required String actorProfile,
+    required String conversationKey,
+    required String messageType,
+    String text = '',
+    String? stickerId,
+    String? imageUrl,
+    Map<String, dynamic>? imageMeta,
+    List<ChatAttachment> attachments = const [],
+    String? clientMessageId,
+  }) async {
+    sentTexts.add(text);
+    return ChatMessage(
+      id: 'msg-${sentTexts.length}',
+      conversationKey: conversationKey,
+      senderProfile: actorProfile,
+      messageType: messageType,
+      text: text,
+      createdAt: '2026-07-08T12:00:00Z',
+      attachments: attachments,
+    );
+  }
+
+  @override
+  Future<void> chatMarkRead({
+    required String actorProfile,
+    required String conversationKey,
+  }) async {}
 }
