@@ -273,7 +273,9 @@ jobs:
 
       - name: Rename artifact
         run: |
-          cp /tmp/family_todo_mobile/build/app/outputs/flutter-apk/app-release.apk /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk
+          mkdir -p /tmp/family_todo_mobile/apk-artifacts
+          cp /tmp/family_todo_mobile/build/app/outputs/flutter-apk/app-release.apk \
+            /tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk
 
       - name: Build no-conflict install APK
         timeout-minutes: 20
@@ -343,9 +345,9 @@ jobs:
             exit 1
           fi
 
-          mkdir -p /tmp/family_todo_mobile/build/app/outputs/flutter-apk
+          mkdir -p /tmp/family_todo_mobile/apk-artifacts
           cp "$INSTALLABLE_APK_PATH" \
-            /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-installable.apk
+            /tmp/family_todo_mobile/apk-artifacts/family-todo-installable.apk
 
       - name: Verify APK package ids
         shell: bash
@@ -379,17 +381,17 @@ jobs:
           }
 
           verify_package \
-            /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk \
+            /tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk \
             com.example.family_todo_mobile
           verify_package \
-            /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-installable.apk \
+            /tmp/family_todo_mobile/apk-artifacts/family-todo-installable.apk \
             com.example.family_todo_mobile.installable
 
       - name: Verify APK signing fingerprint
         shell: bash
         run: |
           set -euo pipefail
-          APK_PATH="/tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk"
+          APK_PATH="/tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk"
           # Find apksigner only inside Android build-tools. Scanning $HOME can
           # walk large tool caches on GitHub runners and stall this step.
           APKSIGNER=""
@@ -428,8 +430,8 @@ jobs:
         with:
           name: family-todo-release-apk
           path: |
-            /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk
-            /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-installable.apk
+            /tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk
+            /tmp/family_todo_mobile/apk-artifacts/family-todo-installable.apk
 
       - name: Publish GitHub Release
         id: release
@@ -439,16 +441,16 @@ jobs:
           tag_name: mobile-v${{ github.run_number }}
           name: Mobile APK v${{ github.run_number }}
           files: |
-            /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk
-            /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-installable.apk
+            /tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk
+            /tmp/family_todo_mobile/apk-artifacts/family-todo-installable.apk
           generate_release_notes: true
 
       - name: Update latest tag and release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          APK="/tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk"
-          INSTALLABLE_APK="/tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-installable.apk"
+          APK="/tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk"
+          INSTALLABLE_APK="/tmp/family_todo_mobile/apk-artifacts/family-todo-installable.apk"
 
           # If the versioned release step failed, create it now via gh CLI
           if [ "${{ steps.release.outcome }}" != "success" ]; then

@@ -49,9 +49,10 @@ void main() {
     expect(workflow, contains("package: name='"));
     expect(workflow, contains('INSTALLABLE_APK_PATH'));
     expect(workflow, contains('Detected installable APK candidates'));
+    expect(workflow, contains('/tmp/family_todo_mobile/apk-artifacts'));
     expect(
       workflow,
-      contains('mkdir -p /tmp/family_todo_mobile/build/app/outputs/flutter-apk'),
+      contains('mkdir -p /tmp/family_todo_mobile/apk-artifacts'),
     );
     expect(workflow, contains('APPLICATION_ID: com.example.family_todo_mobile'));
     expect(
