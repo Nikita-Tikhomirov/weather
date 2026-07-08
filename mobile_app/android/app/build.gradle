@@ -37,6 +37,14 @@ def buildConfigString = { value ->
 }
 def pushApiBaseUrl = requiredReleaseValue("API_BASE_URL", "http://31.129.97.211")
 def pushApiKey = requiredReleaseValue("API_KEY", "dev-local-key")
+def appApplicationId = envOrProperty("APPLICATION_ID")
+if (appApplicationId.isEmpty()) {
+    appApplicationId = "com.example.family_todo_mobile"
+}
+def appLabel = envOrProperty("APP_LABEL")
+if (appLabel.isEmpty()) {
+    appLabel = "Family Todo"
+}
 
 android {
     namespace "com.example.family_todo_mobile"
@@ -70,11 +78,12 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.example.family_todo_mobile"
+        applicationId appApplicationId
         minSdkVersion flutter.minSdkVersion
         targetSdk 36
         versionCode releaseVersionCode
         versionName releaseVersionName
+        resValue "string", "app_name", appLabel
         buildConfigField "String", "PUSH_API_BASE_URL", buildConfigString(pushApiBaseUrl)
         buildConfigField "String", "PUSH_API_KEY", buildConfigString(pushApiKey)
     }
