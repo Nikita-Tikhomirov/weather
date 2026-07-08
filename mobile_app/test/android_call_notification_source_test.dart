@@ -648,4 +648,49 @@ void main() {
     expect(callService, contains("'setSpeakerOn'"));
     expect(callService, contains('Helper.setSpeakerphoneOn'));
   });
+
+  test('Android video calls force speaker routing through Telecom', () {
+    final connection = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/FamilyCallConnection.kt',
+    ).readAsStringSync();
+    final routeManager = File(
+      'android/app/src/main/kotlin/com/example/family_todo_mobile/CallAudioRouteManager.kt',
+    ).readAsStringSync();
+    final callService =
+        File('lib/services/call_service.dart').readAsStringSync();
+
+    expect(connection, contains('import android.telecom.CallAudioState'));
+    expect(connection, contains('onAnswer(videoStateForCall())'));
+    expect(
+      connection,
+      isNot(contains('onAnswer(VideoProfile.STATE_AUDIO_ONLY)')),
+    );
+    expect(connection, contains('override fun onCallAudioStateChanged'));
+    expect(connection, contains('CallAudioState.ROUTE_SPEAKER'));
+    expect(connection, contains('setAudioRoute(CallAudioState.ROUTE_SPEAKER)'));
+    expect(connection, contains('forceVideoSpeakerRoute()'));
+    expect(
+      connection,
+      contains('CallAudioRouteManager.setSpeakerOn(appContext, true)'),
+    );
+
+    expect(routeManager, contains('3_000L'));
+    expect(routeManager, contains('5_000L'));
+    expect(routeManager, contains('8_000L'));
+    expect(
+      callService,
+      contains(
+        '_remoteStreamController.add(_remoteStream);\n'
+        '      }\n'
+        '      unawaited(_applyCurrentAudioRoute());',
+      ),
+    );
+    expect(
+      callService,
+      contains(
+        '_disconnectTimer = null;\n'
+        '        unawaited(_applyCurrentAudioRoute());',
+      ),
+    );
+  });
 }

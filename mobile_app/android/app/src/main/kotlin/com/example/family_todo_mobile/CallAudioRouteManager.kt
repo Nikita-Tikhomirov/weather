@@ -7,7 +7,8 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 
-private val REAPPLY_ROUTE_DELAYS_MS = longArrayOf(200L, 700L, 1_500L)
+private val REAPPLY_ROUTE_DELAYS_MS =
+    longArrayOf(200L, 700L, 1_500L, 3_000L, 5_000L, 8_000L)
 
 object CallAudioRouteManager {
     private enum class Route {
@@ -103,6 +104,7 @@ object CallAudioRouteManager {
 
     private fun routeToSpeaker(audio: AudioManager) {
         stopBluetoothSco(audio)
+        setSpeakerphone(audio, true)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val speaker = audio.availableCommunicationDevices.firstOrNull {
                 it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER

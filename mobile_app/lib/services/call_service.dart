@@ -448,12 +448,14 @@ class CallService {
       if (!_disposed && !_remoteStreamController.isClosed) {
         _remoteStreamController.add(_remoteStream);
       }
+      unawaited(_applyCurrentAudioRoute());
     };
 
     _pc!.onConnectionState = (state) {
       if (state == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
         _disconnectTimer?.cancel();
         _disconnectTimer = null;
+        unawaited(_applyCurrentAudioRoute());
       }
       if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed ||
           state == RTCPeerConnectionState.RTCPeerConnectionStateClosed) {

@@ -1,6 +1,8 @@
 package com.example.family_todo_mobile
 
 import android.content.Context
+import android.os.Build
+import android.telecom.CallAudioState
 import android.telecom.Connection
 import android.telecom.DisconnectCause
 import android.telecom.TelecomManager
@@ -24,13 +26,7 @@ class FamilyCallConnection(
             TelecomManager.PRESENTATION_ALLOWED
         )
         setAudioModeIsVoip(true)
-        setVideoState(
-            if (TelecomCallManager.isVideoCall(data)) {
-                VideoProfile.STATE_BIDIRECTIONAL
-            } else {
-                VideoProfile.STATE_AUDIO_ONLY
-            }
-        )
+        setVideoState(videoStateForCall())
         setConnectionCapabilities(connectionCapabilities(data))
         setRinging()
         TelecomCallManager.trackIncomingConnection(data, this)
@@ -43,12 +39,23 @@ class FamilyCallConnection(
     }
 
     override fun onAnswer() {
-        onAnswer(VideoProfile.STATE_AUDIO_ONLY)
+        onAnswer(videoStateForCall())
     }
 
     override fun onAnswer(videoState: Int) {
         activate(videoState)
         TelecomCallManager.openCallActivity(appContext, data, "accept")
+    }
+
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+    override fun onCallAudioStateChanged(state: CallAudioState) {
+        super.onCallAudioStateChanged(state)
+        if (!isVideoCall()) return
+        if (state.route == CallAudioState.ROUTE_SPEAKER) return
+        if (state.supportedRouteMask and CallAudioState.ROUTE_SPEAKER == 0) {
+            return
+        }
+        forceVideoSpeakerRoute()
     }
 
     override fun onReject() {
@@ -65,13 +72,7 @@ class FamilyCallConnection(
     }
 
     fun answerFromNative() {
-        activate(
-            if (TelecomCallManager.isVideoCall(data)) {
-                VideoProfile.STATE_BIDIRECTIONAL
-            } else {
-                VideoProfile.STATE_AUDIO_ONLY
-            }
-        )
+        activate(videoStateForCall())
     }
 
     fun rejectFromNative() {
@@ -96,9 +97,34 @@ class FamilyCallConnection(
         return capabilities
     }
 
+    private fun videoStateForCall(): Int {
+        return if (isVideoCall()) {
+            VideoProfile.STATE_BIDIRECTIONAL
+        } else {
+            VideoProfile.STATE_AUDIO_ONLY
+        }
+    }
+
     private fun activate(videoState: Int) {
         setVideoState(videoState)
         setActive()
+        forceVideoSpeakerRoute()
+    }
+
+    private fun isVideoCall(): Boolean {
+        return TelecomCallManager.isVideoCall(data)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun forceVideoSpeakerRoute() {
+        if (!isVideoCall()) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                setAudioRoute(CallAudioState.ROUTE_SPEAKER)
+            } catch (_: Exception) {
+            }
+        }
+        CallAudioRouteManager.setSpeakerOn(appContext, true)
     }
 
     private fun disconnectAndDestroy(causeCode: Int) {
