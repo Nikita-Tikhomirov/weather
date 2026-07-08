@@ -43,6 +43,12 @@ void main() {
     expect(clients, contains('com.example.family_todo_mobile.installable'));
 
     expect(workflow, contains('family-todo-installable.apk'));
+    expect(workflow, contains('--android-project-arg=APPLICATION_ID='));
+    expect(workflow, contains('--android-project-arg=APP_LABEL='));
+    expect(workflow, contains('Verify APK package ids'));
+    expect(workflow, contains("package: name='"));
+    expect(workflow, contains('INSTALLABLE_APK_PATH'));
+    expect(workflow, contains('Detected installable APK candidates'));
     expect(workflow, contains('APPLICATION_ID: com.example.family_todo_mobile'));
     expect(
       workflow,

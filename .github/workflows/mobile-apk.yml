@@ -217,6 +217,8 @@ jobs:
           set +e
           timeout 18m flutter build apk --release \
             --target-platform android-arm,android-arm64 \
+            --android-project-arg=APPLICATION_ID="$APPLICATION_ID" \
+            --android-project-arg=APP_LABEL="$APP_LABEL" \
             --build-number="$BUILD_NUMBER" \
             --build-name="$APP_VERSION" \
             --dart-define=API_BASE_URL="$API_BASE_URL" \
@@ -296,8 +298,14 @@ jobs:
           set -euo pipefail
           cd /tmp/family_todo_mobile
           rm -f /tmp/family_todo_mobile/installable_build.log
+          (cd android && ./gradlew --stop || true)
+          flutter clean
+          flutter pub get
+          set +e
           timeout 18m flutter build apk --release \
             --target-platform android-arm,android-arm64 \
+            --android-project-arg=APPLICATION_ID="$APPLICATION_ID" \
+            --android-project-arg=APP_LABEL="$APP_LABEL" \
             --build-number="$BUILD_NUMBER" \
             --build-name="$APP_VERSION" \
             --dart-define=API_BASE_URL="$API_BASE_URL" \
@@ -313,8 +321,68 @@ jobs:
             --dart-define=BRIDGE_DEFAULT_HOST="$BRIDGE_DEFAULT_HOST" \
             --dart-define=APP_VERSION="$APP_VERSION" \
             2>&1 | tee /tmp/family_todo_mobile/installable_build.log
-          cp /tmp/family_todo_mobile/build/app/outputs/flutter-apk/app-release.apk \
+          BUILD_EXIT=$?
+          set -e
+
+          INSTALLABLE_APK_PATH="/tmp/family_todo_mobile/build/app/outputs/flutter-apk/app-release.apk"
+          if [ ! -f "$INSTALLABLE_APK_PATH" ]; then
+            INSTALLABLE_APK_PATH="$(find /tmp/family_todo_mobile /tmp/family_todo_mobile/android/app/build -type f \( -path '*/flutter-apk/*release*.apk' -o -path '*/outputs/apk/*release*.apk' -o -name 'app-release.apk' \) 2>/dev/null | head -n 1 || true)"
+          fi
+
+          echo "Detected installable APK candidates:"
+          find /tmp/family_todo_mobile /tmp/family_todo_mobile/android/app/build -type f -name '*.apk' 2>/dev/null || true
+
+          if [ -z "$INSTALLABLE_APK_PATH" ]; then
+            if [ "$BUILD_EXIT" -ne 0 ]; then
+              echo "::group::Installable Flutter build failure tail"
+              tail -n 120 /tmp/family_todo_mobile/installable_build.log || true
+              echo "::endgroup::"
+              exit "$BUILD_EXIT"
+            fi
+            echo "::error::Installable APK file was not produced."
+            exit 1
+          fi
+
+          cp "$INSTALLABLE_APK_PATH" \
             /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-installable.apk
+
+      - name: Verify APK package ids
+        shell: bash
+        run: |
+          set -euo pipefail
+          AAPT=""
+          for d in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" /usr/local/lib/android/sdk /opt/android-sdk; do
+            if [ -n "$d" ] && [ -d "$d/build-tools" ]; then
+              found="$(find "$d/build-tools" -maxdepth 2 -type f -name aapt 2>/dev/null | sort -V | tail -n 1 || true)"
+              if [ -n "$found" ]; then
+                AAPT="$found"
+                break
+              fi
+            fi
+          done
+          if [ -z "$AAPT" ]; then
+            echo "::error::Android aapt was not found; cannot verify APK package ids."
+            exit 1
+          fi
+
+          verify_package() {
+            local apk_path="$1"
+            local expected_package="$2"
+            local badging
+            badging="$("$AAPT" dump badging "$apk_path")"
+            echo "$badging" | head -n 5
+            if ! printf '%s\n' "$badging" | grep -Fq "package: name='${expected_package}'"; then
+              echo "::error::${apk_path} has wrong package id. Expected ${expected_package}."
+              exit 1
+            fi
+          }
+
+          verify_package \
+            /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-release.apk \
+            com.example.family_todo_mobile
+          verify_package \
+            /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-installable.apk \
+            com.example.family_todo_mobile.installable
 
       - name: Verify APK signing fingerprint
         shell: bash

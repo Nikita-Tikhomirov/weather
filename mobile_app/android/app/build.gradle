@@ -15,13 +15,13 @@ def isReleaseTask = gradle.startParameter.taskNames.any {
     it.toString().toLowerCase().contains("release")
 }
 def envOrProperty = { name ->
-    def envValue = System.getenv(name)
-    if (envValue != null && !envValue.trim().isEmpty()) {
-        return envValue
-    }
     def propertyValue = project.findProperty(name)
     if (propertyValue != null && !propertyValue.toString().trim().isEmpty()) {
         return propertyValue.toString()
+    }
+    def envValue = System.getenv(name)
+    if (envValue != null && !envValue.trim().isEmpty()) {
+        return envValue
     }
     return ""
 }
