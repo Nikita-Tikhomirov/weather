@@ -83,6 +83,10 @@ jobs:
           if [ -f mobile_app/analysis_options.yaml ]; then
             cp mobile_app/analysis_options.yaml "$APP_DIR/analysis_options.yaml"
           fi
+          if [ -f .github/workflows/mobile-apk.yml ]; then
+            mkdir -p "$APP_DIR/.github/workflows"
+            cp .github/workflows/mobile-apk.yml "$APP_DIR/.github/workflows/mobile-apk.yml"
+          fi
           if [ -f mobile_app/android/build.gradle ]; then
             cp mobile_app/android/build.gradle "$APP_DIR/android/build.gradle"
           fi
@@ -371,7 +375,6 @@ jobs:
           generate_release_notes: true
 
       - name: Update latest tag and release
-        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

@@ -3,6 +3,19 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+String mobileApkWorkflowSource() {
+  final candidates = [
+    File('../.github/workflows/mobile-apk.yml'),
+    File('.github/workflows/mobile-apk.yml'),
+  ];
+  for (final file in candidates) {
+    if (file.existsSync()) {
+      return file.readAsStringSync();
+    }
+  }
+  fail('mobile-apk.yml was not found in repo or isolated CI project');
+}
+
 void main() {
   test('Android packaging supports a no-conflict install variant', () {
     final buildGradle = File('android/app/build.gradle').readAsStringSync();
@@ -11,8 +24,7 @@ void main() {
     final googleServices =
         jsonDecode(File('android/app/google-services.json').readAsStringSync())
             as Map<String, dynamic>;
-    final workflow =
-        File('../.github/workflows/mobile-apk.yml').readAsStringSync();
+    final workflow = mobileApkWorkflowSource();
 
     expect(buildGradle, contains('APPLICATION_ID'));
     expect(buildGradle, contains('APP_LABEL'));
@@ -40,8 +52,7 @@ void main() {
   });
 
   test('mobile release workflow does not accept generated fallback keys', () {
-    final workflow =
-        File('../.github/workflows/mobile-apk.yml').readAsStringSync();
+    final workflow = mobileApkWorkflowSource();
 
     expect(workflow, contains('SIGNING_KEY_SOURCE=secrets'));
     expect(workflow, isNot(contains('Generating fallback release keystore')));
