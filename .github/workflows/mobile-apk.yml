@@ -343,6 +343,7 @@ jobs:
             exit 1
           fi
 
+          mkdir -p /tmp/family_todo_mobile/build/app/outputs/flutter-apk
           cp "$INSTALLABLE_APK_PATH" \
             /tmp/family_todo_mobile/build/app/outputs/flutter-apk/family-todo-installable.apk
 
