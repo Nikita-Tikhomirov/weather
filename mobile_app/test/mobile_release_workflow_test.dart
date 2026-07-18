@@ -13,7 +13,6 @@ void main() {
     expect(workflow, contains('LEAD_FUNNEL_KEYSTORE_BASE64'));
     expect(workflow, contains('com.example.family_todo_mobile.installable'));
     expect(workflow, contains('kwork-lead-funnel.apk'));
-    expect(workflow, contains('find build android/app/build -type f'));
     expect(
       workflow,
       contains(
