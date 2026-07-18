@@ -255,6 +255,7 @@ class _HomePageState extends State<HomePage> {
       onShowDiagnosticsDialog: _showFcmDiagnosticsDialog,
       onNavigateToTasks: () => store.setPage(1),
       onNavigateToMessenger: () => store.setPage(4),
+      onNavigateToLeads: () => _openLeadInbox(store),
       onOpenConversation: (key) async {
         _pushAlreadyRouted = true;
         store.setPage(4);
@@ -317,6 +318,18 @@ class _HomePageState extends State<HomePage> {
     );
 
     await _pushHandler?.processPendingPush();
+  }
+
+  Future<void> _openLeadInbox(TaskStore store) async {
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => LeadInboxPage(
+          api: store.repository.api,
+          actorProfile: store.owner.value,
+        ),
+      ),
+    );
   }
 
   Future<void> _initDesktopServices(TaskStore store, String owner) async {
@@ -3551,14 +3564,7 @@ class _HomePageState extends State<HomePage> {
                             IconButton(
                               tooltip: 'Заказы',
                               icon: const Icon(Icons.work_outline),
-                              onPressed: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => LeadInboxPage(
-                                    api: store.repository.api,
-                                    actorProfile: store.owner.value,
-                                  ),
-                                ),
-                              ),
+                              onPressed: () => _openLeadInbox(store),
                             ),
                             IconButton(
                               tooltip: labels.calendar,

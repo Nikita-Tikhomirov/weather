@@ -43,6 +43,7 @@ class PushNotificationHandler {
     this.onShowDiagnosticsDialog,
     this.onNavigateToTasks,
     this.onNavigateToMessenger,
+    this.onNavigateToLeads,
     this.onOpenConversation,
     this.onIncomingCall,
     this.onSyncDelta,
@@ -61,6 +62,7 @@ class PushNotificationHandler {
   final void Function()? onShowDiagnosticsDialog;
   final void Function()? onNavigateToTasks;
   final void Function()? onNavigateToMessenger;
+  final Future<void> Function()? onNavigateToLeads;
   final Future<void> Function(String conversationKey)? onOpenConversation;
   final IncomingCallHandler? onIncomingCall;
   final Future<void> Function({required bool showErrors})? onSyncDelta;
@@ -228,6 +230,11 @@ class PushNotificationHandler {
     }
 
     await onSyncDelta?.call(showErrors: false);
+
+    if (pushType == 'kwork_lead') {
+      await onNavigateToLeads?.call();
+      return;
+    }
 
     // Task-related notifications → go to tasks tab
     if (pushType == 'task_reminder' ||

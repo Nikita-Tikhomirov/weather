@@ -56,4 +56,24 @@ void main() {
 
     expect(receivedAction, IncomingCallPushAction.show);
   });
+
+  test('opens the lead inbox for a Kwork lead push', () async {
+    var opened = false;
+    var synced = false;
+    final handler = PushNotificationHandler(
+      api: ApiClient(baseUrl: 'https://example.invalid', apiKey: 'test'),
+      owner: 'nik',
+      onNavigateToLeads: () async {
+        opened = true;
+      },
+      onSyncDelta: ({required bool showErrors}) async {
+        synced = true;
+      },
+    );
+
+    await handler.handleOpenedPush({'type': 'kwork_lead', 'lead_id': '1'});
+
+    expect(synced, isTrue);
+    expect(opened, isTrue);
+  });
 }
