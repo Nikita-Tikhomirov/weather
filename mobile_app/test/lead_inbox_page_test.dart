@@ -25,11 +25,14 @@ void main() {
     expect(find.text('Открыть заказ на Kwork'), findsOneWidget);
     expect(find.text('Техническое задание'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField).at(0), 'Сделаю адаптивный лендинг и проверю форму.');
-    final detailScroll = find.descendant(
-      of: find.byType(DraggableScrollableSheet),
-      matching: find.byType(Scrollable),
-    ).first;
+    await tester.enterText(find.byType(TextField).at(0),
+        'Сделаю адаптивный лендинг и проверю форму.');
+    final detailScroll = find
+        .descendant(
+          of: find.byType(DraggableScrollableSheet),
+          matching: find.byType(Scrollable),
+        )
+        .first;
     await tester.scrollUntilVisible(
       find.text('Сохранить изменения'),
       300,
@@ -74,6 +77,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.deleteCalls, 1);
   });
+
+  testWidgets('shows controls for the Kwork monitor', (tester) async {
+    final api = _FakeLeadApi();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: LeadInboxPage(api: api, actorProfile: 'nikita'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Сканировать сейчас'), findsOneWidget);
+    expect(find.text('Старт'), findsOneWidget);
+    expect(find.text('Стоп'), findsOneWidget);
+  });
 }
 
 class _FakeLeadApi implements LeadApi {
@@ -84,6 +102,33 @@ class _FakeLeadApi implements LeadApi {
   int approveCalls = 0;
 
   LeadItem _lead = _leadItem();
+
+  @override
+  Future<LeadMonitor> getMonitor({required String actorProfile}) async =>
+      const LeadMonitor(
+        desiredState: 'stopped',
+        scanRequested: false,
+        executorId: null,
+        lastSeenAt: null,
+        lastScanStartedAt: null,
+        lastScanFinishedAt: null,
+        lastError: '',
+      );
+
+  @override
+  Future<LeadMonitor> controlMonitor({
+    required String actorProfile,
+    required String command,
+  }) async =>
+      LeadMonitor(
+        desiredState: command == 'stop' ? 'stopped' : 'running',
+        scanRequested: command != 'stop',
+        executorId: null,
+        lastSeenAt: null,
+        lastScanStartedAt: null,
+        lastScanFinishedAt: null,
+        lastError: '',
+      );
 
   @override
   Future<LeadItem> createLead({
@@ -153,13 +198,15 @@ class _FakeLeadApi implements LeadApi {
   }
 
   @override
-  Future<List<LeadItem>> listLeads({required String actorProfile}) async => [_lead];
+  Future<List<LeadItem>> listLeads({required String actorProfile}) async =>
+      [_lead];
 
   @override
   Future<LeadItem> rejectLead({
     required String actorProfile,
     required int leadId,
-  }) async => _lead.copyWith(status: 'rejected');
+  }) async =>
+      _lead.copyWith(status: 'rejected');
 }
 
 LeadItem _leadItem() => const LeadItem(

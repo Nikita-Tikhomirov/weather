@@ -182,4 +182,49 @@ class LeadApiTest extends TestCase
             ->getJson('/leads/show?actor_profile='.$nikita.'&lead_id='.$leadId)
             ->assertStatus(400);
     }
+
+    #[Test]
+    public function nikita_can_start_stop_and_request_a_kwork_scan_from_the_mobile_app(): void
+    {
+        $nikita = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 967 981-24-38',
+                'device_id' => 'nikita-monitor-device',
+                'display_name' => 'Nikita',
+            ])
+            ->assertStatus(200)
+            ->json('user.profile_key');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/leads/monitor?actor_profile='.$nikita)
+            ->assertStatus(200)
+            ->assertJsonPath('monitor.desired_state', 'stopped')
+            ->assertJsonPath('monitor.scan_requested', false);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/leads/monitor/command', [
+                'actor_profile' => $nikita,
+                'command' => 'start',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('monitor.desired_state', 'running');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/leads/monitor/command', [
+                'actor_profile' => $nikita,
+                'command' => 'scan',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('monitor.desired_state', 'running')
+            ->assertJsonPath('monitor.scan_requested', true);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/leads/monitor/command', [
+                'actor_profile' => $nikita,
+                'command' => 'stop',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('monitor.desired_state', 'stopped')
+            ->assertJsonPath('monitor.scan_requested', false);
+    }
 }

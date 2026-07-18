@@ -20,22 +20,45 @@ class LeadInboxPage extends StatefulWidget {
 
 class _LeadInboxPageState extends State<LeadInboxPage> {
   late Future<List<LeadItem>> _leads;
+  late Future<LeadMonitor> _monitor;
 
   @override
   void initState() {
     super.initState();
     _leads = _load();
+    _monitor = _loadMonitor();
   }
 
   Future<List<LeadItem>> _load() => widget.api.listLeads(
         actorProfile: widget.actorProfile,
       );
 
+  Future<LeadMonitor> _loadMonitor() => widget.api.getMonitor(
+        actorProfile: widget.actorProfile,
+      );
+
   Future<void> _refresh() async {
     setState(() {
       _leads = _load();
+      _monitor = _loadMonitor();
     });
     await _leads;
+  }
+
+  Future<void> _controlMonitor(String command) async {
+    try {
+      final updated = await widget.api.controlMonitor(
+        actorProfile: widget.actorProfile,
+        command: command,
+      );
+      if (!mounted) return;
+      setState(() => _monitor = Future.value(updated));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось передать команду: $error')),
+      );
+    }
   }
 
   @override
@@ -56,61 +79,81 @@ class _LeadInboxPageState extends State<LeadInboxPage> {
           ),
         ],
       ),
-      body: FutureBuilder<List<LeadItem>>(
-        future: _leads,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return _LeadLoadError(onRetry: _refresh, error: snapshot.error);
-          }
-          final leads = snapshot.data ?? const <LeadItem>[];
-          if (leads.isEmpty) {
-            return const _LeadEmptyState();
-          }
-          return RefreshIndicator(
-            onRefresh: _refresh,
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-              itemCount: leads.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final lead = leads[index];
-                return _LeadCard(
-                  lead: lead,
-                  onTap: () async {
-                    LeadItem current = lead;
-                    try {
-                      current = await widget.api.getLead(
-                        actorProfile: widget.actorProfile,
-                        leadId: lead.id,
+      body: Column(
+        children: [
+          FutureBuilder<LeadMonitor>(
+            future: _monitor,
+            builder: (context, snapshot) {
+              final monitor = snapshot.data;
+              return _MonitorControls(
+                monitor: monitor,
+                onCommand: _controlMonitor,
+              );
+            },
+          ),
+          Expanded(
+            child: FutureBuilder<List<LeadItem>>(
+              future: _leads,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return _LeadLoadError(
+                      onRetry: _refresh, error: snapshot.error);
+                }
+                final leads = snapshot.data ?? const <LeadItem>[];
+                if (leads.isEmpty) {
+                  return const _LeadEmptyState();
+                }
+                return RefreshIndicator(
+                  onRefresh: _refresh,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+                    itemCount: leads.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final lead = leads[index];
+                      return _LeadCard(
+                        lead: lead,
+                        onTap: () async {
+                          LeadItem current = lead;
+                          try {
+                            current = await widget.api.getLead(
+                              actorProfile: widget.actorProfile,
+                              leadId: lead.id,
+                            );
+                          } catch (_) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text(
+                                      'Открыта сохраненная версия карточки')),
+                            );
+                          }
+                          if (!context.mounted) return;
+                          final changed = await showModalBottomSheet<bool>(
+                            context: context,
+                            isScrollControlled: true,
+                            builder: (_) => _LeadDetailSheet(
+                              api: widget.api,
+                              actorProfile: widget.actorProfile,
+                              lead: current,
+                            ),
+                          );
+                          if (changed == true && mounted) {
+                            await _refresh();
+                          }
+                        },
                       );
-                    } catch (_) {
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Открыта сохраненная версия карточки')),
-                      );
-                    }
-                    if (!context.mounted) return;
-                    final changed = await showModalBottomSheet<bool>(
-                      context: context,
-                      isScrollControlled: true,
-                      builder: (_) => _LeadDetailSheet(
-                        api: widget.api,
-                        actorProfile: widget.actorProfile,
-                        lead: current,
-                      ),
-                    );
-                    if (changed == true && mounted) {
-                      await _refresh();
-                    }
-                  },
+                    },
+                  ),
                 );
               },
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -127,6 +170,70 @@ class _LeadInboxPageState extends State<LeadInboxPage> {
     if (changed == true && mounted) {
       await _refresh();
     }
+  }
+}
+
+class _MonitorControls extends StatelessWidget {
+  const _MonitorControls({required this.monitor, required this.onCommand});
+
+  final LeadMonitor? monitor;
+  final ValueChanged<String> onCommand;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final state = monitor?.isRunning == true
+        ? 'Мониторинг включен'
+        : 'Мониторинг остановлен';
+    final detail = monitor?.lastSeenAt == null
+        ? 'ПК пока не на связи'
+        : 'ПК на связи: ${_leadTime(monitor!.lastSeenAt!)}';
+    return Container(
+      width: double.infinity,
+      color: theme.colorScheme.surfaceContainerHighest,
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(state,
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 2),
+          Text(detail, style: theme.textTheme.labelMedium),
+          if ((monitor?.lastError ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(monitor!.lastError,
+                style: TextStyle(color: theme.colorScheme.error)),
+          ],
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton.icon(
+                onPressed: () => onCommand('scan'),
+                icon: const Icon(Icons.radar_outlined),
+                label: const Text('Сканировать сейчас'),
+              ),
+              OutlinedButton.icon(
+                onPressed: monitor?.isRunning == true
+                    ? null
+                    : () => onCommand('start'),
+                icon: const Icon(Icons.play_arrow_outlined),
+                label: const Text('Старт'),
+              ),
+              OutlinedButton.icon(
+                onPressed: monitor?.isRunning == false
+                    ? null
+                    : () => onCommand('stop'),
+                icon: const Icon(Icons.stop_outlined),
+                label: const Text('Стоп'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -180,7 +287,8 @@ class _LeadCard extends StatelessWidget {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(Icons.schedule_outlined, size: 16, color: theme.colorScheme.outline),
+                  Icon(Icons.schedule_outlined,
+                      size: 16, color: theme.colorScheme.outline),
                   const SizedBox(width: 5),
                   Expanded(
                     child: Text(
@@ -435,7 +543,8 @@ class _LeadDetailSheetState extends State<_LeadDetailSheet> {
     _brief = TextEditingController(text: _lead.rawBrief);
     _reply = TextEditingController(text: _lead.draftReply);
     _title = TextEditingController(text: _lead.proposalTitle);
-    _price = TextEditingController(text: _lead.proposalPriceRub?.toString() ?? '');
+    _price =
+        TextEditingController(text: _lead.proposalPriceRub?.toString() ?? '');
     _days = TextEditingController(text: _lead.proposalDays?.toString() ?? '');
   }
 
@@ -457,18 +566,19 @@ class _LeadDetailSheetState extends State<_LeadDetailSheet> {
   }
 
   Future<void> _save() async {
-    await _run(() => widget.api.editLead(
-          actorProfile: widget.actorProfile,
-          leadId: _lead.id,
-          title: _taskTitle.text.trim(),
-          sourceUrl: _sourceUrl.text.trim(),
-          rawBrief: _brief.text.trim(),
-          draftReply: _reply.text.trim(),
-          proposalTitle: _title.text.trim(),
-          proposalPriceRub: _number(_price),
-          proposalDays: _number(_days),
-        ),
-        closeOnSuccess: false,
+    await _run(
+      () => widget.api.editLead(
+        actorProfile: widget.actorProfile,
+        leadId: _lead.id,
+        title: _taskTitle.text.trim(),
+        sourceUrl: _sourceUrl.text.trim(),
+        rawBrief: _brief.text.trim(),
+        draftReply: _reply.text.trim(),
+        proposalTitle: _title.text.trim(),
+        proposalPriceRub: _number(_price),
+        proposalDays: _number(_days),
+      ),
+      closeOnSuccess: false,
     );
   }
 
@@ -478,22 +588,26 @@ class _LeadDetailSheetState extends State<_LeadDetailSheet> {
         _number(_price) == null ||
         _number(_days) == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Заполни текст, название, цену и срок перед одобрением')),
+        const SnackBar(
+            content:
+                Text('Заполни текст, название, цену и срок перед одобрением')),
       );
       return;
     }
-    await _run(() => widget.api.approveLead(
-          actorProfile: widget.actorProfile,
-          leadId: _lead.id,
-        ),
+    await _run(
+      () => widget.api.approveLead(
+        actorProfile: widget.actorProfile,
+        leadId: _lead.id,
+      ),
     );
   }
 
   Future<void> _reject() async {
-    await _run(() => widget.api.rejectLead(
-          actorProfile: widget.actorProfile,
-          leadId: _lead.id,
-        ),
+    await _run(
+      () => widget.api.rejectLead(
+        actorProfile: widget.actorProfile,
+        leadId: _lead.id,
+      ),
     );
   }
 
@@ -502,7 +616,8 @@ class _LeadDetailSheetState extends State<_LeadDetailSheet> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Удалить заказ?'),
-        content: const Text('Карточка исчезнет из списка. История действий останется на сервере.'),
+        content: const Text(
+            'Карточка исчезнет из списка. История действий останется на сервере.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -563,7 +678,8 @@ class _LeadDetailSheetState extends State<_LeadDetailSheet> {
 
   Future<void> _openSource() async {
     final uri = Uri.tryParse(_lead.sourceUrl);
-    if (uri == null || !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+    if (uri == null ||
+        !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Не удалось открыть страницу заказа')),
@@ -578,7 +694,8 @@ class _LeadDetailSheetState extends State<_LeadDetailSheet> {
     final theme = Theme.of(context);
     return SafeArea(
       child: Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        padding:
+            EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
         child: DraggableScrollableSheet(
           expand: false,
           initialChildSize: .92,
@@ -606,7 +723,8 @@ class _LeadDetailSheetState extends State<_LeadDetailSheet> {
                         Expanded(
                           child: Text(
                             lead.title,
-                            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                            style: theme.textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -658,9 +776,14 @@ class _LeadDetailSheetState extends State<_LeadDetailSheet> {
                     ),
                     _InfoBlock(label: 'Вложения', text: lead.attachmentReport),
                     if (lead.lastError.trim().isNotEmpty)
-                      _InfoBlock(label: 'Ошибка отправки', text: lead.lastError, error: true),
+                      _InfoBlock(
+                          label: 'Ошибка отправки',
+                          text: lead.lastError,
+                          error: true),
                     const SizedBox(height: 20),
-                    Text('Отклик', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                    Text('Отклик',
+                        style: theme.textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700)),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _reply,
@@ -782,7 +905,8 @@ class _LeadStatusChip extends StatelessWidget {
 }
 
 class _InfoBlock extends StatelessWidget {
-  const _InfoBlock({required this.label, required this.text, this.error = false});
+  const _InfoBlock(
+      {required this.label, required this.text, this.error = false});
   final String label;
   final String text;
   final bool error;
@@ -796,7 +920,9 @@ class _InfoBlock extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+          Text(label,
+              style: theme.textTheme.labelLarge
+                  ?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 5),
           SelectableText(
             text.trim(),

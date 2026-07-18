@@ -9,6 +9,7 @@ use InvalidArgumentException;
 final class LeadRepository
 {
     private const EDITABLE_STATUSES = ['new', 'edited', 'failed'];
+    private const MONITOR_COMMANDS = ['start', 'stop', 'scan'];
 
     public function profileForPhone(string $phone): string
     {
@@ -194,6 +195,75 @@ final class LeadRepository
             ->all();
     }
 
+    public function monitorForOwner(string $ownerProfile): array
+    {
+        return DB::transaction(function () use ($ownerProfile): array {
+            return $this->mapMonitor($this->findOrCreateMonitor($ownerProfile, true));
+        });
+    }
+
+    public function monitorForPhone(string $phone): array
+    {
+        if ($phone === '') {
+            throw new InvalidArgumentException('Owner phone is required');
+        }
+        return $this->monitorForOwner($this->profileForPhone($phone));
+    }
+
+    public function commandMonitor(string $ownerProfile, string $command): array
+    {
+        $command = trim(mb_strtolower($command));
+        if (!in_array($command, self::MONITOR_COMMANDS, true)) {
+            throw new InvalidArgumentException('Unsupported monitor command');
+        }
+
+        return DB::transaction(function () use ($ownerProfile, $command): array {
+            $monitor = $this->findOrCreateMonitor($ownerProfile, true);
+            $now = $this->nowIso();
+            $update = match ($command) {
+                'start' => ['desired_state' => 'running', 'scan_requested_at' => $now],
+                'stop' => ['desired_state' => 'stopped', 'scan_requested_at' => null],
+                'scan' => ['scan_requested_at' => $now],
+            };
+            DB::table('kwork_monitor_controls')->where('id', $monitor->id)->update([
+                ...$update,
+                'updated_at' => $now,
+            ]);
+            return $this->mapMonitor($this->findMonitor((int)$monitor->id));
+        });
+    }
+
+    public function heartbeatMonitor(string $phone, string $executorId, string $scanEvent, string $error): array
+    {
+        if ($phone === '' || $executorId === '') {
+            throw new InvalidArgumentException('Owner phone and executor id are required');
+        }
+        if (!in_array($scanEvent, ['', 'started', 'finished'], true)) {
+            throw new InvalidArgumentException('Unsupported monitor scan event');
+        }
+
+        return DB::transaction(function () use ($phone, $executorId, $scanEvent, $error): array {
+            $ownerProfile = $this->profileForPhone($phone);
+            $monitor = $this->findOrCreateMonitor($ownerProfile, true);
+            $now = $this->nowIso();
+            $update = [
+                'executor_id' => $executorId,
+                'last_seen_at' => $now,
+                'last_error' => mb_substr(trim($error), 0, 2000),
+                'updated_at' => $now,
+            ];
+            if ($scanEvent === 'started') {
+                $update['last_scan_started_at'] = $now;
+            }
+            if ($scanEvent === 'finished') {
+                $update['last_scan_finished_at'] = $now;
+                $update['scan_requested_at'] = null;
+            }
+            DB::table('kwork_monitor_controls')->where('id', $monitor->id)->update($update);
+            return $this->mapMonitor($this->findMonitor((int)$monitor->id));
+        });
+    }
+
     public function claim(int $leadId, string $executorId): ?array
     {
         if ($leadId < 1 || $executorId === '') {
@@ -262,6 +332,42 @@ final class LeadRepository
         return $lead;
     }
 
+    private function findOrCreateMonitor(string $ownerProfile, bool $lock): object
+    {
+        $query = DB::table('kwork_monitor_controls')->where('owner_profile_key', $ownerProfile);
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+        $monitor = $query->first();
+        if ($monitor !== null) {
+            return $monitor;
+        }
+
+        $now = $this->nowIso();
+        $id = DB::table('kwork_monitor_controls')->insertGetId([
+            'owner_profile_key' => $ownerProfile,
+            'desired_state' => 'stopped',
+            'scan_requested_at' => null,
+            'executor_id' => null,
+            'last_seen_at' => null,
+            'last_scan_started_at' => null,
+            'last_scan_finished_at' => null,
+            'last_error' => '',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        return $this->findMonitor($id);
+    }
+
+    private function findMonitor(int $monitorId): object
+    {
+        $monitor = DB::table('kwork_monitor_controls')->where('id', $monitorId)->first();
+        if ($monitor === null) {
+            throw new InvalidArgumentException('Kwork monitor was not found');
+        }
+        return $monitor;
+    }
+
     private function ingestValues(array $input, string $ownerProfile, string $title, string $now): array
     {
         return [
@@ -328,6 +434,21 @@ final class LeadRepository
             'last_error' => (string)$row->last_error,
             'version' => (int)$row->version,
             'created_at' => (string)$row->created_at,
+            'updated_at' => (string)$row->updated_at,
+        ];
+    }
+
+    private function mapMonitor(object $row): array
+    {
+        return [
+            'desired_state' => (string)$row->desired_state,
+            'scan_requested' => (string)($row->scan_requested_at ?? '') !== '',
+            'scan_requested_at' => $row->scan_requested_at,
+            'executor_id' => $row->executor_id,
+            'last_seen_at' => $row->last_seen_at,
+            'last_scan_started_at' => $row->last_scan_started_at,
+            'last_scan_finished_at' => $row->last_scan_finished_at,
+            'last_error' => (string)$row->last_error,
             'updated_at' => (string)$row->updated_at,
         ];
     }

@@ -632,6 +632,19 @@ class ApiClient implements SyncApi, ChatApi, CallApi, LeadApi {
   // -- LeadApi -----------------------------------------------------------
 
   @override
+  Future<LeadMonitor> getMonitor({required String actorProfile}) {
+    return _leads.getMonitor(actorProfile: actorProfile);
+  }
+
+  @override
+  Future<LeadMonitor> controlMonitor({
+    required String actorProfile,
+    required String command,
+  }) {
+    return _leads.controlMonitor(actorProfile: actorProfile, command: command);
+  }
+
+  @override
   Future<List<LeadItem>> listLeads({required String actorProfile}) {
     return _leads.listLeads(actorProfile: actorProfile);
   }
@@ -640,7 +653,8 @@ class ApiClient implements SyncApi, ChatApi, CallApi, LeadApi {
   Future<LeadItem> getLead({
     required String actorProfile,
     required int leadId,
-  }) => _leads.getLead(actorProfile: actorProfile, leadId: leadId);
+  }) =>
+      _leads.getLead(actorProfile: actorProfile, leadId: leadId);
 
   @override
   Future<LeadItem> createLead({
@@ -698,19 +712,22 @@ class ApiClient implements SyncApi, ChatApi, CallApi, LeadApi {
   Future<LeadItem> approveLead({
     required String actorProfile,
     required int leadId,
-  }) => _leads.approveLead(actorProfile: actorProfile, leadId: leadId);
+  }) =>
+      _leads.approveLead(actorProfile: actorProfile, leadId: leadId);
 
   @override
   Future<LeadItem> rejectLead({
     required String actorProfile,
     required int leadId,
-  }) => _leads.rejectLead(actorProfile: actorProfile, leadId: leadId);
+  }) =>
+      _leads.rejectLead(actorProfile: actorProfile, leadId: leadId);
 
   @override
   Future<void> deleteLead({
     required String actorProfile,
     required int leadId,
-  }) => _leads.deleteLead(actorProfile: actorProfile, leadId: leadId);
+  }) =>
+      _leads.deleteLead(actorProfile: actorProfile, leadId: leadId);
 
   // -- CallApi -----------------------------------------------------------
 

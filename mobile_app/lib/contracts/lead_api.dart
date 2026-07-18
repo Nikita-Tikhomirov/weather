@@ -1,6 +1,13 @@
 import '../models/lead_models.dart';
 
 abstract class LeadApi {
+  Future<LeadMonitor> getMonitor({required String actorProfile});
+
+  Future<LeadMonitor> controlMonitor({
+    required String actorProfile,
+    required String command,
+  });
+
   Future<List<LeadItem>> listLeads({required String actorProfile});
 
   Future<LeadItem> getLead({

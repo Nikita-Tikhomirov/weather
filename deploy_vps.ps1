@@ -53,7 +53,8 @@ $files = @(
     @{Local="laravel_backend_vps\database\migrations\2026_05_26_000800_add_projects_and_family_groups.php"; Remote="$RemoteBase/database/migrations/2026_05_26_000800_add_projects_and_family_groups.php"},
     @{Local="laravel_backend_vps\database\migrations\2026_06_19_001300_create_phone_family_group_tables.php"; Remote="$RemoteBase/database/migrations/2026_06_19_001300_create_phone_family_group_tables.php"},
     @{Local="laravel_backend_vps\database\migrations\2026_07_18_001400_create_kwork_leads_tables.php"; Remote="$RemoteBase/database/migrations/2026_07_18_001400_create_kwork_leads_tables.php"},
-    @{Local="laravel_backend_vps\database\migrations\2026_07_18_001500_add_deleted_at_to_kwork_leads.php"; Remote="$RemoteBase/database/migrations/2026_07_18_001500_add_deleted_at_to_kwork_leads.php"}
+    @{Local="laravel_backend_vps\database\migrations\2026_07_18_001500_add_deleted_at_to_kwork_leads.php"; Remote="$RemoteBase/database/migrations/2026_07_18_001500_add_deleted_at_to_kwork_leads.php"},
+    @{Local="laravel_backend_vps\database\migrations\2026_07_18_001600_create_kwork_monitor_controls_table.php"; Remote="$RemoteBase/database/migrations/2026_07_18_001600_create_kwork_monitor_controls_table.php"}
 )
 
 if ($DryRun) {

@@ -98,6 +98,53 @@ class LeadController extends Controller
         }
     }
 
+    public function monitor(Request $request): JsonResponse
+    {
+        try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->query('actor_profile', ''));
+            return $this->json(200, ['ok' => true, 'monitor' => $this->leads->monitorForOwner($actor)]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function monitorCommand(Request $request): JsonResponse
+    {
+        try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
+            $monitor = $this->leads->commandMonitor($actor, (string)$request->input('command', ''));
+            return $this->json(200, ['ok' => true, 'monitor' => $monitor]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function executorMonitor(Request $request): JsonResponse
+    {
+        try {
+            $phone = preg_replace('/\D+/', '', (string)$request->query('owner_phone', '')) ?: '';
+            return $this->json(200, ['ok' => true, 'monitor' => $this->leads->monitorForPhone($phone)]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function monitorHeartbeat(Request $request): JsonResponse
+    {
+        try {
+            $phone = preg_replace('/\D+/', '', (string)$request->input('owner_phone', '')) ?: '';
+            $monitor = $this->leads->heartbeatMonitor(
+                $phone,
+                trim((string)$request->input('executor_id', '')),
+                (string)$request->input('scan_event', ''),
+                (string)$request->input('error', ''),
+            );
+            return $this->json(200, ['ok' => true, 'monitor' => $monitor]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
     public function commands(Request $request): JsonResponse
     {
         return $this->json(200, ['ok' => true, 'commands' => $this->leads->approvedCommands()]);

@@ -100,6 +100,10 @@ Route::middleware('sync.apikey')->group(function (): void {
     Route::post('/leads/approve', [LeadController::class, 'approve']);
     Route::post('/leads/reject', [LeadController::class, 'reject']);
     Route::post('/leads/delete', [LeadController::class, 'delete']);
+    Route::get('/leads/monitor', [LeadController::class, 'monitor']);
+    Route::post('/leads/monitor/command', [LeadController::class, 'monitorCommand']);
+    Route::get('/leads/monitor/executor', [LeadController::class, 'executorMonitor']);
+    Route::post('/leads/monitor/heartbeat', [LeadController::class, 'monitorHeartbeat']);
     Route::get('/leads/commands', [LeadController::class, 'commands']);
     Route::post('/leads/claim', [LeadController::class, 'claim']);
     Route::post('/leads/result', [LeadController::class, 'result']);

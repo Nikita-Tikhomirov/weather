@@ -8,6 +8,31 @@ class LeadApiClient extends HttpApiClient implements LeadApi {
   LeadApiClient({required super.baseUrl, required super.apiKey});
 
   @override
+  Future<LeadMonitor> getMonitor({required String actorProfile}) async {
+    final body = await getJsonWithFallback(
+      paths: const ['/leads/monitor'],
+      query: {'actor_profile': actorProfile},
+    );
+    return LeadMonitor.fromJson(
+      Map<String, dynamic>.from((body['monitor'] as Map?) ?? const {}),
+    );
+  }
+
+  @override
+  Future<LeadMonitor> controlMonitor({
+    required String actorProfile,
+    required String command,
+  }) async {
+    final body = await postJsonWithFallback(
+      paths: const ['/leads/monitor/command'],
+      body: jsonEncode({'actor_profile': actorProfile, 'command': command}),
+    );
+    return LeadMonitor.fromJson(
+      Map<String, dynamic>.from((body['monitor'] as Map?) ?? const {}),
+    );
+  }
+
+  @override
   Future<List<LeadItem>> listLeads({required String actorProfile}) async {
     final body = await getJsonWithFallback(
       paths: const ['/leads'],
@@ -90,7 +115,8 @@ class LeadApiClient extends HttpApiClient implements LeadApi {
   Future<LeadItem> approveLead({
     required String actorProfile,
     required int leadId,
-  }) => _postLead('/leads/approve', {
+  }) =>
+      _postLead('/leads/approve', {
         'actor_profile': actorProfile,
         'lead_id': leadId,
       });
@@ -99,7 +125,8 @@ class LeadApiClient extends HttpApiClient implements LeadApi {
   Future<LeadItem> rejectLead({
     required String actorProfile,
     required int leadId,
-  }) => _postLead('/leads/reject', {
+  }) =>
+      _postLead('/leads/reject', {
         'actor_profile': actorProfile,
         'lead_id': leadId,
       });
@@ -116,7 +143,8 @@ class LeadApiClient extends HttpApiClient implements LeadApi {
   }
 
   Future<LeadItem> _postLead(String path, Map<String, dynamic> payload) async {
-    final body = await postJsonWithFallback(paths: [path], body: jsonEncode(payload));
+    final body =
+        await postJsonWithFallback(paths: [path], body: jsonEncode(payload));
     return LeadItem.fromJson(
       Map<String, dynamic>.from((body['lead'] as Map?) ?? const {}),
     );
