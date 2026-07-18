@@ -7,6 +7,7 @@ use App\Http\Controllers\CallController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ProjectGroupController;
+use App\Http\Controllers\LeadController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', [SyncController::class, 'health']);
@@ -89,6 +90,16 @@ Route::middleware('sync.apikey')->group(function (): void {
     Route::post('/chat/conversations/delete', [ChatController::class, 'deleteConversation']);
     Route::post('/chat/typing', [ChatController::class, 'sendTyping']);
     Route::post('/chat/conversations/read', [ChatController::class, 'markRead']);
+
+    // Kwork lead inbox. The mobile app owns approval; the local desktop agent owns Kwork execution.
+    Route::post('/leads/ingest', [LeadController::class, 'ingest']);
+    Route::get('/leads', [LeadController::class, 'index']);
+    Route::post('/leads/edit', [LeadController::class, 'edit']);
+    Route::post('/leads/approve', [LeadController::class, 'approve']);
+    Route::post('/leads/reject', [LeadController::class, 'reject']);
+    Route::get('/leads/commands', [LeadController::class, 'commands']);
+    Route::post('/leads/claim', [LeadController::class, 'claim']);
+    Route::post('/leads/result', [LeadController::class, 'result']);
 
     // Call (audio/video)
     Route::post('/call/initiate', [CallController::class, 'initiate']);

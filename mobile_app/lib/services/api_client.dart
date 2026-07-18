@@ -1,6 +1,7 @@
 import '../contracts/call_api.dart';
 import '../contracts/chat_api.dart';
 import '../contracts/sync_api.dart';
+import '../contracts/lead_api.dart';
 import '../models/call_models.dart';
 import '../models/agent_policy.dart';
 import '../models/chat_models.dart';
@@ -11,10 +12,12 @@ import '../models/pending_event.dart';
 import '../models/project_control_models.dart';
 import '../models/sync_snapshots.dart';
 import '../models/task_project.dart';
+import '../models/lead_models.dart';
 
 import 'call_api_client.dart';
 import 'chat_api_client.dart';
 import 'sync_api_client.dart';
+import 'lead_api_client.dart';
 
 // Re-export for backward compatibility — consumers that import
 // api_client.dart still see these types.
@@ -30,15 +33,17 @@ export '../models/sync_snapshots.dart';
 /// - [SyncApiClient] (sync + projects/family-groups)
 /// - [ChatApiClient] (chat)
 /// - [CallApiClient] (audio/video calls)
-class ApiClient implements SyncApi, ChatApi, CallApi {
+class ApiClient implements SyncApi, ChatApi, CallApi, LeadApi {
   ApiClient({required String baseUrl, required String apiKey})
       : _sync = SyncApiClient(baseUrl: baseUrl, apiKey: apiKey),
         _chat = ChatApiClient(baseUrl: baseUrl, apiKey: apiKey),
-        _call = CallApiClient(baseUrl: baseUrl, apiKey: apiKey);
+        _call = CallApiClient(baseUrl: baseUrl, apiKey: apiKey),
+        _leads = LeadApiClient(baseUrl: baseUrl, apiKey: apiKey);
 
   final SyncApiClient _sync;
   final ChatApiClient _chat;
   final CallApiClient _call;
+  final LeadApiClient _leads;
 
   /// Public getters for backward compatibility with code that reads
   /// [baseUrl] or [apiKey] directly from an [ApiClient] reference.
@@ -623,6 +628,44 @@ class ApiClient implements SyncApi, ChatApi, CallApi {
   Future<List<StickerPack>> chatStickerPacks() {
     return _chat.chatStickerPacks();
   }
+
+  // -- LeadApi -----------------------------------------------------------
+
+  @override
+  Future<List<LeadItem>> listLeads({required String actorProfile}) {
+    return _leads.listLeads(actorProfile: actorProfile);
+  }
+
+  @override
+  Future<LeadItem> editLead({
+    required String actorProfile,
+    required int leadId,
+    required String draftReply,
+    required String proposalTitle,
+    int? proposalPriceRub,
+    int? proposalDays,
+  }) {
+    return _leads.editLead(
+      actorProfile: actorProfile,
+      leadId: leadId,
+      draftReply: draftReply,
+      proposalTitle: proposalTitle,
+      proposalPriceRub: proposalPriceRub,
+      proposalDays: proposalDays,
+    );
+  }
+
+  @override
+  Future<LeadItem> approveLead({
+    required String actorProfile,
+    required int leadId,
+  }) => _leads.approveLead(actorProfile: actorProfile, leadId: leadId);
+
+  @override
+  Future<LeadItem> rejectLead({
+    required String actorProfile,
+    required int leadId,
+  }) => _leads.rejectLead(actorProfile: actorProfile, leadId: leadId);
 
   // -- CallApi -----------------------------------------------------------
 

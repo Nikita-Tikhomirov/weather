@@ -34,6 +34,7 @@ import '../chat/active_call_banner.dart';
 import '../chat/call_screen.dart';
 import '../chat/chat_photo_viewer.dart';
 import '../chat/messenger_page.dart';
+import '../leads/lead_inbox_page.dart';
 import '../chat/sticker_picker_sheet.dart';
 import '../projects/project_file_browser.dart';
 import '../projects/project_chat_view.dart';
@@ -3546,6 +3547,18 @@ class _HomePageState extends State<HomePage> {
                               tooltip: labels.fcmDiagnostics,
                               icon: const Icon(Icons.bug_report_outlined),
                               onPressed: _showFcmDiagnosticsDialog,
+                            ),
+                            IconButton(
+                              tooltip: 'Заказы',
+                              icon: const Icon(Icons.work_outline),
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => LeadInboxPage(
+                                    api: store.repository.api,
+                                    actorProfile: store.owner.value,
+                                  ),
+                                ),
+                              ),
                             ),
                             IconButton(
                               tooltip: labels.calendar,
