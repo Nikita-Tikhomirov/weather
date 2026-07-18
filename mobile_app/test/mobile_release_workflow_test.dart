@@ -19,6 +19,12 @@ void main() {
         r'cp -a mobile_app/android/app/src/main/res/. "$APP_DIR/android/app/src/main/res/"',
       ),
     );
+    expect(
+      workflow,
+      contains(
+        r'cp -a mobile_app/android/app/src/main/kotlin/. "$APP_DIR/android/app/src/main/kotlin/"',
+      ),
+    );
     expect(workflow, isNot(contains('family-todo-release.apk')));
   });
 }

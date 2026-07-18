@@ -65,7 +65,7 @@ jobs:
           cp mobile_app/android/app/src/main/AndroidManifest.xml "$APP_DIR/android/app/src/main/AndroidManifest.xml"
           cp -a mobile_app/android/app/src/main/res/. "$APP_DIR/android/app/src/main/res/"
           if [ -d mobile_app/android/app/src/main/kotlin ]; then
-            cp -R mobile_app/android/app/src/main/kotlin "$APP_DIR/android/app/src/main/kotlin"
+            cp -a mobile_app/android/app/src/main/kotlin/. "$APP_DIR/android/app/src/main/kotlin/"
           fi
 
       - name: Install dependencies and run Flutter tests
