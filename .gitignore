@@ -61,6 +61,7 @@ _terminal_test.txt
 
 # Android build outputs
 mobile_app/android/app/build/
+mobile_app/android/app/.cxx/
 mobile_app/android/.gradle/
 mobile_app/build/
 
