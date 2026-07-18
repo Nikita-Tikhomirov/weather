@@ -39,7 +39,7 @@ class LeadController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            $actor = ActorProfileGuard::ensureAllowed((string)$request->query('actor_profile', ''));
+            $actor = $this->ownerActor((string)$request->query('actor_profile', ''));
             return $this->json(200, ['ok' => true, 'leads' => $this->leads->listForOwner($actor)]);
         } catch (InvalidArgumentException $e) {
             return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
@@ -49,7 +49,7 @@ class LeadController extends Controller
     public function show(Request $request): JsonResponse
     {
         try {
-            $actor = ActorProfileGuard::ensureAllowed((string)$request->query('actor_profile', ''));
+            $actor = $this->ownerActor((string)$request->query('actor_profile', ''));
             $lead = $this->leads->findForOwner((int)$request->query('lead_id', 0), $actor);
             return $this->json(200, ['ok' => true, 'lead' => $lead]);
         } catch (InvalidArgumentException $e) {
@@ -89,7 +89,7 @@ class LeadController extends Controller
     public function delete(Request $request): JsonResponse
     {
         try {
-            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
+            $actor = $this->ownerActor((string)$request->input('actor_profile', ''));
             $lead = $this->leads->delete((int)$request->input('lead_id', 0), $actor);
             $this->notify($lead, 'Заказ удален', (string)$lead['title']);
             return $this->json(200, ['ok' => true, 'deleted' => true]);
@@ -101,7 +101,7 @@ class LeadController extends Controller
     public function monitor(Request $request): JsonResponse
     {
         try {
-            $actor = ActorProfileGuard::ensureAllowed((string)$request->query('actor_profile', ''));
+            $actor = $this->ownerActor((string)$request->query('actor_profile', ''));
             return $this->json(200, ['ok' => true, 'monitor' => $this->leads->monitorForOwner($actor)]);
         } catch (InvalidArgumentException $e) {
             return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
@@ -111,7 +111,7 @@ class LeadController extends Controller
     public function monitorCommand(Request $request): JsonResponse
     {
         try {
-            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
+            $actor = $this->ownerActor((string)$request->input('actor_profile', ''));
             $monitor = $this->leads->commandMonitor($actor, (string)$request->input('command', ''));
             return $this->json(200, ['ok' => true, 'monitor' => $monitor]);
         } catch (InvalidArgumentException $e) {
@@ -123,6 +123,7 @@ class LeadController extends Controller
     {
         try {
             $phone = preg_replace('/\D+/', '', (string)$request->query('owner_phone', '')) ?: '';
+            $this->ensureOwnerPhone($phone);
             return $this->json(200, ['ok' => true, 'monitor' => $this->leads->monitorForPhone($phone)]);
         } catch (InvalidArgumentException $e) {
             return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
@@ -133,6 +134,7 @@ class LeadController extends Controller
     {
         try {
             $phone = preg_replace('/\D+/', '', (string)$request->input('owner_phone', '')) ?: '';
+            $this->ensureOwnerPhone($phone);
             $monitor = $this->leads->heartbeatMonitor(
                 $phone,
                 trim((string)$request->input('executor_id', '')),
@@ -179,7 +181,7 @@ class LeadController extends Controller
     private function ownerAction(Request $request, string $title, callable $action, bool $requiresLeadId = true): JsonResponse
     {
         try {
-            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
+            $actor = $this->ownerActor((string)$request->input('actor_profile', ''));
             $lead = $action($requiresLeadId ? (int)$request->input('lead_id', 0) : 0, $actor);
             $this->notify($lead, $title, (string)$lead['title']);
             return $this->json(200, ['ok' => true, 'lead' => $lead]);
@@ -206,5 +208,27 @@ class LeadController extends Controller
     private function json(int $status, array $payload): JsonResponse
     {
         return response()->json($payload, $status, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    private function ownerActor(string $actor): string
+    {
+        $profile = ActorProfileGuard::ensureAllowed($actor);
+        $ownerProfile = $this->leads->profileForPhone($this->ownerPhone());
+        if (!hash_equals($ownerProfile, $profile)) {
+            throw new InvalidArgumentException('Kwork leads are available only to the configured owner account');
+        }
+        return $profile;
+    }
+
+    private function ensureOwnerPhone(string $phone): void
+    {
+        if ($phone === '' || $phone !== $this->ownerPhone()) {
+            throw new InvalidArgumentException('Kwork lead executor owner phone is not allowed');
+        }
+    }
+
+    private function ownerPhone(): string
+    {
+        return preg_replace('/\D+/', '', (string)config('sync.superadmin_phone')) ?: '';
     }
 }

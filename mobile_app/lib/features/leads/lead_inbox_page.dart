@@ -566,19 +566,20 @@ class _LeadDetailSheetState extends State<_LeadDetailSheet> {
   }
 
   Future<void> _save() async {
-    await _run(
-      () => widget.api.editLead(
-        actorProfile: widget.actorProfile,
-        leadId: _lead.id,
-        title: _taskTitle.text.trim(),
-        sourceUrl: _sourceUrl.text.trim(),
-        rawBrief: _brief.text.trim(),
-        draftReply: _reply.text.trim(),
-        proposalTitle: _title.text.trim(),
-        proposalPriceRub: _number(_price),
-        proposalDays: _number(_days),
-      ),
-      closeOnSuccess: false,
+    await _run(_saveDraft, closeOnSuccess: false);
+  }
+
+  Future<LeadItem> _saveDraft() {
+    return widget.api.editLead(
+      actorProfile: widget.actorProfile,
+      leadId: _lead.id,
+      title: _taskTitle.text.trim(),
+      sourceUrl: _sourceUrl.text.trim(),
+      rawBrief: _brief.text.trim(),
+      draftReply: _reply.text.trim(),
+      proposalTitle: _title.text.trim(),
+      proposalPriceRub: _number(_price),
+      proposalDays: _number(_days),
     );
   }
 
@@ -594,12 +595,13 @@ class _LeadDetailSheetState extends State<_LeadDetailSheet> {
       );
       return;
     }
-    await _run(
-      () => widget.api.approveLead(
+    await _run(() async {
+      final saved = await _saveDraft();
+      return widget.api.approveLead(
         actorProfile: widget.actorProfile,
-        leadId: _lead.id,
-      ),
-    );
+        leadId: saved.id,
+      );
+    });
   }
 
   Future<void> _reject() async {

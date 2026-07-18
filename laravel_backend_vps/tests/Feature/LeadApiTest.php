@@ -184,6 +184,40 @@ class LeadApiTest extends TestCase
     }
 
     #[Test]
+    public function only_nikita_phone_profile_can_access_kwork_leads(): void
+    {
+        $otherProfile = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 999 100-20-30',
+                'device_id' => 'other-lead-device',
+                'display_name' => 'Other user',
+            ])
+            ->assertStatus(200)
+            ->json('user.profile_key');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/leads?actor_profile='.$otherProfile)
+            ->assertStatus(400)
+            ->assertJsonPath('ok', false);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/leads/create', [
+                'actor_profile' => $otherProfile,
+                'title' => 'Чужой заказ',
+            ])
+            ->assertStatus(400)
+            ->assertJsonPath('ok', false);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/leads/monitor/command', [
+                'actor_profile' => $otherProfile,
+                'command' => 'start',
+            ])
+            ->assertStatus(400)
+            ->assertJsonPath('ok', false);
+    }
+
+    #[Test]
     public function nikita_can_start_stop_and_request_a_kwork_scan_from_the_mobile_app(): void
     {
         $nikita = $this->withHeaders(['X-Api-Key' => 'prod-key'])

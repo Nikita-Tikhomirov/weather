@@ -92,6 +92,56 @@ void main() {
     expect(find.text('Старт'), findsOneWidget);
     expect(find.text('Стоп'), findsOneWidget);
   });
+
+  testWidgets(
+      'approval saves edited reply fields before queuing the Kwork send',
+      (tester) async {
+    final api = _FakeLeadApi();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: LeadInboxPage(api: api, actorProfile: 'nikita'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Сверстать лендинг'));
+    await tester.pumpAndSettle();
+    final detailScroll = find
+        .descendant(
+          of: find.byType(DraggableScrollableSheet),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    await tester.scrollUntilVisible(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField &&
+            widget.decoration?.hintText == 'Текст отклика',
+      ),
+      300,
+      scrollable: detailScroll,
+    );
+    await tester.enterText(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField &&
+            widget.decoration?.hintText == 'Текст отклика',
+      ),
+      'Сделаю адаптивный лендинг и проверю форму перед сдачей.',
+    );
+    await tester.scrollUntilVisible(
+      find.text('Одобрить и отправить с ПК'),
+      300,
+      scrollable: detailScroll,
+    );
+    await tester.tap(find.text('Одобрить и отправить с ПК'));
+    await tester.pumpAndSettle();
+
+    expect(api.editCalls, 1);
+    expect(api.approveCalls, 1);
+    expect(api.lastSavedReply, contains('перед сдачей'));
+  });
 }
 
 class _FakeLeadApi implements LeadApi {
@@ -100,6 +150,7 @@ class _FakeLeadApi implements LeadApi {
   int deleteCalls = 0;
   int editCalls = 0;
   int approveCalls = 0;
+  String lastSavedReply = '';
 
   LeadItem _lead = _leadItem();
 
@@ -178,6 +229,7 @@ class _FakeLeadApi implements LeadApi {
     int? proposalDays,
   }) async {
     editCalls++;
+    lastSavedReply = draftReply;
     _lead = _lead.copyWith(
       draftReply: draftReply,
       proposalTitle: proposalTitle,
