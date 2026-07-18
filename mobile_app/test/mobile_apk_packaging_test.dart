@@ -42,26 +42,33 @@ void main() {
     expect(clients, contains('com.example.family_todo_mobile'));
     expect(clients, contains('com.example.family_todo_mobile.installable'));
 
-    expect(workflow, contains('kwork-lead-funnel.apk'));
-    expect(workflow, contains('APPLICATION_ID: com.example.family_todo_mobile.installable'));
-    expect(workflow, contains('APP_LABEL: Kwork Lead Funnel'));
-    expect(workflow, contains('Verify package identifier'));
+    expect(workflow, contains('family-todo-installable.apk'));
+    expect(workflow, contains('--android-project-arg=APPLICATION_ID='));
+    expect(workflow, contains('--android-project-arg=APP_LABEL='));
+    expect(workflow, contains('Verify APK package ids'));
     expect(workflow, contains("package: name='"));
-    expect(workflow, contains('LEAD_FUNNEL_KEYSTORE_BASE64'));
-    expect(workflow, contains('Restore lead app signing key'));
-    expect(workflow, contains('/tmp/apk-artifacts'));
+    expect(workflow, contains('INSTALLABLE_APK_PATH'));
+    expect(workflow, contains('Detected installable APK candidates'));
+    expect(workflow, contains('/tmp/family_todo_mobile/apk-artifacts'));
     expect(
       workflow,
-      contains('mkdir -p /tmp/apk-artifacts'),
+      contains('mkdir -p /tmp/family_todo_mobile/apk-artifacts'),
     );
+    expect(workflow, contains('APPLICATION_ID: com.example.family_todo_mobile'));
+    expect(
+      workflow,
+      contains('APPLICATION_ID: com.example.family_todo_mobile.installable'),
+    );
+    expect(workflow, contains('APP_LABEL: Family Todo New'));
   });
 
   test('mobile release workflow does not accept generated fallback keys', () {
     final workflow = mobileApkWorkflowSource();
 
+    expect(workflow, contains('SIGNING_KEY_SOURCE=secrets'));
     expect(workflow, isNot(contains('Generating fallback release keystore')));
-    expect(workflow, isNot(contains('Using cached fallback release keystore')));
-    expect(workflow, contains('LEAD_FUNNEL_KEYSTORE_BASE64'));
-    expect(workflow, contains('updateable Kwork Lead Funnel APK'));
+    expect(workflow, contains('Using cached fallback release keystore'));
+    expect(workflow, contains('RELEASE_KEYSTORE_BASE64 is required'));
+    expect(workflow, contains('Refusing to generate a new signing key'));
   });
 }
