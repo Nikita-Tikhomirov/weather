@@ -113,4 +113,73 @@ class LeadApiTest extends TestCase
             ->assertStatus(200)
             ->assertJsonPath('lead.status', 'sent');
     }
+
+    #[Test]
+    public function nikita_can_create_read_update_and_delete_a_manual_lead(): void
+    {
+        $nikita = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 967 981-24-38',
+                'device_id' => 'nikita-crud-device',
+                'display_name' => 'Nikita',
+            ])
+            ->assertStatus(200)
+            ->json('user.profile_key');
+
+        $created = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/leads/create', [
+                'actor_profile' => $nikita,
+                'title' => 'Ручной заказ на лендинг',
+                'source_url' => 'https://kwork.ru/projects/55',
+                'raw_brief' => 'Нужна адаптивная страница с формой.',
+                'summary' => 'Создано вручную.',
+                'draft_reply' => 'Здравствуйте! Сделаю адаптивную страницу.',
+                'proposal_title' => 'Адаптивная верстка',
+                'proposal_price_rub' => 7000,
+                'proposal_days' => 4,
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('lead.status', 'new');
+
+        $leadId = $created->json('lead.id');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/leads/show?actor_profile='.$nikita.'&lead_id='.$leadId)
+            ->assertStatus(200)
+            ->assertJsonPath('lead.id', $leadId)
+            ->assertJsonPath('lead.title', 'Ручной заказ на лендинг');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/leads/edit', [
+                'actor_profile' => $nikita,
+                'lead_id' => $leadId,
+                'title' => 'Уточненный ручной заказ',
+                'raw_brief' => 'Нужны адаптив, форма и подключение аналитики.',
+                'draft_reply' => 'Обновленный отклик с планом работ.',
+                'proposal_title' => 'Лендинг с адаптивом',
+                'proposal_price_rub' => 8000,
+                'proposal_days' => 5,
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('lead.status', 'edited')
+            ->assertJsonPath('lead.title', 'Уточненный ручной заказ')
+            ->assertJsonPath('lead.proposal_price_rub', 8000);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/leads/delete', [
+                'actor_profile' => $nikita,
+                'lead_id' => $leadId,
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('deleted', true);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/leads?actor_profile='.$nikita)
+            ->assertStatus(200)
+            ->assertJsonCount(0, 'leads');
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->getJson('/leads/show?actor_profile='.$nikita.'&lead_id='.$leadId)
+            ->assertStatus(400);
+    }
 }

@@ -94,9 +94,12 @@ Route::middleware('sync.apikey')->group(function (): void {
     // Kwork lead inbox. The mobile app owns approval; the local desktop agent owns Kwork execution.
     Route::post('/leads/ingest', [LeadController::class, 'ingest']);
     Route::get('/leads', [LeadController::class, 'index']);
+    Route::get('/leads/show', [LeadController::class, 'show']);
+    Route::post('/leads/create', [LeadController::class, 'create']);
     Route::post('/leads/edit', [LeadController::class, 'edit']);
     Route::post('/leads/approve', [LeadController::class, 'approve']);
     Route::post('/leads/reject', [LeadController::class, 'reject']);
+    Route::post('/leads/delete', [LeadController::class, 'delete']);
     Route::get('/leads/commands', [LeadController::class, 'commands']);
     Route::post('/leads/claim', [LeadController::class, 'claim']);
     Route::post('/leads/result', [LeadController::class, 'result']);

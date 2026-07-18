@@ -46,6 +46,25 @@ class LeadController extends Controller
         }
     }
 
+    public function show(Request $request): JsonResponse
+    {
+        try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->query('actor_profile', ''));
+            $lead = $this->leads->findForOwner((int)$request->query('lead_id', 0), $actor);
+            return $this->json(200, ['ok' => true, 'lead' => $lead]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function create(Request $request): JsonResponse
+    {
+        return $this->ownerAction($request, 'Новый заказ', function (int $leadId, string $actor) use ($request): array {
+            unset($leadId);
+            return $this->leads->createForOwner($actor, $request->all());
+        }, false);
+    }
+
     public function edit(Request $request): JsonResponse
     {
         return $this->ownerAction($request, 'edited', function (int $leadId, string $actor) use ($request): array {
@@ -65,6 +84,18 @@ class LeadController extends Controller
         return $this->ownerAction($request, 'Заказ отклонен', function (int $leadId, string $actor): array {
             return $this->leads->reject($leadId, $actor);
         });
+    }
+
+    public function delete(Request $request): JsonResponse
+    {
+        try {
+            $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
+            $lead = $this->leads->delete((int)$request->input('lead_id', 0), $actor);
+            $this->notify($lead, 'Заказ удален', (string)$lead['title']);
+            return $this->json(200, ['ok' => true, 'deleted' => true]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        }
     }
 
     public function commands(Request $request): JsonResponse
@@ -98,11 +129,11 @@ class LeadController extends Controller
         }
     }
 
-    private function ownerAction(Request $request, string $title, callable $action): JsonResponse
+    private function ownerAction(Request $request, string $title, callable $action, bool $requiresLeadId = true): JsonResponse
     {
         try {
             $actor = ActorProfileGuard::ensureAllowed((string)$request->input('actor_profile', ''));
-            $lead = $action((int)$request->input('lead_id', 0), $actor);
+            $lead = $action($requiresLeadId ? (int)$request->input('lead_id', 0) : 0, $actor);
             $this->notify($lead, $title, (string)$lead['title']);
             return $this->json(200, ['ok' => true, 'lead' => $lead]);
         } catch (InvalidArgumentException $e) {

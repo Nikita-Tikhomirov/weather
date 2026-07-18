@@ -637,11 +637,46 @@ class ApiClient implements SyncApi, ChatApi, CallApi, LeadApi {
   }
 
   @override
+  Future<LeadItem> getLead({
+    required String actorProfile,
+    required int leadId,
+  }) => _leads.getLead(actorProfile: actorProfile, leadId: leadId);
+
+  @override
+  Future<LeadItem> createLead({
+    required String actorProfile,
+    required String title,
+    String sourceUrl = '',
+    String rawBrief = '',
+    String summary = '',
+    String draftReply = '',
+    String proposalTitle = '',
+    int? proposalPriceRub,
+    int? proposalDays,
+  }) {
+    return _leads.createLead(
+      actorProfile: actorProfile,
+      title: title,
+      sourceUrl: sourceUrl,
+      rawBrief: rawBrief,
+      summary: summary,
+      draftReply: draftReply,
+      proposalTitle: proposalTitle,
+      proposalPriceRub: proposalPriceRub,
+      proposalDays: proposalDays,
+    );
+  }
+
+  @override
   Future<LeadItem> editLead({
     required String actorProfile,
     required int leadId,
     required String draftReply,
     required String proposalTitle,
+    String? title,
+    String? sourceUrl,
+    String? rawBrief,
+    String? summary,
     int? proposalPriceRub,
     int? proposalDays,
   }) {
@@ -650,6 +685,10 @@ class ApiClient implements SyncApi, ChatApi, CallApi, LeadApi {
       leadId: leadId,
       draftReply: draftReply,
       proposalTitle: proposalTitle,
+      title: title,
+      sourceUrl: sourceUrl,
+      rawBrief: rawBrief,
+      summary: summary,
       proposalPriceRub: proposalPriceRub,
       proposalDays: proposalDays,
     );
@@ -666,6 +705,12 @@ class ApiClient implements SyncApi, ChatApi, CallApi, LeadApi {
     required String actorProfile,
     required int leadId,
   }) => _leads.rejectLead(actorProfile: actorProfile, leadId: leadId);
+
+  @override
+  Future<void> deleteLead({
+    required String actorProfile,
+    required int leadId,
+  }) => _leads.deleteLead(actorProfile: actorProfile, leadId: leadId);
 
   // -- CallApi -----------------------------------------------------------
 

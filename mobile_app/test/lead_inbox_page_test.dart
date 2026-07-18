@@ -21,6 +21,7 @@ void main() {
 
     await tester.tap(find.text('Сверстать лендинг'));
     await tester.pumpAndSettle();
+    expect(api.getCalls, 1);
     expect(find.text('Открыть заказ на Kwork'), findsOneWidget);
     expect(find.text('Техническое задание'), findsOneWidget);
 
@@ -47,13 +48,66 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.approveCalls, 1);
   });
+
+  testWidgets('creates and deletes a lead card', (tester) async {
+    final api = _FakeLeadApi();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: LeadInboxPage(api: api, actorProfile: 'nikita'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'Ручной заказ');
+    await tester.tap(find.byIcon(Icons.save_outlined));
+    await tester.pumpAndSettle();
+    expect(api.createCalls, 1);
+
+    await tester.tap(find.text('Сверстать лендинг'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Удалить'));
+    await tester.pumpAndSettle();
+    expect(api.deleteCalls, 1);
+  });
 }
 
 class _FakeLeadApi implements LeadApi {
+  int getCalls = 0;
+  int createCalls = 0;
+  int deleteCalls = 0;
   int editCalls = 0;
   int approveCalls = 0;
 
   LeadItem _lead = _leadItem();
+
+  @override
+  Future<LeadItem> createLead({
+    required String actorProfile,
+    required String title,
+    String sourceUrl = '',
+    String rawBrief = '',
+    String summary = '',
+    String draftReply = '',
+    String proposalTitle = '',
+    int? proposalPriceRub,
+    int? proposalDays,
+  }) async {
+    createCalls++;
+    return _lead;
+  }
+
+  @override
+  Future<void> deleteLead({
+    required String actorProfile,
+    required int leadId,
+  }) async {
+    deleteCalls++;
+  }
 
   @override
   Future<LeadItem> approveLead({
@@ -71,6 +125,10 @@ class _FakeLeadApi implements LeadApi {
     required int leadId,
     required String draftReply,
     required String proposalTitle,
+    String? title,
+    String? sourceUrl,
+    String? rawBrief,
+    String? summary,
     int? proposalPriceRub,
     int? proposalDays,
   }) async {
@@ -82,6 +140,15 @@ class _FakeLeadApi implements LeadApi {
       proposalDays: proposalDays,
       status: 'edited',
     );
+    return _lead;
+  }
+
+  @override
+  Future<LeadItem> getLead({
+    required String actorProfile,
+    required int leadId,
+  }) async {
+    getCalls++;
     return _lead;
   }
 

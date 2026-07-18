@@ -3,6 +3,7 @@
 namespace App\Domain\Leads;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 final class LeadRepository
@@ -41,6 +42,7 @@ final class LeadRepository
                     'version' => 1,
                     'created_at' => $now,
                     'updated_at' => $now,
+                    'deleted_at' => null,
                 ]);
                 $this->audit($id, '', 'ingested', ['external_key' => $externalKey]);
                 return $this->find($id);
@@ -64,11 +66,38 @@ final class LeadRepository
     {
         return DB::table('kwork_leads')
             ->where('owner_profile_key', $ownerProfile)
+            ->whereNull('deleted_at')
             ->orderByDesc('updated_at')
             ->orderByDesc('id')
             ->get()
             ->map(fn (object $row): array => $this->map($row))
             ->all();
+    }
+
+    public function createForOwner(string $ownerProfile, array $input): array
+    {
+        $title = $this->required($input, 'title');
+        $now = $this->nowIso();
+        $values = $this->ingestValues($input, $ownerProfile, $title, $now);
+        $id = DB::table('kwork_leads')->insertGetId([
+            'external_key' => 'manual:'.$ownerProfile.':'.Str::uuid(),
+            ...$values,
+            'status' => 'new',
+            'executor_id' => null,
+            'executor_claimed_at' => null,
+            'last_error' => '',
+            'version' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+            'deleted_at' => null,
+        ]);
+        $this->audit($id, $ownerProfile, 'created', ['source' => $values['source']]);
+        return $this->find($id);
+    }
+
+    public function findForOwner(int $leadId, string $ownerProfile): array
+    {
+        return $this->map($this->findRowForOwner($leadId, $ownerProfile));
     }
 
     public function edit(int $leadId, string $actor, array $values): array
@@ -135,10 +164,30 @@ final class LeadRepository
         });
     }
 
+    public function delete(int $leadId, string $actor): array
+    {
+        return DB::transaction(function () use ($leadId, $actor): array {
+            $lead = $this->findRowForOwner($leadId, $actor);
+            if ((string)$lead->status === 'sending') {
+                throw new InvalidArgumentException('Lead cannot be deleted while sending');
+            }
+            DB::table('kwork_leads')->where('id', $leadId)->update([
+                'deleted_at' => $this->nowIso(),
+                'version' => (int)$lead->version + 1,
+                'updated_at' => $this->nowIso(),
+            ]);
+            $this->audit($leadId, $actor, 'deleted', []);
+            $mapped = $this->map($lead);
+            $mapped['status'] = 'deleted';
+            return $mapped;
+        });
+    }
+
     public function approvedCommands(): array
     {
         return DB::table('kwork_leads')
             ->where('status', 'approved')
+            ->whereNull('deleted_at')
             ->orderBy('updated_at')
             ->get()
             ->map(fn (object $row): array => $this->map($row))
@@ -151,7 +200,7 @@ final class LeadRepository
             throw new InvalidArgumentException('Lead id and executor id are required');
         }
         return DB::transaction(function () use ($leadId, $executorId): ?array {
-            $lead = DB::table('kwork_leads')->where('id', $leadId)->lockForUpdate()->first();
+            $lead = DB::table('kwork_leads')->where('id', $leadId)->whereNull('deleted_at')->lockForUpdate()->first();
             if ($lead === null || (string)$lead->status !== 'approved') {
                 return null;
             }
@@ -204,6 +253,7 @@ final class LeadRepository
         $lead = DB::table('kwork_leads')
             ->where('id', $leadId)
             ->where('owner_profile_key', $ownerProfile)
+            ->whereNull('deleted_at')
             ->lockForUpdate()
             ->first();
         if ($lead === null) {
@@ -233,11 +283,22 @@ final class LeadRepository
     private function editableValues(array $input): array
     {
         $out = [];
-        foreach (['draft_reply', 'proposal_title', 'proposal_price_rub', 'proposal_days'] as $field) {
+        foreach ([
+            'title',
+            'source_url',
+            'raw_brief',
+            'summary',
+            'draft_reply',
+            'proposal_title',
+            'proposal_price_rub',
+            'proposal_days',
+        ] as $field) {
             if (!array_key_exists($field, $input)) {
                 continue;
             }
             $out[$field] = match ($field) {
+                'title' => mb_substr(trim((string)$input[$field]), 0, 255),
+                'source_url' => trim((string)$input[$field]),
                 'proposal_title' => mb_substr(trim((string)$input[$field]), 0, 70),
                 'proposal_price_rub', 'proposal_days' => $this->positiveInt($input[$field]),
                 default => (string)$input[$field],

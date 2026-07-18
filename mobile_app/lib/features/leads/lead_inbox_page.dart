@@ -45,6 +45,11 @@ class _LeadInboxPageState extends State<LeadInboxPage> {
         title: const Text('Заказы'),
         actions: [
           IconButton(
+            tooltip: 'Создать заказ',
+            onPressed: _createLead,
+            icon: const Icon(Icons.add),
+          ),
+          IconButton(
             tooltip: 'Обновить',
             onPressed: _refresh,
             icon: const Icon(Icons.refresh),
@@ -75,13 +80,26 @@ class _LeadInboxPageState extends State<LeadInboxPage> {
                 return _LeadCard(
                   lead: lead,
                   onTap: () async {
+                    LeadItem current = lead;
+                    try {
+                      current = await widget.api.getLead(
+                        actorProfile: widget.actorProfile,
+                        leadId: lead.id,
+                      );
+                    } catch (_) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Открыта сохраненная версия карточки')),
+                      );
+                    }
+                    if (!context.mounted) return;
                     final changed = await showModalBottomSheet<bool>(
                       context: context,
                       isScrollControlled: true,
                       builder: (_) => _LeadDetailSheet(
                         api: widget.api,
                         actorProfile: widget.actorProfile,
-                        lead: lead,
+                        lead: current,
                       ),
                     );
                     if (changed == true && mounted) {
@@ -95,6 +113,20 @@ class _LeadInboxPageState extends State<LeadInboxPage> {
         },
       ),
     );
+  }
+
+  Future<void> _createLead() async {
+    final changed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _LeadCreateSheet(
+        api: widget.api,
+        actorProfile: widget.actorProfile,
+      ),
+    );
+    if (changed == true && mounted) {
+      await _refresh();
+    }
   }
 }
 
@@ -187,6 +219,187 @@ class _LeadCard extends StatelessWidget {
   }
 }
 
+class _LeadCreateSheet extends StatefulWidget {
+  const _LeadCreateSheet({required this.api, required this.actorProfile});
+
+  final LeadApi api;
+  final String actorProfile;
+
+  @override
+  State<_LeadCreateSheet> createState() => _LeadCreateSheetState();
+}
+
+class _LeadCreateSheetState extends State<_LeadCreateSheet> {
+  final _taskTitle = TextEditingController();
+  final _sourceUrl = TextEditingController();
+  final _brief = TextEditingController();
+  final _reply = TextEditingController();
+  final _proposalTitle = TextEditingController();
+  final _price = TextEditingController();
+  final _days = TextEditingController();
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _taskTitle.dispose();
+    _sourceUrl.dispose();
+    _brief.dispose();
+    _reply.dispose();
+    _proposalTitle.dispose();
+    _price.dispose();
+    _days.dispose();
+    super.dispose();
+  }
+
+  int? _number(TextEditingController controller) {
+    final value = int.tryParse(controller.text.trim());
+    return value != null && value > 0 ? value : null;
+  }
+
+  Future<void> _create() async {
+    if (_taskTitle.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Укажи название задачи')),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await widget.api.createLead(
+        actorProfile: widget.actorProfile,
+        title: _taskTitle.text.trim(),
+        sourceUrl: _sourceUrl.text.trim(),
+        rawBrief: _brief.text.trim(),
+        summary: 'Создано вручную',
+        draftReply: _reply.text.trim(),
+        proposalTitle: _proposalTitle.text.trim(),
+        proposalPriceRub: _number(_price),
+        proposalDays: _number(_days),
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось создать: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: FractionallySizedBox(
+        heightFactor: .92,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Новый заказ'),
+            actions: [
+              IconButton(
+                tooltip: 'Сохранить заказ',
+                onPressed: _saving ? null : _create,
+                icon: const Icon(Icons.save_outlined),
+              ),
+            ],
+          ),
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+            children: [
+              TextField(
+                controller: _taskTitle,
+                enabled: !_saving,
+                maxLength: 255,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Название задачи',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _sourceUrl,
+                enabled: !_saving,
+                keyboardType: TextInputType.url,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Ссылка на заказ',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _brief,
+                enabled: !_saving,
+                minLines: 4,
+                maxLines: 10,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Техническое задание',
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _reply,
+                enabled: !_saving,
+                minLines: 5,
+                maxLines: 12,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Черновик отклика',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _proposalTitle,
+                enabled: !_saving,
+                maxLength: 70,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Название заказа в отклике',
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _price,
+                      enabled: !_saving,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Цена, руб.',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _days,
+                      enabled: !_saving,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Срок, дни',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: _saving ? null : _create,
+                icon: const Icon(Icons.add_task_outlined),
+                label: const Text('Создать карточку'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _LeadDetailSheet extends StatefulWidget {
   const _LeadDetailSheet({
     required this.api,
@@ -204,6 +417,9 @@ class _LeadDetailSheet extends StatefulWidget {
 
 class _LeadDetailSheetState extends State<_LeadDetailSheet> {
   late LeadItem _lead;
+  late final TextEditingController _taskTitle;
+  late final TextEditingController _sourceUrl;
+  late final TextEditingController _brief;
   late final TextEditingController _reply;
   late final TextEditingController _title;
   late final TextEditingController _price;
@@ -214,6 +430,9 @@ class _LeadDetailSheetState extends State<_LeadDetailSheet> {
   void initState() {
     super.initState();
     _lead = widget.lead;
+    _taskTitle = TextEditingController(text: _lead.title);
+    _sourceUrl = TextEditingController(text: _lead.sourceUrl);
+    _brief = TextEditingController(text: _lead.rawBrief);
     _reply = TextEditingController(text: _lead.draftReply);
     _title = TextEditingController(text: _lead.proposalTitle);
     _price = TextEditingController(text: _lead.proposalPriceRub?.toString() ?? '');
@@ -222,6 +441,9 @@ class _LeadDetailSheetState extends State<_LeadDetailSheet> {
 
   @override
   void dispose() {
+    _taskTitle.dispose();
+    _sourceUrl.dispose();
+    _brief.dispose();
     _reply.dispose();
     _title.dispose();
     _price.dispose();
@@ -238,6 +460,9 @@ class _LeadDetailSheetState extends State<_LeadDetailSheet> {
     await _run(() => widget.api.editLead(
           actorProfile: widget.actorProfile,
           leadId: _lead.id,
+          title: _taskTitle.text.trim(),
+          sourceUrl: _sourceUrl.text.trim(),
+          rawBrief: _brief.text.trim(),
           draftReply: _reply.text.trim(),
           proposalTitle: _title.text.trim(),
           proposalPriceRub: _number(_price),
@@ -270,6 +495,43 @@ class _LeadDetailSheetState extends State<_LeadDetailSheet> {
           leadId: _lead.id,
         ),
     );
+  }
+
+  Future<void> _delete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Удалить заказ?'),
+        content: const Text('Карточка исчезнет из списка. История действий останется на сервере.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _saving = true);
+    try {
+      await widget.api.deleteLead(
+        actorProfile: widget.actorProfile,
+        leadId: _lead.id,
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось удалить: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   Future<void> _run(
@@ -349,6 +611,11 @@ class _LeadDetailSheetState extends State<_LeadDetailSheet> {
                         ),
                         const SizedBox(width: 12),
                         _LeadStatusChip(status: lead.status),
+                        IconButton(
+                          tooltip: 'Удалить заказ',
+                          onPressed: _saving ? null : _delete,
+                          icon: const Icon(Icons.delete_outline),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 14),
@@ -357,8 +624,38 @@ class _LeadDetailSheetState extends State<_LeadDetailSheet> {
                       icon: const Icon(Icons.open_in_new),
                       label: const Text('Открыть заказ на Kwork'),
                     ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _taskTitle,
+                      enabled: lead.canEdit && !_saving,
+                      maxLength: 255,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Название задачи',
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _sourceUrl,
+                      enabled: lead.canEdit && !_saving,
+                      keyboardType: TextInputType.url,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Ссылка на заказ',
+                      ),
+                    ),
                     _InfoBlock(label: 'Кратко', text: lead.summary),
-                    _InfoBlock(label: 'Техническое задание', text: lead.rawBrief),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: _brief,
+                      enabled: lead.canEdit && !_saving,
+                      minLines: 4,
+                      maxLines: 10,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Техническое задание',
+                      ),
+                    ),
                     _InfoBlock(label: 'Вложения', text: lead.attachmentReport),
                     if (lead.lastError.trim().isNotEmpty)
                       _InfoBlock(label: 'Ошибка отправки', text: lead.lastError, error: true),
