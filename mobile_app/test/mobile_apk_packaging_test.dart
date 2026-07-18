@@ -17,7 +17,7 @@ String mobileApkWorkflowSource() {
 }
 
 void main() {
-  test('Android packaging supports a no-conflict install variant', () {
+  test('Android packaging publishes one stable Family Todo APK', () {
     final buildGradle = File('android/app/build.gradle').readAsStringSync();
     final manifest =
         File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
@@ -40,35 +40,27 @@ void main() {
         )
         .toSet();
     expect(clients, contains('com.example.family_todo_mobile'));
-    expect(clients, contains('com.example.family_todo_mobile.installable'));
-
-    expect(workflow, contains('family-todo-installable.apk'));
+    expect(workflow, isNot(contains('family-todo-installable.apk')));
     expect(workflow, contains('--android-project-arg=APPLICATION_ID='));
     expect(workflow, contains('--android-project-arg=APP_LABEL='));
-    expect(workflow, contains('Verify APK package ids'));
+    expect(workflow, contains('Verify APK package id'));
     expect(workflow, contains("package: name='"));
-    expect(workflow, contains('INSTALLABLE_APK_PATH'));
-    expect(workflow, contains('Detected installable APK candidates'));
     expect(workflow, contains('/tmp/family_todo_mobile/apk-artifacts'));
     expect(
       workflow,
       contains('mkdir -p /tmp/family_todo_mobile/apk-artifacts'),
     );
     expect(workflow, contains('APPLICATION_ID: com.example.family_todo_mobile'));
-    expect(
-      workflow,
-      contains('APPLICATION_ID: com.example.family_todo_mobile.installable'),
-    );
-    expect(workflow, contains('APP_LABEL: Family Todo New'));
+    expect(workflow, contains('APP_LABEL: Family Todo'));
   });
 
-  test('mobile release workflow does not accept generated fallback keys', () {
+  test('mobile release workflow requires the stable signing key', () {
     final workflow = mobileApkWorkflowSource();
 
-    expect(workflow, contains('SIGNING_KEY_SOURCE=secrets'));
+    expect(workflow, contains('Using stable release keystore from GitHub secrets'));
     expect(workflow, isNot(contains('Generating fallback release keystore')));
-    expect(workflow, contains('Using cached fallback release keystore'));
-    expect(workflow, contains('RELEASE_KEYSTORE_BASE64 is required'));
-    expect(workflow, contains('Refusing to generate a new signing key'));
+    expect(workflow, isNot(contains('Using cached fallback release keystore')));
+    expect(workflow, contains('RELEASE_KEYSTORE_* secrets are required'));
+    expect(workflow, isNot(contains('Refusing to generate a new signing key')));
   });
 }

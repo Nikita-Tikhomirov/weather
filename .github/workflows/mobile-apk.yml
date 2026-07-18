@@ -23,7 +23,7 @@ jobs:
     env:
       FLUTTER_VERSION: 3.44.0
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      ALLOWED_SIGN_SHA1_HEX: F7A5772750EC4971DBE14BEEB4144E5895DD9852,8067ED1EB450CD96421330E19BC305DD3EC553F0,F55E7F7C6AA047F6A27BB6FBC23C0ECE15A3BD71
+      ALLOWED_SIGN_SHA1_HEX: 95D5BDE74D3223D502D028A9554C4B8BF94917E3
 
     steps:
       - name: Checkout
@@ -128,12 +128,6 @@ jobs:
           cd /tmp/family_todo_mobile
           flutter test --concurrency=1
 
-      - name: Restore fallback release keystore cache
-        uses: actions/cache@v4
-        with:
-          path: /tmp/family_todo_mobile/android/release.keystore
-          key: family-todo-release-keystore-v1
-
       - name: Prepare release keystore
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
@@ -144,28 +138,16 @@ jobs:
         run: |
           set -euo pipefail
           APP_DIR="/tmp/family_todo_mobile"
-          STORE_PASSWORD="${RELEASE_KEYSTORE_PASSWORD:-}"
-          KEY_ALIAS="${RELEASE_KEY_ALIAS:-}"
-          KEY_PASSWORD="${RELEASE_KEY_PASSWORD:-}"
-
-          if [ -n "${RELEASE_KEYSTORE_BASE64:-}" ] && [ -n "${RELEASE_KEYSTORE_PASSWORD:-}" ] && [ -n "${RELEASE_KEY_ALIAS:-}" ] && [ -n "${RELEASE_KEY_PASSWORD:-}" ]; then
-            echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$APP_DIR/android/release.keystore"
-            echo "Using release keystore from GitHub secrets"
-            echo "SIGNING_KEY_SOURCE=secrets" >> "$GITHUB_ENV"
-          elif [ -f "$APP_DIR/android/release.keystore" ]; then
-            echo "::warning::Using cached fallback release keystore. Configure RELEASE_KEYSTORE_* secrets for stable production signing."
-            STORE_PASSWORD="familytodo123"
-            KEY_ALIAS="familytodo"
-            KEY_PASSWORD="familytodo123"
-            echo "SIGNING_KEY_SOURCE=fallback" >> "$GITHUB_ENV"
-          else
-            echo "::error::RELEASE_KEYSTORE_BASE64 is required when cached fallback release.keystore is unavailable. Refusing to generate a new signing key because that breaks Android updates."
+          if [ -z "${RELEASE_KEYSTORE_BASE64:-}" ] || [ -z "${RELEASE_KEYSTORE_PASSWORD:-}" ] || [ -z "${RELEASE_KEY_ALIAS:-}" ] || [ -z "${RELEASE_KEY_PASSWORD:-}" ]; then
+            echo "::error::RELEASE_KEYSTORE_* secrets are required for the stable Family Todo signing key."
             exit 1
           fi
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$APP_DIR/android/release.keystore"
+          echo "Using stable release keystore from GitHub secrets"
           echo "SIGNING_STORE_FILE=$APP_DIR/android/release.keystore" >> "$GITHUB_ENV"
-          echo "SIGNING_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
-          echo "SIGNING_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
-          echo "SIGNING_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+          echo "SIGNING_STORE_PASSWORD=$RELEASE_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "SIGNING_KEY_ALIAS=$RELEASE_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "SIGNING_KEY_PASSWORD=$RELEASE_KEY_PASSWORD" >> "$GITHUB_ENV"
 
       - name: Build release APK
         timeout-minutes: 20
@@ -182,7 +164,7 @@ jobs:
           TURN_CREDENTIAL: ${{ secrets.TURN_CREDENTIAL }}
           BRIDGE_DEFAULT_HOST: ${{ secrets.BRIDGE_DEFAULT_HOST }}
           BUILD_NUMBER: ${{ github.run_number }}
-          APP_VERSION: 0.1.8
+          APP_VERSION: 0.1.9
           APPLICATION_ID: com.example.family_todo_mobile
           APP_LABEL: Family Todo
         shell: bash
@@ -277,79 +259,7 @@ jobs:
           cp /tmp/family_todo_mobile/build/app/outputs/flutter-apk/app-release.apk \
             /tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk
 
-      - name: Build no-conflict install APK
-        timeout-minutes: 20
-        env:
-          API_BASE_URL: ${{ secrets.MOBILE_API_BASE_URL }}
-          API_KEY: ${{ secrets.TODO_BACKEND_API_KEY }}
-          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
-          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
-          TURN_URLS: ${{ secrets.TURN_URLS }}
-          TURN_USERNAME: ${{ secrets.TURN_USERNAME }}
-          TURN_CREDENTIAL: ${{ secrets.TURN_CREDENTIAL }}
-          BRIDGE_DEFAULT_HOST: ${{ secrets.BRIDGE_DEFAULT_HOST }}
-          BUILD_NUMBER: ${{ github.run_number }}
-          APP_VERSION: 0.1.8
-          APPLICATION_ID: com.example.family_todo_mobile.installable
-          APP_LABEL: Family Todo New
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd /tmp/family_todo_mobile
-          rm -f /tmp/family_todo_mobile/installable_build.log
-          (cd android && ./gradlew --stop || true)
-          flutter clean
-          flutter pub get
-          set +e
-          timeout 18m flutter build apk --release \
-            --target-platform android-arm,android-arm64 \
-            --android-project-arg=APPLICATION_ID="$APPLICATION_ID" \
-            --android-project-arg=APP_LABEL="$APP_LABEL" \
-            --build-number="$BUILD_NUMBER" \
-            --build-name="$APP_VERSION" \
-            --dart-define=API_BASE_URL="$API_BASE_URL" \
-            --dart-define=API_KEY="$API_KEY" \
-            --dart-define=FIREBASE_APP_ID="$FIREBASE_APP_ID" \
-            --dart-define=FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" \
-            --dart-define=FIREBASE_MESSAGING_SENDER_ID="$FIREBASE_MESSAGING_SENDER_ID" \
-            --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY" \
-            --dart-define=FIREBASE_STORAGE_BUCKET="$FIREBASE_STORAGE_BUCKET" \
-            --dart-define=TURN_URLS="$TURN_URLS" \
-            --dart-define=TURN_USERNAME="$TURN_USERNAME" \
-            --dart-define=TURN_CREDENTIAL="$TURN_CREDENTIAL" \
-            --dart-define=BRIDGE_DEFAULT_HOST="$BRIDGE_DEFAULT_HOST" \
-            --dart-define=APP_VERSION="$APP_VERSION" \
-            2>&1 | tee /tmp/family_todo_mobile/installable_build.log
-          BUILD_EXIT=$?
-          set -e
-
-          INSTALLABLE_APK_PATH="/tmp/family_todo_mobile/build/app/outputs/flutter-apk/app-release.apk"
-          if [ ! -f "$INSTALLABLE_APK_PATH" ]; then
-            INSTALLABLE_APK_PATH="$(find /tmp/family_todo_mobile /tmp/family_todo_mobile/android/app/build -type f \( -path '*/flutter-apk/*release*.apk' -o -path '*/outputs/apk/*release*.apk' -o -name 'app-release.apk' \) 2>/dev/null | head -n 1 || true)"
-          fi
-
-          echo "Detected installable APK candidates:"
-          find /tmp/family_todo_mobile /tmp/family_todo_mobile/android/app/build -type f -name '*.apk' 2>/dev/null || true
-
-          if [ -z "$INSTALLABLE_APK_PATH" ]; then
-            if [ "$BUILD_EXIT" -ne 0 ]; then
-              echo "::group::Installable Flutter build failure tail"
-              tail -n 120 /tmp/family_todo_mobile/installable_build.log || true
-              echo "::endgroup::"
-              exit "$BUILD_EXIT"
-            fi
-            echo "::error::Installable APK file was not produced."
-            exit 1
-          fi
-
-          mkdir -p /tmp/family_todo_mobile/apk-artifacts
-          cp "$INSTALLABLE_APK_PATH" \
-            /tmp/family_todo_mobile/apk-artifacts/family-todo-installable.apk
-
-      - name: Verify APK package ids
+      - name: Verify APK package id
         shell: bash
         run: |
           set -euo pipefail
@@ -380,12 +290,7 @@ jobs:
             fi
           }
 
-          verify_package \
-            /tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk \
-            com.example.family_todo_mobile
-          verify_package \
-            /tmp/family_todo_mobile/apk-artifacts/family-todo-installable.apk \
-            com.example.family_todo_mobile.installable
+          verify_package /tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk com.example.family_todo_mobile
 
       - name: Verify APK signing fingerprint
         shell: bash
@@ -417,10 +322,6 @@ jobs:
             exit 1
           fi
           if ! echo ",${ALLOWED_SIGN_SHA1_HEX}," | grep -Fq ",${ACTUAL_SHA1},"; then
-            if [ "${SIGNING_KEY_SOURCE:-}" = "fallback" ]; then
-              echo "::warning::APK uses fallback signing key ${ACTUAL_SHA1}. Configure RELEASE_KEYSTORE_* secrets for stable production signing."
-              exit 0
-            fi
             echo "::error::APK signing fingerprint is not registered in Firebase. Got ${ACTUAL_SHA1}; allowed ${ALLOWED_SIGN_SHA1_HEX}."
             exit 1
           fi
@@ -429,9 +330,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: family-todo-release-apk
-          path: |
-            /tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk
-            /tmp/family_todo_mobile/apk-artifacts/family-todo-installable.apk
+          path: /tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk
 
       - name: Publish GitHub Release
         id: release
@@ -440,9 +339,7 @@ jobs:
         with:
           tag_name: mobile-v${{ github.run_number }}
           name: Mobile APK v${{ github.run_number }}
-          files: |
-            /tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk
-            /tmp/family_todo_mobile/apk-artifacts/family-todo-installable.apk
+          files: /tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk
           generate_release_notes: true
 
       - name: Update latest tag and release
@@ -450,15 +347,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           APK="/tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk"
-          INSTALLABLE_APK="/tmp/family_todo_mobile/apk-artifacts/family-todo-installable.apk"
-
           # If the versioned release step failed, create it now via gh CLI
           if [ "${{ steps.release.outcome }}" != "success" ]; then
             echo "softprops release failed — creating via gh CLI"
             gh release create "mobile-v${{ github.run_number }}" \
               --title "Mobile APK v${{ github.run_number }}" \
               --notes "Сборка #${{ github.run_number }} | Коммит ${{ github.sha }}" \
-              "$APK" "$INSTALLABLE_APK" || echo "Versioned release creation also failed — continuing"
+              "$APK" || echo "Versioned release creation also failed — continuing"
           fi
 
           # Force-update the 'latest' tag to current commit
@@ -472,4 +367,4 @@ jobs:
           gh release create latest \
             --title "Latest Mobile APK" \
             --notes "Сборка #${{ github.run_number }} | Коммит ${{ github.sha }}" \
-            "$APK" "$INSTALLABLE_APK" || echo "::warning::Failed to create latest release (may be rate-limited)"
+            "$APK" || echo "::warning::Failed to create latest release (may be rate-limited)"
