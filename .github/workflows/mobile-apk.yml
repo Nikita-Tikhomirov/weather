@@ -1,4 +1,4 @@
-name: Mobile APK Build
+name: Kwork Lead Funnel APK
 
 on:
   workflow_dispatch:
@@ -7,14 +7,13 @@ on:
       - master
     paths:
       - 'mobile_app/**'
-      - 'assets/stickers/**'
       - '.github/workflows/mobile-apk.yml'
 
 permissions:
   contents: write
 
 concurrency:
-  group: mobile-apk-${{ github.ref }}
+  group: kwork-lead-funnel-apk-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -22,454 +21,149 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FLUTTER_VERSION: 3.44.0
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      ALLOWED_SIGN_SHA1_HEX: F7A5772750EC4971DBE14BEEB4144E5895DD9852,8067ED1EB450CD96421330E19BC305DD3EC553F0,F55E7F7C6AA047F6A27BB6FBC23C0ECE15A3BD71
+      APPLICATION_ID: com.example.family_todo_mobile.installable
+      APP_LABEL: Kwork Lead Funnel
+      APP_VERSION: 0.2.0
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Install Android SDK platform 36
-        shell: bash
-        run: |
-          set -euo pipefail
-          ANDROID_SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
-          if [ -d "$ANDROID_SDK_ROOT" ]; then
-            yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" || \
-            yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-36" || \
-            echo "SDK 36 install attempted; continuing"
-          fi
-
       - name: Set up Flutter
         timeout-minutes: 5
-        shell: bash
         run: |
-          set -euo pipefail
-          FLUTTER_DIR="$RUNNER_TEMP/flutter"
-          rm -rf "$FLUTTER_DIR"
-          git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutter.git "$FLUTTER_DIR"
-          echo "$FLUTTER_DIR/bin" >> "$GITHUB_PATH"
-          "$FLUTTER_DIR/bin/flutter" --version
-          "$FLUTTER_DIR/bin/flutter" config --no-analytics
+          git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/flutter/bin/flutter" --version
 
       - name: Prepare isolated Flutter project
         shell: bash
         run: |
           set -euo pipefail
-          APP_DIR="/tmp/family_todo_mobile"
-          rm -rf "$APP_DIR"
+          APP_DIR="/tmp/kwork_lead_funnel"
           flutter create --platforms=android --project-name family_todo_mobile --org com.example "$APP_DIR"
-          rm -f "$APP_DIR/android/build.gradle.kts"
-          rm -f "$APP_DIR/android/app/build.gradle.kts"
-
-          rm -rf "$APP_DIR/lib"
+          rm -f "$APP_DIR/android/build.gradle.kts" "$APP_DIR/android/app/build.gradle.kts"
+          rm -rf "$APP_DIR/lib" "$APP_DIR/test"
           cp -R mobile_app/lib "$APP_DIR/lib"
-          if [ -d mobile_app/test ]; then
-            rm -rf "$APP_DIR/test"
-            cp -R mobile_app/test "$APP_DIR/test"
-          fi
+          cp -R mobile_app/test "$APP_DIR/test"
           cp mobile_app/pubspec.yaml "$APP_DIR/pubspec.yaml"
-          if [ -f mobile_app/pubspec.lock ]; then
-            cp mobile_app/pubspec.lock "$APP_DIR/pubspec.lock"
-          fi
-          if [ -f mobile_app/analysis_options.yaml ]; then
-            cp mobile_app/analysis_options.yaml "$APP_DIR/analysis_options.yaml"
-          fi
-          if [ -f .github/workflows/mobile-apk.yml ]; then
-            mkdir -p "$APP_DIR/.github/workflows"
-            cp .github/workflows/mobile-apk.yml "$APP_DIR/.github/workflows/mobile-apk.yml"
-          fi
-          if [ -f mobile_app/android/build.gradle ]; then
-            cp mobile_app/android/build.gradle "$APP_DIR/android/build.gradle"
-          fi
-          if [ -f mobile_app/android/settings.gradle ]; then
-            rm -f "$APP_DIR/android/settings.gradle.kts"
-            cp mobile_app/android/settings.gradle "$APP_DIR/android/settings.gradle"
-          fi
-          if [ -f mobile_app/android/gradle.properties ]; then
-            cp mobile_app/android/gradle.properties "$APP_DIR/android/gradle.properties"
-          fi
-          if [ -f mobile_app/android/app/build.gradle ]; then
-            cp mobile_app/android/app/build.gradle "$APP_DIR/android/app/build.gradle"
-          fi
-          if [ -f mobile_app/android/app/google-services.json ]; then
-            cp mobile_app/android/app/google-services.json "$APP_DIR/android/app/google-services.json"
-          fi
-          if [ -f mobile_app/android/app/src/main/AndroidManifest.xml ]; then
-            cp mobile_app/android/app/src/main/AndroidManifest.xml "$APP_DIR/android/app/src/main/AndroidManifest.xml"
-          fi
-          if [ -d mobile_app/android/app/src/main/res ]; then
-            rm -rf "$APP_DIR/android/app/src/main/res"
-            cp -R mobile_app/android/app/src/main/res "$APP_DIR/android/app/src/main/res"
-          fi
+          cp mobile_app/pubspec.lock "$APP_DIR/pubspec.lock"
+          cp mobile_app/analysis_options.yaml "$APP_DIR/analysis_options.yaml"
+          mkdir -p "$APP_DIR/.github/workflows"
+          cp .github/workflows/mobile-apk.yml "$APP_DIR/.github/workflows/mobile-apk.yml"
+          cp mobile_app/android/build.gradle "$APP_DIR/android/build.gradle"
+          cp mobile_app/android/settings.gradle "$APP_DIR/android/settings.gradle"
+          cp mobile_app/android/gradle.properties "$APP_DIR/android/gradle.properties"
+          cp mobile_app/android/app/build.gradle "$APP_DIR/android/app/build.gradle"
+          cp mobile_app/android/app/google-services.json "$APP_DIR/android/app/google-services.json"
+          cp mobile_app/android/app/src/main/AndroidManifest.xml "$APP_DIR/android/app/src/main/AndroidManifest.xml"
+          cp -a mobile_app/android/app/src/main/res/. "$APP_DIR/android/app/src/main/res/"
           if [ -d mobile_app/android/app/src/main/kotlin ]; then
-            rm -rf "$APP_DIR/android/app/src/main/kotlin"
             cp -R mobile_app/android/app/src/main/kotlin "$APP_DIR/android/app/src/main/kotlin"
           fi
-          if [ -d mobile_app/android/app/src/main/java ]; then
-            cp -R mobile_app/android/app/src/main/java "$APP_DIR/android/app/src/main/java"
-          fi
 
-      - name: Flutter pub get
+      - name: Install dependencies and run Flutter tests
         run: |
-          cd /tmp/family_todo_mobile
+          cd /tmp/kwork_lead_funnel
           flutter pub get
-
-      - name: Flutter tests
-        run: |
-          cd /tmp/family_todo_mobile
           flutter test --concurrency=1
 
-      - name: Restore fallback release keystore cache
-        uses: actions/cache@v4
-        with:
-          path: /tmp/family_todo_mobile/android/release.keystore
-          key: family-todo-release-keystore-v1
-
-      - name: Prepare release keystore
+      - name: Restore lead app signing key
         env:
-          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          LEAD_FUNNEL_KEYSTORE_BASE64: ${{ secrets.LEAD_FUNNEL_KEYSTORE_BASE64 }}
+          LEAD_FUNNEL_KEYSTORE_PASSWORD: ${{ secrets.LEAD_FUNNEL_KEYSTORE_PASSWORD }}
+          LEAD_FUNNEL_KEY_ALIAS: ${{ secrets.LEAD_FUNNEL_KEY_ALIAS }}
+          LEAD_FUNNEL_KEY_PASSWORD: ${{ secrets.LEAD_FUNNEL_KEY_PASSWORD }}
         shell: bash
         run: |
           set -euo pipefail
-          APP_DIR="/tmp/family_todo_mobile"
-          STORE_PASSWORD="${RELEASE_KEYSTORE_PASSWORD:-}"
-          KEY_ALIAS="${RELEASE_KEY_ALIAS:-}"
-          KEY_PASSWORD="${RELEASE_KEY_PASSWORD:-}"
-
-          if [ -n "${RELEASE_KEYSTORE_BASE64:-}" ] && [ -n "${RELEASE_KEYSTORE_PASSWORD:-}" ] && [ -n "${RELEASE_KEY_ALIAS:-}" ] && [ -n "${RELEASE_KEY_PASSWORD:-}" ]; then
-            echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$APP_DIR/android/release.keystore"
-            echo "Using release keystore from GitHub secrets"
-            echo "SIGNING_KEY_SOURCE=secrets" >> "$GITHUB_ENV"
-          elif [ -f "$APP_DIR/android/release.keystore" ]; then
-            echo "::warning::Using cached fallback release keystore. Configure RELEASE_KEYSTORE_* secrets for stable production signing."
-            STORE_PASSWORD="familytodo123"
-            KEY_ALIAS="familytodo"
-            KEY_PASSWORD="familytodo123"
-            echo "SIGNING_KEY_SOURCE=fallback" >> "$GITHUB_ENV"
-          else
-            echo "::error::RELEASE_KEYSTORE_BASE64 is required when cached fallback release.keystore is unavailable. Refusing to generate a new signing key because that breaks Android updates."
-            exit 1
-          fi
-          echo "SIGNING_STORE_FILE=$APP_DIR/android/release.keystore" >> "$GITHUB_ENV"
-          echo "SIGNING_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
-          echo "SIGNING_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
-          echo "SIGNING_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
-
-      - name: Build release APK
-        timeout-minutes: 20
-        env:
-          API_BASE_URL: ${{ secrets.MOBILE_API_BASE_URL }}
-          API_KEY: ${{ secrets.TODO_BACKEND_API_KEY }}
-          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
-          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
-          TURN_URLS: ${{ secrets.TURN_URLS }}
-          TURN_USERNAME: ${{ secrets.TURN_USERNAME }}
-          TURN_CREDENTIAL: ${{ secrets.TURN_CREDENTIAL }}
-          BRIDGE_DEFAULT_HOST: ${{ secrets.BRIDGE_DEFAULT_HOST }}
-          BUILD_NUMBER: ${{ github.run_number }}
-          APP_VERSION: 0.1.8
-          APPLICATION_ID: com.example.family_todo_mobile
-          APP_LABEL: Family Todo
-        shell: bash
-        run: |
-          set -o pipefail
-          cd /tmp/family_todo_mobile
-          REQUIRED_ENV=(
-            API_BASE_URL
-            API_KEY
-            FIREBASE_APP_ID
-            FIREBASE_PROJECT_ID
-            FIREBASE_MESSAGING_SENDER_ID
-            FIREBASE_API_KEY
-            FIREBASE_STORAGE_BUCKET
-            TURN_URLS
-            TURN_USERNAME
-            TURN_CREDENTIAL
-            BRIDGE_DEFAULT_HOST
-          )
-          missing=0
-          for name in "${REQUIRED_ENV[@]}"; do
+          for name in LEAD_FUNNEL_KEYSTORE_BASE64 LEAD_FUNNEL_KEYSTORE_PASSWORD LEAD_FUNNEL_KEY_ALIAS LEAD_FUNNEL_KEY_PASSWORD; do
             if [ -z "${!name:-}" ]; then
-              echo "::error::${name} is required for mobile release builds"
-              missing=1
-            fi
-          done
-          if [ "$missing" -ne 0 ]; then
-            exit 1
-          fi
-
-          rm -f /tmp/family_todo_mobile/flutter_build.log
-          set +e
-          timeout 18m flutter build apk --release \
-            --target-platform android-arm,android-arm64 \
-            --android-project-arg=APPLICATION_ID="$APPLICATION_ID" \
-            --android-project-arg=APP_LABEL="$APP_LABEL" \
-            --build-number="$BUILD_NUMBER" \
-            --build-name="$APP_VERSION" \
-            --dart-define=API_BASE_URL="$API_BASE_URL" \
-            --dart-define=API_KEY="$API_KEY" \
-            --dart-define=FIREBASE_APP_ID="$FIREBASE_APP_ID" \
-            --dart-define=FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" \
-            --dart-define=FIREBASE_MESSAGING_SENDER_ID="$FIREBASE_MESSAGING_SENDER_ID" \
-            --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY" \
-            --dart-define=FIREBASE_STORAGE_BUCKET="$FIREBASE_STORAGE_BUCKET" \
-            --dart-define=TURN_URLS="$TURN_URLS" \
-            --dart-define=TURN_USERNAME="$TURN_USERNAME" \
-            --dart-define=TURN_CREDENTIAL="$TURN_CREDENTIAL" \
-            --dart-define=BRIDGE_DEFAULT_HOST="$BRIDGE_DEFAULT_HOST" \
-            --dart-define=APP_VERSION="$APP_VERSION" \
-            2>&1 | tee /tmp/family_todo_mobile/flutter_build.log
-          BUILD_EXIT=$?
-          set -e
-
-          APK_PATH="/tmp/family_todo_mobile/build/app/outputs/flutter-apk/app-release.apk"
-          if [ ! -f "$APK_PATH" ]; then
-            APK_PATH="$(find /tmp/family_todo_mobile /tmp/family_todo_mobile/android/app/build -type f \( -path '*/flutter-apk/*release*.apk' -o -path '*/outputs/apk/*release*.apk' -o -name 'app-release.apk' \) 2>/dev/null | head -n 1 || true)"
-          fi
-
-          if [ -z "$APK_PATH" ]; then
-            echo "No APK found after flutter build. Trying Gradle assembleRelease fallback..."
-            (cd /tmp/family_todo_mobile/android && ./gradlew --no-daemon assembleRelease) 2>&1 | tee -a /tmp/family_todo_mobile/flutter_build.log || true
-            APK_PATH="$(find /tmp/family_todo_mobile /tmp/family_todo_mobile/android/app/build -type f \( -path '*/flutter-apk/*release*.apk' -o -path '*/outputs/apk/*release*.apk' -o -name '*.apk' \) 2>/dev/null | head -n 1 || true)"
-          fi
-
-          echo "Detected APK candidates:"
-          find /tmp/family_todo_mobile /tmp/family_todo_mobile/android/app/build -type f -name '*.apk' 2>/dev/null || true
-
-          if [ "$BUILD_EXIT" -ne 0 ]; then
-            echo "::group::Flutter build failure tail"
-            tail -n 120 /tmp/family_todo_mobile/flutter_build.log || true
-            echo "::endgroup::"
-            ERROR_TAIL="$(tail -n 20 /tmp/family_todo_mobile/flutter_build.log | tr '\n' ' ' | tr -s ' ')"
-            if [ -n "$ERROR_TAIL" ]; then
-              echo "::error::flutter build failed: $ERROR_TAIL"
-            fi
-          fi
-
-          if [ -n "$APK_PATH" ]; then
-            mkdir -p /tmp/family_todo_mobile/build/app/outputs/flutter-apk
-            cp "$APK_PATH" /tmp/family_todo_mobile/build/app/outputs/flutter-apk/app-release.apk
-          elif [ "$BUILD_EXIT" -ne 0 ]; then
-            exit "$BUILD_EXIT"
-          else
-            echo "::error::APK file was not produced."
-            exit 1
-          fi
-
-      - name: Rename artifact
-        run: |
-          mkdir -p /tmp/family_todo_mobile/apk-artifacts
-          cp /tmp/family_todo_mobile/build/app/outputs/flutter-apk/app-release.apk \
-            /tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk
-
-      - name: Build no-conflict install APK
-        timeout-minutes: 20
-        env:
-          API_BASE_URL: ${{ secrets.MOBILE_API_BASE_URL }}
-          API_KEY: ${{ secrets.TODO_BACKEND_API_KEY }}
-          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
-          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
-          TURN_URLS: ${{ secrets.TURN_URLS }}
-          TURN_USERNAME: ${{ secrets.TURN_USERNAME }}
-          TURN_CREDENTIAL: ${{ secrets.TURN_CREDENTIAL }}
-          BRIDGE_DEFAULT_HOST: ${{ secrets.BRIDGE_DEFAULT_HOST }}
-          BUILD_NUMBER: ${{ github.run_number }}
-          APP_VERSION: 0.1.8
-          APPLICATION_ID: com.example.family_todo_mobile.installable
-          APP_LABEL: Family Todo New
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd /tmp/family_todo_mobile
-          rm -f /tmp/family_todo_mobile/installable_build.log
-          (cd android && ./gradlew --stop || true)
-          flutter clean
-          flutter pub get
-          set +e
-          timeout 18m flutter build apk --release \
-            --target-platform android-arm,android-arm64 \
-            --android-project-arg=APPLICATION_ID="$APPLICATION_ID" \
-            --android-project-arg=APP_LABEL="$APP_LABEL" \
-            --build-number="$BUILD_NUMBER" \
-            --build-name="$APP_VERSION" \
-            --dart-define=API_BASE_URL="$API_BASE_URL" \
-            --dart-define=API_KEY="$API_KEY" \
-            --dart-define=FIREBASE_APP_ID="$FIREBASE_APP_ID" \
-            --dart-define=FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" \
-            --dart-define=FIREBASE_MESSAGING_SENDER_ID="$FIREBASE_MESSAGING_SENDER_ID" \
-            --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY" \
-            --dart-define=FIREBASE_STORAGE_BUCKET="$FIREBASE_STORAGE_BUCKET" \
-            --dart-define=TURN_URLS="$TURN_URLS" \
-            --dart-define=TURN_USERNAME="$TURN_USERNAME" \
-            --dart-define=TURN_CREDENTIAL="$TURN_CREDENTIAL" \
-            --dart-define=BRIDGE_DEFAULT_HOST="$BRIDGE_DEFAULT_HOST" \
-            --dart-define=APP_VERSION="$APP_VERSION" \
-            2>&1 | tee /tmp/family_todo_mobile/installable_build.log
-          BUILD_EXIT=$?
-          set -e
-
-          INSTALLABLE_APK_PATH="/tmp/family_todo_mobile/build/app/outputs/flutter-apk/app-release.apk"
-          if [ ! -f "$INSTALLABLE_APK_PATH" ]; then
-            INSTALLABLE_APK_PATH="$(find /tmp/family_todo_mobile /tmp/family_todo_mobile/android/app/build -type f \( -path '*/flutter-apk/*release*.apk' -o -path '*/outputs/apk/*release*.apk' -o -name 'app-release.apk' \) 2>/dev/null | head -n 1 || true)"
-          fi
-
-          echo "Detected installable APK candidates:"
-          find /tmp/family_todo_mobile /tmp/family_todo_mobile/android/app/build -type f -name '*.apk' 2>/dev/null || true
-
-          if [ -z "$INSTALLABLE_APK_PATH" ]; then
-            if [ "$BUILD_EXIT" -ne 0 ]; then
-              echo "::group::Installable Flutter build failure tail"
-              tail -n 120 /tmp/family_todo_mobile/installable_build.log || true
-              echo "::endgroup::"
-              exit "$BUILD_EXIT"
-            fi
-            echo "::error::Installable APK file was not produced."
-            exit 1
-          fi
-
-          mkdir -p /tmp/family_todo_mobile/apk-artifacts
-          cp "$INSTALLABLE_APK_PATH" \
-            /tmp/family_todo_mobile/apk-artifacts/family-todo-installable.apk
-
-      - name: Verify APK package ids
-        shell: bash
-        run: |
-          set -euo pipefail
-          AAPT=""
-          for d in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" /usr/local/lib/android/sdk /opt/android-sdk; do
-            if [ -n "$d" ] && [ -d "$d/build-tools" ]; then
-              found="$(find "$d/build-tools" -maxdepth 2 -type f -name aapt 2>/dev/null | sort -V | tail -n 1 || true)"
-              if [ -n "$found" ]; then
-                AAPT="$found"
-                break
-              fi
-            fi
-          done
-          if [ -z "$AAPT" ]; then
-            echo "::error::Android aapt was not found; cannot verify APK package ids."
-            exit 1
-          fi
-
-          verify_package() {
-            local apk_path="$1"
-            local expected_package="$2"
-            local badging
-            badging="$("$AAPT" dump badging "$apk_path")"
-            echo "$badging" | head -n 5
-            if ! printf '%s\n' "$badging" | grep -Fq "package: name='${expected_package}'"; then
-              echo "::error::${apk_path} has wrong package id. Expected ${expected_package}."
+              echo "::error::${name} is required to publish an updateable Kwork Lead Funnel APK."
               exit 1
             fi
-          }
+          done
+          KEYSTORE="/tmp/kwork_lead_funnel/android/kwork-lead-funnel.keystore"
+          echo "$LEAD_FUNNEL_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          echo "SIGNING_STORE_FILE=$KEYSTORE" >> "$GITHUB_ENV"
+          echo "SIGNING_STORE_PASSWORD=$LEAD_FUNNEL_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "SIGNING_KEY_ALIAS=$LEAD_FUNNEL_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "SIGNING_KEY_PASSWORD=$LEAD_FUNNEL_KEY_PASSWORD" >> "$GITHUB_ENV"
 
-          verify_package \
-            /tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk \
-            com.example.family_todo_mobile
-          verify_package \
-            /tmp/family_todo_mobile/apk-artifacts/family-todo-installable.apk \
-            com.example.family_todo_mobile.installable
-
-      - name: Verify APK signing fingerprint
+      - name: Build Kwork Lead Funnel APK
+        timeout-minutes: 20
+        env:
+          API_BASE_URL: ${{ secrets.MOBILE_API_BASE_URL }}
+          API_KEY: ${{ secrets.TODO_BACKEND_API_KEY }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          TURN_URLS: ${{ secrets.TURN_URLS }}
+          TURN_USERNAME: ${{ secrets.TURN_USERNAME }}
+          TURN_CREDENTIAL: ${{ secrets.TURN_CREDENTIAL }}
+          BRIDGE_DEFAULT_HOST: ${{ secrets.BRIDGE_DEFAULT_HOST }}
+          BUILD_NUMBER: ${{ github.run_number }}
         shell: bash
         run: |
           set -euo pipefail
-          APK_PATH="/tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk"
-          # Find apksigner only inside Android build-tools. Scanning $HOME can
-          # walk large tool caches on GitHub runners and stall this step.
-          APKSIGNER=""
-          for d in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" /usr/local/lib/android/sdk /opt/android-sdk; do
-            if [ -n "$d" ] && [ -d "$d/build-tools" ]; then
-              found="$(find "$d/build-tools" -maxdepth 2 -type f -name apksigner 2>/dev/null | sort -V | tail -n 1 || true)"
-              if [ -n "$found" ]; then
-                APKSIGNER="$found"
-                break
-              fi
+          cd /tmp/kwork_lead_funnel
+          for name in API_BASE_URL API_KEY FIREBASE_APP_ID FIREBASE_PROJECT_ID FIREBASE_MESSAGING_SENDER_ID FIREBASE_API_KEY FIREBASE_STORAGE_BUCKET TURN_URLS TURN_USERNAME TURN_CREDENTIAL BRIDGE_DEFAULT_HOST; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::${name} is required for a production APK."
+              exit 1
             fi
           done
-          if [ -z "$APKSIGNER" ]; then
-            echo "::warning::Android apksigner was not found — skipping signing verification."
-            exit 0
-          fi
-          CERT_OUTPUT="$("$APKSIGNER" verify --print-certs "$APK_PATH")"
-          echo "$CERT_OUTPUT"
-          ACTUAL_SHA1="$(printf '%s\n' "$CERT_OUTPUT" | sed -n 's/.*SHA-1 digest:[[:space:]]*//p' | head -n1 | tr -cd '[:xdigit:]' | tr '[:lower:]' '[:upper:]')"
-          echo "APK signing SHA1 hex: ${ACTUAL_SHA1}"
-          if [ -z "$ACTUAL_SHA1" ]; then
-            echo "::error::Failed to read APK signing SHA1 fingerprint."
-            exit 1
-          fi
-          if ! echo ",${ALLOWED_SIGN_SHA1_HEX}," | grep -Fq ",${ACTUAL_SHA1},"; then
-            if [ "${SIGNING_KEY_SOURCE:-}" = "fallback" ]; then
-              echo "::warning::APK uses fallback signing key ${ACTUAL_SHA1}. Configure RELEASE_KEYSTORE_* secrets for stable production signing."
-              exit 0
-            fi
-            echo "::error::APK signing fingerprint is not registered in Firebase. Got ${ACTUAL_SHA1}; allowed ${ALLOWED_SIGN_SHA1_HEX}."
-            exit 1
-          fi
+          flutter build apk --release \
+            --target-platform android-arm,android-arm64 \
+            --build-number="$BUILD_NUMBER" \
+            --build-name="$APP_VERSION" \
+            --dart-define=API_BASE_URL="$API_BASE_URL" \
+            --dart-define=API_KEY="$API_KEY" \
+            --dart-define=FIREBASE_APP_ID="$FIREBASE_APP_ID" \
+            --dart-define=FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" \
+            --dart-define=FIREBASE_MESSAGING_SENDER_ID="$FIREBASE_MESSAGING_SENDER_ID" \
+            --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY" \
+            --dart-define=FIREBASE_STORAGE_BUCKET="$FIREBASE_STORAGE_BUCKET" \
+            --dart-define=TURN_URLS="$TURN_URLS" \
+            --dart-define=TURN_USERNAME="$TURN_USERNAME" \
+            --dart-define=TURN_CREDENTIAL="$TURN_CREDENTIAL" \
+            --dart-define=BRIDGE_DEFAULT_HOST="$BRIDGE_DEFAULT_HOST" \
+            --dart-define=APP_VERSION="$APP_VERSION"
+          mkdir -p /tmp/apk-artifacts
+          cp build/app/outputs/flutter-apk/app-release.apk /tmp/apk-artifacts/kwork-lead-funnel.apk
+
+      - name: Verify package identifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          AAPT="$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}" -path '*/build-tools/*/aapt' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -n "$AAPT"
+          "$AAPT" dump badging /tmp/apk-artifacts/kwork-lead-funnel.apk | grep -F "package: name='com.example.family_todo_mobile.installable'"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: family-todo-release-apk
-          path: |
-            /tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk
-            /tmp/family_todo_mobile/apk-artifacts/family-todo-installable.apk
+          name: kwork-lead-funnel-apk
+          path: /tmp/apk-artifacts/kwork-lead-funnel.apk
 
-      - name: Publish GitHub Release
-        id: release
-        continue-on-error: true
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: mobile-v${{ github.run_number }}
-          name: Mobile APK v${{ github.run_number }}
-          files: |
-            /tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk
-            /tmp/family_todo_mobile/apk-artifacts/family-todo-installable.apk
-          generate_release_notes: true
-
-      - name: Update latest tag and release
+      - name: Publish GitHub releases
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
-          APK="/tmp/family_todo_mobile/apk-artifacts/family-todo-release.apk"
-          INSTALLABLE_APK="/tmp/family_todo_mobile/apk-artifacts/family-todo-installable.apk"
-
-          # If the versioned release step failed, create it now via gh CLI
-          if [ "${{ steps.release.outcome }}" != "success" ]; then
-            echo "softprops release failed — creating via gh CLI"
-            gh release create "mobile-v${{ github.run_number }}" \
-              --title "Mobile APK v${{ github.run_number }}" \
-              --notes "Сборка #${{ github.run_number }} | Коммит ${{ github.sha }}" \
-              "$APK" "$INSTALLABLE_APK" || echo "Versioned release creation also failed — continuing"
-          fi
-
-          # Force-update the 'latest' tag to current commit
-          git tag -f latest
-          git push origin latest --force || echo "::warning::Failed to push latest tag (may be rate-limited)"
-
-          # Delete old latest release if exists (ignore error)
+          set -euo pipefail
+          APK=/tmp/apk-artifacts/kwork-lead-funnel.apk
+          VERSION_TAG="kwork-lead-funnel-v${{ github.run_number }}"
+          gh release create "$VERSION_TAG" --title "Kwork Lead Funnel v${{ github.run_number }}" --generate-notes "$APK"
           gh release delete latest --yes --cleanup-tag 2>/dev/null || true
-
-          # Create new latest release
-          gh release create latest \
-            --title "Latest Mobile APK" \
-            --notes "Сборка #${{ github.run_number }} | Коммит ${{ github.sha }}" \
-            "$APK" "$INSTALLABLE_APK" || echo "::warning::Failed to create latest release (may be rate-limited)"
+          git tag -f latest
+          git push origin latest --force
+          gh release create latest --title "Kwork Lead Funnel - Latest" --notes "Отдельное приложение для работы с заказами Kwork." "$APK"
