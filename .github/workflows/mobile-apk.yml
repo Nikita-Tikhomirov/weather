@@ -121,6 +121,7 @@ jobs:
               exit 1
             fi
           done
+          set +e
           flutter build apk --release \
             --target-platform android-arm,android-arm64 \
             --build-number="$BUILD_NUMBER" \
@@ -137,8 +138,18 @@ jobs:
             --dart-define=TURN_CREDENTIAL="$TURN_CREDENTIAL" \
             --dart-define=BRIDGE_DEFAULT_HOST="$BRIDGE_DEFAULT_HOST" \
             --dart-define=APP_VERSION="$APP_VERSION"
+          BUILD_EXIT=$?
+          set -e
+          APK_PATH="$(find build android/app/build -type f \( -path '*/flutter-apk/*release*.apk' -o -path '*/outputs/apk/*release*.apk' -o -name 'app-release.apk' \) 2>/dev/null | head -n 1 || true)"
+          if [ -z "$APK_PATH" ]; then
+            echo "::error::Release build did not produce an APK."
+            if [ "$BUILD_EXIT" -ne 0 ]; then
+              exit "$BUILD_EXIT"
+            fi
+            exit 1
+          fi
           mkdir -p /tmp/apk-artifacts
-          cp build/app/outputs/flutter-apk/app-release.apk /tmp/apk-artifacts/kwork-lead-funnel.apk
+          cp "$APK_PATH" /tmp/apk-artifacts/kwork-lead-funnel.apk
 
       - name: Verify package identifier
         shell: bash
