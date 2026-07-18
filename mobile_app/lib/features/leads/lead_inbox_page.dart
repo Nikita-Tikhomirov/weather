@@ -32,7 +32,9 @@ class _LeadInboxPageState extends State<LeadInboxPage> {
       );
 
   Future<void> _refresh() async {
-    setState(() => _leads = _load());
+    setState(() {
+      _leads = _load();
+    });
     await _leads;
   }
 
