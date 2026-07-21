@@ -382,6 +382,8 @@ final class LeadRepository
             'proposal_title' => mb_substr(trim((string)($input['proposal_title'] ?? '')), 0, 70),
             'proposal_price_rub' => $this->positiveInt($input['proposal_price_rub'] ?? null),
             'proposal_days' => $this->positiveInt($input['proposal_days'] ?? null),
+            'buyer_desired_budget_rub' => $this->positiveInt($input['buyer_desired_budget_rub'] ?? null),
+            'kwork_max_price_rub' => $this->positiveInt($input['kwork_max_price_rub'] ?? null),
             'offer_count' => $this->nonNegativeInt($input['offer_count'] ?? null),
         ];
     }
@@ -429,6 +431,8 @@ final class LeadRepository
             'proposal_title' => (string)$row->proposal_title,
             'proposal_price_rub' => $row->proposal_price_rub === null ? null : (int)$row->proposal_price_rub,
             'proposal_days' => $row->proposal_days === null ? null : (int)$row->proposal_days,
+            'buyer_desired_budget_rub' => $row->buyer_desired_budget_rub === null ? null : (int)$row->buyer_desired_budget_rub,
+            'kwork_max_price_rub' => $row->kwork_max_price_rub === null ? null : (int)$row->kwork_max_price_rub,
             'offer_count' => $row->offer_count === null ? null : (int)$row->offer_count,
             'status' => (string)$row->status,
             'last_error' => (string)$row->last_error,

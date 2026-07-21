@@ -41,6 +41,8 @@ class LeadApiTest extends TestCase
             'proposal_title' => 'Адаптивная верстка лендинга',
             'proposal_price_rub' => 5000,
             'proposal_days' => 3,
+            'buyer_desired_budget_rub' => 2000,
+            'kwork_max_price_rub' => 6000,
             'offer_count' => 2,
         ];
 
@@ -49,6 +51,8 @@ class LeadApiTest extends TestCase
             ->assertStatus(200)
             ->assertJsonPath('ok', true)
             ->assertJsonPath('lead.owner_profile', $nikita)
+            ->assertJsonPath('lead.buyer_desired_budget_rub', 2000)
+            ->assertJsonPath('lead.kwork_max_price_rub', 6000)
             ->assertJsonPath('lead.status', 'new');
 
         $leadId = $created->json('lead.id');

@@ -23,6 +23,8 @@ return new class extends Migration
                 $table->string('proposal_title', 70)->default('');
                 $table->unsignedInteger('proposal_price_rub')->nullable();
                 $table->unsignedTinyInteger('proposal_days')->nullable();
+                $table->unsignedInteger('buyer_desired_budget_rub')->nullable();
+                $table->unsignedInteger('kwork_max_price_rub')->nullable();
                 $table->unsignedInteger('offer_count')->nullable();
                 $table->string('status', 16)->default('new');
                 $table->string('executor_id', 128)->nullable();
