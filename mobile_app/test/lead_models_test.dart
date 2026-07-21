@@ -18,6 +18,8 @@ void main() {
       'proposal_title': 'Верстка страницы',
       'proposal_price_rub': 4500,
       'proposal_days': 3,
+      'buyer_desired_budget_rub': 2000,
+      'kwork_max_price_rub': 6000,
       'offer_count': 2,
       'status': 'new',
       'last_error': '',
@@ -28,6 +30,8 @@ void main() {
 
     expect(lead.id, 9);
     expect(lead.proposalPriceRub, 4500);
+    expect(lead.buyerDesiredBudgetRub, 2000);
+    expect(lead.kworkMaxPriceRub, 6000);
     expect(lead.offerCount, 2);
     expect(lead.canEdit, isTrue);
     expect(lead.canApprove, isTrue);

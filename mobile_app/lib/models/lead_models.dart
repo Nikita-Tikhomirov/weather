@@ -13,6 +13,8 @@ class LeadItem {
     required this.proposalTitle,
     required this.proposalPriceRub,
     required this.proposalDays,
+    required this.buyerDesiredBudgetRub,
+    required this.kworkMaxPriceRub,
     required this.offerCount,
     required this.status,
     required this.lastError,
@@ -34,6 +36,8 @@ class LeadItem {
   final String proposalTitle;
   final int? proposalPriceRub;
   final int? proposalDays;
+  final int? buyerDesiredBudgetRub;
+  final int? kworkMaxPriceRub;
   final int? offerCount;
   final String status;
   final String lastError;
@@ -67,6 +71,8 @@ class LeadItem {
       proposalTitle: proposalTitle ?? this.proposalTitle,
       proposalPriceRub: proposalPriceRub ?? this.proposalPriceRub,
       proposalDays: proposalDays ?? this.proposalDays,
+      buyerDesiredBudgetRub: buyerDesiredBudgetRub,
+      kworkMaxPriceRub: kworkMaxPriceRub,
       offerCount: offerCount,
       status: status ?? this.status,
       lastError: lastError,
@@ -93,6 +99,8 @@ class LeadItem {
       proposalTitle: '${json['proposal_title'] ?? ''}',
       proposalPriceRub: integer(json['proposal_price_rub']),
       proposalDays: integer(json['proposal_days']),
+      buyerDesiredBudgetRub: integer(json['buyer_desired_budget_rub']),
+      kworkMaxPriceRub: integer(json['kwork_max_price_rub']),
       offerCount: integer(json['offer_count']),
       status: '${json['status'] ?? 'new'}',
       lastError: '${json['last_error'] ?? ''}',

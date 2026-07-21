@@ -93,6 +93,29 @@ void main() {
     expect(find.text('Стоп'), findsOneWidget);
   });
 
+  testWidgets('shows Kwork budget range and calculated proposal price',
+      (tester) async {
+    final api = _FakeLeadApi();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: LeadInboxPage(api: api, actorProfile: 'nikita'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('до 2 000 руб.'), findsOneWidget);
+    expect(find.textContaining('до 6 000 руб.'), findsOneWidget);
+
+    await tester.tap(find.text('Сверстать лендинг'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Бюджет Kwork'), findsOneWidget);
+    expect(find.text('Желаемый бюджет: до 2 000 руб.'), findsOneWidget);
+    expect(find.text('Допустимый максимум: до 6 000 руб.'), findsOneWidget);
+    expect(find.text('Цена отклика: 5 100 руб. (максимум -15%)'), findsOneWidget);
+  });
+
   testWidgets(
       'approval saves edited reply fields before queuing the Kwork send',
       (tester) async {
@@ -273,8 +296,10 @@ LeadItem _leadItem() => const LeadItem(
       attachmentReport: 'ТЗ.pdf: прочитан',
       draftReply: 'Здравствуйте!',
       proposalTitle: 'Верстка лендинга',
-      proposalPriceRub: 5000,
+      proposalPriceRub: 5100,
       proposalDays: 3,
+      buyerDesiredBudgetRub: 2000,
+      kworkMaxPriceRub: 6000,
       offerCount: 2,
       status: 'new',
       lastError: '',

@@ -248,7 +248,7 @@ class _LeadCard extends StatelessWidget {
     final theme = Theme.of(context);
     final meta = <String>[
       if (lead.offerCount != null) '${lead.offerCount} откл.',
-      if (lead.proposalPriceRub != null) '${lead.proposalPriceRub} руб.',
+      if (lead.proposalPriceRub != null) _rubles(lead.proposalPriceRub!),
       if (lead.proposalDays != null) '${lead.proposalDays} дн.',
     ];
     return Card(
@@ -308,6 +308,16 @@ class _LeadCard extends StatelessWidget {
                     ),
                 ],
               ),
+              if (lead.buyerDesiredBudgetRub != null ||
+                  lead.kworkMaxPriceRub != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  _kworkBudgetSummary(lead),
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.outline,
+                  ),
+                ),
+              ],
               if (lead.lastError.trim().isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
@@ -765,6 +775,7 @@ class _LeadDetailSheetState extends State<_LeadDetailSheet> {
                       ),
                     ),
                     _InfoBlock(label: 'Кратко', text: lead.summary),
+                    _KworkBudgetBlock(lead: lead),
                     const SizedBox(height: 14),
                     TextField(
                       controller: _brief,
@@ -938,6 +949,57 @@ class _InfoBlock extends StatelessWidget {
   }
 }
 
+class _KworkBudgetBlock extends StatelessWidget {
+  const _KworkBudgetBlock({required this.lead});
+
+  final LeadItem lead;
+
+  @override
+  Widget build(BuildContext context) {
+    if (lead.buyerDesiredBudgetRub == null && lead.kworkMaxPriceRub == null) {
+      return const SizedBox.shrink();
+    }
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Бюджет Kwork',
+              style: theme.textTheme.labelLarge
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            if (lead.buyerDesiredBudgetRub != null) ...[
+              const SizedBox(height: 5),
+              Text('Желаемый бюджет: до ${_rubles(lead.buyerDesiredBudgetRub!)}'),
+            ],
+            if (lead.kworkMaxPriceRub != null) ...[
+              const SizedBox(height: 3),
+              Text('Допустимый максимум: до ${_rubles(lead.kworkMaxPriceRub!)}'),
+            ],
+            if (lead.proposalPriceRub != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Цена отклика: ${_rubles(lead.proposalPriceRub!)} (максимум -15%)',
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LeadEmptyState extends StatelessWidget {
   const _LeadEmptyState();
 
@@ -993,4 +1055,24 @@ String _leadTime(String raw) {
   if (value == null) return 'Время неизвестно';
   String two(int value) => value.toString().padLeft(2, '0');
   return '${two(value.day)}.${two(value.month)} ${two(value.hour)}:${two(value.minute)}';
+}
+
+String _kworkBudgetSummary(LeadItem lead) {
+  final items = <String>[
+    if (lead.buyerDesiredBudgetRub != null)
+      'Желаемый: до ${_rubles(lead.buyerDesiredBudgetRub!)}',
+    if (lead.kworkMaxPriceRub != null)
+      'Максимум: до ${_rubles(lead.kworkMaxPriceRub!)}',
+  ];
+  return items.join('  |  ');
+}
+
+String _rubles(int amount) {
+  final digits = amount.toString();
+  final groups = <String>[];
+  for (var end = digits.length; end > 0; end -= 3) {
+    final start = end - 3 < 0 ? 0 : end - 3;
+    groups.add(digits.substring(start, end));
+  }
+  return '${groups.reversed.join(' ')} руб.';
 }
