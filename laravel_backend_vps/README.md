@@ -56,3 +56,57 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Kwork executor result API
+
+All endpoints require the configured `X-Api-Key` header.
+
+### Claimed manual submission
+
+`POST /leads/result` completes the existing manual approval flow. The lead must
+first be approved in the mobile app and claimed through `POST /leads/claim` by
+the same `executor_id`.
+
+```json
+{
+  "lead_id": 34,
+  "executor_id": "kwork-desktop",
+  "sent": true,
+  "error": ""
+}
+```
+
+### Already completed automatic submission
+
+`POST /leads/auto-sent` synchronizes a proposal that the executor has already
+submitted without a mobile approval or claim.
+
+```json
+{
+  "lead_id": 34,
+  "executor_id": "kwork-desktop"
+}
+```
+
+First successful synchronization returns `changed: true`, changes the lead to
+`sent`, clears `last_error`, records `executor_id`, increments `version`, writes
+one `auto_sent` audit event, and sends one mobile push. Repeating the same call
+returns HTTP 200 with `changed: false` and the unchanged sent lead.
+
+```json
+{
+  "ok": true,
+  "changed": true,
+  "lead": {
+    "id": 34,
+    "external_key": "kwork:116",
+    "status": "sent",
+    "version": 2
+  }
+}
+```
+
+Allowed source statuses are `new`, `edited`, `approved`, `failed`, and
+`sending` when it is owned by the same executor. Rejected or deleted leads and
+leads being sent by another executor return HTTP 400. This endpoint only
+records an external action that already happened; it must not be used as
+authorization to submit a proposal.

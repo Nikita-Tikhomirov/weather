@@ -107,6 +107,7 @@ Route::middleware('sync.apikey')->group(function (): void {
     Route::get('/leads/commands', [LeadController::class, 'commands']);
     Route::post('/leads/claim', [LeadController::class, 'claim']);
     Route::post('/leads/result', [LeadController::class, 'result']);
+    Route::post('/leads/auto-sent', [LeadController::class, 'autoSent']);
 
     // Call (audio/video)
     Route::post('/call/initiate', [CallController::class, 'initiate']);

@@ -309,6 +309,49 @@ final class LeadRepository
         });
     }
 
+    public function reportAutoSent(int $leadId, string $executorId): array
+    {
+        if ($leadId < 1 || $executorId === '') {
+            throw new InvalidArgumentException('Lead id and executor id are required');
+        }
+
+        return DB::transaction(function () use ($leadId, $executorId): array {
+            $lead = DB::table('kwork_leads')
+                ->where('id', $leadId)
+                ->whereNull('deleted_at')
+                ->lockForUpdate()
+                ->first();
+            if ($lead === null) {
+                throw new InvalidArgumentException('Lead not found');
+            }
+
+            $status = (string)$lead->status;
+            if ($status === 'sent') {
+                return ['changed' => false, 'lead' => $this->map($lead)];
+            }
+            if ($status === 'rejected') {
+                throw new InvalidArgumentException('Rejected lead cannot be marked as auto-sent');
+            }
+            if ($status === 'sending' && (string)$lead->executor_id !== $executorId) {
+                throw new InvalidArgumentException('Lead is claimed by another executor');
+            }
+            if (!in_array($status, ['new', 'edited', 'approved', 'failed', 'sending'], true)) {
+                throw new InvalidArgumentException('Lead cannot be marked as auto-sent in its current status');
+            }
+
+            DB::table('kwork_leads')->where('id', $leadId)->update([
+                'status' => 'sent',
+                'executor_id' => $executorId,
+                'last_error' => '',
+                'version' => (int)$lead->version + 1,
+                'updated_at' => $this->nowIso(),
+            ]);
+            $this->audit($leadId, $executorId, 'auto_sent', ['previous_status' => $status]);
+
+            return ['changed' => true, 'lead' => $this->find($leadId)];
+        });
+    }
+
     public function find(int $leadId): array
     {
         $lead = DB::table('kwork_leads')->where('id', $leadId)->first();

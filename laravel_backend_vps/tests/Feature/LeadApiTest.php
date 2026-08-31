@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -116,6 +117,94 @@ class LeadApiTest extends TestCase
             ])
             ->assertStatus(200)
             ->assertJsonPath('lead.status', 'sent');
+    }
+
+    #[Test]
+    public function auto_sent_lead_is_synchronized_without_claim_and_retries_are_idempotent(): void
+    {
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 967 981-24-38',
+                'device_id' => 'nikita-auto-sent-device',
+                'display_name' => 'Nikita',
+            ])
+            ->assertStatus(200);
+
+        $created = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/leads/ingest', [
+                'external_key' => 'kwork:116',
+                'owner_phone' => '79679812438',
+                'source' => 'kwork',
+                'source_url' => 'https://kwork.ru/projects/116',
+                'title' => 'Автоматически отправленный заказ',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('lead.status', 'new');
+
+        $leadId = $created->json('lead.id');
+        $initialVersion = $created->json('lead.version');
+
+        $first = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/leads/auto-sent', [
+                'lead_id' => $leadId,
+                'executor_id' => 'kwork-desktop',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('changed', true)
+            ->assertJsonPath('lead.status', 'sent');
+
+        $sentVersion = $first->json('lead.version');
+        $this->assertSame($initialVersion + 1, $sentVersion);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/leads/auto-sent', [
+                'lead_id' => $leadId,
+                'executor_id' => 'kwork-desktop',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('changed', false)
+            ->assertJsonPath('lead.status', 'sent')
+            ->assertJsonPath('lead.version', $sentVersion);
+
+        $this->assertSame(1, DB::table('kwork_lead_audits')
+            ->where('lead_id', $leadId)
+            ->where('action', 'auto_sent')
+            ->count());
+        $this->assertSame('kwork-desktop', DB::table('kwork_leads')
+            ->where('id', $leadId)
+            ->value('executor_id'));
+    }
+
+    #[Test]
+    public function auto_sent_sync_does_not_relax_the_manual_result_claim_guard(): void
+    {
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/auth/device-start', [
+                'phone' => '+7 967 981-24-38',
+                'device_id' => 'nikita-manual-guard-device',
+                'display_name' => 'Nikita',
+            ])
+            ->assertStatus(200);
+
+        $created = $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/leads/ingest', [
+                'external_key' => 'kwork:117',
+                'owner_phone' => '79679812438',
+                'source' => 'kwork',
+                'title' => 'Заказ без ручного claim',
+            ])
+            ->assertStatus(200);
+
+        $this->withHeaders(['X-Api-Key' => 'prod-key'])
+            ->postJson('/leads/result', [
+                'lead_id' => $created->json('lead.id'),
+                'executor_id' => 'kwork-desktop',
+                'sent' => true,
+            ])
+            ->assertStatus(400)
+            ->assertJsonPath('error', 'Lead is not claimed by this executor');
     }
 
     #[Test]

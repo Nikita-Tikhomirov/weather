@@ -178,6 +178,26 @@ class LeadController extends Controller
         }
     }
 
+    public function autoSent(Request $request): JsonResponse
+    {
+        try {
+            $result = $this->leads->reportAutoSent(
+                (int)$request->input('lead_id', 0),
+                trim((string)$request->input('executor_id', '')),
+            );
+            if ($result['changed']) {
+                $this->notify($result['lead'], 'Отклик отправлен автоматически', (string)$result['lead']['title']);
+            }
+            return $this->json(200, [
+                'ok' => true,
+                'changed' => $result['changed'],
+                'lead' => $result['lead'],
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return $this->json(400, ['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
     private function ownerAction(Request $request, string $title, callable $action, bool $requiresLeadId = true): JsonResponse
     {
         try {
